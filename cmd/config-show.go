@@ -8,9 +8,9 @@ import (
 	"gopkg.in/yaml.v3"
 	"os"
 
+	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // The 'show' subcommand of the 'config' command prints out the configuration
@@ -24,13 +24,12 @@ var configShowCmd = &cobra.Command{
 			err          error
 			cfgDataBytes []byte
 		)
-		cfgDataMap := viper.AllSettings()
 		format := cmd.Flag("format").Value.String()
 		switch format {
 		case "yaml":
-			cfgDataBytes, err = yaml.Marshal(&cfgDataMap)
+			cfgDataBytes, err = yaml.Marshal(config.GlobalConfig)
 		case "json":
-			cfgDataBytes, err = json.MarshalIndent(&cfgDataMap, "", "\t")
+			cfgDataBytes, err = json.MarshalIndent(config.GlobalConfig, "", "\t")
 		default:
 			log.Logger.Error().Msgf("unknown log output format: %s", format)
 			os.Exit(1)

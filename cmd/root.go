@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,22 +16,16 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/version"
 	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 const (
-	progName             = "ochami"
-	defaultLogFormat     = "json"
-	defaultLogLevel      = "warning"
-	defaultConfigFormat  = "yaml"
 	defaultPayloadFormat = "json"
 )
 
 var (
-	configFile   string
-	configFormat string
-	logLevel     string
-	logFormat    string
+	configFile string
+	logLevel   string
+	logFormat  string
 
 	// These are only used by 'bss' and 'smd' subcommands.
 	baseURI    string
@@ -43,7 +36,7 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     progName,
+	Use:     config.ProgName,
 	Args:    cobra.NoArgs,
 	Short:   "Command line interface for interacting with OpenCHAMI services",
 	Long:    "",
@@ -74,133 +67,91 @@ func init() {
 	cobra.OnInitialize(
 		InitConfig,
 		InitLogging,
-		InitialStatus,
 	)
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "path to configuration file to use")
-	rootCmd.PersistentFlags().StringVar(&configFormat, "config-format", defaultConfigFormat, "format of configuration file; if none passed, tries to infer from file extension")
-	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", defaultLogFormat, "log format (json,rfc3339,basic)")
-	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", defaultLogLevel, "set verbosity of logs (info,warning,debug)")
-	rootCmd.PersistentFlags().String("cluster", "", "name of cluster whose config to use for this command")
+	rootCmd.PersistentFlags().StringP("log-format", "L", "", "log format (json,rfc3339,basic)")
+	rootCmd.PersistentFlags().StringP("log-level", "l", "", "set verbosity of logs (info,warning,debug)")
+	rootCmd.PersistentFlags().StringP("cluster", "C", "", "name of cluster whose config to use for this command")
 	rootCmd.PersistentFlags().StringVarP(&baseURI, "base-uri", "u", "", "base URI for OpenCHAMI services")
 	rootCmd.PersistentFlags().StringVar(&cacertPath, "cacert", "", "path to root CA certificate in PEM format")
 	rootCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "access token to present for authentication")
 	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "do not verify TLS certificates")
 	rootCmd.PersistentFlags().Bool("ignore-config", false, "do not use any config file")
+	rootCmd.PersistentFlags().BoolVarP(&config.EarlyVerbose, "verbose", "v", false, "be verbose before logging is initialized")
 
 	// Either use cluster from config file or specify details on CLI
-	bssCmd.MarkFlagsMutuallyExclusive("cluster", "base-uri")
-
-	checkBindError(viper.BindPFlag("log.format", rootCmd.PersistentFlags().Lookup("log-format")))
-	checkBindError(viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level")))
+	rootCmd.MarkFlagsMutuallyExclusive("cluster", "base-uri")
 }
 
-func checkBindError(e error) {
-	if e != nil {
-		fmt.Fprintf(os.Stderr, "%s: failed to bind key to flag: %v\n", progName, e)
-	}
-}
-
+// Set log level verbosity based on config file (log.level) or --log-level.
+// The command line option overrides the config file option.
 func InitLogging() {
-	// Set log level verbosity based on config file (log.level) or how many --log-level.
-	// The command line option overrides the config file option.
-	logCfg := viper.Sub("log")
-	if logCfg == nil {
-		fmt.Fprintf(os.Stderr, "%s: failed to read logging config", progName)
+	if rootCmd.PersistentFlags().Lookup("log-format").Changed {
+		lf, err := rootCmd.PersistentFlags().GetString("log-format")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: failed to fetch flag log-format: %v\n", config.ProgName, err)
+			os.Exit(1)
+		}
+		config.GlobalConfig.Log.Format = lf
+	}
+	if rootCmd.PersistentFlags().Lookup("log-level").Changed {
+		ll, err := rootCmd.PersistentFlags().GetString("log-level")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: failed to fetch flag log-level: %v\n", config.ProgName, err)
+			os.Exit(1)
+		}
+		config.GlobalConfig.Log.Level = ll
+	}
+
+	if err := log.Init(config.GlobalConfig.Log.Level, config.GlobalConfig.Log.Format); err != nil {
+		fmt.Fprintf(os.Stderr, "%s: failed to initialize logger: %v\n", config.ProgName, err)
 		os.Exit(1)
 	}
 
-	// Viper's BindPFlag does not currently work with binding to subkeys.
-	// (See: https://github.com/spf13/viper/issues/368)
-	// Therefore, we must manually check if the flag was set. If not, check if
-	// config file option was set. If not, use default value.
-	//
-	// These if statements should be removed when the referenced issue is resolved.
-	if !rootCmd.PersistentFlags().Lookup("log-format").Changed {
-		if lf := logCfg.GetString("format"); lf != "" {
-			logFormat = lf
-		}
-	}
-	if !rootCmd.PersistentFlags().Lookup("log-level").Changed {
-		if ll := logCfg.GetString("level"); ll != "" {
-			logLevel = ll
-		}
-	}
-
-	if err := log.Init(logLevel, logFormat); err != nil {
-		fmt.Fprintf(os.Stderr, "%s: failed to initialize logger: %v\n", progName, err)
-		os.Exit(1)
-	}
+	log.Logger.Debug().Msg("logging has been initialized")
 }
 
 func InitConfig() {
-	// Set defaults for any keys not set by env var, config file, or flag
-	config.SetDefaults()
-
-	// Read any environment variables
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-
 	// Do not read or write config file if --ignore-config passed
 	if rootCmd.Flag("ignore-config").Changed {
 		return
 	}
 
-	// Set config file to ~/.config/ochami/config.<configFormat> if not set
-	// via flag
-	if configFile == "" {
-		user, err := user.Current()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: unable to fetch current user: %v\n", progName, err)
-			os.Exit(1)
-		}
-		configDir := filepath.Join(user.HomeDir, ".config", "ochami")
-		configFile = filepath.Join(configDir, "config."+configFormat)
-	}
-
-	// Try to create config file with default values if it doesn't exist
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		respConfigCreate := loopYesNo(fmt.Sprintf("Config file %s does not exist. Create it?", configFile))
-		if respConfigCreate {
-			configDir := filepath.Dir(configFile)
-			err := os.MkdirAll(configDir, 0755)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%s: could not create config dir %s: %v\n", progName, configDir, err)
-				os.Exit(1)
-			}
-			f, err := os.OpenFile(configFile, os.O_RDONLY|os.O_CREATE, 0644)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%s: creating %s failed: %v\n", progName, configFile, err)
-				os.Exit(1)
-			}
-			f.Close()
-			err = config.WriteConfig(configFile, configFormat)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%s: writing %s failed: %v\n", progName, configFile, err)
-				os.Exit(1)
-			}
-		} else {
-			fmt.Fprintf(os.Stderr, "%s: not creating config file. Exiting...\n", progName)
-			os.Exit(0)
-		}
-	}
-
-	// Read configuration file if passed
-	err := config.LoadConfig(configFile, configFormat)
-	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			fmt.Fprintf(os.Stderr, "%s: configuration file %s not found: %v\n", progName, configFile, err)
-		} else {
-			fmt.Fprintf(os.Stderr, "%s: failed to load configuration file %s: %v\n", progName, configFile, err)
-		}
-		os.Exit(1)
-	}
-}
-
-func InitialStatus() {
 	if configFile != "" {
-		log.Logger.Debug().Msgf("config file loaded: %s", configFile)
-	} else {
-		log.Logger.Debug().Msgf("no config file loaded")
+		// Try to create config file with default values if it doesn't exist
+		if _, err := os.Stat(configFile); os.IsNotExist(err) {
+			respConfigCreate := loopYesNo(fmt.Sprintf("Config file %s does not exist. Create it?", configFile))
+			if respConfigCreate {
+				configDir := filepath.Dir(configFile)
+				err := os.MkdirAll(configDir, 0755)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%s: could not create config dir %s: %v\n", config.ProgName, configDir, err)
+					os.Exit(1)
+				}
+				f, err := os.OpenFile(configFile, os.O_RDONLY|os.O_CREATE, 0644)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%s: creating %s failed: %v\n", config.ProgName, configFile, err)
+					os.Exit(1)
+				}
+				f.Close()
+				err = config.WriteConfig(configFile)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%s: writing %s failed: %v\n", config.ProgName, configFile, err)
+					os.Exit(1)
+				}
+			} else {
+				fmt.Fprintf(os.Stderr, "%s: not creating config file. Exiting...\n", config.ProgName)
+				os.Exit(0)
+			}
+		}
+	}
+
+	// Read configuration from file, if passed or merge config from system
+	// config file and user config file if not passed.
+	err := config.LoadConfig(configFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: failed to load configuration: %v\n", config.ProgName, err)
+		os.Exit(1)
 	}
 }
 
@@ -300,53 +251,51 @@ func getBaseURI(cmd *cobra.Command) (string, error) {
 	//    specified), use cluster identified by that name as source of info.
 	// 4. Data sources exhausted, err.
 	var (
-		clusterList  []map[string]any
-		clusterToUse *map[string]any
+		clusterList  []config.ConfigCluster
+		clusterToUse config.ConfigCluster
 		clusterName  string
 	)
 	if cmd.Flag("cluster").Changed {
-		if configFile == "" {
-			return "", fmt.Errorf("--cluster specified but no config file specified")
-		}
-		if err := viper.UnmarshalKey("clusters", &clusterList); err != nil {
-			return "", fmt.Errorf("failed to unmarshal cluster list: %w", err)
-		}
+		clusterList = config.GlobalConfig.Clusters
 		clusterName = cmd.Flag("cluster").Value.String()
+		log.Logger.Debug().Msgf("using base URI from cluster %s passed from command line", clusterName)
 		for _, c := range clusterList {
-			if c["name"] == clusterName {
-				clusterToUse = &c
+			if c.Name == clusterName {
+				clusterToUse = c
 				break
 			}
 		}
-		if clusterToUse == nil {
-			return "", fmt.Errorf("cluster %q not found in %s", clusterName, configFile)
+		if clusterToUse == (config.ConfigCluster{}) {
+			return "", fmt.Errorf("cluster %s not found", clusterName)
 		}
-		clusterToUseData := (*clusterToUse)["cluster"].(map[string]any)
-		if clusterToUseData["base-uri"] == nil {
-			return "", fmt.Errorf("base-uri not set for cluster %q specified with --cluster", clusterName)
+		if clusterToUse.Cluster.BaseURI == "" {
+			return "", fmt.Errorf("base-uri not set for cluster %s specified with --cluster", clusterName)
 		}
-		return clusterToUseData["base-uri"].(string), nil
+
+		log.Logger.Debug().Msgf("base URI: %s", clusterToUse.Cluster.BaseURI)
+
+		return clusterToUse.Cluster.BaseURI, nil
 	} else if cmd.Flag("base-uri").Changed {
+		log.Logger.Debug().Msg("using base URI passed on command line")
+		log.Logger.Debug().Msgf("base URI: %s", baseURI)
 		return baseURI, nil
-	} else if configFile != "" && viper.IsSet("default-cluster") {
-		clusterName = viper.GetString("default-cluster")
-		if err := viper.UnmarshalKey("clusters", &clusterList); err != nil {
-			return "", fmt.Errorf("failed to unmarshal cluster list: %w", err)
-		}
+	} else if config.GlobalConfig.DefaultCluster != "" {
+		clusterName = config.GlobalConfig.DefaultCluster
+		clusterList = config.GlobalConfig.Clusters
+		log.Logger.Debug().Msgf("using base URI from default cluster %s", clusterName)
 		for _, c := range clusterList {
-			if c["name"] == clusterName {
-				clusterToUse = &c
+			if c.Name == clusterName {
+				clusterToUse = c
 				break
 			}
 		}
-		if clusterToUse == nil {
-			return "", fmt.Errorf("default cluster %q not found in %s", clusterName, configFile)
+		if clusterToUse == (config.ConfigCluster{}) {
+			return "", fmt.Errorf("default cluster %s not found", clusterName)
 		}
-		clusterToUseData := (*clusterToUse)["cluster"].(map[string]any)
-		if clusterToUseData["base-uri"] == nil {
-			return "", fmt.Errorf("base-uri not set for default cluster %q", clusterName)
-		}
-		return clusterToUseData["base-uri"].(string), nil
+
+		log.Logger.Debug().Msgf("base URI: %s", clusterToUse.Cluster.BaseURI)
+
+		return clusterToUse.Cluster.BaseURI, nil
 	}
 
 	return "", fmt.Errorf("no base-uri set bia --base-uri, --cluster, or config file")
@@ -371,19 +320,20 @@ func setTokenFromEnvVar(cmd *cobra.Command) {
 		token = cmd.Flag("token").Value.String()
 		log.Logger.Debug().Msg("--token passed, setting token to its value: " + token)
 		return
-	} else if configFile != "" {
-		log.Logger.Debug().Msg("Determining token from environment variable based on cluster in config file")
-		if cmd.Flag("cluster").Changed {
-			clusterName = cmd.Flag("cluster").Value.String()
-			log.Logger.Debug().Msg("--cluster specified: " + clusterName)
-		} else if viper.IsSet("default-cluster") {
-			clusterName = viper.GetString("default-cluster")
-			log.Logger.Debug().Msg("--cluster not specified, using default-cluster: " + clusterName)
-		}
+	}
+
+	log.Logger.Debug().Msg("Determining token from environment variable based on cluster in config file")
+	if cmd.Flag("cluster").Changed {
+		clusterName = cmd.Flag("cluster").Value.String()
+		log.Logger.Debug().Msg("--cluster specified: " + clusterName)
+	} else if config.GlobalConfig.DefaultCluster != "" {
+		clusterName = config.GlobalConfig.DefaultCluster
+		log.Logger.Debug().Msg("--cluster not specified, using default-cluster: " + clusterName)
 	} else {
-		log.Logger.Error().Msg("no config file specified to determine which cluster token to use and --token not specified")
+		log.Logger.Error().Msg("No default-cluster specified and --token not passed")
 		os.Exit(1)
 	}
+
 	varPrefix = strings.ReplaceAll(clusterName, "-", "_")
 	varPrefix = strings.ReplaceAll(varPrefix, " ", "_")
 
