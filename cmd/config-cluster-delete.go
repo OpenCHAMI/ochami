@@ -8,7 +8,6 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // configClusterDeleteCmd represents the config-cluster-delete command
@@ -30,38 +29,44 @@ var configClusterDeleteCmd = &cobra.Command{
 		}
 
 		// We must have a config file in order to write cluster info
-		if configFile == "" {
-			log.Logger.Error().Msg("no config file path specified")
-			os.Exit(1)
+		var fileToModify string
+		if rootCmd.PersistentFlags().Lookup("config").Changed {
+			var err error
+			if fileToModify, err = rootCmd.PersistentFlags().GetString("config"); err != nil {
+				log.Logger.Error().Err(err).Msgf("unable to get value from --config flag")
+				os.Exit(1)
+			}
+		} else if configCmd.PersistentFlags().Lookup("system").Changed {
+			fileToModify = config.SystemConfigFile
+		} else {
+			fileToModify = config.UserConfigFile
+		}
+
+		// Read in config from file
+		cfg, err := config.ReadConfig(fileToModify)
+		if err != nil {
+			log.Logger.Error().Err(err).Msgf("failed to read config from %s", fileToModify)
 		}
 
 		// Fetch existing cluster list config
-		var clusterList []map[string]any // List of clusters in config
 		clusterName := args[0]
-		if err := viper.UnmarshalKey("clusters", &clusterList); err != nil {
-			log.Logger.Error().Err(err).Msg("failed to unmarshal cluster list")
-		}
-		for idx, cluster := range clusterList {
-			if cluster["name"] == clusterName {
-				newClusterList := config.RemoveFromSlice(clusterList, idx)
-
-				// Apply config to Viper
-				viper.Set("clusters", newClusterList)
+		for idx, cluster := range cfg.Clusters {
+			if cluster.Name == clusterName {
+				cfg.Clusters = config.RemoveFromSlice(cfg.Clusters, idx)
 
 				// If cluster was default, remove default-cluster
-				if viper.IsSet("default-cluster") {
-					cn := viper.GetString("default-cluster")
-					if cn == clusterName {
-						viper.Set("default-cluster", "")
-						log.Logger.Info().Msgf("cluster %s removed as default-cluster from config file %s", clusterName, configFile)
+				if cfg.DefaultCluster != "" {
+					if cfg.DefaultCluster == clusterName {
+						cfg.DefaultCluster = ""
+						log.Logger.Info().Msgf("cluster %s removed as default-cluster from config file %s", clusterName, fileToModify)
 					}
 				}
 
 				// Write out config file
 				// WARNING: This will rewrite the whole config file so modifications like
 				// comments will get erased.
-				if err := viper.WriteConfig(); err != nil {
-					log.Logger.Error().Err(err).Msgf("failed to write to config file: %s", configFile)
+				if err := config.WriteConfig(fileToModify, cfg); err != nil {
+					log.Logger.Error().Err(err).Msgf("failed to write modified config to %s", fileToModify)
 					os.Exit(1)
 				}
 				log.Logger.Info().Msgf("cluster %s removed from config file %s", clusterName, configFile)
