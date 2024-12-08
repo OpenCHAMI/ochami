@@ -134,7 +134,7 @@ func InitConfig() {
 					os.Exit(1)
 				}
 				f.Close()
-				err = config.WriteConfig(configFile)
+				err = config.WriteConfig(configFile, config.GlobalConfig)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "%s: writing %s failed: %v\n", config.ProgName, configFile, err)
 					os.Exit(1)

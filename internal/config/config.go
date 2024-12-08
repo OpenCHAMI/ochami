@@ -49,8 +49,10 @@ var DefaultConfig = Config{
 }
 
 var (
-	GlobalConfig = DefaultConfig // Global config struct
-	GlobalKoanf  *koanf.Koanf    // Koanf instance for gobal config struct
+	GlobalConfig     = DefaultConfig // Global config struct
+	GlobalKoanf      *koanf.Koanf    // Koanf instance for gobal config struct
+	UserConfigFile   string
+	SystemConfigFile = "/etc/ochami/config.yaml"
 
 	// Since logging isn't set up until after config is read, this variable
 	// allows more verbose printing if true for more verbose logging
@@ -124,13 +126,12 @@ func LoadConfig(path string) error {
 	earlyLog("no config file specified on command line, attempting to merge configs")
 
 	// Generate user config path: ~/.config/ochami/config.yaml
-	var userConfigFile string
 	user, err := user.Current()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s: unable to fetch current user: %v\n", ProgName, err)
 		os.Exit(1)
 	}
-	userConfigFile = filepath.Join(user.HomeDir, ".config", "ochami", "config.yaml")
+	UserConfigFile = filepath.Join(user.HomeDir, ".config", "ochami", "config.yaml")
 
 	// Read config from each file in slice
 	type FileCfgMap struct {
@@ -138,8 +139,8 @@ func LoadConfig(path string) error {
 		Cfg  Config
 	}
 	cfgsToCheck := []FileCfgMap{
-		FileCfgMap{File: "/etc/ochami/config.yaml"}, // System config
-		FileCfgMap{File: userConfigFile},            // User config
+		FileCfgMap{File: SystemConfigFile},
+		FileCfgMap{File: UserConfigFile},
 	}
 	var cfgsLoaded []FileCfgMap
 	for _, cfg := range cfgsToCheck {
@@ -201,19 +202,69 @@ func LoadConfig(path string) error {
 	return nil
 }
 
+func ModifyConfig(path, key string, value interface{}) error {
+	// Open file for writing
+	cfg, err := ReadConfig(path)
+	if err != nil {
+		return fmt.Errorf("failed to read %s for modification: %w", path, err)
+	}
+
+	// Perform modification
+	ko := koanf.NewWithConf(kConfig)
+	if err := ko.Load(structs.Provider(cfg, "yaml"), nil); err != nil {
+		return fmt.Errorf("failed to load config from %s: %w", path, err)
+	}
+	if err := ko.Set(key, value); err != nil {
+		return fmt.Errorf("failed to set key %s to value %v: %w", key, value, err)
+	}
+	var modCfg Config
+	kuc := kUnmarshalConf
+	kuc.DecoderConfig.Result = &modCfg
+	if err := ko.UnmarshalWithConf("", nil, kuc); err != nil {
+		return fmt.Errorf("failed to modify config for %s: %w", path, err)
+	}
+
+	// Write file back to file
+	if err := WriteConfig(path, modCfg); err != nil {
+		return fmt.Errorf("failed to write modified config to %s: %w", path, err)
+	}
+
+	return nil
+}
+
+func ReadConfig(path string) (Config, error) {
+	var cfg Config
+	if path == "" {
+		return cfg, fmt.Errorf("no configuration file passed")
+	}
+	log.Logger.Debug().Msgf("reading config file: %s", path)
+
+	ko := koanf.NewWithConf(kConfig)
+	if err := ko.Load(file.Provider(path), configParser); err != nil {
+		return cfg, fmt.Errorf("failed to load config file %s: %w", path, err)
+	}
+	kuc := kUnmarshalConf
+	kuc.DecoderConfig.Result = &cfg
+	if err := ko.UnmarshalWithConf("", nil, kuc); err != nil {
+		return cfg, fmt.Errorf("failed to unmarshal config from %s: %w", path, err)
+	}
+
+	return cfg, nil
+}
+
 // WriteConfig takes a path and config file format and writes the current viper
 // configuration to the file pointed to by path in the format specified. If path
 // is empty, an error is returned. WriteConfig accepts any config file types
 // that viper accepts. If format is empty, the format is guessed by the config
 // file's file extension. If there is no file extension and format is empty,
 // YAML is used.
-func WriteConfig(path string) error {
+func WriteConfig(path string, cfg Config) error {
 	if path == "" {
 		return fmt.Errorf("no configuration file path passed")
 	}
 	log.Logger.Debug().Msgf("writing config file: %s", path)
 
-	c, err := yaml.Marshal(GlobalConfig)
+	c, err := yaml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config for writing: %w", err)
 	}
