@@ -29,5 +29,10 @@ var configCmd = &cobra.Command{
 }
 
 func init() {
+	configCmd.PersistentFlags().Bool("system", false, "modify system config")
+	configCmd.PersistentFlags().Bool("user", true, "modify user config")
+
+	configCmd.MarkFlagsMutuallyExclusive("system", "user")
+
 	rootCmd.AddCommand(configCmd)
 }
