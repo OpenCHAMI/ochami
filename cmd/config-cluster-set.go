@@ -5,9 +5,9 @@ package cmd
 import (
 	"os"
 
+	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // configClusterSetCmd represents the config-cluster-set command
@@ -49,59 +49,61 @@ with a different base URL will change the base URL for the 'foobar' cluster.`,
 		}
 
 		// We must have a config file in order to write cluster info
-		if configFile == "" {
-			log.Logger.Error().Msg("no config file path specified")
-			os.Exit(1)
+		var fileToModify string
+		if rootCmd.PersistentFlags().Lookup("config").Changed {
+			var err error
+			if fileToModify, err = rootCmd.PersistentFlags().GetString("config"); err != nil {
+				log.Logger.Error().Err(err).Msgf("unable to get value from --config flag")
+				os.Exit(1)
+			}
+		} else if configCmd.PersistentFlags().Lookup("system").Changed {
+			fileToModify = config.SystemConfigFile
+		} else {
+			fileToModify = config.UserConfigFile
 		}
 
-		var (
-			clusterList []map[string]any // List of clusters in config
-			modCluster  *map[string]any  // Pointer to existing cluster if not adding new
-		)
+		// Read in config from file
+		cfg, err := config.ReadConfig(fileToModify)
+		if err != nil {
+			log.Logger.Error().Err(err).Msgf("failed to read config from %s", fileToModify)
+		}
 
 		// Fetch existing cluster list config
 		clusterName := args[0]
 		clusterUrl := cmd.Flag("base-uri").Value.String()
-		if err := viper.UnmarshalKey("clusters", &clusterList); err != nil {
-			log.Logger.Error().Err(err).Msg("failed to unmarshal cluster list")
-		}
+		clusterIdx := -1
+
 		// If cluster name already exists, we are modifying it instead of creating a new one
-		for _, cluster := range clusterList {
-			if cluster["name"] == clusterName {
-				modCluster = &cluster
+		for idx, cluster := range cfg.Clusters {
+			if cluster.Name == clusterName {
+				clusterIdx = idx
 				break
 			}
 		}
 
-		if modCluster == nil {
+		if clusterIdx == -1 {
 			// Cluster does not exist, create a new entry for it in the config
-			newCluster := make(map[string]any)
-			newCluster["name"] = clusterName
-			newClusterData := make(map[string]any)
+			newCluster := config.ConfigCluster{
+				Name: clusterName,
+			}
 			if clusterUrl != "" {
-				newClusterData["base-uri"] = clusterUrl
+				newCluster.Cluster.BaseURI = clusterUrl
 				log.Logger.Debug().Msgf("using base-uri %s", clusterUrl)
 			}
-			newCluster["cluster"] = newClusterData
 
 			// If this is the first cluster to be added, set it as the default
-			if len(clusterList) == 0 {
-				viper.Set("default-cluster", clusterName)
+			if len(cfg.Clusters) == 0 {
+				cfg.DefaultCluster = clusterName
 				log.Logger.Info().Msgf("first and new cluster %s set as default-cluster", clusterName)
 			}
 
 			// Add new cluster to list
-			clusterList = append(clusterList, newCluster)
+			cfg.Clusters = append(cfg.Clusters, newCluster)
 			log.Logger.Info().Msgf("added new cluster: %s", clusterName)
 		} else {
 			// Cluster exists, modify it
-			if (*modCluster)["cluster"] == nil {
-				(*modCluster)["cluster"] = make(map[string]any)
-			}
 			if clusterUrl != "" {
-				modClusterData := (*modCluster)["cluster"].(map[string]any)
-				modClusterData["base-uri"] = clusterUrl
-				(*modCluster)["cluster"] = modClusterData
+				cfg.Clusters[clusterIdx].Cluster.BaseURI = clusterUrl
 				log.Logger.Debug().Msgf("updating base-uri for cluster %s: %s", clusterName, clusterUrl)
 			}
 			log.Logger.Info().Msgf("modified config for existing cluster: %s", clusterName)
@@ -109,19 +111,17 @@ with a different base URL will change the base URL for the 'foobar' cluster.`,
 
 		// If --default was passed, make this cluster the default one
 		if cmd.Flag("default").Changed {
-			viper.Set("default-cluster", clusterName)
-			log.Logger.Info().Msgf("cluster %s set as default-cluster due to --default being passed", clusterName)
+			cfg.DefaultCluster = clusterName
+			log.Logger.Info().Msgf("cluster %s set as default-cluster since --default passed", clusterName)
 		}
 
-		// Apply config to Viper and write out the config file
+		// Write out modified config to the config file
 		// WARNING: This will rewrite the whole config file so modifications like
 		// comments will get erased.
-		viper.Set("clusters", clusterList)
-		if err := viper.WriteConfig(); err != nil {
-			log.Logger.Error().Err(err).Msgf("failed to write to config file: %s", configFile)
+		if err := config.WriteConfig(fileToModify, cfg); err != nil {
+			log.Logger.Error().Err(err).Msgf("failed to write modified config to %s", fileToModify)
 			os.Exit(1)
 		}
-		log.Logger.Info().Msgf("wrote config to %s", configFile)
 	},
 }
 
