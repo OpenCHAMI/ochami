@@ -127,7 +127,7 @@ supported build method for troubleshooting.
 
 ```bash
 export GOVERSION=$(go env GOVERSION)
-export BUILD_HOST=$(hostname)
+export BUILD_HOST=$(uname -n)
 export BUILD_USER=$(whoami)
 goreleaser build --clean --snapshot --single-target
 ```
