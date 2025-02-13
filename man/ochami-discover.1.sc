@@ -6,48 +6,18 @@ ochami-discover - Populate SMD using a file
 
 # SYNOPSIS
 
-ochami discover [OPTIONS] -f _file_ [--payload-format _format_]
+ochami discover static [--overwrite] [--payload-format _format_] [_file_]
 
 # DESCRIPTION
 
-Sometimes, discovery via Redfish may not be possible or feasible using dynamic
-methods (e.g. no Redfish support), or storing node data in a user-friendly file
-that can be used to populate SMD is preferred. This command provides a way to
-use a file to emulate the SMD discovery process in a static way without
-performing the actual discovery via Redfish.
-
-A payload file is required (or the data can be read from standard input), and it
-can be passed via *-f*/*--payload*. The format of this file is JSON by default,
-but *--payload-format* can be used to specify a different format.
-
-The file contains a list of "nodes", each with its own configuration (see
-*DATA STRUCTURE*). The *discover* command reads this data and creates the SMD
-RedfishEndpoints, EthernetInterfaces, Components, and groups data in SMD
-corresponding to each node. It also creates Components corresponding to each
-node's BMC which corresponds to each RedfishEndpoint created.
-
-This command accepts the following options:
-
-*--overwrite*
-	Instead of failing if data already exists, overwrite it with new data
-	contained in the payload.
-
-*-f, --payload* _file_
-	This option is mandatory.
-
-	Specify a file containing the data to send to SMD. The format of this
-	file depends on _--payload-format_ and is _json_ by default. If *-* is
-	used as the argument to _-f_, the command reads the payload data from
-	standard input.
-
-*--payload-format* _format_
-	Format of the file used with _-f_. If unspecified, the payload format is
-	_json_ by default. Supported formats are: _yaml_.
+The *discover* command is a metacommand for discovering nodes and populating SMD
+with the data.
 
 # DATA STRUCTURE
 
-The format of the payload is a *nodes* object containing an array of node data.
-An example of such an array containing one node in YAML format is as follows:
+The format of the data for *static* discovery is a *nodes* object containing an
+array of node data.  An example of such an array containing one node in YAML
+format is as follows:
 
 ```
 nodes:
@@ -93,6 +63,45 @@ discovery if it does not exist.
 	- *ip_addrs* - List of IP addresses assigned to interface.
 		- *name* - Short name identifying the network for the IP address.
 		- *ip_addr* - IP address for interface.
+
+# COMMANDS
+
+## static
+
+Populate SMD using static data from a file or standard input.
+
+The format of this command is:
+
+*static* [--overwrite] [--payload-format _format_] [_file_]
+
+The *static* subcommand provides a way to use structured data (from standard
+input or a file) to emulate the SMD discovery process in a reproducable way
+without performing dynamic discovery via Redfish. Sometimes, discovery via
+Redfish may not be possible or feasible using dynamic methods (e.g. no Redfish
+support), or storing node data in a user-friendly file that can be used to
+populate SMD is preferred.
+
+If _file_ is not specified, then the data is read from standard input. The
+format of the input data is JDON by default, but *--payload-format* can be used
+to specify a different format.
+
+The data should contain a list of "nodes", each with its own configuration (see
+*DATA STRUCTURE*). The *static* command reads this data and creates the SMD
+RedfishEndpoints, EthernetInterfaces, Components, and groups data in SMD
+corresponding to each node. It also creates Components corresponding to each
+node's BMC which corresponds to each RedfishEndpoint created.
+
+This command accepts the following options:
+
+*--overwrite*
+	Instead of failing if data already exists, overwrite it with new data
+	contained in the payload.
+
+*--payload-format* _format_
+	Format of the input data. If unspecified, the payload format is _json_ by
+	default. Supported formats are:
+	- _json_
+	- _yaml_
 
 # XNAMES
 
