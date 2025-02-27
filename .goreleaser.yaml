@@ -219,7 +219,7 @@ changelog:
       order: 999
 
 snapshot:
-  version_template: "{{ .Tag | default `0.0.0` }}-{{ .ShortCommit }}-snapshot"
+  version_template: "{{ .Tag }}-{{ .ShortCommit }}-snapshot"
 
 release:
   github:
