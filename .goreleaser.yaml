@@ -231,4 +231,4 @@ release:
   mode: replace
   extra_files:
     - glob: /home/runner/.gnupg/public.key
-      name_template: "{{ .ProjectName }}-public.key
+      name_template: "{{ .ProjectName }}-public.key"
