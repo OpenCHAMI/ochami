@@ -6,15 +6,34 @@ config.yaml - ochami CLI configuration file
 
 # DESCRIPTION
 
-*ochami* supports different config file formats including _yaml_, _json_, and
-_toml_, but YAML is the default. Configuration options can be set via the
-*ochami config* command.
+*ochami* uses the YAML format for its configuration files. Configuration options
+can be set via the *ochami config* command.
 
-# CONFIGURATION
-
-## Global Options
+# GLOBAL CONFIGURATION OPTIONS
 
 These configuration options are global configuration options.
+
+*clusters*
+	The list of cluster configurations. Each cluster configuration is a block
+	that has a *name* field that contains a string uniquely identifying the cluster,
+	as well as a *cluster* field that contains the cluster configuration.
+
+	Importantly, the value of *name* is used when determining the environment
+	variable to read when presenting a token for the cluster. The value is made
+	upper case, hyphens are converted to underscores, and the result is
+	prepended to *\_ACCESS_TOKEN*. For instance, the token environment variable
+	for a cluster named *my-cluster* would be *MY_CLUSTER_ACCESS_TOKEN*.
+
+	See *CLUSTER CONFIGURATION* below for details on cluster configuration.
+
+	The format is:
+
+	```
+	clusters:
+	- name: foobar
+	  cluster:
+	    <cluster_config>
+	```
 
 *default-cluster:* _cluster_name_
 	The name of the default cluster to use when *--cluster* is not specified on
@@ -29,6 +48,7 @@ These configuration options are global configuration options.
 
 		Default: *json*
 		Supported:
+
 		- _basic_
 		- _json_
 		- _rfc3339_
@@ -38,62 +58,66 @@ These configuration options are global configuration options.
 
 		Default: *warning*
 		Supported:
+
 		- _info_
 		- _warning_
 		- _debug_
 
-## Cluster Configuration
+# CLUSTER CONFIGURATION
 
 These configuration options apply only to cluster configuration, i.e. under the
 *clusters* key. The value for the *cluster* key is an array with each item in
 the array containing the below configuration options.
 
-*cluster*
-	The key containing cluster configuration subkeys.
+*name:* _cluster_name_
+	The name of the cluster. This is what *--cluster* and the *default-cluster*
+	key use to identify the cluster.
 
-	*api-uri:* _absolute_uri_
-		The base URI for the OpenCHAMI services for the cluster. This is
-		normally used when most or all of the OpenCHAMI services are behind a
-		single base URI (e.g. _https://foobar.openchami.cluster:8443_), and
-		*ochami* will append the service base path (e.g. _/hsm/v2_) as well as
-		the request endpoint onto this to fulfill the request for the specific
-		service. If one or more OpenCHAMI services is running either with a
-		custom base path or a custom URI altogether (e.g.  running on localhost
-		under different ports), then *<service>-uri* can be used to override
-		either the service base path or the entire URI.
+*<service>*
+	The service-specific configuration for *<service>*. Currently recognized
+	values of *<service>* are:
 
-		Thus, either *api-uri* must be specified with optional *<service>-uri*
-		directives for overrides, or a *<service>-uri* must be specified for
-		each *<service>*.
+	- _bss_ (Boot Script Service)
+	- _cloud-init_ (cloud-init)
+	- _pcs_ (Power Control Service)
+	- _smd_ (State Management Database)
 
-	*<service>-uri:* _absolute_uri_or_relative_path_
-		Specify either the absolute base URI for an OpenCHAMI *<service>* (e.g.
+	Each service config can have the following configuration options:
+
+	*uri:* _absolute_uri_or_relative_path_
+		Specify either the absolute base URI for the service (e.g.
 		_https://foobar.openchami.cluster:8443/hsm/v2_) or a relative base path
 		for the service (e.g. _/hsm/v2_). If an absolute URI is specified, this
-		completely overrides any value set for *api-uri* and the absolute URI
-		should also contain the desired service's base path. If a relative path
-		is specified (with or without the leading forward slash), then this
+		completely overrides any value set for *cluster.uri* and the absolute
+		URI should also contain the desired service's base path. If a relative
+		path is specified (with or without the leading forward slash), then this
 		value overrides the service's default base path and is appended to
-		*api-uri*, which is required to be set if a relative path is used here.
+		*cluster.uri*, which is required to be set if a relative path is used
+		here.
 
 		This option should be used when either one or more of the OpenCHAMI
 		services is using a custom base path or when it/they have an entirely
 		different URI, as when running bare metal on localhost with different
 		ports. *ochami* determines the base URI to use for each service by
-		checking *api-uri* and then if an override is set by a *<service>-uri*
-		directive for the *<service>*, so at least one of these need to be set.
-		Otherwise, the base URI is not able to be determined for that service.
+		checking *cluster.uri* and then if an override is set by a
+		*cluster.<service>.uri* directive for the *<service>*, so at least one
+		of these need to be set.  Otherwise, the base URI is not able to be
+		determined for that service.
 
-		Values of *<service>* can be:
+*uri:* _absolute_uri_
+	The base URI for the OpenCHAMI services for the cluster. This is
+	normally used when most or all of the OpenCHAMI services are behind a
+	single base URI (e.g. _https://foobar.openchami.cluster:8443_), and
+	*ochami* will append the service base path (e.g. _/hsm/v2_) as well as
+	the request endpoint onto this to fulfill the request for the specific
+	service. If one or more OpenCHAMI services is running either with a
+	custom base path or a custom URI altogether (e.g.  running on localhost
+	under different ports), then *cluster.<service>.uri* can be used to override
+	either the service base path or the entire URI.
 
-		- _bss_
-		- _cloud-init_
-		- _pcs_
-		- _smd_
-
-*name:* _cluster_name_
-	The name of the cluster. This is what *--cluster* and the *default-cluster*
-	key use to identify the cluster.
+	Thus, either *cluster.uri* must be specified with optional
+	*cluster.<service>.uri* directives for overrides, or a
+	*cluster.<service>.uri* must be specified for each *<service>*.
 
 # EXAMPLES
 
@@ -104,7 +128,7 @@ the array containing the below configuration options.
 ```
 clusters:
     - cluster:
-        api-uri: https://foobar.openchami.cluster
+        uri: https://foobar.openchami.cluster
       name: foobar
 default-cluster: foobar
 log:
@@ -117,10 +141,14 @@ log:
 ```
 clusters:
     - cluster:
-        bss-uri: https://localhost:27778/boot/v1
-        cloud-init-uri: https://localhost:27777/cloud-init
-        pcs-uri: https://localhost:28007/
-		smd-uri: https://localhost:27779/hsm/v2
+        bss:
+		  uri: https://localhost:27778/boot/v1
+        cloud-init:
+		  uri: https://localhost:27777/cloud-init
+        pcs:
+		  uri: https://localhost:28007/
+        smd:
+		  uri: https://localhost:27779/hsm/v2
       name: foobar
 default-cluster: foobar
 log:
@@ -133,8 +161,9 @@ log:
 ```
 clusters:
     - cluster:
-        api-uri: https://foobar.openchami.cluster
-		smd-uri: /smd
+        uri: https://foobar.openchami.cluster
+        smd:
+          uri: /smd
       name: foobar
 default-cluster: foobar
 log:
@@ -147,8 +176,9 @@ log:
 ```
 clusters:
     - cluster:
-        api-uri: https://foobar.openchami.cluster
-		smd-uri: https://smd.foobar.openchami.cluster/hsm/v2
+        uri: https://foobar.openchami.cluster
+        smd:
+          uri: https://smd.foobar.openchami.cluster/hsm/v2
       name: foobar
 default-cluster: foobar
 log:
@@ -167,7 +197,7 @@ Written by Devon T. Bautista and maintained by the OpenCHAMI developers.
 
 # SEE ALSO
 
-*ochami-config*(1)
+*ochami*(1), *ochami-config*(1)
 
 ; Vim modeline settings
 ; vim: set tw=80 noet sts=4 ts=4 sw=4 syntax=scdoc:

@@ -36,7 +36,11 @@ var rootCmd = &cobra.Command{
 	Use:     config.ProgName,
 	Args:    cobra.NoArgs,
 	Short:   "Command line interface for interacting with OpenCHAMI services",
-	Long:    "",
+	Long: `Command line interface for interacting with OpenCHAMI services.
+
+See ochami(1) for more details on available commands.
+See ochami-config(1) for more details on how to configure ochami using the CLI.
+See ochami-config(5) for more details on configuring the ochami config file(s).`,
 	Version: version.Version,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
@@ -69,7 +73,7 @@ func init() {
 	rootCmd.PersistentFlags().StringP("log-format", "L", "", "log format (json,rfc3339,basic)")
 	rootCmd.PersistentFlags().StringP("log-level", "l", "", "set verbosity of logs (info,warning,debug)")
 	rootCmd.PersistentFlags().StringP("cluster", "C", "", "name of cluster whose config to use for this command")
-	rootCmd.PersistentFlags().StringP("api-uri", "u", "", "base URI for OpenCHAMI services, excluding service base path")
+	rootCmd.PersistentFlags().StringP("cluster-uri", "u", "", "base URI for OpenCHAMI services, excluding service base path (overrides cluster.uri in config file)")
 	rootCmd.PersistentFlags().StringVar(&cacertPath, "cacert", "", "path to root CA certificate in PEM format")
 	rootCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "access token to present for authentication")
 	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "do not verify TLS certificates")

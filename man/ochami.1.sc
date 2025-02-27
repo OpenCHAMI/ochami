@@ -54,7 +54,7 @@ cluster configuration will need to be specified. Both can be done with the
 following command:
 
 ```
-ochami config --user cluster set --default --base-uri https://foobar.openchami.cluster foobar
+ochami config --user cluster set --default foobar cluster.uri https://foobar.openchami.cluster
 ```
 
 This will create a cluster called _foobar_ and set its base URI to
@@ -85,10 +85,6 @@ _foobar_.
 
 # GLOBAL OPTIONS
 
-*-u, --base-uri* _uri_
-	Specify the base URI to use when contacting OpenCHAMI services. Overrides
-	the base URI specified in a config file.
-
 *--cacert* _cacert_
 	Specify the path to a certificate authority (CA) certificate file to use to
 	verify TLS certificates. Must be PEM-formatted.
@@ -96,6 +92,17 @@ _foobar_.
 *-C, --cluster* _cluster_name_
 	Specify the name of a cluster to use. The cluster corresponding to the
 	passed cluster name must exist in a config file.
+
+*-u, --cluster-uri* _uri_
+	Specify cluster base URI to use. This is required to be an absolute URI
+	since the base path of the service(s) being communicated with will be
+	appended to this URI. Using the *--uri* flag on a service command or
+	*cluster.<service>.uri* in the config file for a cluster can override this
+	value for the specific service. The *--cluster-uri* flag overrides the
+	*cluster.uri* config file option for the cluster.
+
+	See *ochami-config*(5) for details on cluster config options, as well as the
+	manual pages for the services in *ochami*(1) for details on *--uri*.
 
 *-c, --config* _config_file_
 	Specify the path to a config file to use. By default, the configuration is
@@ -137,19 +144,14 @@ _foobar_.
 _/usr/share/doc/ochami/config.example.yaml_
 	An example configuration file that can be used for reference.
 
-_/etc/ochami/config.yaml_
-	The system-wide ochami CLI configuration file.
-
-_~/.config/ochami/config.yaml_
-	The user-level ochami CLI configuration file.
-
 # AUTHOR
 
 Written by Devon T. Bautista and maintained by the OpenCHAMI developers.
 
 # SEE ALSO
 
-*ochami-bss*(1), *ochami-config*(1), *ochami-discover*(1), *ochami-smd*(1)
+*ochami-bss*(1), *ochami-cloud-init*(1), *ochami-config*(1),
+*ochami-discover*(1), *ochami-smd*(1), *ochami-config*(5)
 
 ; Vim modeline settings
 ; vim: set tw=80 noet sts=4 ts=4 sw=4 syntax=scdoc:
