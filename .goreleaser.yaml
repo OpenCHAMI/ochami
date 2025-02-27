@@ -8,7 +8,7 @@ before:
 
 builds:
   - ldflags:
-      - "-s -w -trimpath"
+      - "-s -w"
       - "-X=github.com/OpenCHAMI/ochami/internal/version.Version={{ .Version }} \
          -X=github.com/OpenCHAMI/ochami/internal/version.Tag={{ .Tag }} \
          -X=github.com/OpenCHAMI/ochami/internal/version.Branch={{ .Branch }} \
