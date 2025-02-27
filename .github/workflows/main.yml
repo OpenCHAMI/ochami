@@ -46,7 +46,15 @@ jobs:
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode > private.key
           gpg --batch --import private.key
+          gpg --list-keys --keyid-format LONG
           rm private.key
+
+      - name: Configure rpmsign Macros
+        run: |
+          KEY_ID=$(gpg --list-keys --with-colons | awk -F: '/^pub/ {print $5; exit}')
+          echo "Using GPG Key ID: $KEY_ID"
+          echo "%_gpg_name $KEY_ID" > ~/.rpmmacros
+
 
       - name: Export Public Key
         run: |
