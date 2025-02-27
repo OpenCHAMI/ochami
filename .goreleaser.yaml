@@ -220,7 +220,7 @@ changelog:
       order: 999
 
 snapshot:
-  version_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ .Commit }}-next"
 
 release:
   github:
