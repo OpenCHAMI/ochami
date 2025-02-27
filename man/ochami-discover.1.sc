@@ -123,5 +123,9 @@ information on xnames: https://github.com/Cray-HPE/hms-xname
 
 Written by Devon T. Bautista and maintained by the OpenCHAMI developers.
 
+# SEE ALSO
+
+*ochami*(1)
+
 ; Vim modeline settings
 ; vim: set tw=80 noet sts=4 ts=4 sw=4 syntax=scdoc:

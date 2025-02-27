@@ -24,7 +24,7 @@ Creates the following entry in the 'clusters' list:
 
 	- name: foobar
 	  cluster:
-	    base-uri: https://foobar.openchami.cluster
+	    api-uri: https://foobar.openchami.cluster
 
 If this is the first cluster created, the following is also set:
 
