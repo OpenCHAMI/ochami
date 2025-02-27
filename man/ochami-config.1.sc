@@ -6,11 +6,13 @@ ochami-config - Manage configuration for ochami CLI
 
 # SYNOPSIS
 
-ochami config cluster delete _cluster_name_++
-ochami config cluster set [-u _base_uri_] [-d] _cluster_name_++
-ochami config set [--user | --system | --config _path_] _key_ _value_++
-ochami config show [-f _format_]++
-ochami config unset [--user | --system | --config _path_] _key_
+ochami config [--user | --system | --config _path_] cluster delete _cluster_name_++
+ochami config [--user | --system | --config _path_] cluster set [-d] _cluster_name_ _key_ _value_++
+ochami config [--user | --system | --config _path_] cluster show _cluster_name_++
+ochami config [--user | --system | --config _path_] cluster unset _cluster_name_ _key_ _value_++
+ochami config [--user | --system | --config _path_] set _key_ _value_++
+ochami config [--user | --system | --config _path_] show [-f _format_]++
+ochami config [--user | --system | --config _path_] unset _key_
 
 # COMMANDS
 
@@ -23,7 +25,7 @@ Subcommands for this command are as follows:
 *delete* _cluster_name_
 	Delete _cluster_name_ configuration from config file.
 
-*set* [--base-uri _base_uri_] [--default] _cluster_name_
+*set* [--user | --system | --config _path_] [-u _base_uri_] [-d] _cluster_name_ _key_ _value_
 	Add or set configuration for a cluster.
 
 	This command accepts the following options:
@@ -34,10 +36,20 @@ Subcommands for this command are as follows:
 		*ochami* will use this to concatenate endpoint information to when
 		communicating with this cluster's OpenCHAMI services.
 
+	*--config* _path_
+		Modify the config file at _path_. The *--config* flag is the same one
+		that is global to all commands and is not unique to this command.
+
 	*-d, --default*
 		Set this cluster as the default cluster. This means that if *--cluster*
 		is not specified on the command line, this cluster's configuration is
 		used.
+
+	*--system*
+		Modify the system config file.
+
+	*--user*
+		Modify the user config file (the default).
 
 ## set
 
