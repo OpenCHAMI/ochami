@@ -95,14 +95,6 @@ nfpms:
       key_file: /home/runner/.gnupg/public.key
       passphrase: "{{ .Env.NFPM_RPM_PASSPHRASE }}"
 
-signs:
-  - artifacts: package
-    ids:
-      - ochami
-    cmd: rpmsign
-    args:
-      - --addsign
-      - "{{ .ArtifactPath }}"
 
 aurs:
   - name: ochami-bin
@@ -145,6 +137,17 @@ aurs:
       mkdir -p "${pkgdir}/usr/share/man/man5"
       install -Dm644 ./man/*.1 "${pkgdir}/usr/share/man/man1/"
       install -Dm644 ./man/*.5 "${pkgdir}/usr/share/man/man5/"
+
+signs:
+  - artifacts: package
+    cmd: rpmsign
+    args:
+      - --addsign
+      - "{{ .ArtifactPath }}"
+    env:
+      - GPG_TTY=$(tty) # Ensures signing works in GitHub Actions
+      - RPM_SIGN_PASSPHRASE={{ .Env.NFPM_RPM_PASSPHRASE }}
+
 
 dockers:
   - dockerfile: goreleaser.dockerfile
