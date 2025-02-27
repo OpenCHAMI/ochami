@@ -54,7 +54,7 @@ jobs:
           NFPM_RPM_PASSPHRASE: ${{ secrets.NFPM_RPM_PASSPHRASE }}
         with:
           version: '~> v2'
-          args: release --clean
+          args: ${{ github.ref_type == 'tag' && 'release --clean' || 'release --clean --snapshot' }}        
         id: goreleaser
       - name: Process goreleaser output
         id: process_goreleaser_output
