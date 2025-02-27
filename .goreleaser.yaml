@@ -90,11 +90,6 @@ nfpms:
         dst: /usr/share/man/man5/
         file_info:
           mode: 0644
-    signing:
-      rpmsign:
-        key_file: /home/runner/.gnupg/public.key
-        passphrase: "{{ .Env.NFPM_RPM_PASSPHRASE }}"
-
 
 aurs:
   - name: ochami-bin
