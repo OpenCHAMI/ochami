@@ -90,10 +90,10 @@ nfpms:
         dst: /usr/share/man/man5/
         file_info:
           mode: 0644
-        signing:
-    rpmsign:
-      key_file: /home/runner/.gnupg/public.key
-      passphrase: "{{ .Env.NFPM_RPM_PASSPHRASE }}"
+    signing:
+      rpmsign:
+        key_file: /home/runner/.gnupg/public.key
+        passphrase: "{{ .Env.NFPM_RPM_PASSPHRASE }}"
 
 
 aurs:
@@ -147,7 +147,6 @@ signs:
     env:
       - GPG_TTY=$(tty) # Ensures signing works in GitHub Actions
       - RPM_SIGN_PASSPHRASE={{ .Env.NFPM_RPM_PASSPHRASE }}
-
 
 dockers:
   - dockerfile: goreleaser.dockerfile
