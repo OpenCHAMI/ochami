@@ -138,7 +138,7 @@ signs:
     cmd: rpmsign
     args:
       - --addsign
-      - "{{ .ArtifactPath }}"
+      - "{{ .Path }}"
     env:
       - GPG_TTY=$(tty) # Ensures signing works in GitHub Actions
       - RPM_SIGN_PASSPHRASE
