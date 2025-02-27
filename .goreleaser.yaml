@@ -28,7 +28,7 @@ builds:
     goamd64:
       - v1
     goarm64:
-      - v8
+      - v8.0
     env:
       - CGO_ENABLED=0
       - GOPROXY=https://proxy.golang.org,direct
