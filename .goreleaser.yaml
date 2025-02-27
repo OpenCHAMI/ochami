@@ -141,7 +141,7 @@ signs:
       - "{{ .ArtifactPath }}"
     env:
       - GPG_TTY=$(tty) # Ensures signing works in GitHub Actions
-      - RPM_SIGN_PASSPHRASE={{ .Env.NFPM_RPM_PASSPHRASE }}
+      - RPM_SIGN_PASSPHRASE
 
 dockers:
   - dockerfile: goreleaser.dockerfile

@@ -12,50 +12,57 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+
       - name: Install scdoc for man page generation
         run: |
           sudo apt update
           sudo apt install scdoc
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
           go-version: 1.23
+
       - name: Registry login
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-tags: 1
           fetch-depth: 0
+
       - name: Set build environment variables
         run: |
           echo GOVERSION=$(go env GOVERSION) >> $GITHUB_ENV
           echo BUILD_HOST=$(hostname) >> $GITHUB_ENV
           echo BUILD_USER=$(whoami) >> $GITHUB_ENV
+
       - name: Import GPG Key
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode > private.key
           gpg --batch --import private.key
           rm private.key
+
       - name: Export Public Key
         run: |
           gpg --export --armor > /home/runner/.gnupg/public.key
-
 
       - name: Release with goreleaser
         uses: goreleaser/goreleaser-action@v6
         env:
           GITHUB_TOKEN: ${{ github.token }}
           AUR_SSH_KEY: ${{ secrets.AUR_PRIVATE_KEY }}
-          NFPM_RPM_PASSPHRASE: ${{ secrets.NFPM_RPM_PASSPHRASE }}
+          RPM_PASSPHRASE: ${{ secrets.NFPM_RPM_PASSPHRASE }}
         with:
           version: '~> v2'
           args: ${{ github.ref_type == 'tag' && 'release --clean' || 'release --clean --snapshot' }}        
         id: goreleaser
+
       - name: Process goreleaser output
         id: process_goreleaser_output
         run: |
@@ -66,30 +73,37 @@ jobs:
           echo "fs.writeFileSync('digest.txt', firstNonNullDigest);" >> process.js
           node process.js
           echo "digest=$(cat digest.txt)" >> $GITHUB_OUTPUT
+
       - name: Attest ochami binary linux_amd64
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: '${{ github.workspace }}/dist/ochami_linux_amd64_v1/ochami'
+
       - name: Attest ochami binary linux_arm64
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: '${{ github.workspace }}/dist/ochami_linux_arm64_v8.0/ochami'
+
       - name: Attest ochami binary darwin_amd64
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: '${{ github.workspace }}/dist/ochami_darwin_amd64_v1/ochami'
+
       - name: Attest ochami binary darwin_arm64
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: '${{ github.workspace }}/dist/ochami_darwin_arm64_v8.0/ochami'
+
       - name: Attest ochami binary windows_amd64
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: '${{ github.workspace }}/dist/ochami_windows_amd64_v1/ochami.exe'
+
       - name: Attest ochami binary windows_arm64
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: '${{ github.workspace }}/dist/ochami_windows_arm64_v8.0/ochami.exe'
+
       - name: Attest ochami docker container
         uses: actions/attest-build-provenance@v1
         with:
