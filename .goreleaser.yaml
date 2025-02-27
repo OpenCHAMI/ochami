@@ -135,6 +135,8 @@ aurs:
 
 signs:
   - artifacts: package
+    ids:
+      - ochami
     cmd: rpmsign
     args:
       - --addsign
