@@ -89,6 +89,19 @@ nfpms:
         dst: /usr/share/man/man5/
         file_info:
           mode: 0644
+        signing:
+    rpmsign:
+      key_file: /home/runner/.gnupg/public.key
+      passphrase: "{{ .Env.NFPM_RPM_PASSPHRASE }}"
+
+signs:
+  - artifacts: package
+    ids:
+      - ochami
+    cmd: rpmsign
+    args:
+      - --addsign
+      - "{{ .ArtifactPath }}"
 
 aurs:
   - name: ochami-bin
@@ -214,3 +227,6 @@ release:
   name_template: "v{{ .Version }}"
   prerelease: auto
   mode: replace
+  extra_files:
+    - glob: /home/runner/.gnupg/public.key
+      name_template: "{{ .ProjectName }}-public.key

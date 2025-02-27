@@ -36,11 +36,22 @@ jobs:
           echo GOVERSION=$(go env GOVERSION) >> $GITHUB_ENV
           echo BUILD_HOST=$(hostname) >> $GITHUB_ENV
           echo BUILD_USER=$(whoami) >> $GITHUB_ENV
+      - name: Import GPG Key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode > private.key
+          gpg --batch --import private.key
+          rm private.key
+      - name: Export Public Key
+        run: |
+          gpg --export --armor > /home/runner/.gnupg/public.key
+
+
       - name: Release with goreleaser
         uses: goreleaser/goreleaser-action@v6
         env:
           GITHUB_TOKEN: ${{ github.token }}
           AUR_SSH_KEY: ${{ secrets.AUR_PRIVATE_KEY }}
+          NFPM_RPM_PASSPHRASE: ${{ secrets.NFPM_RPM_PASSPHRASE }}
         with:
           version: '~> v2'
           args: release --clean
