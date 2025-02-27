@@ -42,6 +42,9 @@ jobs:
           echo BUILD_HOST=$(hostname) >> $GITHUB_ENV
           echo BUILD_USER=$(whoami) >> $GITHUB_ENV
 
+      - name: Check GPG Installation
+        run: which gpg || echo "GPG not found!"
+
       - name: Import GPG Key
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode > private.key
@@ -49,11 +52,14 @@ jobs:
           gpg --list-keys --keyid-format LONG
           rm private.key
 
-      - name: Configure rpmsign Macros
+      - name: Configure rpmsign Macros with GPG Path
         run: |
           KEY_ID=$(gpg --list-keys --with-colons | awk -F: '/^pub/ {print $5; exit}')
           echo "Using GPG Key ID: $KEY_ID"
           echo "%_gpg_name $KEY_ID" > ~/.rpmmacros
+          echo "%__gpg /usr/bin/gpg" >> ~/.rpmmacros
+          echo "%__gpg_check_password_cmd /bin/true" >> ~/.rpmmacros
+
 
 
       - name: Export Public Key
