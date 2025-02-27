@@ -8,7 +8,7 @@ before:
 
 builds:
   - ldflags:
-      - "-s"
+      - "-s -w -trimpath"
       - "-X=github.com/OpenCHAMI/ochami/internal/version.Version={{ .Version }} \
          -X=github.com/OpenCHAMI/ochami/internal/version.Tag={{ .Tag }} \
          -X=github.com/OpenCHAMI/ochami/internal/version.Branch={{ .Branch }} \
@@ -28,9 +28,10 @@ builds:
     goamd64:
       - v1
     goarm64:
-      - v8.0
+      - v8
     env:
       - CGO_ENABLED=0
+      - GOPROXY=https://proxy.golang.org,direct
 
 archives:
   - format_overrides:
@@ -198,7 +199,8 @@ docker_manifests:
       - *arm64v8_linux_image
 
 checksum:
-  name_template: checksums.txt
+  algorithm: sha256
+  name_template: "sha256sums.txt"
 
 changelog:
   sort: asc
@@ -220,7 +222,7 @@ changelog:
       order: 999
 
 snapshot:
-  version_template: "{{ .Commit }}-next"
+  version_template: "{{ .Tag | default `0.0.0` }}-{{ .ShortCommit }}-snapshot"
 
 release:
   github:
