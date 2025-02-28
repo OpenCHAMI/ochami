@@ -11,7 +11,6 @@ import (
 
 const (
 	serviceNameBSS = "BSS"
-	basePathBSS    = "/boot/v1"
 
 	BSSRelpathBootParams      = "/bootparameters"
 	BSSRelpathBootScript      = "/bootscript"
@@ -27,11 +26,11 @@ type BSSClient struct {
 	*client.OchamiClient
 }
 
-// NewClient takes a baseURI and basePath and returns a pointer to a new
-// BSSClient. If an error occurred creating the embedded OchamiClient, it is
-// returned. If insecure is true, TLS certificates will not be verified.
+// NewClient takes a baseURI and returns a pointer to a new BSSClient. If an
+// error occurred creating the embedded OchamiClient, it is returned. If
+// insecure is true, TLS certificates will not be verified.
 func NewClient(baseURI string, insecure bool) (*BSSClient, error) {
-	oc, err := client.NewOchamiClient(serviceNameBSS, baseURI, basePathBSS, insecure)
+	oc, err := client.NewOchamiClient(serviceNameBSS, baseURI, insecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OchamiClient for %s: %w", serviceNameBSS, err)
 	}
@@ -98,10 +97,10 @@ func (bc *BSSClient) PutBootParams(bp bssTypes.BootParams, token string) (client
 	return henv, err
 }
 
-// PatchBootParams is a wrapper function around OchamiClient.PatchData that takes a
-// bssTypes.BootParams struct (bp) and a token, puts token in the request
-// headers as an authorization bearer, marshals bp as JSON and sets it as the
-// request body, then passes it to OchamiClient.PatchData.
+// PatchBootParams is a wrapper function around OchamiClient.PatchData that
+// takes a bssTypes.BootParams struct (bp) and a token, puts token in the
+// request headers as an authorization bearer, marshals bp as JSON and sets it
+// as the request body, then passes it to OchamiClient.PatchData.
 func (bc *BSSClient) PatchBootParams(bp bssTypes.BootParams, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
@@ -126,10 +125,10 @@ func (bc *BSSClient) PatchBootParams(bp bssTypes.BootParams, token string) (clie
 	return henv, err
 }
 
-// DeleteBootParams is a wrapper function around OchamiClient.DeleteData that takes
-// a bssTypes.BootParams struct (bp) and a token, puts token in the request
-// headers as an authorization bearer, marshals bp as JSON and sets it as the
-// request body, then passes it to OchamiClient.DeleteData.
+// DeleteBootParams is a wrapper function around OchamiClient.DeleteData that
+// takes a bssTypes.BootParams struct (bp) and a token, puts token in the
+// request headers as an authorization bearer, marshals bp as JSON and sets it
+// as the request body, then passes it to OchamiClient.DeleteData.
 func (bc *BSSClient) DeleteBootParams(bp bssTypes.BootParams, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope

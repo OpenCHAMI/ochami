@@ -27,5 +27,6 @@ var pcsCmd = &cobra.Command{
 }
 
 func init() {
+	pcsCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of PCS")
 	rootCmd.AddCommand(pcsCmd)
 }

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/bss"
@@ -30,7 +31,7 @@ This command sends a GET to BSS. An access token is required.`,
   ochami bss boot params get --mac 00:de:ad:be:ef:00 --mac 00:c0:ff:ee:00:00`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		bssBaseURI, err := getBaseURI(cmd)
+		bssBaseURI, err := getBaseURI(cmd, config.ServiceBSS)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for BSS")
 			os.Exit(1)
