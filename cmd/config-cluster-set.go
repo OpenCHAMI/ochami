@@ -99,8 +99,8 @@ with a different base URL will change the base URL for the 'foobar' cluster.`,
 				Name: clusterName,
 			}
 			if clusterUrl != "" {
-				newCluster.Cluster.BaseURI = clusterUrl
-				log.Logger.Debug().Msgf("using base-uri %s", clusterUrl)
+				newCluster.Cluster.APIURI = clusterUrl
+				log.Logger.Debug().Msgf("using api-uri %s", clusterUrl)
 			}
 
 			// If this is the first cluster to be added, set it as the default
@@ -115,7 +115,7 @@ with a different base URL will change the base URL for the 'foobar' cluster.`,
 		} else {
 			// Cluster exists, modify it
 			if clusterUrl != "" {
-				cfg.Clusters[clusterIdx].Cluster.BaseURI = clusterUrl
+				cfg.Clusters[clusterIdx].Cluster.APIURI = clusterUrl
 				log.Logger.Debug().Msgf("updating base-uri for cluster %s: %s", clusterName, clusterUrl)
 			}
 			log.Logger.Info().Msgf("modified config for existing cluster: %s", clusterName)
@@ -138,7 +138,7 @@ with a different base URL will change the base URL for the 'foobar' cluster.`,
 }
 
 func init() {
-	configClusterSetCmd.Flags().StringP("base-uri", "u", "", "base URL of cluster")
+	configClusterSetCmd.Flags().StringP("api-uri", "u", "", "base URL of cluster")
 	configClusterSetCmd.Flags().BoolP("default", "d", false, "set cluster as the default")
 	configClusterCmd.AddCommand(configClusterSetCmd)
 }

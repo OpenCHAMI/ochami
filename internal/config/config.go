@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -16,28 +17,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config represents the structure of a configuration file.
-type Config struct {
-	Log            ConfigLog       `yaml:"log,omitempty"`
-	DefaultCluster string          `yaml:"default-cluster,omitempty"`
-	Clusters       []ConfigCluster `yaml:"clusters,omitempty"`
-}
-
-type ConfigLog struct {
-	Format string `yaml:"format,omitempty"`
-	Level  string `yaml:"level,omitempty"`
-}
-
-type ConfigCluster struct {
-	Name    string              `yaml:"name,omitempty"`
-	Cluster ConfigClusterConfig `yaml:"cluster,omitempty"`
-}
-
-type ConfigClusterConfig struct {
-	BaseURI string `yaml:"base-uri,omitempty"`
-}
+type ServiceName string
 
 const ProgName = "ochami"
+
+const (
+	ServiceBSS       ServiceName = "bss"
+	ServiceCloudInit ServiceName = "cloud-init"
+	ServicePCS       ServiceName = "pcs"
+	ServiceSMD       ServiceName = "smd"
+)
+
+const (
+	DefaultBasePathBSS       = "/boot/v1"
+	DefaultBasePathCloudInit = "/cloud-init"
+	DefaultBasePathPCS       = "/"
+	DefaultBasePathSMD       = "/hsm/v2"
+)
 
 // Default configuration values if either no configuration files exist or the
 // configuration files don't contain values for items that need them.
@@ -73,6 +69,155 @@ var (
 		},
 	}
 )
+
+// Config represents the structure of a configuration file.
+type Config struct {
+	Log            ConfigLog       `yaml:"log,omitempty"`
+	DefaultCluster string          `yaml:"default-cluster,omitempty"`
+	Clusters       []ConfigCluster `yaml:"clusters,omitempty"`
+}
+
+type ConfigLog struct {
+	Format string `yaml:"format,omitempty"`
+	Level  string `yaml:"level,omitempty"`
+}
+
+type ConfigCluster struct {
+	Name    string              `yaml:"name,omitempty"`
+	Cluster ConfigClusterConfig `yaml:"cluster,omitempty"`
+}
+
+type ConfigClusterConfig struct {
+	APIURI       string `yaml:"api-uri,omitempty"`
+	BSSURI       string `yaml:"bss-uri,omitempty"`
+	CloudInitURI string `yaml:"cloud-init-uri,omitempty"`
+	PCSURI       string `yaml:"pcs-uri,omitempty"`
+	SMDURI       string `yaml:"smd-uri,omitempty"`
+}
+
+// MergeURIConfig takes a ConfigClusterConfig and returns a ConfigClusterConfig
+// with updated values, leaving the member one unmodified. If any of the URI
+// attributes are not blank in the passed ConfigClusterConfig, those attributes
+// are updated in the one returned. Otherwise, the old values are left alone.
+func (ccc *ConfigClusterConfig) MergeURIConfig(c ConfigClusterConfig) ConfigClusterConfig {
+	compare := func(oldStr, newStr string) string {
+		if newStr != "" {
+			return newStr
+		}
+		return oldStr
+	}
+	newCCC := ConfigClusterConfig{
+		APIURI:       compare(ccc.APIURI, c.APIURI),
+		BSSURI:       compare(ccc.BSSURI, c.BSSURI),
+		CloudInitURI: compare(ccc.CloudInitURI, c.CloudInitURI),
+		PCSURI:       compare(ccc.PCSURI, c.PCSURI),
+		SMDURI:       compare(ccc.SMDURI, c.SMDURI),
+	}
+
+	return newCCC
+}
+
+// GetServiceBaseURI returns a URI string for the service identified by svcName
+// based on URI values set in the ConfigClusterConfig. At least one of APIURI or
+// one of the URI for a service must be set in the ConfigClusterConfig,
+// otherwise an ErrMissingURI error is returned. If svcName is unknown, an
+// ErrUnknownService is returned. If the API URI is invalid or the service URI
+// is invalid, an ErrInvalidAPIURI or ErrINvalidServiceURI is returned,
+// respectively.
+//
+// The API URI must be an absolute URI: proto://host[:port][/path]
+// The service URI can be a relative path (/path) or an absolute URI.
+func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, error) {
+	var (
+		serviceBaseURI string
+		apiURI         *url.URL
+	)
+	// If the API URI is set, parse and verify it.
+	if ccc.APIURI != "" {
+		var err error
+		apiURI, err = url.Parse(ccc.APIURI)
+		if err != nil {
+			return "", ErrInvalidAPIURI{Err: err}
+		}
+		if apiURI.Opaque != "" || apiURI.Scheme == "" || apiURI.Host == "" {
+			return "", ErrInvalidAPIURI{Err: fmt.Errorf("unknown URI format (must be \"proto://host[:port][/path]\")")}
+		}
+		serviceBaseURI = apiURI.String()
+	}
+
+	// Parse service URI for ConfigClusterConfig field based on passed
+	// ServiceName.
+	var svcURI *url.URL
+	var err error
+	switch svcName {
+	case ServiceBSS:
+		if ccc.APIURI == "" && ccc.BSSURI == "" {
+			return "", ErrMissingURI{Service: svcName}
+		}
+		if ccc.BSSURI != "" {
+			svcURI, err = url.Parse(ccc.BSSURI)
+		} else {
+			svcURI, err = url.Parse(DefaultBasePathBSS)
+		}
+	case ServiceCloudInit:
+		if ccc.APIURI == "" && ccc.CloudInitURI == "" {
+			return "", ErrMissingURI{Service: svcName}
+		}
+		if ccc.CloudInitURI != "" {
+			svcURI, err = url.Parse(ccc.CloudInitURI)
+		} else {
+			svcURI, err = url.Parse(DefaultBasePathCloudInit)
+		}
+	case ServicePCS:
+		if ccc.APIURI == "" && ccc.PCSURI == "" {
+			return "", ErrMissingURI{Service: svcName}
+		}
+		if ccc.PCSURI != "" {
+			svcURI, err = url.Parse(ccc.PCSURI)
+		} else {
+			svcURI, err = url.Parse(DefaultBasePathPCS)
+		}
+	case ServiceSMD:
+		if ccc.APIURI == "" && ccc.SMDURI == "" {
+			return "", ErrMissingURI{Service: svcName}
+		}
+		if ccc.SMDURI != "" {
+			svcURI, err = url.Parse(ccc.SMDURI)
+		} else {
+			svcURI, err = url.Parse(DefaultBasePathSMD)
+		}
+	default:
+		return "", ErrUnknownService{Service: string(svcName)}
+	}
+	if err != nil {
+		return "", ErrInvalidServiceURI{Service: svcName, Err: err}
+	}
+
+	// Once parsed (if not nil), verify that the service URI is either a
+	// valid absolute URI or a valid relative path.
+	if svcURI != nil {
+		if svcURI.IsAbs() {
+			// Service URI is an absolute URI. Override API URI.
+			if svcURI.Opaque != "" || svcURI.Scheme == "" {
+				return "", ErrInvalidServiceURI{Service: svcName, Err: fmt.Errorf("unknown URI format (must be \"/path\" or \"proto://host[:port][/path]\")")}
+			}
+			serviceBaseURI = svcURI.String()
+		} else if svcURI.Path != "" {
+			// Service URI is a relative path. Append it to API URI.
+			var newURI *url.URL
+			if apiURI != nil {
+				newURI = apiURI.JoinPath(svcURI.Path)
+			} else {
+				return "", ErrInvalidServiceURI{Service: svcName, Err: fmt.Errorf("%s-uri is a relative path but api-uri not set", svcName)}
+			}
+			serviceBaseURI = newURI.String()
+		} else {
+			return "", ErrInvalidServiceURI{Service: svcName, Err: fmt.Errorf("%s-uri is neither an absolute URI nor has a path component", svcName)}
+		}
+	}
+
+	return serviceBaseURI, nil
+}
 
 // earlyLog is a primitive log function that works like fmt.Fprintln, printing
 // to standard error only if EarlyVerbose is true.

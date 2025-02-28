@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/OpenCHAMI/bss/pkg/bssTypes"
+	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/bss"
@@ -50,7 +51,7 @@ This command sends a PUT to BSS. An access token is required.`,
 		}
 
 		// Without a base URI, we cannot do anything
-		bssBaseURI, err := getBaseURI(cmd)
+		bssBaseURI, err := getBaseURI(cmd, config.ServiceBSS)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for BSS")
 			os.Exit(1)

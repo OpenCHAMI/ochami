@@ -27,5 +27,6 @@ var smdCmd = &cobra.Command{
 }
 
 func init() {
+	smdCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of SMD")
 	rootCmd.AddCommand(smdCmd)
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/OpenCHAMI/cloud-init/pkg/citypes"
+	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/ci"
@@ -49,7 +50,7 @@ This command sends a PUT to cloud-init.`,
   echo '<yaml_data>' | ochami cloud-init config update -f - --payload-format yaml`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		cloudInitBaseURI, err := getBaseURI(cmd)
+		cloudInitBaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for cloud-init")
 			os.Exit(1)

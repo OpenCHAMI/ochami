@@ -25,7 +25,6 @@ const (
 	// cloud-init doesn't have a service prefix and has two separate
 	// endpoints. To mitigate this, we treat the service root as '/' and use
 	// the relative paths as the service endpoints.
-	basePathCloudInit      = "/"
 	cloudInitRelpathOpen   = "/cloud-init"
 	cloudInitRelpathSecure = "/cloud-init-secure"
 )
@@ -37,11 +36,11 @@ const (
 	CloudInitVendorData CIDataType = "vendor-data"
 )
 
-// NewClient takes a baseURI and basePath and returns a pointer to a new
-// CloudInitClient. If an error occurred creating the embedded OchamiClient, it
-// is returned. If insecure is true, TLS certificates will not be verified.
+// NewClient takes a baseURI and returns a pointer to a new CloudInitClient. If
+// an error occurred creating the embedded OchamiClient, it is returned. If
+// insecure is true, TLS certificates will not be verified.
 func NewClient(baseURI string, insecure bool) (*CloudInitClient, error) {
-	oc, err := client.NewOchamiClient(serviceNameCloudInit, baseURI, basePathCloudInit, insecure)
+	oc, err := client.NewOchamiClient(serviceNameCloudInit, baseURI, insecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OchamiClient for %s: %w", serviceNameCloudInit, err)
 	}

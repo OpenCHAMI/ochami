@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 
+	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/smd"
@@ -19,7 +20,7 @@ var groupMemberDeleteCmd = &cobra.Command{
 	Short: "Delete one or more members from a group",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		smdBaseURI, err := getBaseURI(cmd)
+		smdBaseURI, err := getBaseURI(cmd, config.ServiceSMD)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
 			os.Exit(1)
