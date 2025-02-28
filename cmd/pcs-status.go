@@ -3,17 +3,17 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/pcs"
+	"github.com/elliotchance/pie/v2"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"net/http"
 	"strings"
-	"encoding/json"
-	"gopkg.in/yaml.v3"
-	"github.com/elliotchance/pie/v2"
 )
 
 // For now use this to map API name to names that make more sense for the CLI, in
@@ -21,10 +21,10 @@ import (
 // status for DistLocking (as the only implementation uses ETCD, so the status
 // is just duplicated) or the TaskRunner (as we only use the local implementation)
 type commandOutput struct {
-	Status         string `json:"pcs,omitempty"`
-	KvStore        string `json:"storage,omitempty"`
-	StateManager   string `json:"smd,omitempty"`
-	Vault          string `json:"vault,omitempty"`
+	Status       string `json:"pcs,omitempty"`
+	KvStore      string `json:"storage,omitempty"`
+	StateManager string `json:"smd,omitempty"`
+	Vault        string `json:"vault,omitempty"`
 }
 
 // format commandOutput as JSON or YAML
@@ -60,7 +60,7 @@ func getStatus(pcsClient *pcs.PCSClient) (string, error) {
 
 	// We are in the "ready" state
 	if httpEnv.StatusCode == http.StatusNoContent {
-		return  "ready", nil
+		return "ready", nil
 	}
 
 	// If we are not "ready" then check our "liveness"
@@ -83,11 +83,11 @@ func getStatus(pcsClient *pcs.PCSClient) (string, error) {
 
 // struct used to unmarshall /health endpoint response
 type healthOutput struct {
-	KvStore        string
-	DistLocking    string
-	StateManager   string
-	Vault          string
-	TaskRunner     string
+	KvStore      string
+	DistLocking  string
+	StateManager string
+	Vault        string
+	TaskRunner   string
 }
 
 // allowed flag for status command
@@ -148,9 +148,9 @@ var pcsStatusCmd = &cobra.Command{
 		// endpoint response
 		if cmd.Flag("all").Changed {
 			output = commandOutput{
-				KvStore: health.KvStore,
+				KvStore:      health.KvStore,
 				StateManager: health.StateManager,
-				Vault: health.Vault,
+				Vault:        health.Vault,
 			}
 			reportPCSState = true
 		}
@@ -196,8 +196,8 @@ func init() {
 	// Mark "all" as mutally exusive of all the other flags
 	// First we need a list of flags without "all"
 	flags := pie.FilterNot(flags(), func(flag string) bool {
-        return flag == "all"
-    })
+		return flag == "all"
+	})
 	for i := 0; i < len(flags); i++ {
 		pcsStatusCmd.MarkFlagsMutuallyExclusive("all", flags[i])
 	}
