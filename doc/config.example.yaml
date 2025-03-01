@@ -43,9 +43,28 @@ log:
 #
 # The cluster block can contain the following keys:
 #
-# base-uri - The URI of the API gateway behind which the OpenCHAMI services are
-#            listening. ochami will append to this URI the base path for the
-#            service being communicated with as well as the endpoint being used.
+# api-uri - The URI of an API gateway behind which the OpenCHAMI services are
+#           listening. ochami will append to this URI the base path for the
+#           service being communicated with as well as the endpoint being used.
+#           If any '<service>-uri' options are specified, this behavior changes
+#           (see '<service>-uri' below).
+#
+#           If api-uri is not specified, then <service>-uri directives must be
+#           specified for each <service>.
+#
+# <service>-uri - (OPTIONAL) Override the base path for <service> or replace its
+#                 base URI entirely. If the value is a relative path (e.g.
+#                 "/smd"), this path replaces <service>'s default base path,
+#                 which is appended to api-uri when communicating with
+#                 <service>. If the value is an absolute URI (e.g https://...),
+#                 then this value replaces that of api-uri for this service. In
+#                 otherwords, the value becomes the base URI specifically for
+#                 <service>.
+#
+#                 Specifying this option is optional if api-uri is specified,
+#                 but mandatory if not. If api-uri is specified, this can be
+#                 used to override either the base path or the entire base URI
+#                 of <service>.
 #
 # Below is an example of a clusters block, commented out in case this
 # file is used as an actual config.
@@ -53,7 +72,30 @@ log:
 #clusters:
 #    - name: foobar
 #      cluster:
-#        base-uri: https://foobar.si.usrc
+#        api-uri: https://foobar.openchami.cluster
 #    - name: local
 #      cluster:
-#        base-uri: https://local.openchami.cluster:8443
+#        api-uri: https://local.openchami.cluster:8443
+#
+# An example of overriding the SMD path from the default /hsm/v2 to /smd and
+# overriding the entire URI for BSS (all other services are left to their
+# defaults):
+#
+#clusters:
+#    - name: foobar
+#      cluster:
+#        api-uri: https://foobar.openchami.cluster:8443
+#        smd-uri: /smd
+#        bss-uri: https://bss.my.cluster/boot/v1
+#
+# Another example omitting api-uri entirely, using separate <service>-uri
+# directives:
+#
+#clusters:
+#    - name: foobar
+#      cluster:
+#        smd-uri: https://localhost:27779/hsm/v2
+#        bss-uri: https://localhost:27778/boot/v1
+#        cloud-init-uri: https://localhost:27777/cloud-init
+#        pcs-uri: https://localhost:28007
+clusters: []
