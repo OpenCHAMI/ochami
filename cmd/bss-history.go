@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/bss"
@@ -22,7 +21,7 @@ var bssHistoryCmd = &cobra.Command{
 	Short: "Fetch the endpoint history of BSS",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		bssBaseURI, err := getBaseURI(cmd, config.ServiceBSS)
+		bssBaseURI, err := getBaseURIBSS(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for BSS")
 			os.Exit(1)

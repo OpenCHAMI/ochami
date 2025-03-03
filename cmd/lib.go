@@ -190,6 +190,22 @@ func useCACert(client *client.OchamiClient) {
 	}
 }
 
+func getBaseURIBSS(cmd *cobra.Command) (string, error) {
+	return getBaseURI(cmd, config.ServiceBSS)
+}
+
+func getBaseURICloudInit(cmd *cobra.Command) (string, error) {
+	return getBaseURI(cmd, config.ServiceCloudInit)
+}
+
+func getBaseURIPCS(cmd *cobra.Command) (string, error) {
+	return getBaseURI(cmd, config.ServicePCS)
+}
+
+func getBaseURISMD(cmd *cobra.Command) (string, error) {
+	return getBaseURI(cmd, config.ServiceSMD)
+}
+
 func getBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, error) {
 	// Precedence of getting base URI for requests (higher numbers override
 	// all preceding numbers):
