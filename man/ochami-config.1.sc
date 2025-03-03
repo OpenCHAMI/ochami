@@ -8,10 +8,10 @@ ochami-config - Manage configuration for ochami CLI
 
 ochami config [--user | --system | --config _path_] cluster delete _cluster_name_++
 ochami config [--user | --system | --config _path_] cluster set [-d] _cluster_name_ _key_ _value_++
-ochami config [--user | --system | --config _path_] cluster show _cluster_name_++
+ochami config [--user | --system | --config _path_] cluster show _cluster_name_ [_key_]++
 ochami config [--user | --system | --config _path_] cluster unset _cluster_name_ _key_ _value_++
 ochami config [--user | --system | --config _path_] set _key_ _value_++
-ochami config [--user | --system | --config _path_] show [-f _format_]++
+ochami config [--user | --system | --config _path_] show [-f _format_] [_key_]++
 ochami config [--user | --system | --config _path_] unset _key_
 
 # COMMANDS
