@@ -50,7 +50,7 @@ This command sends a POST to SMD. An access token is required.`,
 		}
 
 		// Without a base URI, we cannot do anything
-		smdBaseURI, err := getBaseURI(cmd)
+		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
 			os.Exit(1)

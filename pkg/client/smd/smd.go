@@ -21,7 +21,6 @@ type SMDClient struct {
 
 const (
 	serviceNameSMD = "SMD"
-	basePathSMD    = "/hsm/v2"
 
 	SMDRelpathService            = "/service"
 	SMDRelpathComponents         = "/State/Components"
@@ -126,11 +125,11 @@ type GroupMembers struct {
 	IDs   []string `json:"ids"`
 }
 
-// NewClient takes a baseURI and basePath and returns a pointer to a new
-// SMDClient. If an error occurred creating the embedded OchamiClient, it is
-// returned. If insecure is true, TLS certificates will not be verified.
+// NewClient takes a baseURI and returns a pointer to a new SMDClient. If an
+// error occurred creating the embedded OchamiClient, it is returned. If
+// insecure is true, TLS certificates will not be verified.
 func NewClient(baseURI string, insecure bool) (*SMDClient, error) {
-	oc, err := client.NewOchamiClient(serviceNameSMD, baseURI, basePathSMD, insecure)
+	oc, err := client.NewOchamiClient(serviceNameSMD, baseURI, insecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OchamiClient for %s: %w", serviceNameSMD, err)
 	}

@@ -26,7 +26,7 @@ removed from the group.`,
 	Example: `  ochami smd group member set compute x1000c1s7b1n0 x1000c1s7b2n0`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		smdBaseURI, err := getBaseURI(cmd)
+		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
 			os.Exit(1)

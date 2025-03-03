@@ -30,7 +30,7 @@ This command sends a GET to BSS. An access token is required.`,
   ochami bss boot params get --mac 00:de:ad:be:ef:00 --mac 00:c0:ff:ee:00:00`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		bssBaseURI, err := getBaseURI(cmd)
+		bssBaseURI, err := getBaseURIBSS(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for BSS")
 			os.Exit(1)

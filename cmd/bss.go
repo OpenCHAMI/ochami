@@ -27,5 +27,6 @@ var bssCmd = &cobra.Command{
 }
 
 func init() {
+	bssCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of BSS")
 	rootCmd.AddCommand(bssCmd)
 }

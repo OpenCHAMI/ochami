@@ -20,7 +20,7 @@ var componentGetCmd = &cobra.Command{
 	Short: "Get all components or component identified by an xname or node ID",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		smdBaseURI, err := getBaseURI(cmd)
+		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
 			os.Exit(1)

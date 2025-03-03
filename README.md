@@ -69,7 +69,7 @@ Now, when the configuration is shown, we should see the new cluster's details:
 $ ochami config show
 clusters:
     - cluster:
-        base-uri: https://foobar.openchami.cluster
+        api-uri: https://foobar.openchami.cluster:8443
       name: foobar
 default-cluster: foobar
 log:

@@ -4,13 +4,15 @@ package pcs
 
 import (
 	"fmt"
-	"path"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 )
 
 const (
 	serviceNamePCS = "PCS"
-	basePathPCS    = ""
+
+	PCSRelpathLiveness  = "/liveness"
+	PCSRelpathReadiness = "/readiness"
+	PCSRelpathHealth    = "/health"
 )
 
 // PCSClient is an OchamiClient that has its BasePath set configured to the one
@@ -19,11 +21,11 @@ type PCSClient struct {
 	*client.OchamiClient
 }
 
-// NewClient takes a baseURI and basePath and returns a pointer to a new
-// PCSClient. If an error occurred creating the embedded OchamiClient, it is
-// returned. If insecure is true, TLS certificates will not be verified.
+// NewClient takes a baseURI and returns a pointer to a new PCSClient. If an
+// error occurred creating the embedded OchamiClient, it is returned. If
+// insecure is true, TLS certificates will not be verified.
 func NewClient(baseURI string, insecure bool) (*PCSClient, error) {
-	oc, err := client.NewOchamiClient(serviceNamePCS, baseURI, basePathPCS, insecure)
+	oc, err := client.NewOchamiClient(serviceNamePCS, baseURI, insecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OchamiClient for %s: %w", serviceNamePCS, err)
 	}
@@ -38,14 +40,11 @@ func NewClient(baseURI string, insecure bool) (*PCSClient, error) {
 // hit the /liveness endpoint
 func (pc *PCSClient) GetLiveness() (client.HTTPEnvelope, error) {
 	var (
-		henv              client.HTTPEnvelope
-		err               error
-		pcsLivenessEndpoint string
+		henv client.HTTPEnvelope
+		err  error
 	)
 
-	pcsLivenessEndpoint = path.Join(basePathPCS, "liveness")
-
-	henv, err = pc.GetData(pcsLivenessEndpoint, "", nil)
+	henv, err = pc.GetData(PCSRelpathLiveness, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetLiveness(): error getting PCS liveness: %w", err)
 	}
@@ -57,14 +56,11 @@ func (pc *PCSClient) GetLiveness() (client.HTTPEnvelope, error) {
 // hit the /readiness endpoint
 func (pc *PCSClient) GetReadiness() (client.HTTPEnvelope, error) {
 	var (
-		henv              client.HTTPEnvelope
-		err               error
-		pcsReadinessEndpoint string
+		henv client.HTTPEnvelope
+		err  error
 	)
 
-	pcsReadinessEndpoint = path.Join(basePathPCS, "readiness")
-
-	henv, err = pc.GetData(pcsReadinessEndpoint, "", nil)
+	henv, err = pc.GetData(PCSRelpathReadiness, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetReadiness(): error getting PCS liveness: %w", err)
 	}
@@ -76,15 +72,11 @@ func (pc *PCSClient) GetReadiness() (client.HTTPEnvelope, error) {
 // hit the /health endpoint
 func (pc *PCSClient) GetHealth() (client.HTTPEnvelope, error) {
 	var (
-		henv              client.HTTPEnvelope
-		err               error
-		pcsHealthEndpoint string
+		henv client.HTTPEnvelope
+		err  error
 	)
 
-	pcsHealthEndpoint = path.Join(basePathPCS, "health")
-
-
-	henv, err = pc.GetData(pcsHealthEndpoint, "", nil)
+	henv, err = pc.GetData(PCSRelpathHealth, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetHealth(): error getting PCS health: %w", err)
 	}

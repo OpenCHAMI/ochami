@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 
+	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/ci"
@@ -20,7 +21,7 @@ var cloudInitConfigDeleteCmd = &cobra.Command{
 	Example: `  ochami cloud-init config delete compute`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		cloudInitBaseURI, err := getBaseURI(cmd)
+		cloudInitBaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for cloud-init")
 			os.Exit(1)

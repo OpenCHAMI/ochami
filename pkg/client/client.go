@@ -34,7 +34,6 @@ var (
 type OchamiClient struct {
 	*http.Client
 	BaseURI     *url.URL // Base URL for OpenCHAMI services (e.g. https://foobar.openchami.cluster)
-	BasePath    string   // Base path for the service (e.g. /boot/v1 for BSS)
 	ServiceName string   // Name of service being contacted (e.g. BSS)
 }
 
@@ -55,20 +54,19 @@ func (oc *OchamiClient) defaultClientInsecure() {
 	}
 }
 
-// NewOchamiClient takes a baseURI and basePath and returns a pointer to a new
-// OchamiClient. If an error occurs parsing baseURI, it is returned. baseURI is
-// the base URI of the OpenCHAMI services (e.g.
-// https://foobar.openchami.cluster) and basePath is the endpoint prefix that is
-// service-dependent (e.g. for BSS it could be "/boot/v1"). If insecure is true,
-// the client will not verify TLS certificates.
-func NewOchamiClient(serviceName, baseURI, basePath string, insecure bool) (*OchamiClient, error) {
+// NewOchamiClient takes a serviceName and baseURI and returns a pointer to a
+// new OchamiClient. If an error occurs parsing baseURI, it is returned. baseURI
+// is the base URI of the OpenCHAMI service (e.g.
+// https://foobar.openchami.cluster/hsm/v2 for SMD) and serviceName is the
+// human-readable name of the service (e.g. SMD). If insecure is true, the
+// client will not verify TLS certificates.
+func NewOchamiClient(serviceName, baseURI string, insecure bool) (*OchamiClient, error) {
 	u, err := url.Parse(baseURI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse URI: %w", err)
 	}
 	oc := &OchamiClient{
 		BaseURI:     u,
-		BasePath:    basePath,
 		ServiceName: serviceName,
 	}
 	if insecure {
@@ -79,16 +77,16 @@ func NewOchamiClient(serviceName, baseURI, basePath string, insecure bool) (*Och
 	return oc, err
 }
 
-// GetURI takes an endpoint and joins it with the OchamiClient's BaseURI and
-// BasePath to form the final URI to be used for a request. If query is
-// specified, it is used as a raw query string and appended onto the URL
-// without URL encoding. query should not contain the initial '?'.
+// GetURI takes an endpoint and joins it with the OchamiClient's BaseURI to form
+// the final URI to be used for a request. If query is specified, it is used as
+// a raw query string and appended onto the URL without URL encoding. query
+// should not contain the initial '?'.
 func (oc *OchamiClient) GetURI(endpoint, query string) (string, error) {
 	uri, err := url.Parse(oc.BaseURI.String())
 	if err != nil {
 		return "", fmt.Errorf("failed to parse base URI %s: %w", oc.BaseURI, err)
 	}
-	uri.Path = path.Join(uri.Path, oc.BasePath, endpoint)
+	uri.Path = path.Join(uri.Path, endpoint)
 	if query != "" {
 		uri.RawQuery = query
 	}

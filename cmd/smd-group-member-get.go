@@ -20,7 +20,7 @@ var groupMemberGetCmd = &cobra.Command{
 	Short: "Get members of a group",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		smdBaseURI, err := getBaseURI(cmd)
+		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
 			os.Exit(1)

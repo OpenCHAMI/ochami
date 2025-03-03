@@ -28,7 +28,7 @@ var groupGetCmd = &cobra.Command{
   ochami smd group get --name group1 --name group2 --tag tag1 --tag tag2`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		smdBaseURI, err := getBaseURI(cmd)
+		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
 			os.Exit(1)

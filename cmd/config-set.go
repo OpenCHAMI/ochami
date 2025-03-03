@@ -56,7 +56,7 @@ This command does not handle cluster configs. For that, use the
 		}
 
 		// Ask user to create file if it does not exist
-		if err := AskToCreate(fileToModify); err != nil {
+		if err := askToCreate(fileToModify); err != nil {
 			if errors.Is(err, UserDeclinedError) {
 				log.Logger.Info().Msgf("user declined creating config file %s, exiting")
 				os.Exit(0)
