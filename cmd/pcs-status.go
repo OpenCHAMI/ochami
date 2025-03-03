@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/pcs"
@@ -103,7 +102,7 @@ var pcsStatusCmd = &cobra.Command{
 	Short: "Get status of PCS service",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
-		pcsBaseURI, err := getBaseURI(cmd, config.ServicePCS)
+		pcsBaseURI, err := getBaseURIPCS(cmd)
 		if err != nil {
 			log.Logger.Fatal().Err(err).Msg("failed to get base URI for PCS")
 		}
