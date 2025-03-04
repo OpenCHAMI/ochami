@@ -29,11 +29,7 @@ or vendor-data, respectively.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// We need at least one ID to do anything
 		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
+			printUsageHandleError(cmd)
 			os.Exit(0)
 		}
 

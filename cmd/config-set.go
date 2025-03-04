@@ -30,11 +30,7 @@ This command does not handle cluster configs. For that, use the
 	Run: func(cmd *cobra.Command, args []string) {
 		// Ensure we have 2 args
 		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
+			printUsageHandleError(cmd)
 			os.Exit(0)
 		} else if len(args) != 2 {
 			log.Logger.Error().Msgf("expected 2 arguments (key, value) but got %s: %v", len(args), args)
