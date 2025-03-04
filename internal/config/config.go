@@ -386,6 +386,112 @@ func ModifyConfig(path, key string, value interface{}) error {
 	return nil
 }
 
+// ModifyConfigCluster sets or modifies a single key for a single cluster,
+// identified by name, in a config file located at path. If dflt is true,
+// default-cluster is set to the specified cluster. If cluster does not already
+// exist, it is added. If key is "name", the cluster is renamed but setting the
+// name to an existing cluster name is not allowed. If the default cluster's
+// name is changed, default-cluster is set to the new name, regardless of dflt.
+//
+// This function works similarly to ModifyConfig in that it loads the
+// configuration into a koanf instance, sets the key, then unmarhalls back into
+// a struct, where it can be written back to the config file.
+func ModifyConfigCluster(path, cluster, key string, dflt bool, value interface{}) error {
+	// Open file for writing
+	cfg, err := ReadConfig(path)
+	if err != nil {
+		return fmt.Errorf("failed to read %s for modification: %w", path, err)
+	}
+
+	// Make sure that if setting the cluster name, a cluster with that name
+	// doesn't already exist.
+	if key == "name" {
+		for _, cl := range cfg.Clusters {
+			if cl.Name == value.(string) {
+				return fmt.Errorf("cluster with name %q already exists", cl.Name)
+			}
+		}
+	}
+
+	// Determine if a new cluster needs to be added or an existing cluster
+	// needs to be modified.
+	var clusterToMod *ConfigCluster
+	newCluster := true
+	for cidx, cl := range cfg.Clusters {
+		if cl.Name == cluster || (key == "name" && cl.Name == value.(string)) {
+			// Existing cluster found, set pointer to it
+			clusterToMod = &(cfg.Clusters[cidx])
+			newCluster = false
+			break
+		}
+	}
+	ko := koanf.NewWithConf(kConfig)
+	kuc := kUnmarshalConf
+	if newCluster {
+		// Adding a new cluster; create it and append to list
+		nCl := ConfigCluster{Name: cluster}
+		if err := ko.Load(structs.Provider(nCl, "yaml"), nil); err != nil {
+			return fmt.Errorf("failed to load config for new cluster %s: %w", cluster, err)
+		}
+
+		// Modify key for new cluster
+		if err := ko.Set(key, value); err != nil {
+			return fmt.Errorf("failed to set key %s to value %v for new cluster %s: %w", key, value, cluster, err)
+		}
+		kuc.DecoderConfig.Result = &nCl
+		if err := ko.UnmarshalWithConf("", nil, kuc); err != nil {
+			return fmt.Errorf("failed to modify config for new cluster %s: %w", cluster, err)
+		}
+
+		// Add new cluster to cluster list
+		cfg.Clusters = append(cfg.Clusters, nCl)
+	} else {
+		// Modifying existing cluster; modify directly in cluster list
+		// Make sure there is a cluster to modify
+		if clusterToMod == nil {
+			return fmt.Errorf("unknown error finding existing cluster %s in %s", cluster, path)
+		}
+		if err := ko.Load(structs.Provider(*clusterToMod, "yaml"), nil); err != nil {
+			return fmt.Errorf("failed to load config for existing cluster %s: %w", cluster, err)
+		}
+
+		// Modify key for existing cluster
+		if err := ko.Set(key, value); err != nil {
+			return fmt.Errorf("failed to set key %s to value %v for existing cluster %s: %w", key, value, cluster, err)
+		}
+		kuc.DecoderConfig.Result = clusterToMod
+		if err := ko.UnmarshalWithConf("", nil, kuc); err != nil {
+			return fmt.Errorf("failed to modify config for existing cluster %s: %w", cluster, err)
+		}
+	}
+
+	// If default is set, set default-cluster to cluster name.
+	if dflt {
+		if key == "name" {
+			// If key was "name", set default-cluster to "name"
+			// instead of cluster specified in arg.
+			cfg.DefaultCluster = value.(string)
+		} else {
+			// If any other key, set default-cluster to cluster
+			// specified in arg.
+			cfg.DefaultCluster = cluster
+		}
+	} else if cfg.DefaultCluster == cluster && key == "name" {
+		// Even if default is not set, if the current default cluster
+		// matches cluster specified in arg and key is "name", change
+		// default-cluster to the new name after changing the cluster
+		// name so it doesn't point to a non-existent cluster.
+		cfg.DefaultCluster = value.(string)
+	}
+
+	// Write modified config back to file
+	if err := WriteConfig(path, cfg); err != nil {
+		return fmt.Errorf("failed to write modified config to %s: %w", path, err)
+	}
+
+	return nil
+}
+
 // DeleteConfig deletes a key from a config file. It does this by reading in the
 // config file at path and loading it into a koanf instance, then using that
 // koanf instance to delete the key. It then unmarshals the config to a config
