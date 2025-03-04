@@ -5,7 +5,6 @@ package cmd
 import (
 	"os"
 
-	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/spf13/cobra"
 )
 
@@ -17,11 +16,7 @@ var bootScriptCmd = &cobra.Command{
 	Long:  `Work with boot scripts for components. This is a metacommand.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
+			printUsageHandleError(cmd)
 			os.Exit(0)
 		}
 	},

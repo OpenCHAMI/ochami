@@ -346,3 +346,12 @@ func handlePayload(cmd *cobra.Command, data any) {
 		}
 	}
 }
+
+// printUsageHandleError is a simple wrapper around printing a command's usage
+// that handles errors.
+func printUsageHandleError(cmd *cobra.Command) {
+	if err := cmd.Usage(); err != nil {
+		log.Logger.Error().Err(err).Msg("failed to print usage")
+		os.Exit(1)
+	}
+}
