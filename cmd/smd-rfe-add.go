@@ -31,11 +31,7 @@ This command sends a POST to SMD. An access token is required.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check that all required args are passed
 		if len(args) == 0 && !cmd.Flag("payload").Changed {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
+			printUsageHandleError(cmd)
 			os.Exit(0)
 		} else if len(args) > 4 {
 			log.Logger.Error().Msgf("expected 4 arguments (xname, name, ip_addr, mac_addr) but got %d: %v", len(args), args)

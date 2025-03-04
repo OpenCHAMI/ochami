@@ -17,11 +17,7 @@ var configClusterDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check that cluster name is only arg
 		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
+			printUsageHandleError(cmd)
 			os.Exit(0)
 		} else if len(args) > 1 {
 			log.Logger.Error().Msgf("expected 1 argument (cluster name) but got %d: %v", len(args), args)

@@ -38,11 +38,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 		// must be passed.
 		if len(args) == 0 {
 			if !cmd.Flag("all").Changed && !cmd.Flag("payload").Changed {
-				err := cmd.Usage()
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to print usage")
-					os.Exit(1)
-				}
+				printUsageHandleError(cmd)
 				os.Exit(0)
 			}
 		}
