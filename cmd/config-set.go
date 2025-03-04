@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"errors"
 	"os"
 	"strings"
 
@@ -40,27 +39,12 @@ This command does not handle cluster configs. For that, use the
 	Run: func(cmd *cobra.Command, args []string) {
 		// We must have a config file in order to write config
 		var fileToModify string
-		if rootCmd.PersistentFlags().Lookup("config").Changed {
-			var err error
-			if fileToModify, err = rootCmd.PersistentFlags().GetString("config"); err != nil {
-				log.Logger.Error().Err(err).Msgf("unable to get value from --config flag")
-				os.Exit(1)
-			}
+		if cmd.Flags().Changed("config") {
+			fileToModify = configFile
 		} else if configCmd.PersistentFlags().Lookup("system").Changed {
 			fileToModify = config.SystemConfigFile
 		} else {
 			fileToModify = config.UserConfigFile
-		}
-
-		// Ask user to create file if it does not exist
-		if err := askToCreate(fileToModify); err != nil {
-			if errors.Is(err, UserDeclinedError) {
-				log.Logger.Info().Msgf("user declined creating config file %s, exiting")
-				os.Exit(0)
-			} else {
-				log.Logger.Error().Err(err).Msgf("failed to create %s")
-				os.Exit(1)
-			}
 		}
 
 		// Refuse to modify config if user tries to modify cluster config

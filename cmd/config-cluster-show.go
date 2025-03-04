@@ -5,32 +5,33 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/spf13/cobra"
 )
 
-// configShow represents the config-show command
-var configShowCmd = &cobra.Command{
-	Use:   "show [key]",
-	Args:  cobra.MaximumNArgs(1),
-	Short: "View configuration options the CLI sees from a config file",
+// configClusterShow represents the config-cluster-show command
+var configClusterShowCmd = &cobra.Command{
+	Use:   "show [cluster_name] [key]",
+	Args:  cobra.MaximumNArgs(2),
+	Short: "View cluster configuration options the CLI sees from a config file",
+	Example: `  ochami config cluster show
+  ochami config cluster show foobar
+  ochami config cluster show foobar cluster.uri`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// It doesn't make sense to show the config value from a config
-		// file that doesn't exist, so err if the specified config file
+		// It doesn't make sense to show the config of a config file
+		// that doesn't exist, so err if the specified config file
 		// doesn't exist.
 		initConfigAndLogging(cmd, false)
 
 		return nil
 	},
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		log.Logger.Debug().Msgf("COMMAND: %v", strings.Split(cmd.CommandPath(), " "))
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It
 		// will not work in init(). This means that this needs to be
-		// present in all child commands.
+		// presend in all child commands.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
 
 		return nil
@@ -63,20 +64,41 @@ var configShowCmd = &cobra.Command{
 			cfg = config.GlobalConfig
 		}
 
-		// Individual key was requested, print value directly
 		var key string
 		var val string
-		if len(args) == 1 {
-			key = args[0]
-		}
-		val, err = config.GetConfigString(cfg, key, format)
-		if err != nil {
-			if key == "" {
-				log.Logger.Error().Err(err).Msgf("failed to get full config")
-			} else {
-				log.Logger.Error().Err(err).Msgf("failed to get config for key %q", key)
+		if len(args) == 0 {
+			// No cluster specified, get all of them.
+			val, err = config.GetConfigString(cfg, "clusters", format)
+			if err != nil {
+				log.Logger.Error().Err(err).Msg("failed to fetch config for all clusters")
+				os.Exit(1)
 			}
-			os.Exit(1)
+		} else {
+			var cfgCl *config.ConfigCluster
+			for cidx, cl := range cfg.Clusters {
+				if cl.Name == args[0] {
+					cfgCl = &(cfg.Clusters[cidx])
+					break
+				}
+			}
+			if cfgCl == nil {
+				log.Logger.Error().Msgf("cluster %q not found", args[0])
+				os.Exit(1)
+			}
+
+			// Individual key was requested, print value directly
+			if len(args) == 2 {
+				key = args[1]
+			}
+			val, err = config.GetConfigClusterString(*cfgCl, key, format)
+			if err != nil {
+				if key == "" {
+					log.Logger.Error().Err(err).Msgf("failed to get full cluster config")
+				} else {
+					log.Logger.Error().Err(err).Msgf("failed to get cluster config for key %q", key)
+				}
+				os.Exit(1)
+			}
 		}
 		if val != "" {
 			fmt.Printf("%v\n", val)
@@ -85,6 +107,6 @@ var configShowCmd = &cobra.Command{
 }
 
 func init() {
-	configShowCmd.Flags().StringP("format", "f", "yaml", "format of config output (yaml,json,json-pretty)")
-	configCmd.AddCommand(configShowCmd)
+	configClusterShowCmd.Flags().StringP("format", "f", "yaml", "format of config output (yaml,json,json-pretty)")
+	configClusterCmd.AddCommand(configClusterShowCmd)
 }

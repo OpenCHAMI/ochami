@@ -47,12 +47,8 @@ This command does not handle cluster configs. For that, use the
 	Run: func(cmd *cobra.Command, args []string) {
 		// We must have a config file in order to write config
 		var fileToModify string
-		if rootCmd.PersistentFlags().Lookup("config").Changed {
-			var err error
-			if fileToModify, err = rootCmd.PersistentFlags().GetString("config"); err != nil {
-				log.Logger.Error().Err(err).Msgf("unable to get value from --config flag")
-				os.Exit(1)
-			}
+		if rootCmd.Flags().Changed("config") {
+			fileToModify = configFile
 		} else if configCmd.PersistentFlags().Lookup("system").Changed {
 			fileToModify = config.SystemConfigFile
 		} else {
