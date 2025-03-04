@@ -269,8 +269,8 @@ func getBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 	//    specified), use cluster identified by that name as source of info.
 	// 2. If --cluster is set, search config file for matching name and read
 	//    details from there.
-	// 3. If flags corresponding to cluster info (e.g. --api-uri,
-	//    --<service>-uri) are set, read details from them.
+	// 3. If flags corresponding to cluster info (e.g. --cluster-uri,
+	//    --uri) are set, read details from them.
 	var (
 		clusterName   string
 		clusterToUse  config.ConfigCluster
@@ -308,20 +308,20 @@ func getBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 
 		clusterConfig = clusterToUse.Cluster
 	}
-	// 1. Check flags (--api-uri and/or --uri) and override any
+	// 1. Check flags (--cluster-uri and/or --uri) and override any
 	// previously-set values while leaving unspecified ones alone.
-	if cmd.Flag("api-uri").Changed || (cmd.Flag("uri") != nil && cmd.Flag("uri").Changed) {
+	if cmd.Flag("cluster-uri").Changed || (cmd.Flag("uri") != nil && cmd.Flag("uri").Changed) {
 		log.Logger.Debug().Msg("using base URI passed on command line")
-		ccc := config.ConfigClusterConfig{APIURI: cmd.Flag("api-uri").Value.String()}
+		ccc := config.ConfigClusterConfig{URI: cmd.Flag("cluster-uri").Value.String()}
 		switch serviceName {
 		case config.ServiceBSS:
-			ccc.BSSURI = cmd.Flag("uri").Value.String()
+			ccc.BSS.URI = cmd.Flag("uri").Value.String()
 		case config.ServiceCloudInit:
-			ccc.CloudInitURI = cmd.Flag("uri").Value.String()
+			ccc.CloudInit.URI = cmd.Flag("uri").Value.String()
 		case config.ServicePCS:
-			ccc.PCSURI = cmd.Flag("uri").Value.String()
+			ccc.PCS.URI = cmd.Flag("uri").Value.String()
 		case config.ServiceSMD:
-			ccc.SMDURI = cmd.Flag("uri").Value.String()
+			ccc.SMD.URI = cmd.Flag("uri").Value.String()
 		default:
 			return "", fmt.Errorf("unknown service %q specified when generating base URI", serviceName)
 		}

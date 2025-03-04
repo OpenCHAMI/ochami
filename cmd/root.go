@@ -80,5 +80,5 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&config.EarlyVerbose, "verbose", "v", false, "be verbose before logging is initialized")
 
 	// Either use cluster from config file or specify details on CLI
-	rootCmd.MarkFlagsMutuallyExclusive("cluster", "api-uri")
+	rootCmd.MarkFlagsMutuallyExclusive("cluster", "cluster-uri")
 }

@@ -3,8 +3,8 @@
 package cmd
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/OpenCHAMI/ochami/internal/log"
