@@ -3,9 +3,7 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 
 	"github.com/OpenCHAMI/ochami/internal/config"
@@ -13,36 +11,61 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// The 'show' subcommand of the 'config' command prints out the configuration
-// values that the CLI sees, whether that be from a flag
+// configShow represents the config-show command
 var configShowCmd = &cobra.Command{
-	Use:   "show",
-	Args:  cobra.NoArgs,
+	Use:   "show [key]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "View configuration options the CLI sees from a config file",
 	Run: func(cmd *cobra.Command, args []string) {
-		var (
-			err          error
-			cfgDataBytes []byte
-		)
+		// Get the config from the relevant file depending on the flag,
+		// or the merged config if none.
+		var cfg config.Config
+		var err error
 		format := cmd.Flag("format").Value.String()
-		switch format {
-		case "yaml":
-			cfgDataBytes, err = yaml.Marshal(config.GlobalConfig)
-		case "json":
-			cfgDataBytes, err = json.MarshalIndent(config.GlobalConfig, "", "\t")
-		default:
-			log.Logger.Error().Msgf("unknown log output format: %s", format)
-			os.Exit(1)
+		if cmd.Flags().Changed("system") {
+			cfg, err = config.ReadConfig(config.SystemConfigFile)
+			if err != nil {
+				log.Logger.Error().Err(err).Msgf("failed to read system config file")
+				os.Exit(1)
+			}
+		} else if cmd.Flags().Changed("user") {
+			cfg, err = config.ReadConfig(config.UserConfigFile)
+			if err != nil {
+				log.Logger.Error().Err(err).Msgf("failed to read user config file")
+				os.Exit(1)
+			}
+		} else if cmd.Flags().Changed("config") {
+			cfg, err = config.ReadConfig(cmd.Flag("config").Value.String())
+			if err != nil {
+				log.Logger.Error().Err(err).Msgf("failed to read config file %s", cmd.Flag("config").Value.String())
+				os.Exit(1)
+			}
+		} else {
+			cfg = config.GlobalConfig
 		}
+
+		// Individual key was requested, print value directly
+		var key string
+		var val string
+		if len(args) == 1 {
+			key = args[0]
+		}
+		val, err = config.GetConfigString(cfg, key, format)
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to unmarshal configuration data")
+			if key == "" {
+				log.Logger.Error().Err(err).Msgf("failed to get full config")
+			} else {
+				log.Logger.Error().Err(err).Msgf("failed to get config for key %q", key)
+			}
 			os.Exit(1)
 		}
-		fmt.Println(string(cfgDataBytes))
+		if val != "" {
+			fmt.Printf("%v\n", val)
+		}
 	},
 }
 
 func init() {
-	configShowCmd.Flags().StringP("format", "f", "yaml", "format of config output (yaml,json)")
+	configShowCmd.Flags().StringP("format", "f", "yaml", "format of config output (yaml,json,json-pretty)")
 	configCmd.AddCommand(configShowCmd)
 }

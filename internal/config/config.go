@@ -1,12 +1,14 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/go-viper/mapstructure/v2"
@@ -526,6 +528,96 @@ func DeleteConfig(path, key string) error {
 	}
 
 	return nil
+}
+
+// GetConfig returns the config value of key for a Config struct, returning an
+// error if loading the config into koanf errs. If key is empty, the whole
+// config is returned. This function _only_ retrieves global config options and
+// errs if the key begins with "clusters*" ("*" is one or more characters), i.e.
+// an individual cluster config is trying to be retrieved. To get an individual
+// cluster config, use GetConfigCluster.
+func GetConfig(cfg Config, key string) (interface{}, error) {
+	// Do not try to get individual cluster config. Use GetConfigCluster for
+	// that.
+	if strings.HasPrefix(key, "clusters") && len(key) > len("clusters") {
+		return nil, fmt.Errorf("cannot get individual cluster config with global get command")
+	}
+
+	// Load config into koanf so the key can be used to get config.
+	var val interface{}
+	ko := koanf.NewWithConf(kConfig)
+	if err := ko.Load(structs.Provider(cfg, "yaml"), nil); err != nil {
+		return nil, fmt.Errorf("failed to load global config: %w", err)
+	}
+	if key != "" {
+		val = ko.Get(key)
+	} else {
+		// No key specified, return whole config
+		kuc := kUnmarshalConf
+		kuc.DecoderConfig.Result = &val
+		if err := ko.UnmarshalWithConf("", nil, kuc); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal config from struct: %w", err)
+		}
+	}
+	return val, nil
+}
+
+// GetConfigFromFile is like GetConfig except that it reads the config from the
+// file at path instead of a Config struct.
+func GetConfigFromFile(path, key string) (interface{}, error) {
+	// Read in config file
+	cfg, err := ReadConfig(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file %s: %w", path, err)
+	}
+
+	return GetConfig(cfg, key)
+}
+
+// GetConfigString wraps GetConfig and returns a string representation of the
+// value of key, using format to determine how to marshal the value.
+// Currently-supported formats are yaml, json, and json-pretty.
+func GetConfigString(cfg Config, key, format string) (string, error) {
+	val, err := GetConfig(cfg, key)
+	if err != nil {
+		return "", err
+	}
+	if val == nil {
+		return "", nil
+	}
+	switch val.(type) {
+	case map[string]interface{}, []interface{}:
+		var err error
+		var valBytes []byte
+		switch format {
+		case "yaml":
+			valBytes, err = yaml.Marshal(val)
+		case "json":
+			valBytes, err = json.Marshal(val)
+		case "json-pretty":
+			valBytes, err = json.MarshalIndent(val, "", "\t")
+		default:
+			return "", fmt.Errorf("unknown format: %s", format)
+		}
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal value for key %q: %w", key, err)
+		}
+		return string(valBytes), nil
+	default:
+		return fmt.Sprintf("%v", val), nil
+	}
+}
+
+// GetConfigStringFromFile is like GetConfigString except that it wraps
+// GetConfigFromFile.
+func GetConfigStringFromFile(path, key, format string) (string, error) {
+	// Read in config file
+	cfg, err := ReadConfig(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read config file %s: %w", path, err)
+	}
+
+	return GetConfigString(cfg, key, format)
 }
 
 // ReadConfig opens the config file at path and loads it into koanf to check for

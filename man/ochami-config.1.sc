@@ -8,10 +8,10 @@ ochami-config - Manage configuration for ochami CLI
 
 ochami config [GLOBALOPTS] cluster delete _cluster_name_++
 ochami config [GLOBALOPTS] cluster set [-d] _cluster_name_ _key_ _value_++
-ochami config [GLOBALOPTS] cluster show [-p] [-f _format_] _cluster_name_ [_key_]++
+ochami config [GLOBALOPTS] cluster show [-f _format_] _cluster_name_ [_key_]++
 ochami config [GLOBALOPTS] cluster unset _cluster_name_ _key_++
 ochami config [GLOBALOPTS] set _key_ _value_++
-ochami config [GLOBALOPTS] show [-p] [-f _format_] [_key_]++
+ochami config [GLOBALOPTS] show _[-f format_] [_key_]++
 ochami config [GLOBALOPTS] unset _key_
 
 # GLOBAL OPTIONS
@@ -65,7 +65,7 @@ Subcommands for this command are as follows:
 		is not specified on the command line, this cluster's configuration is
 		used.
 
-*show* [-p] [-f _format_] _cluster_name_ [_key_]
+*show* [-f _format_] _cluster_name_ [_key_]
 	Show the configuration for _cluster_name_. If _key_ is not specified, show
 	the whole configuration.
 
@@ -77,10 +77,8 @@ Subcommands for this command are as follows:
 		Default: *json*
 		Supported:
 		- _json_
+		- _json-pretty_
 		- _yaml_
-
-	*-p, --pretty*
-		Indent JSON output. Requires *-f json*.
 
 *unset* _cluster_name_ _key_
 	Unset the _key_ configuration option from _cluster_name_
@@ -102,7 +100,7 @@ Show the *ochami* configuration.
 
 The format of this command is:
 
-*show* [-p] [-f _format_] [_key_]
+*show* [-f _format_] [_key_]
 
 Print the known *ochami* configuration. An optional _key_ can be passed to print
 a specific global config option, otherwise the whole configuration is printed.
@@ -123,10 +121,8 @@ This command accepts the following options:
 	Default: *json*
 	Supported:
 	- _json_
+	- _json-pretty_
 	- _yaml_
-
-*-p, --pretty*
-	Indent JSON output. Requires *-f json*.
 
 ## unset
 
