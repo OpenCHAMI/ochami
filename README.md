@@ -9,10 +9,14 @@ services, especially the [State Management Database
 (BSS)](https://github.com/OpenCHAMI/bss). The tool is meant to ease interaction
 with the API so one need not be proficient in `curl`.
 
+
+
 ## Getting Started
 
 See [**Building**](#building) for instructions on how to build `ochami`. Then,
 continue here with how to use it.
+
+The man pages in the [man directory](/man) are the most complete usage documentation available and quite readable on the web.
 
 ### 1. Creating a Configuration File
 
