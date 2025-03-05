@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"errors"
 	"os"
 
 	"github.com/OpenCHAMI/ochami/internal/config"
@@ -45,7 +44,7 @@ with a different base URL will change the API base URL for the 'foobar' cluster.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		// Check that cluster name is only arg
+		// Check that cluster name, key, val are only args
 		if len(args) == 0 {
 			printUsageHandleError(cmd)
 			os.Exit(0)
@@ -56,27 +55,12 @@ with a different base URL will change the API base URL for the 'foobar' cluster.
 
 		// We must have a config file in order to write cluster info
 		var fileToModify string
-		if rootCmd.PersistentFlags().Lookup("config").Changed {
-			var err error
-			if fileToModify, err = rootCmd.PersistentFlags().GetString("config"); err != nil {
-				log.Logger.Error().Err(err).Msgf("unable to get value from --config flag")
-				os.Exit(1)
-			}
-		} else if configCmd.PersistentFlags().Lookup("system").Changed {
+		if cmd.Flags().Changed("config") {
+			fileToModify = configFile
+		} else if configCmd.Flags().Changed("system") {
 			fileToModify = config.SystemConfigFile
 		} else {
 			fileToModify = config.UserConfigFile
-		}
-
-		// Ask user to create file if it does not exist
-		if err := askToCreate(fileToModify); err != nil {
-			if errors.Is(err, UserDeclinedError) {
-				log.Logger.Info().Msgf("user declined creating config file %s, exiting")
-				os.Exit(0)
-			} else {
-				log.Logger.Error().Err(err).Msgf("failed to create %s")
-				os.Exit(1)
-			}
 		}
 
 		// Perform modification
