@@ -41,11 +41,15 @@ with a different base URL will change the API base URL for the 'foobar' cluster.
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It
 		// will not work in init(). This means that this needs to be
-		// presend in all child commands.
+		// present in all child commands.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		// Check that cluster name is only arg
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
+		// Check that cluster name, key, val are only args
 		if len(args) == 0 {
 			printUsageHandleError(cmd)
 			os.Exit(0)

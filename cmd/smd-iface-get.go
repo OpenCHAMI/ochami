@@ -23,6 +23,10 @@ var ifaceGetCmd = &cobra.Command{
 passed, all ethernet interfaces are returned. Optionally, options can be passed to limit the
 ethernet interfaces returned.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {

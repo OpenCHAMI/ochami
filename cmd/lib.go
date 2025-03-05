@@ -7,7 +7,6 @@ package cmd
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,77 +20,47 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Set log level verbosity based on config file (log.level) or --log-level.
-// The command line option overrides the config file option.
-func initLogging() {
-	if rootCmd.PersistentFlags().Lookup("log-format").Changed {
-		lf, err := rootCmd.PersistentFlags().GetString("log-format")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: failed to fetch flag log-format: %v\n", config.ProgName, err)
-			os.Exit(1)
-		}
-		config.GlobalConfig.Log.Format = lf
-	}
-	if rootCmd.PersistentFlags().Lookup("log-level").Changed {
-		ll, err := rootCmd.PersistentFlags().GetString("log-level")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: failed to fetch flag log-level: %v\n", config.ProgName, err)
-			os.Exit(1)
-		}
-		config.GlobalConfig.Log.Level = ll
-	}
+var (
+	// Errors
+	NoConfigFileError = fmt.Errorf("no config file to read")
+)
 
-	if err := log.Init(config.GlobalConfig.Log.Level, config.GlobalConfig.Log.Format); err != nil {
-		fmt.Fprintf(os.Stderr, "%s: failed to initialize logger: %v\n", config.ProgName, err)
-		os.Exit(1)
-	}
-
-	log.Logger.Debug().Msg("logging has been initialized")
+// earlyMsg is a primitive log function that works like fmt.Fprintln, printing
+// to standard error using the program prefix.
+func earlyMsg(arg ...interface{}) {
+	fmt.Fprintf(os.Stderr, "%s: ", config.ProgName)
+	fmt.Fprintln(os.Stderr, arg...)
 }
 
-// askToCreate prompts the user to, if path does not exist, to create a blank
-// file at path. If it exists, nil is returned. If the user declines, a
-// UserDeclinedError is returned. If an error occurs during creation, an error
-// is returned.
-func askToCreate(path string) error {
-	if path == "" {
-		return fmt.Errorf("path cannot be empty")
-	}
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		respConfigCreate := loopYesNo(fmt.Sprintf("%s does not exist. Create it?", path))
-		if respConfigCreate {
-			parentDir := filepath.Dir(path)
-			if err := os.MkdirAll(parentDir, 0755); err != nil {
-				return fmt.Errorf("could not create parent dir %s: %w", parentDir, err)
-			}
-			f, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0644)
-			if err != nil {
-				return fmt.Errorf("creating %s failed: %w", path, err)
-			}
-			f.Close()
-		} else {
-			return UserDeclinedError
-		}
-	}
-
-	return nil
+// earlyMsgf is like earlyMsg, except it accepts a format string. It works like
+// fmt.Fprintf.
+func earlyMsgf(fstr string, arg ...interface{}) {
+	fmt.Fprintf(os.Stderr, "%s: ", config.ProgName)
+	fmt.Fprintf(os.Stderr, fstr+"\n", arg...)
 }
 
-func initConfig() {
+// initConfig initializes the global configuration for a command, creating the
+// config file if create is true, if it does not already exist.
+func initConfig(cmd *cobra.Command, create bool) error {
 	// Do not read or write config file if --ignore-config passed
-	if rootCmd.Flag("ignore-config").Changed {
-		return
+	if cmd.Flags().Changed("ignore-config") {
+		return nil
 	}
 
 	if configFile != "" {
-		// Try to create config file with default values if it doesn't exist
-		if err := askToCreate(configFile); err != nil {
-			if errors.Is(err, UserDeclinedError) {
-				fmt.Fprintf(os.Stderr, "%s: user declined to create file; exiting...\n", config.ProgName)
-				os.Exit(0)
+		if create {
+			// Try to create config file with default values if it doesn't exist
+			if cr, err := askToCreate(configFile); err != nil {
+				// Error occurred during prompt
+				return fmt.Errorf("error occurred asking to create config file: %w", err)
+			} else if cr {
+				// User answered yes
+				if err := createIfNotExists(configFile); err != nil {
+					return fmt.Errorf("failed to create %s: %w", configFile, err)
+				}
 			} else {
-				fmt.Fprintf(os.Stderr, "%s: failed to create %s: %v\n", config.ProgName, configFile, err)
-				os.Exit(1)
+				// User answered no
+				return fmt.Errorf("user declined to create file; exiting...")
 			}
 		}
 	}
@@ -100,9 +69,88 @@ func initConfig() {
 	// config file and user config file if not passed.
 	err := config.LoadConfig(configFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: failed to load configuration: %v\n", config.ProgName, err)
+		err = fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	return err
+}
+
+// Set log level verbosity based on config file (log.level) or --log-level.
+// The command line option overrides the config file option.
+func initLogging(cmd *cobra.Command) error {
+	if cmd.Flags().Changed("log-format") {
+		lf, err := cmd.Flags().GetString("log-format")
+		if err != nil {
+			return fmt.Errorf("failed to fetch flag log-format: %w", err)
+		}
+		config.GlobalConfig.Log.Format = lf
+	}
+	if cmd.Flags().Changed("log-level") {
+		ll, err := cmd.Flags().GetString("log-level")
+		if err != nil {
+			return fmt.Errorf("failed to fetch flag log-level: %w", err)
+		}
+		config.GlobalConfig.Log.Level = ll
+	}
+
+	if err := log.Init(config.GlobalConfig.Log.Level, config.GlobalConfig.Log.Format); err != nil {
+		return fmt.Errorf("failed to initialize logger: %w", err)
+	}
+
+	log.Logger.Debug().Msg("logging has been initialized")
+	return nil
+}
+
+// initConfigAndLogging is a wrapper around the config and logging init
+// functions that is meant to be the first thing a command runs in its "Run"
+// directive. createCfg determines whether a config file should be created if
+// missing.
+func initConfigAndLogging(cmd *cobra.Command, createCfg bool) {
+	if err := initConfig(cmd, createCfg); err != nil {
+		earlyMsgf("failed to initialize config: %v", err)
 		os.Exit(1)
 	}
+	if err := initLogging(cmd); err != nil {
+		earlyMsgf("failed to initialized logging: %v", err)
+		os.Exit(1)
+	}
+}
+
+// askToCreate prompts the user to, if path does not exist, to create a blank
+// file at path. If it exists, nil is returned. If the user declines, a
+// UserDeclinedError is returned. If an error occurs during creation, an error
+// is returned.
+func askToCreate(path string) (bool, error) {
+	if path == "" {
+		return false, fmt.Errorf("path cannot be empty")
+	}
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		respConfigCreate := loopYesNo(fmt.Sprintf("%s does not exist. Create it?", path))
+		if respConfigCreate {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func createIfNotExists(path string) error {
+	if path == "" {
+		return fmt.Errorf("path cannot be empty")
+	}
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		parentDir := filepath.Dir(path)
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			return fmt.Errorf("could not create parent dir %s: %w", parentDir, err)
+		}
+		f, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0644)
+		if err != nil {
+			return fmt.Errorf("creating %s failed: %w", path, err)
+		}
+		f.Close()
+	}
+
+	return nil
 }
 
 // prompt displays a text prompt and returns what the user entered. It continues
@@ -351,7 +399,7 @@ func handlePayload(cmd *cobra.Command, data any) {
 // that handles errors.
 func printUsageHandleError(cmd *cobra.Command) {
 	if err := cmd.Usage(); err != nil {
-		log.Logger.Error().Err(err).Msg("failed to print usage")
+		earlyMsgf("failed to print usage: %v", err)
 		os.Exit(1)
 	}
 }
