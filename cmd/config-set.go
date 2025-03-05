@@ -27,6 +27,13 @@ This command does not handle cluster configs. For that, use the
   ochami config set --user log.format json
   ochami config set --system log.format json
   ochami --config ./test.yaml config set log.format json`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// To mark both persistent and regular flags mutually exclusive,
+		// this function must be run before the command is executed. It
+		// will not work in init(). This means that this needs to be
+		// presend in all child commands.
+		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Ensure we have 2 args
 		if len(args) == 0 {
