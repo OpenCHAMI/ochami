@@ -14,6 +14,13 @@ import (
 var configClusterDeleteCmd = &cobra.Command{
 	Use:   "delete <cluster_name>",
 	Short: "Delete a cluster from the configuration file",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// To mark both persistent and regular flags mutually exclusive,
+		// this function must be run before the command is executed. It
+		// will not work in init(). This means that this needs to be
+		// presend in all child commands.
+		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check that cluster name is only arg
 		if len(args) == 0 {

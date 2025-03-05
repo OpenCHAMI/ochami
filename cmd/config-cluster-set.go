@@ -33,8 +33,17 @@ If this is the first cluster created, the following is also set:
 default-cluster is used to determine which cluster in the list should be used for subcommands.
 
 This same command can be use to modify existing cluster information. Running the same command above
-with a different base URL will change the base URL for the 'foobar' cluster.`,
-	Example: `  ochami config cluster set foobar.openchami.cluster --base-uri https://foobar.openchami.cluster`,
+with a different base URL will change the API base URL for the 'foobar' cluster.`,
+	Example: `  ochami config cluster set foobar cluster.api-uri https://foobar.openchami.cluster
+  ochami config cluster set foobar cluster.smd-uri /hsm/v2
+  ochami config cluster set foobar name new-foobar`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// To mark both persistent and regular flags mutually exclusive,
+		// this function must be run before the command is executed. It
+		// will not work in init(). This means that this needs to be
+		// presend in all child commands.
+		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check that cluster name is only arg
 		if len(args) == 0 {
