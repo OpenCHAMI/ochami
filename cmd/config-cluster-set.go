@@ -37,6 +37,13 @@ with a different base URL will change the API base URL for the 'foobar' cluster.
 	Example: `  ochami config cluster set foobar cluster.api-uri https://foobar.openchami.cluster
   ochami config cluster set foobar cluster.smd-uri /hsm/v2
   ochami config cluster set foobar name new-foobar`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// To mark both persistent and regular flags mutually exclusive,
+		// this function must be run before the command is executed. It
+		// will not work in init(). This means that this needs to be
+		// presend in all child commands.
+		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check that cluster name is only arg
 		if len(args) == 0 {
