@@ -30,6 +30,10 @@ This command sends a DELETE to SMD. An access token is required.`,
   echo '<json_data>' | ochami smd component delete -f -
   echo '<yaml_data>' | ochami smd component delete -f - --payload-format yaml`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// With options, only one of:
 		// - A payload file with -f
 		// - --all

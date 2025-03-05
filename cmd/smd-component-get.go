@@ -19,6 +19,10 @@ var componentGetCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "Get all components or component identified by an xname or node ID",
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {

@@ -19,7 +19,7 @@ var configCmd = &cobra.Command{
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It
 		// will not work in init(). This means that this needs to be
-		// presend in all child commands.
+		// present in all child commands.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
 	},
 	Run: func(cmd *cobra.Command, args []string) {

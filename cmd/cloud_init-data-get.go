@@ -27,6 +27,10 @@ or vendor-data, respectively.`,
   ochami cloud-init data get --meta compute
   ochami cloud-init data get --vendor compute`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// We need at least one ID to do anything
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

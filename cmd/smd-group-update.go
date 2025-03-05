@@ -32,6 +32,10 @@ This command sends a PATCH to SMD. An access token is required.`,
   echo '<json_data>' | ochami smd group update -f -
   echo '<yaml_data>' | ochami smd group update -f - --payload-format yaml`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// cmd.LocalFlags().NFlag() doesn't seem to work, so we check every flag
 		if len(args) == 0 && !cmd.Flag("description").Changed && !cmd.Flag("tag").Changed {
 			printUsageHandleError(cmd)

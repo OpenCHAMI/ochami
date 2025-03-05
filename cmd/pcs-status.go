@@ -101,6 +101,10 @@ var pcsStatusCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "Get status of PCS service",
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// Without a base URI, we cannot do anything
 		pcsBaseURI, err := getBaseURIPCS(cmd)
 		if err != nil {

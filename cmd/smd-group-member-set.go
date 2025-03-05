@@ -25,6 +25,10 @@ group. If a component is in the group but not specified, it is
 removed from the group.`,
 	Example: `  ochami smd group member set compute x1000c1s7b1n0 x1000c1s7b2n0`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
