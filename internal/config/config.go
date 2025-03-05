@@ -670,6 +670,81 @@ func GetConfigStringFromFile(path, key, format string) (string, error) {
 	return GetConfigString(cfg, key, format)
 }
 
+// GetConfigCluster returns the config value of key for a ConfigCluster struct,
+// returning an error if loading the config into koanf errs. If key is empty,
+// the whole config is returned. This function _only_ retrieves confiog options
+// for a cluster. To get global config, use GetConfig.
+func GetConfigCluster(cluster ConfigCluster, key string) (interface{}, error) {
+	// Load config into koanf so the key can be used to get config.
+	var val interface{}
+	ko := koanf.NewWithConf(kConfig)
+	if err := ko.Load(structs.Provider(cluster, "yaml"), nil); err != nil {
+		return nil, fmt.Errorf("failed to load cluster config: %w", err)
+	}
+	if key != "" {
+		val = ko.Get(key)
+	} else {
+		// No key specified, return whole config
+		kuc := kUnmarshalConf
+		kuc.DecoderConfig.Result = &val
+		if err := ko.UnmarshalWithConf("", nil, kuc); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal cluster config from struct: %w", err)
+		}
+	}
+	return val, nil
+}
+
+// GetConfigClusterFromFile is like GetConfigCluster except that it reads the
+// config from the file at path instead of a ConfigCluster struct.
+func GetConfigClusterFromFile(path, cluster, key string) (interface{}, error) {
+	// Read in config file
+	cfg, err := ReadConfig(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file %s: %w", path, err)
+	}
+
+	for _, cl := range cfg.Clusters {
+		if cl.Name == cluster {
+			return GetConfigCluster(cl, key)
+		}
+	}
+	return nil, fmt.Errorf("cluster %q not found in %s", cluster, path)
+}
+
+// GetConfigClusterString wraps GetConfigCluster and returns a string
+// representation of the value of key, using format to determine how to marshal
+// the value. Currently-supported formats are yaml, json, and json-pretty.
+func GetConfigClusterString(cluster ConfigCluster, key, format string) (string, error) {
+	val, err := GetConfigCluster(cluster, key)
+	if err != nil {
+		return "", err
+	}
+	if val == nil {
+		return "", nil
+	}
+	switch val.(type) {
+	case map[string]interface{}, []interface{}:
+		var err error
+		var valBytes []byte
+		switch format {
+		case "yaml":
+			valBytes, err = yaml.Marshal(val)
+		case "json":
+			valBytes, err = json.Marshal(val)
+		case "json-pretty":
+			valBytes, err = json.MarshalIndent(val, "", "\t")
+		default:
+			return "", fmt.Errorf("unknown format: %s", format)
+		}
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal value for key %q: %w", key, err)
+		}
+		return string(valBytes), nil
+	default:
+		return fmt.Sprintf("%v", val), nil
+	}
+}
+
 // ReadConfig opens the config file at path and loads it into koanf to check for
 // errors, then unmarshals the config into a Config struct and returns it. If an
 // error in this process occurs or there is an error in the config, an error is

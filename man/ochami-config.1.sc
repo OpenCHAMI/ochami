@@ -8,7 +8,7 @@ ochami-config - Manage configuration for ochami CLI
 
 ochami config [GLOBALOPTS] cluster delete _cluster_name_++
 ochami config [GLOBALOPTS] cluster set [-d] _cluster_name_ _key_ _value_++
-ochami config [GLOBALOPTS] cluster show [-f _format_] _cluster_name_ [_key_]++
+ochami config [GLOBALOPTS] cluster show [-f _format_] [_cluster_name_] [_key_]++
 ochami config [GLOBALOPTS] cluster unset _cluster_name_ _key_++
 ochami config [GLOBALOPTS] set _key_ _value_++
 ochami config [GLOBALOPTS] show _[-f format_] [_key_]++
@@ -65,9 +65,10 @@ Subcommands for this command are as follows:
 		is not specified on the command line, this cluster's configuration is
 		used.
 
-*show* [-f _format_] _cluster_name_ [_key_]
-	Show the configuration for _cluster_name_. If _key_ is not specified, show
-	the whole configuration.
+*show* [-f _format_] [_cluster_name_] [_key_]
+	Show the configuration for _cluster_name_ or all clusters if _cluster_name_
+	is unspecified. If _key_ is not specified, show the whole configuration for
+	_cluster_name_, otherwise show the value for _key_.
 
 	This command accepts the following options:
 
