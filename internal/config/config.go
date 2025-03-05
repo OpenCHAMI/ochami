@@ -530,6 +530,56 @@ func DeleteConfig(path, key string) error {
 	return nil
 }
 
+// DeleteConfigCluster deletes a key from the specified cluster from a config
+// file. It does by loading the cluster config into a koanf instance, deleting
+// the key, then unmarshalling it back into a ConfigCluster struct before
+// writing the config back to the config file. An error is thrown if the cluster
+// doesn't exist or "name" is the key.
+func DeleteConfigCluster(path, cluster, key string) error {
+	// Open file for writing
+	cfg, err := ReadConfig(path)
+	if err != nil {
+		return fmt.Errorf("failed to read %s for modification: %w", path, err)
+	}
+
+	if key == "name" {
+		return fmt.Errorf("cannot unset name of cluster")
+	}
+
+	// Find cluster to modify
+	var clusterToMod *ConfigCluster
+	for cidx, cl := range cfg.Clusters {
+		if cl.Name == cluster {
+			clusterToMod = &(cfg.Clusters[cidx])
+			break
+		}
+	}
+	if clusterToMod == nil {
+		return fmt.Errorf("cluster %q not found", cluster)
+	}
+
+	// Perform deletion
+	ko := koanf.NewWithConf(kConfig)
+	if err := ko.Load(structs.Provider(*clusterToMod, "yaml"), nil); err != nil {
+		return fmt.Errorf("failed to load config for cluster %s: %w", cluster, err)
+	}
+	ko.Delete(key)
+	var tmpCluster ConfigCluster
+	kuc := kUnmarshalConf
+	kuc.DecoderConfig.Result = &tmpCluster
+	if err := ko.UnmarshalWithConf("", nil, kuc); err != nil {
+		return fmt.Errorf("failed to unset key %s from config for cluster %s: %w", key, cluster, err)
+	}
+	*clusterToMod = tmpCluster
+
+	// Write modified config back to file
+	if err := WriteConfig(path, cfg); err != nil {
+		return fmt.Errorf("failed to write modified config to %s: %w", path, err)
+	}
+
+	return nil
+}
+
 // GetConfig returns the config value of key for a Config struct, returning an
 // error if loading the config into koanf errs. If key is empty, the whole
 // config is returned. This function _only_ retrieves global config options and
