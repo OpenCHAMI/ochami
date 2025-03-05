@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/OpenCHAMI/ochami/internal/config"
@@ -18,9 +17,6 @@ const (
 )
 
 var (
-	// Errors
-	UserDeclinedError = fmt.Errorf("user declined")
-
 	configFile string
 	logLevel   string
 	logFormat  string
@@ -40,11 +36,7 @@ var rootCmd = &cobra.Command{
 	Version: version.Version,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
+			printUsageHandleError(cmd)
 			os.Exit(0)
 		}
 	},
@@ -61,10 +53,6 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(
-		initConfig,
-		initLogging,
-	)
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "path to configuration file to use")
 	rootCmd.PersistentFlags().StringP("log-format", "L", "", "log format (json,rfc3339,basic)")
 	rootCmd.PersistentFlags().StringP("log-level", "l", "", "set verbosity of logs (info,warning,debug)")

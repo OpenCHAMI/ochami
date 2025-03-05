@@ -26,14 +26,21 @@ This command does not handle cluster configs. For that, use the
   ochami config unset --user log.format
   ochami config unset --system log.format
   ochami --config ./test.yaml config unset log.format`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// To mark both persistent and regular flags mutually exclusive,
+		// this function must be run before the command is executed. It
+		// will not work in init(). This means that this needs to be
+		// present in all child commands.
+		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
+	},
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// Ensure we have 1 args
 		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
+			printUsageHandleError(cmd)
 			os.Exit(0)
 		} else if len(args) != 1 {
 			log.Logger.Error().Msgf("expected 1 argument (key) but got %s: %v", len(args), args)
@@ -42,12 +49,8 @@ This command does not handle cluster configs. For that, use the
 
 		// We must have a config file in order to write config
 		var fileToModify string
-		if rootCmd.PersistentFlags().Lookup("config").Changed {
-			var err error
-			if fileToModify, err = rootCmd.PersistentFlags().GetString("config"); err != nil {
-				log.Logger.Error().Err(err).Msgf("unable to get value from --config flag")
-				os.Exit(1)
-			}
+		if rootCmd.Flags().Changed("config") {
+			fileToModify = configFile
 		} else if configCmd.PersistentFlags().Lookup("system").Changed {
 			fileToModify = config.SystemConfigFile
 		} else {

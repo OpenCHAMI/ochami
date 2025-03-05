@@ -28,17 +28,17 @@ This command sends a DELETE to SMD. An access token is required.`,
   echo '<json_data>' | ochami smd group delete -f -
   echo '<yaml_data>' | ochami smd group delete -f - --payload-format yaml`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// With options, only one of:
 		// - A payload file with -f
 		// - A set of one or more group labels
 		// must be passed.
 		if len(args) == 0 {
 			if !cmd.Flag("payload").Changed {
-				err := cmd.Usage()
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to print usage")
-					os.Exit(1)
-				}
+				printUsageHandleError(cmd)
 				os.Exit(0)
 			}
 		}

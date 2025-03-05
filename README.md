@@ -55,7 +55,7 @@ configuration file called `foobar` whose base URI is
 `https://foobar.openchami.cluster`:
 
 ```bash
-ochami config cluster set --user foobar --default --base-uri https://foobar.openchami.cluster
+ochami config cluster set --user --default foobar api-uri https://foobar.openchami.cluster:8443
 ```
 
 > [!NOTE]

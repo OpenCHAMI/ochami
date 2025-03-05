@@ -19,6 +19,10 @@ var smdStatusCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "Get status of SMD service",
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {

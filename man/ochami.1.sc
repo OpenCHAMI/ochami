@@ -137,19 +137,14 @@ _foobar_.
 _/usr/share/doc/ochami/config.example.yaml_
 	An example configuration file that can be used for reference.
 
-_/etc/ochami/config.yaml_
-	The system-wide ochami CLI configuration file.
-
-_~/.config/ochami/config.yaml_
-	The user-level ochami CLI configuration file.
-
 # AUTHOR
 
 Written by Devon T. Bautista and maintained by the OpenCHAMI developers.
 
 # SEE ALSO
 
-*ochami-bss*(1), *ochami-config*(1), *ochami-discover*(1), *ochami-smd*(1)
+*ochami-bss*(1), *ochami-cloud-init*(1), *ochami-config*(1),
+*ochami-discover*(1), *ochami-smd*(1), *ochami-config*(5)
 
 ; Vim modeline settings
 ; vim: set tw=80 noet sts=4 ts=4 sw=4 syntax=scdoc:

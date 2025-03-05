@@ -19,6 +19,10 @@ var compepGetCmd = &cobra.Command{
 	Use:   "get [<xname>...]",
 	Short: "Get all component endpoints or one identified by an xname",
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
