@@ -25,6 +25,10 @@ or --nid is required to specify which component to fetch the boot script for.
 This command sends a GET to BSS. An access token is not required.`,
 	Example: `  ochami boot script get --mac 00:c0:ff:ee:00:00`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// Without a base URI, we cannot do anything
 		bssBaseURI, err := getBaseURIBSS(cmd)
 		if err != nil {
