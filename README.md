@@ -9,6 +9,19 @@ services, especially the [State Management Database
 (BSS)](https://github.com/OpenCHAMI/bss). The tool is meant to ease interaction
 with the API so one need not be proficient in `curl`.
 
+## Documentation
+
+There are manual pages in the [man directory](/man), which contain the most
+complete usage documentation available. While they are quite readable on the
+web, they are in [scdoc format](https://man.archlinux.org/man/scdoc.5.en) and
+require [scdoc](https://git.sr.ht/~sircmpwn/scdoc) to build. There is a `make`
+target to do build them:
+
+```
+make man
+man man/ochami.1
+```
+
 ## Getting Started
 
 See [**Building**](#building) for instructions on how to build `ochami`. Then,
