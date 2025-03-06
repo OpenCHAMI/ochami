@@ -72,15 +72,20 @@ with a different base URL will change the API base URL for the 'foobar' cluster.
 			fileToModify = config.UserConfigFile
 		}
 
-		// Ask user to create file if it does not exist
-		if err := askToCreate(fileToModify); err != nil {
-			if errors.Is(err, UserDeclinedError) {
-				log.Logger.Info().Msgf("user declined creating config file %s, exiting")
-				os.Exit(0)
-			} else {
-				log.Logger.Error().Err(err).Msgf("failed to create %s")
+		// Ask to create file if it doesn't exist
+		if create, err := askToCreate(fileToModify); err != nil {
+			if err != FileExistsError {
+				log.Logger.Error().Err(err).Msg("error asking to create file")
 				os.Exit(1)
 			}
+		} else if create {
+			if err := createIfNotExists(fileToModify); err != nil {
+				log.Logger.Error().Err(err).Msg("error creating file")
+				os.Exit(1)
+			}
+		} else {
+			log.Logger.Error().Msg("user declined to create file, not modifying")
+			os.Exit(0)
 		}
 
 		// Read in config from file
