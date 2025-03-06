@@ -84,17 +84,45 @@ type ConfigLog struct {
 	Level  string `yaml:"level,omitempty"`
 }
 
+// ConfigCluster is a "wrapper" around an individual cluster configuration. It
+// contains the cluster's name, as well as the actual configuration structure.
 type ConfigCluster struct {
 	Name    string              `yaml:"name,omitempty"`
 	Cluster ConfigClusterConfig `yaml:"cluster,omitempty"`
 }
 
+// ConfigClusterConfig is the actual structure for an individual cluster
+// configuration.
 type ConfigClusterConfig struct {
-	APIURI       string `yaml:"api-uri,omitempty"`
-	BSSURI       string `yaml:"bss-uri,omitempty"`
-	CloudInitURI string `yaml:"cloud-init-uri,omitempty"`
-	PCSURI       string `yaml:"pcs-uri,omitempty"`
-	SMDURI       string `yaml:"smd-uri,omitempty"`
+	URI       string                 `yaml:"uri,omitempty"`
+	BSS       ConfigClusterBSS       `yaml:"bss,omitempty"`
+	CloudInit ConfigClusterCloudInit `yaml:"cloud-init,omitempty"`
+	PCS       ConfigClusterPCS       `yaml:"pcs,omitempty"`
+	SMD       ConfigClusterSMD       `yaml:"smd,omitempty"`
+}
+
+// ConfigClusterBSS represents configuration specifically for the Boot Script
+// Service.
+type ConfigClusterBSS struct {
+	URI string `yaml:"uri,omitempty"`
+}
+
+// ConfigClusterCloudInit represents configuration specifically for the
+// cloud-init service.
+type ConfigClusterCloudInit struct {
+	URI string `yaml:"uri,omitempty"`
+}
+
+// ConfigClusterPCS represents configuration specifically for the Power Control
+// Service.
+type ConfigClusterPCS struct {
+	URI string `yaml:"uri,omitempty"`
+}
+
+// ConfigClusterSMD represents configuration specifically for the State
+// Management Database service.
+type ConfigClusterSMD struct {
+	URI string `yaml:"uri,omitempty"`
 }
 
 // MergeURIConfig takes a ConfigClusterConfig and returns a ConfigClusterConfig
@@ -108,43 +136,56 @@ func (ccc *ConfigClusterConfig) MergeURIConfig(c ConfigClusterConfig) ConfigClus
 		}
 		return oldStr
 	}
-	newCCC := ConfigClusterConfig{
-		APIURI:       compare(ccc.APIURI, c.APIURI),
-		BSSURI:       compare(ccc.BSSURI, c.BSSURI),
-		CloudInitURI: compare(ccc.CloudInitURI, c.CloudInitURI),
-		PCSURI:       compare(ccc.PCSURI, c.PCSURI),
-		SMDURI:       compare(ccc.SMDURI, c.SMDURI),
+	newCCC := ConfigClusterConfig{URI: compare(ccc.URI, c.URI)}
+	if ccc.BSS == (ConfigClusterBSS{}) {
+		ccc.BSS = ConfigClusterBSS{URI: c.BSS.URI}
+	} else {
+		ccc.BSS.URI = compare(ccc.BSS.URI, c.BSS.URI)
+	}
+	if ccc.CloudInit == (ConfigClusterCloudInit{}) {
+		ccc.CloudInit = ConfigClusterCloudInit{URI: c.CloudInit.URI}
+	} else {
+		ccc.BSS.URI = compare(ccc.CloudInit.URI, c.CloudInit.URI)
+	}
+	if ccc.PCS == (ConfigClusterPCS{}) {
+		ccc.PCS = ConfigClusterPCS{URI: c.PCS.URI}
+	} else {
+		ccc.PCS.URI = compare(ccc.PCS.URI, c.PCS.URI)
+	}
+	if ccc.SMD == (ConfigClusterSMD{}) {
+		ccc.SMD = ConfigClusterSMD{URI: c.PCS.URI}
+	} else {
+		ccc.SMD.URI = compare(ccc.SMD.URI, c.SMD.URI)
 	}
 
 	return newCCC
 }
 
 // GetServiceBaseURI returns a URI string for the service identified by svcName
-// based on URI values set in the ConfigClusterConfig. At least one of APIURI or
-// one of the URI for a service must be set in the ConfigClusterConfig,
-// otherwise an ErrMissingURI error is returned. If svcName is unknown, an
-// ErrUnknownService is returned. If the API URI is invalid or the service URI
-// is invalid, an ErrInvalidAPIURI or ErrINvalidServiceURI is returned,
-// respectively.
+// based on URI values set in the ConfigClusterConfig. At least one of URI or
+// the URI for a service must be set in the ConfigClusterConfig, otherwise an
+// ErrMissingURI error is returned. If svcName is unknown, an ErrUnknownService
+// is returned. If the cluster URI is invalid or the service URI is invalid, an
+// ErrInvalidURI or ErrInvalidServiceURI is returned, respectively.
 //
-// The API URI must be an absolute URI: proto://host[:port][/path]
+// The cluster URI must be an absolute URI: proto://host[:port][/path]
 // The service URI can be a relative path (/path) or an absolute URI.
 func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, error) {
 	var (
 		serviceBaseURI string
-		apiURI         *url.URL
+		uri            *url.URL
 	)
-	// If the API URI is set, parse and verify it.
-	if ccc.APIURI != "" {
+	// If the cluster's URI is set, parse and verify it.
+	if ccc.URI != "" {
 		var err error
-		apiURI, err = url.Parse(ccc.APIURI)
+		uri, err = url.Parse(ccc.URI)
 		if err != nil {
-			return "", ErrInvalidAPIURI{Err: err}
+			return "", ErrInvalidURI{Err: err}
 		}
-		if apiURI.Opaque != "" || apiURI.Scheme == "" || apiURI.Host == "" {
-			return "", ErrInvalidAPIURI{Err: fmt.Errorf("unknown URI format (must be \"proto://host[:port][/path]\")")}
+		if uri.Opaque != "" || uri.Scheme == "" || uri.Host == "" {
+			return "", ErrInvalidURI{Err: fmt.Errorf("unknown URI format (must be \"proto://host[:port][/path]\")")}
 		}
-		serviceBaseURI = apiURI.String()
+		serviceBaseURI = uri.String()
 	}
 
 	// Parse service URI for ConfigClusterConfig field based on passed
@@ -153,38 +194,38 @@ func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, 
 	var err error
 	switch svcName {
 	case ServiceBSS:
-		if ccc.APIURI == "" && ccc.BSSURI == "" {
+		if ccc.URI == "" && ccc.BSS.URI == "" {
 			return "", ErrMissingURI{Service: svcName}
 		}
-		if ccc.BSSURI != "" {
-			svcURI, err = url.Parse(ccc.BSSURI)
+		if ccc.BSS.URI != "" {
+			svcURI, err = url.Parse(ccc.BSS.URI)
 		} else {
 			svcURI, err = url.Parse(DefaultBasePathBSS)
 		}
 	case ServiceCloudInit:
-		if ccc.APIURI == "" && ccc.CloudInitURI == "" {
+		if ccc.URI == "" && ccc.CloudInit.URI == "" {
 			return "", ErrMissingURI{Service: svcName}
 		}
-		if ccc.CloudInitURI != "" {
-			svcURI, err = url.Parse(ccc.CloudInitURI)
+		if ccc.CloudInit.URI != "" {
+			svcURI, err = url.Parse(ccc.CloudInit.URI)
 		} else {
 			svcURI, err = url.Parse(DefaultBasePathCloudInit)
 		}
 	case ServicePCS:
-		if ccc.APIURI == "" && ccc.PCSURI == "" {
+		if ccc.URI == "" && ccc.PCS.URI == "" {
 			return "", ErrMissingURI{Service: svcName}
 		}
-		if ccc.PCSURI != "" {
-			svcURI, err = url.Parse(ccc.PCSURI)
+		if ccc.PCS.URI != "" {
+			svcURI, err = url.Parse(ccc.PCS.URI)
 		} else {
 			svcURI, err = url.Parse(DefaultBasePathPCS)
 		}
 	case ServiceSMD:
-		if ccc.APIURI == "" && ccc.SMDURI == "" {
+		if ccc.URI == "" && ccc.SMD.URI == "" {
 			return "", ErrMissingURI{Service: svcName}
 		}
-		if ccc.SMDURI != "" {
-			svcURI, err = url.Parse(ccc.SMDURI)
+		if ccc.SMD.URI != "" {
+			svcURI, err = url.Parse(ccc.SMD.URI)
 		} else {
 			svcURI, err = url.Parse(DefaultBasePathSMD)
 		}
@@ -207,8 +248,8 @@ func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, 
 		} else if svcURI.Path != "" {
 			// Service URI is a relative path. Append it to API URI.
 			var newURI *url.URL
-			if apiURI != nil {
-				newURI = apiURI.JoinPath(svcURI.Path)
+			if uri != nil {
+				newURI = uri.JoinPath(svcURI.Path)
 			} else {
 				return "", ErrInvalidServiceURI{Service: svcName, Err: fmt.Errorf("%s-uri is a relative path but api-uri not set", svcName)}
 			}

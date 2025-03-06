@@ -17,19 +17,19 @@ func (emu ErrMissingURI) Error() string {
 	return fmt.Sprintf("base URI for %s not found (neither api-uri nor %s-uri specified)", emu.Service, emu.Service)
 }
 
-// ErrInvalidAPIURI represents an error that occurs when the api-uri is invalid,
-// i.e. is not a valid absolute URI (proto://host[:port][/path]). Err contains
-// the specific error representing the problem.
-type ErrInvalidAPIURI struct {
+// ErrInvalidURI represents an error that occurs when the cluster URI is
+// invalid, i.e. is not a valid absolute URI (proto://host[:port][/path]). Err
+// contains the specific error representing the problem.
+type ErrInvalidURI struct {
 	Err error
 }
 
-func (eiu ErrInvalidAPIURI) Error() string {
-	return fmt.Sprintf("invalid API URI: %v", eiu.Err)
+func (eiu ErrInvalidURI) Error() string {
+	return fmt.Sprintf("invalid URI: %v", eiu.Err)
 }
 
-// ErrInvalidServiceURI represents an error that occurs when the <service>-uri
-// is invalid, i.e. is neither a valid absolute URI (proto://host[:port][/path])
+// ErrInvalidServiceURI represents an error that occurs when a service's URI is
+// invalid, i.e. is neither a valid absolute URI (proto://host[:port][/path])
 // nor a valid relative path (/path).
 type ErrInvalidServiceURI struct {
 	Err     error
