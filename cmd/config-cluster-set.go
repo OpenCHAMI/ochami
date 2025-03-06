@@ -67,6 +67,22 @@ with a different base URL will change the API base URL for the 'foobar' cluster.
 			fileToModify = config.UserConfigFile
 		}
 
+		// Ask to create file if it doesn't exist
+		if create, err := askToCreate(fileToModify); err != nil {
+			if err != FileExistsError {
+				log.Logger.Error().Err(err).Msg("error asking to create file")
+				os.Exit(1)
+			}
+		} else if create {
+			if err := createIfNotExists(fileToModify); err != nil {
+				log.Logger.Error().Err(err).Msg("error creating file")
+				os.Exit(1)
+			}
+		} else {
+			log.Logger.Error().Msg("user declined to create file, not modifying")
+			os.Exit(0)
+		}
+
 		// Perform modification
 		dflt, err := cmd.Flags().GetBool("default")
 		if err != nil {

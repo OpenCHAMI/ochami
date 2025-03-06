@@ -22,6 +22,7 @@ import (
 
 var (
 	// Errors
+	FileExistsError   = fmt.Errorf("file exists")
 	NoConfigFileError = fmt.Errorf("no config file to read")
 )
 
@@ -129,6 +130,8 @@ func askToCreate(path string) (bool, error) {
 		if respConfigCreate {
 			return true, nil
 		}
+	} else {
+		return false, FileExistsError
 	}
 
 	return false, nil
