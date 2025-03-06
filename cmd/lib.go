@@ -137,6 +137,9 @@ func askToCreate(path string) (bool, error) {
 	return false, nil
 }
 
+// createIfNotExists creates path (a file with optional leading directories) if
+// any of the path components do not exist, returning an error if one occurred
+// with the creation.
 func createIfNotExists(path string) error {
 	if path == "" {
 		return fmt.Errorf("path cannot be empty")

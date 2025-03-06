@@ -15,6 +15,7 @@ import (
 // groupAddCmd represents the smd-group-add command
 var groupAddCmd = &cobra.Command{
 	Use:   "add -f <payload_file> | <group_label>",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Add new group",
 	Long: `Add new group. A group name is required unless -f is passed to read the payload file.
 Specifying -f also is mutually exclusive with the other flags of this commands
@@ -35,7 +36,7 @@ This command sends a POST to SMD. An access token is required.`,
   ochami smd group add -f payload.yaml --payload-format yaml
   echo '<json_data>' | ochami smd group add -f -
   echo '<yaml_data>' | ochami smd group add -f - --payload-format yaml`,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// First and foremost, make sure config is loaded and logging
 		// works.
 		initConfigAndLogging(cmd, true)
@@ -44,11 +45,11 @@ This command sends a POST to SMD. An access token is required.`,
 		if len(args) == 0 && !cmd.Flag("payload").Changed {
 			printUsageHandleError(cmd)
 			os.Exit(0)
-		} else if len(args) > 1 {
-			log.Logger.Error().Msgf("expected 1 arguments (group_name) but got %d: %v", len(args), args)
-			os.Exit(1)
 		}
 
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
