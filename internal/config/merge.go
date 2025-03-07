@@ -59,7 +59,7 @@ func mergeSlices(srcSlice, dstSlice *[]interface{}, mergeKey string) {
 	if srcSlice == nil || dstSlice == nil {
 		return
 	}
-	for _, sval := range *srcSlice {
+	for skey, sval := range *srcSlice {
 		exists := false
 		switch sv := sval.(type) {
 		// Source item is a map
@@ -76,6 +76,8 @@ func mergeSlices(srcSlice, dstSlice *[]interface{}, mergeKey string) {
 			}
 			if !exists {
 				*dstSlice = append(*dstSlice, sv)
+			} else {
+				(*dstSlice)[skey] = sv
 			}
 		// Source item is not a map
 		default:
@@ -93,6 +95,8 @@ func mergeSlices(srcSlice, dstSlice *[]interface{}, mergeKey string) {
 			}
 			if !exists {
 				*dstSlice = append(*dstSlice, sv)
+			} else {
+				(*dstSlice)[skey] = sv
 			}
 		}
 	}
