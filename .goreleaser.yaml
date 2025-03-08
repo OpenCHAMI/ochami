@@ -187,30 +187,12 @@ docker_manifests:
 checksum:
   name_template: checksums.txt
 
-changelog:
-  sort: asc
-  use: github
-  groups:
-    - title: Features
-      regexp: '^.*?feat(\([[:print:]]+\))??!?:.+$'
-      order: 0
-    - title: Fixes
-      regexp: '^.*?fix(\([[:print:]]+\))??!?:.+$'
-      order: 1
-    - title: Documentation
-      regexp: '^.*?docs(\([[:print:]]+\))??!?:.+$'
-      order: 2
-    - title: Build System
-      regexp: '^.*?(build|ci)(\([[:print:]]+\))??!?:.+$'
-      order: 3
-    - title: Other
-      order: 999
-
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 release:
   github:
+  draft: true
   name_template: "v{{ .Version }}"
   prerelease: auto
   mode: replace

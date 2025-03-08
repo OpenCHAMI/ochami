@@ -31,6 +31,10 @@ jobs:
         with:
           fetch-tags: 1
           fetch-depth: 0
+      - name: Generate release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -F tag_name="${{ github.ref_name }}" --jq .body > ../notes.md
       - name: Set build environment variables
         run: |
           echo GOVERSION=$(go env GOVERSION) >> $GITHUB_ENV
@@ -39,11 +43,11 @@ jobs:
       - name: Release with goreleaser
         uses: goreleaser/goreleaser-action@v6
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AUR_SSH_KEY: ${{ secrets.AUR_PRIVATE_KEY }}
         with:
           version: '~> v2'
-          args: release --clean
+          args: release --clean --release-notes ../notes.md
         id: goreleaser
       - name: Process goreleaser output
         id: process_goreleaser_output
