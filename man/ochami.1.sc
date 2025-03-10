@@ -54,7 +54,7 @@ cluster configuration will need to be specified. Both can be done with the
 following command:
 
 ```
-ochami config --user cluster set --default foobar api-uri https://foobar.openchami.cluster
+ochami config --user cluster set --default foobar cluster.uri https://foobar.openchami.cluster
 ```
 
 This will create a cluster called _foobar_ and set its base URI to

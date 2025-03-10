@@ -18,13 +18,13 @@ var configClusterSetCmd = &cobra.Command{
 	Long: `Add cluster with its configuration or set the configuration for
 an existing cluster. For example:
 
-	ochami config cluster set foobar cluster.api-uri https://foobar.openchami.cluster
+	ochami config cluster set foobar cluster.uri https://foobar.openchami.cluster
 
 Creates the following entry in the 'clusters' list:
 
 	- name: foobar
 	  cluster:
-	    api-uri: https://foobar.openchami.cluster
+	    uri: https://foobar.openchami.cluster
 
 If this is the first cluster created, the following is also set:
 
@@ -33,9 +33,9 @@ If this is the first cluster created, the following is also set:
 default-cluster is used to determine which cluster in the list should be used for subcommands.
 
 This same command can be use to modify existing cluster information. Running the same command above
-with a different base URL will change the API base URL for the 'foobar' cluster.`,
-	Example: `  ochami config cluster set foobar cluster.api-uri https://foobar.openchami.cluster
-  ochami config cluster set foobar cluster.smd-uri /hsm/v2
+with a different base URI will change the cluster base URI for the 'foobar' cluster.`,
+	Example: `  ochami config cluster set foobar cluster.uri https://foobar.openchami.cluster
+  ochami config cluster set foobar cluster.smd.uri /hsm/v2
   ochami config cluster set foobar name new-foobar`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,

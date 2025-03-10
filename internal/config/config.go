@@ -251,11 +251,11 @@ func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, 
 			if uri != nil {
 				newURI = uri.JoinPath(svcURI.Path)
 			} else {
-				return "", ErrInvalidServiceURI{Service: svcName, Err: fmt.Errorf("%s-uri is a relative path but api-uri not set", svcName)}
+				return "", ErrInvalidServiceURI{Service: svcName, Err: fmt.Errorf("%s.uri is a relative path but cluster.uri not set", svcName)}
 			}
 			serviceBaseURI = newURI.String()
 		} else {
-			return "", ErrInvalidServiceURI{Service: svcName, Err: fmt.Errorf("%s-uri is neither an absolute URI nor has a path component", svcName)}
+			return "", ErrInvalidServiceURI{Service: svcName, Err: fmt.Errorf("%s.uri is neither an absolute URI nor has a path component", svcName)}
 		}
 	}
 

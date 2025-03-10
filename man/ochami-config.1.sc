@@ -53,10 +53,10 @@ Subcommands for this command are as follows:
 
 	If _cluster_name_ does not exist in the configuration file, it is created.
 	_key_ can be a top-level cluster key (e.g. *name*) or a cluster config
-	option (e.g. *cluster.api-uri*). When changing a cluster's name, if that
-	cluster is the default cluster, then *default-cluster* will be changed to
-	the cluster's new name. Changing a cluster's name to an existing cluster
-	name is not allowed.
+	option (e.g. *cluster.uri*). When changing a cluster's name, if that cluster
+	is the default cluster, then *default-cluster* will be changed to the
+	cluster's new name. Changing a cluster's name to an existing cluster name is
+	not allowed.
 
 	This command accepts the following options:
 

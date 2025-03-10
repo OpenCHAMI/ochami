@@ -15,7 +15,7 @@ var configClusterUnsetCmd = &cobra.Command{
 	Use:     "unset [--user | --system | --config <path>] <cluster_name> <key>",
 	Args:    cobra.ExactArgs(2),
 	Short:   "Unset parameter for a cluster",
-	Example: `  ochami config cluster unset foobar cluster.smd-uri`,
+	Example: `  ochami config cluster unset foobar cluster.smd.uri`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It

@@ -18,7 +18,7 @@ var configClusterShowCmd = &cobra.Command{
 	Short: "View cluster configuration options the CLI sees from a config file",
 	Example: `  ochami config cluster show
   ochami config cluster show foobar
-  ochami config cluster show foobar cluster.api-uri`,
+  ochami config cluster show foobar cluster.uri`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It

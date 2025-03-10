@@ -6,15 +6,15 @@ import (
 	"fmt"
 )
 
-// ErrMissingURI represents an error that occurs when neither the api-uri nor
-// the <service>-uri config values are set for a service. Service is the name of
-// the service whose config value is being checked.
+// ErrMissingURI represents an error that occurs when neither the cluster.uri
+// nor the <service>.uri config values are set for a service. Service is the
+// name of the service whose config value is being checked.
 type ErrMissingURI struct {
 	Service ServiceName
 }
 
 func (emu ErrMissingURI) Error() string {
-	return fmt.Sprintf("base URI for %s not found (neither api-uri nor %s-uri specified)", emu.Service, emu.Service)
+	return fmt.Sprintf("base URI for %s not found (neither cluster.uri nor %s.uri specified)", emu.Service, emu.Service)
 }
 
 // ErrInvalidURI represents an error that occurs when the cluster URI is
