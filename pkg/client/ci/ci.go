@@ -1,9 +1,11 @@
 package ci
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 
+	"github.com/OpenCHAMI/cloud-init/pkg/cistore"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 )
@@ -20,6 +22,8 @@ type CloudInitClient struct {
 
 const (
 	serviceNameCloudInit = "cloud-init"
+
+	CloudInitRelpathDefaults = "/admin/cluster-defaults"
 	// cloud-init doesn't have a service prefix and has two separate
 	// endpoints. To mitigate this, we treat the service root as '/' and use
 	// the relative paths as the service endpoints.
@@ -47,6 +51,16 @@ func NewClient(baseURI string, insecure bool) (*CloudInitClient, error) {
 	}
 
 	return cic, err
+}
+
+// GetDefaults is a wrapper function around OchamiClient.GetData that returns
+// the result of querying the cloud-init cluster-defaults endpoint.
+func (cic *CloudInitClient) GetDefaults() (client.HTTPEnvelope, error) {
+	henv, err := cic.GetData(CloudInitRelpathDefaults, "", nil)
+	if err != nil {
+		err = fmt.Errorf("GetDefaults(): error getting cloud-init cluster-defaults: %w", err)
+	}
+	return henv, err
 }
 
 // GetConfigs is a wrapper function around OchamiClient.GetData that determines
@@ -91,6 +105,34 @@ func (cic *CloudInitClient) GetConfigsSecure(id, token string) (client.HTTPEnvel
 	henv, err := cic.GetData(finalEP, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetConfigsSecure(): error getting secure cloud-init configs: %w", err)
+	}
+
+	return henv, err
+}
+
+// PostDefaults is a wrapper function around OchamiClient.PostData that takes a
+// cistore.ClusterDefaults and a token, puts the token in the request headers as
+// an authorization bearer, marshals ciDflts as JSON and sets it as the request
+// body, then passes it to Ochami.PostData.
+func (cic *CloudInitClient) PostDefaults(ciDflts cistore.ClusterDefaults, token string) (client.HTTPEnvelope, error) {
+	var (
+		henv    client.HTTPEnvelope
+		headers *client.HTTPHeaders
+		body    client.HTTPBody
+		err     error
+	)
+	if body, err = json.Marshal(ciDflts); err != nil {
+		return henv, fmt.Errorf("PostDefaults(): failed to marshal ClusterDefaults: %w", err)
+	}
+	headers = client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henv, fmt.Errorf("PostDefaults(): error setting token in HTTP headers: %w", err)
+		}
+	}
+	henv, err = cic.PostData(CloudInitRelpathDefaults, "", headers, body)
+	if err != nil {
+		err = fmt.Errorf("PostDefaults(): failed to POST cluster-defaults to cloud-init: %w", err)
 	}
 
 	return henv, err
