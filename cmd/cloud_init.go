@@ -5,10 +5,38 @@ package cmd
 import (
 	"os"
 
+	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/OpenCHAMI/ochami/pkg/client/ci"
 	"github.com/spf13/cobra"
 )
 
-// cloudInitCmd represents the cloud-init command
+// cloudInitGetClient sets up the cloud-init client with the cloud-init base URI
+// and certificates (if necessary) and returns it. This function is used by each
+// subcommand.
+func cloudInitGetClient(cmd *cobra.Command) *ci.CloudInitClient {
+	// Without a base URI, we cannot do anything
+	cloudInitbaseURI, err := getBaseURICloudInit(cmd)
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("failed to get base URI for cloud-init")
+		logHelpError(cmd)
+		os.Exit(1)
+	}
+
+	// Create client to make request to cloud-init
+	cloudInitClient, err := ci.NewClient(cloudInitbaseURI, insecure)
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("error creating new cloud-init client")
+		logHelpError(cmd)
+		os.Exit(1)
+	}
+
+	// Check if a CA certificate was passed and load it into client if valid
+	useCACert(cloudInitClient.OchamiClient)
+
+	return cloudInitClient
+}
+
+// cloudInitCmd represents the "cloud-init" command
 var cloudInitCmd = &cobra.Command{
 	Use:   "cloud-init",
 	Args:  cobra.NoArgs,
