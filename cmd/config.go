@@ -5,7 +5,6 @@ package cmd
 import (
 	"os"
 
-	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/spf13/cobra"
 )
 
@@ -16,13 +15,18 @@ var configCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	Short:   "Set or view configuration options",
 	Example: `ochami config show`,
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		// To mark both persistent and regular flags mutually exclusive,
+		// this function must be run before the command is executed. It
+		// will not work in init(). This means that this needs to be
+		// present in all child commands.
+		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
+
+		return nil
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
+			printUsageHandleError(cmd)
 			os.Exit(0)
 		}
 	},
@@ -31,8 +35,6 @@ var configCmd = &cobra.Command{
 func init() {
 	configCmd.PersistentFlags().Bool("system", false, "modify system config")
 	configCmd.PersistentFlags().Bool("user", true, "modify user config")
-
-	configCmd.MarkFlagsMutuallyExclusive("system", "user")
 
 	rootCmd.AddCommand(configCmd)
 }

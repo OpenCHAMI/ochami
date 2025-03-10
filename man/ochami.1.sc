@@ -54,7 +54,7 @@ cluster configuration will need to be specified. Both can be done with the
 following command:
 
 ```
-ochami config --user cluster set --default --base-uri https://foobar.openchami.cluster foobar
+ochami config --user cluster set --default foobar cluster.uri https://foobar.openchami.cluster
 ```
 
 This will create a cluster called _foobar_ and set its base URI to
@@ -84,10 +84,6 @@ Once these steps are completed, *ochami* should be ready to use with cluster
 _foobar_.
 
 # GLOBAL OPTIONS
-
-*-u, --base-uri* _uri_
-	Specify the base URI to use when contacting OpenCHAMI services. Overrides
-	the base URI specified in a config file.
 
 *--cacert* _cacert_
 	Specify the path to a certificate authority (CA) certificate file to use to
@@ -137,19 +133,14 @@ _foobar_.
 _/usr/share/doc/ochami/config.example.yaml_
 	An example configuration file that can be used for reference.
 
-_/etc/ochami/config.yaml_
-	The system-wide ochami CLI configuration file.
-
-_~/.config/ochami/config.yaml_
-	The user-level ochami CLI configuration file.
-
 # AUTHOR
 
 Written by Devon T. Bautista and maintained by the OpenCHAMI developers.
 
 # SEE ALSO
 
-*ochami-bss*(1), *ochami-config*(1), *ochami-discover*(1), *ochami-smd*(1)
+*ochami-bss*(1), *ochami-cloud-init*(1), *ochami-config*(1),
+*ochami-discover*(1), *ochami-smd*(1), *ochami-config*(5)
 
 ; Vim modeline settings
 ; vim: set tw=80 noet sts=4 ts=4 sw=4 syntax=scdoc:

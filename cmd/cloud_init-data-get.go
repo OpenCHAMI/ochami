@@ -17,6 +17,7 @@ import (
 // cloudInitDataGetCmd represents the cloud-init-data-get command
 var cloudInitDataGetCmd = &cobra.Command{
 	Use:   "get [--user | --meta | --vendor] <id>...",
+	Args:  cobra.MinimumNArgs(1),
 	Short: "Get cloud-init data for an identifier",
 	Long: `Get cloud-init data for an identifier. By default, user-data is
 retrieved. This also occurs if --user is passed. --meta or
@@ -26,17 +27,14 @@ or vendor-data, respectively.`,
   ochami cloud-init data get --user compute
   ochami cloud-init data get --meta compute
   ochami cloud-init data get --vendor compute`,
-	Run: func(cmd *cobra.Command, args []string) {
-		// We need at least one ID to do anything
-		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
-			os.Exit(0)
-		}
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
 
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		cloudInitbaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)
 		if err != nil {

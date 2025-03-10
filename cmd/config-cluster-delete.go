@@ -13,21 +13,22 @@ import (
 // configClusterDeleteCmd represents the config-cluster-delete command
 var configClusterDeleteCmd = &cobra.Command{
 	Use:   "delete <cluster_name>",
+	Args:  cobra.ExactArgs(1),
 	Short: "Delete a cluster from the configuration file",
-	Run: func(cmd *cobra.Command, args []string) {
-		// Check that cluster name is only arg
-		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
-			os.Exit(0)
-		} else if len(args) > 1 {
-			log.Logger.Error().Msgf("expected 1 argument (cluster name) but got %d: %v", len(args), args)
-			os.Exit(1)
-		}
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		// To mark both persistent and regular flags mutually exclusive,
+		// this function must be run before the command is executed. It
+		// will not work in init(). This means that this needs to be
+		// present in all child commands.
+		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
 
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// We must have a config file in order to write cluster info
 		var fileToModify string
 		if rootCmd.PersistentFlags().Lookup("config").Changed {

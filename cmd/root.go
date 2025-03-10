@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/OpenCHAMI/ochami/internal/config"
@@ -18,9 +17,6 @@ const (
 )
 
 var (
-	// Errors
-	UserDeclinedError = fmt.Errorf("user declined")
-
 	configFile string
 	logLevel   string
 	logFormat  string
@@ -40,11 +36,7 @@ var rootCmd = &cobra.Command{
 	Version: version.Version,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			err := cmd.Usage()
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to print usage")
-				os.Exit(1)
-			}
+			printUsageHandleError(cmd)
 			os.Exit(0)
 		}
 	},
@@ -61,15 +53,11 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(
-		initConfig,
-		initLogging,
-	)
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "path to configuration file to use")
 	rootCmd.PersistentFlags().StringP("log-format", "L", "", "log format (json,rfc3339,basic)")
 	rootCmd.PersistentFlags().StringP("log-level", "l", "", "set verbosity of logs (info,warning,debug)")
 	rootCmd.PersistentFlags().StringP("cluster", "C", "", "name of cluster whose config to use for this command")
-	rootCmd.PersistentFlags().StringP("api-uri", "u", "", "base URI for OpenCHAMI services, excluding service base path")
+	rootCmd.PersistentFlags().StringP("cluster-uri", "u", "", "base URI for OpenCHAMI services, excluding service base path")
 	rootCmd.PersistentFlags().StringVar(&cacertPath, "cacert", "", "path to root CA certificate in PEM format")
 	rootCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "access token to present for authentication")
 	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "do not verify TLS certificates")
@@ -77,5 +65,5 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&config.EarlyVerbose, "verbose", "v", false, "be verbose before logging is initialized")
 
 	// Either use cluster from config file or specify details on CLI
-	rootCmd.MarkFlagsMutuallyExclusive("cluster", "api-uri")
+	rootCmd.MarkFlagsMutuallyExclusive("cluster", "cluster-uri")
 }

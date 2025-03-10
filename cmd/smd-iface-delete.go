@@ -30,7 +30,11 @@ This command sends a DELETE to SMD. An access token is required.`,
   ochami smd iface delete -f payload.yaml --payload-format yaml
   echo '<json_data>' | ochami smd iface delete -f -
   echo '<yaml_data>' | ochami smd iface delete -f - --payload-format yaml`,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
 		// With options, only one of:
 		// - A payload file with -f
 		// - --all
@@ -38,15 +42,14 @@ This command sends a DELETE to SMD. An access token is required.`,
 		// must be passed.
 		if len(args) == 0 {
 			if !cmd.Flag("all").Changed && !cmd.Flag("payload").Changed {
-				err := cmd.Usage()
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to print usage")
-					os.Exit(1)
-				}
+				printUsageHandleError(cmd)
 				os.Exit(0)
 			}
 		}
 
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
