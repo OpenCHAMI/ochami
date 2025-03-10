@@ -22,6 +22,8 @@ type CloudInitClient struct {
 
 const (
 	serviceNameCloudInit = "cloud-init"
+
+	cloudInitRelpathDefaults = "/admin/cluster-defaults"
 	// cloud-init doesn't have a service prefix and has two separate
 	// endpoints. To mitigate this, we treat the service root as '/' and use
 	// the relative paths as the service endpoints.
@@ -49,6 +51,16 @@ func NewClient(baseURI string, insecure bool) (*CloudInitClient, error) {
 	}
 
 	return cic, err
+}
+
+// GetDefaults is a wrapper function around OchamiClient.GetData that returns
+// the result of querying the cloud-init cluster-defaults endpoint.
+func (cic *CloudInitClient) GetDefaults() (client.HTTPEnvelope, error) {
+	henv, err := cic.GetData(cloudInitRelpathDefaults, "", nil)
+	if err != nil {
+		err = fmt.Errorf("GetDefaults(): error getting cloud-init cluster-defaults: %w", err)
+	}
+	return henv, err
 }
 
 // GetConfigs is a wrapper function around OchamiClient.GetData that determines
