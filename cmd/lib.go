@@ -392,15 +392,15 @@ func setTokenFromEnvVar(cmd *cobra.Command) {
 	logHelpError(cmd)
 }
 
-// handlePayload unmarshals a payload file into data for command cmd if
-// --payload and, optionally, --payload-format, are passed.
-func handlePayload(cmd *cobra.Command, data any) {
-	if cmd.Flag("payload").Changed {
-		dFile := cmd.Flag("payload").Value.String()
-		dFormat := cmd.Flag("payload-format").Value.String()
-		err := client.ReadPayload(dFile, dFormat, data)
+// handlePayload unmarshals a payload file into v for command cmd if --data
+// and, optionally, --format-input, are passed.
+func handlePayload(cmd *cobra.Command, v any) {
+	if cmd.Flag("data").Changed {
+		data := cmd.Flag("data").Value.String()
+		dFormat := cmd.Flag("format-input").Value.String()
+		err := client.ReadPayload(data, dFormat, v)
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("unable to read payload for request")
+			log.Logger.Error().Err(err).Msg("unable to read payload data or file")
 			logHelpError(cmd)
 			os.Exit(1)
 		}

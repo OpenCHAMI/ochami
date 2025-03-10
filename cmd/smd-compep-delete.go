@@ -15,22 +15,32 @@ import (
 
 // compepDeleteCmd represents the smd-compep-delete command
 var compepDeleteCmd = &cobra.Command{
-	Use:   "delete -f <payload_file> | --all | <xname>...",
+	Use:   "delete (-d (<payload_data> | @<payload_file>)) | --all | <xname>...",
 	Short: "Delete one or more component endpoints",
 	Long: `Delete one or more component endpoints. These can be specified by one or more xnames.
-Alternatively, pass the xnames in an array of component endpoint data
-via a file with -f. If - is passed to -f, the data is read from standard
-input.
+Alternatively, pass -d to pass raw payload data or (if flag argument
+starts with @) a file containing the payload data. -f can be specified
+to change the format of the input payload data ('json' by default), but
+the rules above still apply for the payload. If "-" is used as the input
+payload filename, the data is read from standard input.
 
 This command sends a DELETE to SMD. An access token is required.
 
 See ochami-smd(1) for more details.`,
-	Example: `  ochami smd compep delete x3000c1s7b56n0 x3000c1s7b56n1
+	Example: `  # Delete component endpoints using CLI flags
+  ochami smd compep delete x3000c1s7b56n0 x3000c1s7b56n1
   ochami smd compep delete --all
-  ochami smd compep delete -f payload.json
-  ochami smd compep delete -f payload.yaml --payload-format yaml
-  echo '<json_data>' | ochami smd compep delete -f -
-  echo '<yaml_data>' | ochami smd compep delete -f - --payload-format yaml`,
+
+  # Delete component endpoints using input payload data
+  ochami smd compep delete -d '{"ComponentEndpoints":[{"ID":"x3000c1s7b56n0"},{"ID":"x3000c1s7b56n1"}]}'
+
+  # Delete component endpoints using input payload file
+  ochami smd compep delete -d @payload.json
+  ochami smd compep delete -d @payload.yaml -f yaml
+
+  # Delete component endpoints using data from standard input
+  echo '<json_data>' | ochami smd compep delete -d @-
+  echo '<yaml_data>' | ochami smd compep delete -d @- -f yaml`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// With options, only one of:
 		// - A payload file with -f
@@ -38,7 +48,7 @@ See ochami-smd(1) for more details.`,
 		// - A set of one or more xnames
 		// must be passed.
 		if len(args) == 0 {
-			if !cmd.Flag("all").Changed && !cmd.Flag("payload").Changed {
+			if !cmd.Flag("all").Changed && !cmd.Flag("data").Changed {
 				printUsageHandleError(cmd)
 				os.Exit(0)
 			}
@@ -90,7 +100,7 @@ See ochami-smd(1) for more details.`,
 		// Create list of xnames to delete
 		var ceSlice []sm.ComponentEndpoint
 		var xnameSlice []string
-		if cmd.Flag("payload").Changed {
+		if cmd.Flag("data").Changed {
 			// Use payload file if passed
 			handlePayload(cmd, &ceSlice)
 		} else {
@@ -144,8 +154,8 @@ See ochami-smd(1) for more details.`,
 
 func init() {
 	compepDeleteCmd.Flags().BoolP("all", "a", false, "delete all redfish endpoints in SMD")
-	compepDeleteCmd.Flags().StringP("payload", "f", "", "file containing the request payload; JSON format unless --payload-format specified")
-	compepDeleteCmd.Flags().StringP("payload-format", "F", defaultPayloadFormat, "format of payload file (yaml,json) passed with --payload")
+	compepDeleteCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	compepDeleteCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
 	compepDeleteCmd.Flags().Bool("force", false, "do not ask before attempting deletion")
 	compepCmd.AddCommand(compepDeleteCmd)
 }

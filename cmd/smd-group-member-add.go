@@ -20,6 +20,7 @@ var groupMemberAddCmd = &cobra.Command{
 	Long: `Add one or more components to a group.
 
 See ochami-smd(1) for more details.`,
+	Example: `  ochami smd group member add compute x3000c1s7b56n0`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)

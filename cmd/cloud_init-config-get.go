@@ -71,9 +71,9 @@ See ochami-cloud-init(1) for more details.`,
 		}
 
 		// Format output
-		outFmt, err := cmd.Flags().GetString("output-format")
+		outFmt, err := cmd.Flags().GetString("format-output")
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
 			logHelpError(cmd)
 			os.Exit(1)
 		}
@@ -88,6 +88,6 @@ See ochami-cloud-init(1) for more details.`,
 }
 
 func init() {
-	cloudInitConfigGetCmd.Flags().StringP("output-format", "F", defaultOutputFormat, "format of output printed to standard output")
+	cloudInitConfigGetCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,yaml)")
 	cloudInitConfigCmd.AddCommand(cloudInitConfigGetCmd)
 }

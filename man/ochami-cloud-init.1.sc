@@ -6,11 +6,11 @@ ochami-cloud-init - Communicate with the cloud-init server
 
 # SYNOPSIS
 
-ochami cloud-init [--secure] config add [OPTIONS] (-f _payload_file_ | -d _json_data_)++
-ochami cloud-init [--secure] config delete [OPTIONS] [--force] _id_...++
-ochami cloud-init [--secure] config get [OPTIONS] [-F _format_] [_id_...]++
-ochami cloud-init [--secure] config add [OPTIONS] (-f _payload_file_ | -d _json_data_)++
-ochami cloud-init [--secure] data get [OPTIONS] [--meta | --user | --vendor] _id_...
+ochami cloud-init [--secure] config add [OPTIONS] -d (_payload_data_ | @_payload_file_ | @-)++
+ochami cloud-init [--secure] config delete [OPTIONS] _id_...++
+ochami cloud-init [--secure] config get [OPTIONS] [_id_...]++
+ochami cloud-init [--secure] config add [OPTIONS] -d (_payload_data_ | @_payload_file_ | @-)++
+ochami cloud-init [--secure] data get [OPTIONS] _id_...
 
 # DATA STRUCTURE
 
@@ -82,9 +82,9 @@ data to serve to which clients.
 
 Subcommands for this command are as follows:
 
-*add* --payload _payload_file_ [-F _format_]++
-*add* --payload _-_ [-F _format_] < _file_++
-*add* --data _raw_data_
+*add* -d @_file_ [-f _format_]++
+*add* -d @- [-f _format_] < _file_++
+*add* -d _data_
 	Add cloud-init configuration for one or more IDs. This command only accepts
 	payload data and uses the *name* field to determine which ID to add the data
 	for.
@@ -104,18 +104,15 @@ Subcommands for this command are as follows:
 
 	This command accepts the following options:
 
-	*-d, --data* _raw_data_
-		Pass the payload as raw data on the command line. Data is provided to
-		the server exactly as passed on the command line.
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
 
-	*-f, --payload* _file_
-		Specify a file containing the data to send to cloud-init. The format of
-		this file depends on _-F_ and is _json_ by default. If *-* is used as
-		the argument to _-f_, the command reads the payload data from standard
-		input.
-
-	*F, --payload-format* _format_
-		Format of the file used with _-f_. Supported formats are:
+	*-f, --format-input* _format_
+		Format of raw data being used by *-d* as the payload. Supported formats
+		are:
 
 		- _json_ (default)
 		- _yaml_
@@ -131,7 +128,7 @@ Subcommands for this command are as follows:
 	*--force*
 		Do not ask the user to confirm deletion. Use with caution.
 
-*get* [--output-format _format_] [_id_...]
+*get* [--format-output _format_] [_id_...]
 	Get cloud-init configuration for one or more _id_. If no IDs are specified,
 	all cloud-init configurations are retrieved.
 
@@ -140,7 +137,7 @@ Subcommands for this command are as follows:
 
 	This command accepts the following options:
 
-	*-F, --output-format* _format_
+	*-F, --format-output* _format_
 		Format the response output as _format_.
 
 		Supported values are:
@@ -148,9 +145,9 @@ Subcommands for this command are as follows:
 		- _json_ (default)
 		- _yaml_
 
-*update* --payload _payload_file_ [-F _format_]++
-*update* --payload _-_ [-F _format_] < _file_++
-*update* --data _raw_data_
+*update* -d @_file_ [-f _format_]++
+*update* -d @- [-f _format_] < _file_++
+*update* -d _data_
 	Update one or more existing cloud-init configurations. This command only
 	accepts payload data and uses the *name* field to determine which ID to
 	update.
@@ -170,18 +167,15 @@ Subcommands for this command are as follows:
 
 	This command accepts the following options:
 
-	*-d, --data* _raw_data_
-		Pass the payload as raw data on the command line. Data is provided to
-		the server exactly as passed on the command line.
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
 
-	*-f, --payload* _file_
-		Specify a file containing the data to send to cloud-init. The format of
-		this file depends on _-F_ and is _json_ by default. If *-* is used as
-		the argument to _-f_, the command reads the payload data from standard
-		input.
-
-	*-F, --payload-format* _format_
-		Format of the file used with _-f_. Supported formats are:
+	*-f, --format-input* _format_
+		Format of raw data being used by *-d* as the payload. Supported formats
+		are:
 
 		- _json_ (default)
 		- _yaml_
@@ -195,7 +189,8 @@ client when requesting its data. There are three types of data: *user-data*,
 Subcommands for this command are as follows:
 
 *get* [--meta | --user | --vendor] _id_...
-	Get cloud-init data for one or more _id_. By default, or if *--user* is passed, cloud-init user-data is retrieved.
+	Get cloud-init data for one or more _id_. By default, or if *--user* is
+	passed, cloud-init user-data is retrieved.
 
 	This command accepts the following options:
 

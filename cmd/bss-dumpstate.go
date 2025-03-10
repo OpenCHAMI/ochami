@@ -55,10 +55,10 @@ See ochami-bss(1) for more details.`,
 
 		// Print output
 		fmt.Println(string(httpEnv.Body))
-		outFmt, err := cmd.Flags().GetString("output-format")
+		outFmt, err := cmd.Flags().GetString("format-output")
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
 			logHelpError(cmd)
+			log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
 			os.Exit(1)
 		}
 		if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
@@ -72,6 +72,6 @@ See ochami-bss(1) for more details.`,
 }
 
 func init() {
-	bssDumpStateCmd.Flags().StringP("output-format", "F", defaultOutputFormat, "format of output printed to standard output")
+	bssDumpStateCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,yaml)")
 	bssCmd.AddCommand(bssDumpStateCmd)
 }

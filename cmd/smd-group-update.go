@@ -14,26 +14,41 @@ import (
 
 // groupUpdateCmd represents the smd-group-update command
 var groupUpdateCmd = &cobra.Command{
-	Use:   "update -f <payload_file> | ([--description <description>] [--tag <tag>]... <group_label>)",
+	Use:   "update (-d (<payload_data> | @<payload_file>)) | ([--description <description>] [--tag <tag>]... <group_label>)",
 	Args:  cobra.MaximumNArgs(1),
 	Short: "Update the description and/or tags of a group",
 	Long: `Update the description and/or tags of a group. At least one of --description
-or --tag must be specified. Alternatively, pass -f to pass a file
-(optionally specifying --payload-format, JSON by default), but the
-rules above still apply for the payload. If - is used as the
-argument to -f, the data is read from standard input.
+or --tag must be specified. Alternatively, pass -d to pass
+raw payload data or (if flag argument starts with @) a file
+containing the payload data. -f can be specified to change
+the format of the input payload data ('json' by default), but
+the rules above still apply for the payload. If "-" is used as
+the input payload filename, the data is read from standard input.
 
 This command sends a PATCH to SMD. An access token is required.
 
 See ochami-smd(1) for more details.`,
-	Example: `  ochami smd group update --description "New description for compute" compute
+	Example: `  # Update a group using CLI flags
+  ochami smd group update --description "New description for compute" compute
   ochami smd group update --tag existing_tag --tag new_tag compute
   ochami smd group update --tag existing_tag,new_tag compute
   ochami smd group update --tag existing_tag,new_tag -d "New description for compute" compute
-  ochami smd group update -f payload.json
-  ochami smd group update -f payload.yaml --payload-format yaml
-  echo '<json_data>' | ochami smd group update -f -
-  echo '<yaml_data>' | ochami smd group update -f - --payload-format yaml`,
+
+  # Update groups using input payload data
+  ochami smd group update -d '{[
+    {
+      "label": "compute",
+      "description": "New compute group description"
+    }
+  ]}'
+
+  # Update groups using input payload file
+  ochami smd group update -d @payload.json
+  ochami smd group update -d @payload.yaml -f yaml
+
+  # Update groups using data from standard input
+  echo '<json_data>' | ochami smd group update -d @-
+  echo '<yaml_data>' | ochami smd group update -d @- -f yaml`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// cmd.LocalFlags().NFlag() doesn't seem to work, so we check every flag
 		if len(args) == 0 && !cmd.Flag("description").Changed && !cmd.Flag("tag").Changed {
@@ -71,7 +86,7 @@ See ochami-smd(1) for more details.`,
 		var groups []smd.Group
 
 		// Read payload from file first, allowing overwrites from flags
-		if cmd.Flag("payload").Changed {
+		if cmd.Flag("data").Changed {
 			handlePayload(cmd, &groups)
 		} else {
 			// ...otherwise use CLI options/args
@@ -122,12 +137,12 @@ See ochami-smd(1) for more details.`,
 }
 
 func init() {
-	groupUpdateCmd.Flags().StringP("description", "d", "", "short description to update group with")
+	groupUpdateCmd.Flags().StringP("description", "D", "", "short description to update group with")
 	groupUpdateCmd.Flags().StringSlice("tag", []string{}, "one or more tags to set for group")
-	groupUpdateCmd.Flags().StringP("payload", "f", "", "file containing the request payload; JSON format unless --payload-format specified")
-	groupUpdateCmd.Flags().StringP("payload-format", "F", defaultPayloadFormat, "format of payload file (yaml,json) passed with --payload")
+	groupUpdateCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	groupUpdateCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
 
-	groupUpdateCmd.MarkFlagsOneRequired("description", "tag", "payload")
+	groupUpdateCmd.MarkFlagsOneRequired("description", "tag", "data")
 
 	groupCmd.AddCommand(groupUpdateCmd)
 }

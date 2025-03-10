@@ -14,24 +14,32 @@ import (
 
 // ifaceDeleteCmd represents the smd-iface-delete command
 var ifaceDeleteCmd = &cobra.Command{
-	Use:   "delete -f <payload_file> | --all | <iface_id>...",
+	Use:   "delete (-d (<payload_data> | @<payload_file>)) | --all | <iface_id>...",
 	Short: "Delete one or more ethernet interfaces",
-	Long: `Delete one or more ethernet interfaces. These can be specified by one or more ethernet
-interface IDs (note this is not the same as a component xname). Alternatively,
-pass -f to pass a file (optionally specifying --payload-format, JSON by default)
-containing the payload data. If - is used as the argument to -f, the data is
-read from standard input.
+	Long: `Delete one or more ethernet interfaces. These can be specified by one
+or more ethernet interface IDs (note this is not the same as a
+component xname). Alternatively, pass -d to pass raw payload data
+or (if flag argument starts with @) a file containing the
+payload data. -f can be specified to change the format of
+the input payload data ('json' by default), but the rules
+above still apply for the payload. If "-" is used as the
+input payload filename, the data is read from standard input.
 
 This command sends a DELETE to SMD. An access token is required.
 
 See ochami-smd(1) for more details.`,
-	Example: `  ochami smd iface delete decafc0ffeee
+	Example: `  # Delete ethernet interface using CLI flags
+  ochami smd iface delete decafc0ffeee
   ochami smd iface delete decafc0ffeee de:ad:be:ee:ee:ef
   ochami smd iface delete --all
-  ochami smd iface delete -f payload.json
-  ochami smd iface delete -f payload.yaml --payload-format yaml
-  echo '<json_data>' | ochami smd iface delete -f -
-  echo '<yaml_data>' | ochami smd iface delete -f - --payload-format yaml`,
+
+  # Delete ethernet interfaces using input payload file
+  ochami smd iface delete -d @payload.json
+  ochami smd iface delete -d @payload.yaml -f yaml
+
+  # Delete ethernet interfaces using data from standard input
+  echo '<json_data>' | ochami smd iface delete -d @-
+  echo '<yaml_data>' | ochami smd iface delete -d @- -f yaml`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// With options, only one of:
 		// - A payload file with -f
@@ -39,7 +47,7 @@ See ochami-smd(1) for more details.`,
 		// - A set of one or more ethernet interface IDs
 		// must be passed.
 		if len(args) == 0 {
-			if !cmd.Flag("all").Changed && !cmd.Flag("payload").Changed {
+			if !cmd.Flag("all").Changed && !cmd.Flag("data").Changed {
 				printUsageHandleError(cmd)
 				os.Exit(0)
 			}
@@ -91,7 +99,7 @@ See ochami-smd(1) for more details.`,
 		// Create list of ethernet interface IDs to delete
 		var eiSlice []smd.EthernetInterface
 		var eIdSlice []string
-		if cmd.Flag("payload").Changed {
+		if cmd.Flag("data").Changed {
 			// Use payload file if passed
 			handlePayload(cmd, &eiSlice)
 		} else {
@@ -145,8 +153,8 @@ See ochami-smd(1) for more details.`,
 
 func init() {
 	ifaceDeleteCmd.Flags().BoolP("all", "a", false, "delete all ethernet interfaces in SMD")
-	ifaceDeleteCmd.Flags().StringP("payload", "f", "", "file containing the request payload; JSON format unless --payload-format specified")
-	ifaceDeleteCmd.Flags().StringP("payload-format", "F", defaultPayloadFormat, "format of payload file (yaml,json) passed with --payload")
+	ifaceDeleteCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	ifaceDeleteCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
 	ifaceDeleteCmd.Flags().Bool("force", false, "do not ask before attempting deletion")
 	ifaceCmd.AddCommand(ifaceDeleteCmd)
 }

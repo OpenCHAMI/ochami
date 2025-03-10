@@ -16,14 +16,14 @@ import (
 
 // discoverCmd represents the discover command
 var discoverCmd = &cobra.Command{
-	Use:   "discover -f <payload_file> [--payload-format <format>] [--overwrite]",
+	Use:   "discover (-d (<payload_data> | @<payload_file>)) [-f <format>] [--overwrite]",
 	Args:  cobra.NoArgs,
 	Short: "Populate SMD with data",
 	Long: `Populate SMD with data. Currently, this command performs "fake" discovery,
 whereby data from a payload file is used to create the SMD structures.
 In this way, the command does not perform dynamic discovery like Magellan,
-but statically populates SMD using a file. If - is used as the argument to
--f, the payload data is read from standard input.
+but statically populates SMD using a file. If @- is used as the argument to
+-d, the payload data is read from standard input.
 
 The format of the payload file is an array of node specifications. In YAML,
 each node entry would look something like:
@@ -53,7 +53,7 @@ nodes:
 See ochami-discover(1) for more details.`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// Check that all required args are passed
-		if len(args) == 0 && !cmd.Flag("payload").Changed {
+		if len(args) == 0 && !cmd.Flag("data").Changed {
 			printUsageHandleError(cmd)
 			os.Exit(0)
 		}
@@ -456,11 +456,11 @@ See ochami-discover(1) for more details.`,
 }
 
 func init() {
-	discoverCmd.Flags().StringP("payload", "f", "", "file containing the request payload; JSON format unless --payload-format specified")
-	discoverCmd.Flags().StringP("payload-format", "F", defaultPayloadFormat, "format of payload file (yaml,json) passed with --payload")
+	discoverCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	discoverCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
 	discoverCmd.Flags().Bool("overwrite", false, "overwrite any existing information instead of failing")
 
-	discoverCmd.MarkFlagRequired("payload")
+	discoverCmd.MarkFlagRequired("data")
 
 	rootCmd.AddCommand(discoverCmd)
 }

@@ -15,25 +15,47 @@ import (
 
 // componentAddCmd represents the smd-component-add command
 var componentAddCmd = &cobra.Command{
-	Use:   "add -f <payload_file> | (<xname> <node_id>)",
+	Use:   "add (-d (<payload_data> | @<payload_file>)) | (<xname> <node_id>)",
 	Short: "Add new component(s)",
-	Long: `Add new component(s). A name (xname) and node ID (int64) are required unless
--f is passed to read from a payload file. Specifying -f also is
-mutually exclusive with the other flags of this command. If - is
-used as the argument to -f, the data is read from standard input.
+	Long: `Add new component(s). A name (xname) and node ID (int64) are
+required. Alternatively, pass -d to pass raw payload data
+or (if flag argument starts with @) a file containing the
+payload data. -f can be specified to change the format of
+the input payload data ('json' by default), but the rules
+above still apply for the payload. If "-" is used as the
+input payload filename, the data is read from standard input.
 
 This command sends a POST to SMD. An access token is required.
 
 See ochami-smd(1) for more details.`,
-	Example: `  ochami smd component add x3000c1s7b56n0 56
+	Example: `  # Add component using CLI flags
+  ochami smd component add x3000c1s7b56n0 56
   ochami smd component add --state Ready --enabled --role Compute --arch X86 x3000c1s7b56n0 56
-  ochami smd component add -f payload.json
-  ochami smd component add -f payload.yaml --payload-format yaml
-  echo '<json_data>' | ochami smd component add -f -
-  echo '<yaml_data>' | ochami smd component add -f - --payload-format yaml`,
+
+  # Add components using input payload data
+  ochami smd component add -d '{
+    "Components":[
+      {
+        "ID": "x3000c1s7b56n0",
+	"NID": 56,
+	"State": "Ready",
+	"Role": "Compute",
+	"Enabled": "True",
+	"Arch": "X86"
+      }
+    ]
+  }'
+
+  # Add components using input payload file
+  ochami smd component add -d @payload.json
+  ochami smd component add -d @payload.yaml -f yaml
+
+  # Add components using data from standard input
+  echo '<json_data>' | ochami smd component add -d @-
+  echo '<yaml_data>' | ochami smd component add -d @- -f yaml`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// Check that all required args are passed
-		if len(args) == 0 && !cmd.Flag("payload").Changed {
+		if len(args) == 0 && !cmd.Flag("data").Changed {
 			printUsageHandleError(cmd)
 			os.Exit(0)
 		} else if len(args) != 2 {
@@ -67,7 +89,7 @@ See ochami-smd(1) for more details.`,
 		useCACert(smdClient.OchamiClient)
 
 		var compSlice smd.ComponentSlice
-		if cmd.Flag("payload").Changed {
+		if cmd.Flag("data").Changed {
 			handlePayload(cmd, &compSlice)
 		} else {
 			// ...otherwise use CLI options
@@ -105,13 +127,13 @@ func init() {
 	componentAddCmd.Flags().Bool("enabled", true, "set if new component is enabled")
 	componentAddCmd.Flags().String("role", "Compute", "role of new component")
 	componentAddCmd.Flags().String("arch", "X86", "CPU architecture of new component")
-	componentAddCmd.Flags().StringP("payload", "f", "", "file containing the request payload; JSON format unless --payload-format specified")
-	componentAddCmd.Flags().StringP("payload-format", "F", defaultPayloadFormat, "format of payload file (yaml,json) passed with --payload")
+	componentAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	componentAddCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
 
-	componentAddCmd.MarkFlagsMutuallyExclusive("state", "payload")
-	componentAddCmd.MarkFlagsMutuallyExclusive("enabled", "payload")
-	componentAddCmd.MarkFlagsMutuallyExclusive("role", "payload")
-	componentAddCmd.MarkFlagsMutuallyExclusive("arch", "payload")
+	componentAddCmd.MarkFlagsMutuallyExclusive("state", "data")
+	componentAddCmd.MarkFlagsMutuallyExclusive("enabled", "data")
+	componentAddCmd.MarkFlagsMutuallyExclusive("role", "data")
+	componentAddCmd.MarkFlagsMutuallyExclusive("arch", "data")
 
 	componentCmd.AddCommand(componentAddCmd)
 }

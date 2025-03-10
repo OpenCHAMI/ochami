@@ -93,9 +93,9 @@ See ochami-smd(1) for more details.`,
 		}
 
 		// Print output
-		outFmt, err := cmd.Flags().GetString("output-format")
+		outFmt, err := cmd.Flags().GetString("format-output")
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
 			logHelpError(cmd)
 			os.Exit(1)
 		}
@@ -112,6 +112,6 @@ See ochami-smd(1) for more details.`,
 func init() {
 	groupGetCmd.Flags().StringSlice("name", []string{}, "filter groups by name")
 	groupGetCmd.Flags().StringSlice("tag", []string{}, "filter groups by tag")
-	groupGetCmd.Flags().StringP("output-format", "F", defaultOutputFormat, "format of output printed to standard output")
+	groupGetCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,yaml)")
 	groupCmd.AddCommand(groupGetCmd)
 }

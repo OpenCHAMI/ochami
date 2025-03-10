@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	defaultPayloadFormat = "json"
-	defaultOutputFormat  = "json"
+	defaultInputFormat  = "json"
+	defaultOutputFormat = "json"
 )
 
 var (
@@ -29,9 +29,9 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     config.ProgName,
-	Args:    cobra.NoArgs,
-	Short:   "Command line interface for interacting with OpenCHAMI services",
+	Use:   config.ProgName,
+	Args:  cobra.NoArgs,
+	Short: "Command line interface for interacting with OpenCHAMI services",
 	Long: `Command line interface for interacting with OpenCHAMI services.
 
 See ochami(1) for more details on available commands.

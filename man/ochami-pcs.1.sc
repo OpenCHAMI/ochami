@@ -48,7 +48,7 @@ connected to SMD, or checking the storage backend connection status.
 
 The format of this command is:
 
-*status* [--output-format _format_] [--all | --smd | --storage | --vault]
+*status* [-F _format_] [--all | --smd | --storage | --vault]
 
 This command sends a GET to PCS's /readiness or /health endpoints.
 
@@ -57,7 +57,7 @@ This command accepts the following options:
 *--all*
 	Print out all of the status information PCS knows about.
 
-*-F, --output-format* _format_
+*-F, --format-output* _format_
 	Output response data in specified _format_. Supported values are:
 
 	- _json_ (default)

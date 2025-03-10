@@ -17,28 +17,35 @@ import (
 
 // ifaceAddCmd represents the smd-iface-add command
 var ifaceAddCmd = &cobra.Command{
-	Use:   "add -f <payload_file> | (<comp_id> <mac_addr> (<net_name>,<ip_addr>)...)",
+	Use:   "add (-d (<payload_data> | @<payload_file>)) | (<comp_id> <mac_addr> (<net_name>,<ip_addr>)...)",
 	Short: "Add new ethernet interface(s)",
 	Long: `Add new ethernet interface(s). A component ID (usually an xname), MAC address, and
 one or more pairs of network name and IP address (delimited by a comma)
-are required unless -f is passed to read from a payload file. Specifying
--f also is mutually exclusive with the other flags of this command and
-its arguments. If - is used as the argument to -f, the data is read
-from standard input.
+are required. Alternatively, pass -d to pass raw payload data
+or (if flag argument starts with @) a file containing the
+payload data. -f can be specified to change the format of
+the input payload data ('json' by default), but the rules
+above still apply for the payload. If "-" is used as the
+input payload filename, the data is read from standard input.
 
 This command sends a POST to SMD. An access token is required.
 
 See ochami-smd(1) for more details.`,
-	Example: `  ochami smd iface add x3000c1s7b55n0 de:ca:fc:0f:fe:ee NMN,172.16.0.55
+	Example: `  # Add ethernet interface using CLI flags
+  ochami smd iface add x3000c1s7b55n0 de:ca:fc:0f:fe:ee NMN,172.16.0.55
   ochami smd iface add -d "Node Management for n55" x3000c1s7b55n0 de:ca:fc:0f:fe:ee NMN,172.16.0.55
   ochami smd iface add x3000c1s7b55n0 de:ca:fc:0f:fe:ee external,10.1.0.55 internal,172.16.0.55
-  ochami smd iface add -f payload.json
-  ochami smd iface add -f payload.yaml --payload-format yaml
-  echo '<json_data>' | ochami smd iface add -f -
-  echo '<yaml_data>' | ochami smd iface add -f - --payload-format yaml`,
+
+  # Add ethernet interfaces using input payload file
+  ochami smd iface add -d @payload.json
+  ochami smd iface add -d @payload.yaml -f yaml
+
+  # Add ethernet interfaces using data from standard input
+  echo '<json_data>' | ochami smd iface add -d @-
+  echo '<yaml_data>' | ochami smd iface add -d @- -f yaml`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// Check that all required args are passed
-		if len(args) == 0 && !cmd.Flag("payload").Changed {
+		if len(args) == 0 && !cmd.Flag("data").Changed {
 			printUsageHandleError(cmd)
 			os.Exit(0)
 		} else if len(args) < 3 {
@@ -72,7 +79,7 @@ See ochami-smd(1) for more details.`,
 		useCACert(smdClient.OchamiClient)
 
 		var eis []smd.EthernetInterface
-		if cmd.Flag("payload").Changed {
+		if cmd.Flag("data").Changed {
 			// Use payload file if passed
 			handlePayload(cmd, &eis)
 		} else {
@@ -128,11 +135,11 @@ See ochami-smd(1) for more details.`,
 }
 
 func init() {
-	ifaceAddCmd.Flags().StringP("description", "d", "Undescribed Ethernet Interface", "description of interface")
-	ifaceAddCmd.Flags().StringP("payload", "f", "", "file containing the request payload; JSON format unless --payload-format specified")
-	ifaceAddCmd.Flags().StringP("payload-format", "F", defaultPayloadFormat, "format of payload file (yaml,json) passed with --payload")
+	ifaceAddCmd.Flags().StringP("description", "D", "Undescribed Ethernet Interface", "description of interface")
+	ifaceAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	ifaceAddCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
 
-	ifaceAddCmd.MarkFlagsMutuallyExclusive("description", "payload")
+	ifaceAddCmd.MarkFlagsMutuallyExclusive("description", "data")
 
 	ifaceCmd.AddCommand(ifaceAddCmd)
 }

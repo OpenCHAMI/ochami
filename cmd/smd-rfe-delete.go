@@ -14,23 +14,32 @@ import (
 
 // rfeDeleteCmd represents the smd-rfe-delete command
 var rfeDeleteCmd = &cobra.Command{
-	Use:   "delete -f <payload_file> | --all | <xname>...",
+	Use:   "delete (-d (<payload_data> | @<payload_file>)) | --all | <xname>...",
 	Short: "Delete one or more redfish endpoints",
-	Long: `Delete one or more redfish endpoints. These can be specified by one or more xnames.
-Alternatively, use -f to read the payload data from a file (optionally
-specifying --payload-format, JSON by default). If - is used as the
-argument to -f, the data is read from standard input.
+	Long: `Delete one or more redfish endpoints. These can be specified
+by one or more xnames. Alternatively, pass -d to pass raw
+payload data or (if flag argument starts with @) a file
+containing the payload data. -f can be specified to change
+the format of the input payload data ('json' by default),
+but the rules above still apply for the payload. If "-" is
+used as the input payload filename, the data is read from
+standard input.
 
 This command sends a DELETE to SMD. An access token is required.
 
 See ochami-smd(1) for more details.`,
-	Example: `  ochami smd rfe delete x3000c1s7b56
+	Example: `  # Delete a redfish endpoint using CLI flags
+  ochami smd rfe delete x3000c1s7b56
   ochami smd rfe delete x3000c1s7b56 x3000c1s7b56
   ochami smd rfe delete --all
-  ochami smd rfe delete -f payload.json
-  ochami smd rfe delete -f payload.yaml --payload-format yaml
-  echo '<json_data>' | ochami smd rfe delete -f -
-  echo '<yaml_data>' | ochami smd rfe delete -f - --payload-format yaml`,
+
+  # Delete redfish endpoints using input payload file
+  ochami smd rfe delete -d @payload.json
+  ochami smd rfe delete -d @payload.yaml -f yaml
+
+  # Delete redfish endpoints using data from standard input
+  echo '<json_data>' | ochami smd rfe delete -d @-
+  echo '<yaml_data>' | ochami smd rfe delete -d @- -f yaml`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// With options, only one of:
 		// - A payload file with -f
@@ -38,7 +47,7 @@ See ochami-smd(1) for more details.`,
 		// - A set of one or more xnames
 		// must be passed.
 		if len(args) == 0 {
-			if !cmd.Flag("all").Changed && !cmd.Flag("payload").Changed {
+			if !cmd.Flag("all").Changed && !cmd.Flag("data").Changed {
 				printUsageHandleError(cmd)
 				os.Exit(0)
 			}
@@ -90,7 +99,7 @@ See ochami-smd(1) for more details.`,
 		// Create list of xnames to delete
 		var rfeSlice smd.RedfishEndpointSlice
 		var xnameSlice []string
-		if cmd.Flag("payload").Changed {
+		if cmd.Flag("data").Changed {
 			// Use payload file if passed
 			handlePayload(cmd, rfeSlice.RedfishEndpoints)
 		} else {
@@ -144,8 +153,8 @@ See ochami-smd(1) for more details.`,
 
 func init() {
 	rfeDeleteCmd.Flags().BoolP("all", "a", false, "delete all redfish endpoints in SMD")
-	rfeDeleteCmd.Flags().StringP("payload", "f", "", "file containing the request payload; JSON format unless --payload-format specified")
-	rfeDeleteCmd.Flags().StringP("payload-format", "F", defaultPayloadFormat, "format of payload file (yaml,json) passed with --payload")
+	rfeDeleteCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	rfeDeleteCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
 	rfeDeleteCmd.Flags().Bool("force", false, "do not ask before attempting deletion")
 
 	rfeCmd.AddCommand(rfeDeleteCmd)

@@ -427,11 +427,11 @@ func FileToHTTPBody(path, format string) (HTTPBody, error) {
 	return b, err
 }
 
-// ReadPayload reads in the file pointed to by path and unmarshals the data into
-// value v. The data can be in formats other than JSON (whichever formats
+// ReadPayloadFile reads in the file pointed to by path and unmarshals the data
+// into value v. The data can be in formats other than JSON (whichever formats
 // FileToHTTPBody supports), such as YAML. If a marshalling/unmarshalling error
 // occurs or either path or format are empty, an error is returned.
-func ReadPayload(path, format string, v any) error {
+func ReadPayloadFile(path, format string, v any) error {
 	log.Logger.Debug().Msgf("payload file: %s", path)
 	log.Logger.Debug().Msgf("payload file format: %s", format)
 
@@ -454,6 +454,28 @@ func ReadPayload(path, format string, v any) error {
 		if err != nil {
 			return fmt.Errorf("unable to create HTTP body from file: %w", err)
 		}
+	}
+	log.Logger.Debug().Msgf("body bytes: %q", body)
+
+	err = json.Unmarshal(body, v)
+	if err != nil {
+		err = fmt.Errorf("unable to unmarshal bytes into value: %w", err)
+	}
+
+	return err
+}
+
+// ReadPayload unmarshals data formatted as format into v. If data begins with
+// "@", it is treated as a file path and calls ReadPayloadFile to read the
+// contents. If the file path is "-", the data is read from standard input.
+func ReadPayload(data, format string, v any) error {
+	if strings.HasPrefix(data, "@") {
+		// Passed data is actually a file path, return data within file.
+		return ReadPayloadFile(strings.TrimPrefix(data, "@"), format, v)
+	}
+	body, err := BytesToHTTPBody([]byte(data), format)
+	if err != nil {
+		return fmt.Errorf("unable to create HTTP body from payload string: %w", err)
 	}
 	log.Logger.Debug().Msgf("body bytes: %q", body)
 

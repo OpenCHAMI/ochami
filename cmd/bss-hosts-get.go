@@ -89,9 +89,9 @@ See ochami-bss(1) for more details.`,
 		}
 
 		// Print output
-		outFmt, err := cmd.Flags().GetString("output-format")
+		outFmt, err := cmd.Flags().GetString("format-output")
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
 			logHelpError(cmd)
 			os.Exit(1)
 		}
@@ -109,6 +109,6 @@ func init() {
 	bssHostsGetCmd.Flags().StringP("xname", "x", "", "xname whose host information to get")
 	bssHostsGetCmd.Flags().StringP("mac", "m", "", "MAC address whose boot parameters to get")
 	bssHostsGetCmd.Flags().Int32P("nid", "n", 0, "node ID whose host information to get")
-	bssHostsGetCmd.Flags().StringP("output-format", "F", defaultOutputFormat, "format of output printed to standard output")
+	bssHostsGetCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,yaml)")
 	bssHostsCmd.AddCommand(bssHostsGetCmd)
 }

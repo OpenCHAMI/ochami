@@ -22,27 +22,37 @@ var bootParamsSetCmd = &cobra.Command{
 parameters. At least one of --kernel, --initrd, or --params is
 required to tell ochami which boot data to set. Also, at least
 one of --xname, --mac, or --nid is required to tell ochami which
-components need modification. Alternatively, pass -f to pass a
-file (optionally specifying --payload-format, JSON by default),
-but the rules above still apply for the payload. If the specified
-file path is -, the data is read from standard input.
+components need modification. Alternatively, pass -d to pass raw
+payload data or (if flag argument starts with @) a file containing
+the payload data. -f can be specified to change the format of the
+input payload data ('json' by default), but the rules above still
+apply for the payload. If "-" is used as the input payload filename,
+the data is read from standard input.
 
 This command sends a PUT to BSS. An access token is required.
 
 See ochami-bss(1) for more details.`,
-	Example: `  ochami bss boot params set --xname x1000c1s7b0 --kernel https://example.com/kernel
+	Example: `  # Set boot params using CLI flags
+  ochami bss boot params set --xname x1000c1s7b0 --kernel https://example.com/kernel
   ochami bss boot params set --xname x1000c1s7b0,x1000c1s7b1 --kernel https://example.com/kernel
   ochami bss boot params set --xname x1000c1s7b0 --xname x1000c1s7b1 --kernel https://example.com/kernel
   ochami bss boot params set --xname x1000c1s7b0 --nid 1 --mac 00:c0:ff:ee:00:00 --params 'quiet nosplash'
-  ochami bss boot params set -f payload.json
-  ochami bss boot params set -f payload.yaml --payload-format yaml
-  echo <json_data> | ochami bss boot params set -f -
-  echo <yaml_data> | ochami bss boot params set -f - --payload-format yaml`,
+
+  # Set boot parameters using input payload data
+  ochami bss boot params set -d '{"macs":["00:de:ad:be:ef:00"],"kernel":"https://example.com/kernel"}'
+
+  # Set boot params using input payload file
+  ochami bss boot params set -d @payload.json
+  ochami bss boot params set -d @payload.yaml -f yaml
+
+  # Set boot params using data from standard input
+  echo <json_data> | ochami bss boot params set -d @-
+  echo <yaml_data> | ochami bss boot params set -d @- -f yaml`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// cmd.LocalFlags().NFlag() doesn't seem to work, so we check every flag
 		if len(args) == 0 &&
 			!cmd.Flag("xname").Changed && !cmd.Flag("nid").Changed && !cmd.Flag("mac").Changed &&
-			!cmd.Flag("kernel").Changed && !cmd.Flag("initrd").Changed && !cmd.Flag("payload").Changed {
+			!cmd.Flag("kernel").Changed && !cmd.Flag("initrd").Changed && !cmd.Flag("data").Changed {
 			printUsageHandleError(cmd)
 			os.Exit(0)
 		}
@@ -157,11 +167,11 @@ func init() {
 	bootParamsSetCmd.Flags().StringSliceP("xname", "x", []string{}, "one or more xnames whose boot parameters to set")
 	bootParamsSetCmd.Flags().StringSliceP("mac", "m", []string{}, "one or more MAC addresses whose boot parameters to set")
 	bootParamsSetCmd.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to set")
-	bootParamsSetCmd.Flags().StringP("payload", "f", "", "file containing the request payload; JSON format unless --payload-format specified")
-	bootParamsSetCmd.Flags().StringP("payload-format", "F", defaultPayloadFormat, "format of payload file (yaml,json) passed with --payload")
+	bootParamsSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	bootParamsSetCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
 
-	bootParamsSetCmd.MarkFlagsOneRequired("xname", "mac", "nid", "payload")
-	bootParamsSetCmd.MarkFlagsOneRequired("kernel", "initrd", "params", "payload")
+	bootParamsSetCmd.MarkFlagsOneRequired("xname", "mac", "nid", "data")
+	bootParamsSetCmd.MarkFlagsOneRequired("kernel", "initrd", "params", "data")
 
 	bootParamsCmd.AddCommand(bootParamsSetCmd)
 }

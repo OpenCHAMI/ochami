@@ -20,6 +20,7 @@ var groupMemberDeleteCmd = &cobra.Command{
 	Long: `Delete one or more members froma group.
 
 See ochami-smd(1) for more details.`,
+	Example: `  ochami smd group member delete compute x3000c1s7b56n0`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)

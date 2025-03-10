@@ -190,9 +190,9 @@ See ochami-pcs(1) for more details.`,
 		}
 
 		// Print output
-		outFmt, err := cmd.Flags().GetString("output-format")
+		outFmt, err := cmd.Flags().GetString("format-output")
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			log.Logger.Fatal().Err(err).Msg("failed to get value for --format-output")
 			logHelpError(cmd)
 			os.Exit(1)
 		}
@@ -221,6 +221,6 @@ func init() {
 		pcsStatusCmd.MarkFlagsMutuallyExclusive("all", flags[i])
 	}
 
-	pcsStatusCmd.Flags().StringP("output-format", "F", defaultOutputFormat, "format of output printed to standard output")
+	pcsStatusCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,yaml)")
 	pcsCmd.AddCommand(pcsStatusCmd)
 }

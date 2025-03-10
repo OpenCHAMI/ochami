@@ -74,9 +74,9 @@ See ochami-smd(1) for more details.`,
 		}
 
 		// Print output
-		outFmt, err := cmd.Flags().GetString("output-format")
+		outFmt, err := cmd.Flags().GetString("format-output")
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
 			logHelpError(cmd)
 			os.Exit(1)
 		}
@@ -93,7 +93,7 @@ See ochami-smd(1) for more details.`,
 func init() {
 	componentGetCmd.Flags().StringP("xname", "x", "", "xname whose Component to fetch")
 	componentGetCmd.Flags().Int32P("nid", "n", 0, "node ID whose Component to fetch")
-	componentGetCmd.Flags().StringP("output-format", "F", defaultOutputFormat, "format of output printed to standard output")
+	componentGetCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,yaml)")
 
 	componentGetCmd.MarkFlagsMutuallyExclusive("xname", "nid")
 

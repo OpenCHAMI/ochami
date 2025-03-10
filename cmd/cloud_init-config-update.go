@@ -17,15 +17,10 @@ import (
 
 // cloudInitConfigUpdateCmd represents the cloud-init-config-update command
 var cloudInitConfigUpdateCmd = &cobra.Command{
-	Use:   "update (-f <payload_file> | -d <payload_data>)",
+	Use:   "update (-d (<payload_data> | @<payload_file>))",
 	Args:  cobra.NoArgs,
 	Short: "Update cloud-init config for one or more ids, overwriting any previous",
-	Long: `Update cloud-init config for one or more ids. Either a payload file
-containing the data or the JSON data itself must be passed. Data
-is represented by a JSON array of cloud-init configs, even if only
-one is being passed. An alternative to using -d would be to use -f
-and passing -, which will cause ochami to read the data from
-standard input.
+	Long: `Update cloud-init config for one or more ids.
 
 This command sends a PUT to cloud-init.
 
@@ -46,10 +41,10 @@ See ochami-cloud-init(1) for more details.`,
          } \
        } \
      ]'
-  ochami cloud-init config update -f payload.json
-  ochami cloud-init config update -f payload.yaml --payload-format yaml
-  echo '<json_data>' | ochami cloud-init config update -f -
-  echo '<yaml_data>' | ochami cloud-init config update -f - --payload-format yaml`,
+  ochami cloud-init config update -d @payload.json
+  ochami cloud-init config update -d @payload.yaml -f yaml
+  echo '<json_data>' | ochami cloud-init config update -d @-
+  echo '<yaml_data>' | ochami cloud-init config update -d @- -f yaml`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		cloudInitBaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)
@@ -75,7 +70,7 @@ See ochami-cloud-init(1) for more details.`,
 		useCACert(cloudInitClient.OchamiClient)
 
 		var ciData []citypes.CI
-		if cmd.Flag("payload").Changed {
+		if cmd.Flag("data").Changed {
 			// Use payload file if passed
 			handlePayload(cmd, &ciData)
 		} else if cmd.Flag("data").Changed {
@@ -129,13 +124,10 @@ See ochami-cloud-init(1) for more details.`,
 }
 
 func init() {
-	cloudInitConfigUpdateCmd.Flags().StringP("data", "d", "", "raw JSON data to use as payload")
-	cloudInitConfigUpdateCmd.Flags().StringP("payload", "f", "", "file containing the request payload; JSON format unless --payload-format specified")
-	cloudInitConfigUpdateCmd.Flags().StringP("payload-format", "F", defaultPayloadFormat, "format of payload file (yaml,json) passed with --payload")
+	cloudInitConfigUpdateCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	cloudInitConfigUpdateCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
 
-	cloudInitConfigUpdateCmd.MarkFlagsMutuallyExclusive("data", "payload")
-	cloudInitConfigUpdateCmd.MarkFlagsMutuallyExclusive("data", "payload-format")
-	cloudInitConfigUpdateCmd.MarkFlagsOneRequired("data", "payload")
+	cloudInitConfigUpdateCmd.MarkFlagsOneRequired("data")
 
 	cloudInitConfigCmd.AddCommand(cloudInitConfigUpdateCmd)
 }

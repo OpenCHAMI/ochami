@@ -6,7 +6,7 @@ ochami-discover - Populate SMD using a file
 
 # SYNOPSIS
 
-ochami discover [OPTIONS] -f _file_ [-F _format_]
+ochami discover [OPTIONS] -d (_data_ | @_file_ | @-) [-f _format_]
 
 # DESCRIPTION
 
@@ -28,22 +28,23 @@ node's BMC which corresponds to each RedfishEndpoint created.
 
 This command accepts the following options:
 
-*--overwrite*
-	Instead of failing if data already exists, overwrite it with new data
-	contained in the payload.
-
-*-f, --payload* _file_
+*-d, --data* (_data_ | @_path_ | @-)
 	This option is mandatory.
 
-	Specify a file containing the data to send to SMD. The format of this
-	file depends on _-F_ and is _json_ by default. If *-* is used as the
-	argument to _-f_, the command reads the payload data from standard input.
+	Specify raw _data_ to send, the _path_ to a file to read payload data from,
+	or to read the data from standard input (@-). The format of data read in any
+	of these forms is JSON by default unless *-f* is specified to change it.
 
-*-F, --payload-format* _format_
-	Format of the file used with _-f_. Supported formats are:
+*-f, --format-input* _format_
+	Format of raw data being used by *-d* as the payload. Supported formats
+	are:
 
 	- _json_ (default)
 	- _yaml_
+
+*--overwrite*
+	Instead of failing if data already exists, overwrite it with new data
+	contained in the payload.
 
 # DATA STRUCTURE
 
