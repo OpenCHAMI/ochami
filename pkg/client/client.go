@@ -446,12 +446,12 @@ func ReadPayloadFile(path, format string, v any) error {
 		var data []byte
 		data, err = oio.ReadStdin()
 		if err != nil {
-			return fmt.Errorf("unable to read payload data: %w", err)
+			return fmt.Errorf("unable to read from stdin: %w", err)
 		}
 		log.Logger.Debug().Msgf("bytes read: %q", data)
 		body, err = BytesToHTTPBody(data, format)
 		if err != nil {
-			return fmt.Errorf("unable to create HTTP body from payload bytes: %w", err)
+			return fmt.Errorf("unable to create HTTP body from bytes: %w", err)
 		}
 	} else {
 		body, err = FileToHTTPBody(path, format)
