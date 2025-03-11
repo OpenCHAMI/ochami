@@ -25,7 +25,6 @@ See ochami-cloud-init(1) for more details.`,
 }
 
 func init() {
-	cloudInitCmd.PersistentFlags().BoolP("secure", "s", false, "use secure cloud-init endpoint (token required)")
 	cloudInitCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of cloud-init")
 	rootCmd.AddCommand(cloudInitCmd)
 }
