@@ -24,6 +24,7 @@ const (
 	serviceNameCloudInit = "cloud-init"
 
 	CloudInitRelpathDefaults = "/admin/cluster-defaults"
+	CloudInitRelpathGroups   = "/admin/groups"
 	// cloud-init doesn't have a service prefix and has two separate
 	// endpoints. To mitigate this, we treat the service root as '/' and use
 	// the relative paths as the service endpoints.
@@ -136,6 +137,44 @@ func (cic *CloudInitClient) PostDefaults(ciDflts cistore.ClusterDefaults, token 
 	}
 
 	return henv, err
+}
+
+// PostGroups is a wrapper function around OchamiClient.PostData that takes a
+// slice of cistore.GroupData and a token, puts the token in the request headers
+// as an authorization bearer, and iteratively calls OchamiClient.PostData using
+// each item from the slice.
+func (cic *CloudInitClient) PostGroups(ciGroups []cistore.GroupData, token string) ([]client.HTTPEnvelope, []error, error) {
+	var (
+		errors  []error
+		henvs   []client.HTTPEnvelope
+		headers *client.HTTPHeaders
+	)
+	headers = client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henvs, errors, fmt.Errorf("PostGroups(): error setting token in HTTP headers: %w", err)
+		}
+	}
+	for _, cig := range ciGroups {
+		var body client.HTTPBody
+		var err error
+		if body, err = json.Marshal(cig); err != nil {
+			newErr := fmt.Errorf("PostGroups(): failed to marshal GroupData: %w", err)
+			errors = append(errors, newErr)
+			henvs = append(henvs, client.HTTPEnvelope{})
+			continue
+		}
+		henv, err := cic.PostData(CloudInitRelpathGroups, "", headers, body)
+		henvs = append(henvs, henv)
+		if err != nil {
+			newErr := fmt.Errorf("PostGroups(): failed to POST group(s) to cloud-init: %w", err)
+			errors = append(errors, newErr)
+			continue
+		}
+		errors = append(errors, nil)
+	}
+
+	return henvs, errors, nil
 }
 
 // DeleteConfigs is a wrapper function around OchamiClient.DeleteData that takes
