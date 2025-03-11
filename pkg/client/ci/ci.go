@@ -64,6 +64,48 @@ func (cic *CloudInitClient) GetDefaults() (client.HTTPEnvelope, error) {
 	return henv, err
 }
 
+// GetGroups is a wrapper function around OchamiClient.Getdata that returns
+// group data for a list of group ids. If none are passed, all group data is
+// returned.
+func (cic *CloudInitClient) GetGroups(ids ...string) ([]client.HTTPEnvelope, []error, error) {
+	var (
+		errors []error
+		henvs  []client.HTTPEnvelope
+	)
+	if len(ids) == 0 {
+		henv, err := cic.GetData(CloudInitRelpathGroups, "", nil)
+		henvs = append(henvs, henv)
+		if err != nil {
+			newErr := fmt.Errorf("GetGroups(): failed to GET all groups from cloud-init: %w", err)
+			errors = append(errors, newErr)
+		} else {
+			errors = append(errors, nil)
+		}
+	} else {
+		for _, id := range ids {
+			var henv client.HTTPEnvelope
+			finalEP, err := url.JoinPath(CloudInitRelpathGroups, id)
+			if err != nil {
+				newErr := fmt.Errorf("GetGroups(): failed to join base group path with ID: %w", err)
+				errors = append(errors, newErr)
+				henvs = append(henvs, henv)
+				continue
+			}
+			henv, err = cic.GetData(finalEP, "", nil)
+			henvs = append(henvs, henv)
+			if err != nil {
+				newErr := fmt.Errorf("GetGroups(): failed to GET group from cloud-init: %w", err)
+				log.Logger.Debug().Err(err).Msg("failed to get group")
+				errors = append(errors, newErr)
+				continue
+			}
+			errors = append(errors, nil)
+		}
+	}
+
+	return henvs, errors, nil
+}
+
 // GetConfigs is a wrapper function around OchamiClient.GetData that determines
 // whether to use only the cloud-init base path or it appended with an id and
 // calls GetData on the endpoint, returning the result. If an error occurs in
