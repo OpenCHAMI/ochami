@@ -17,7 +17,7 @@ import (
 
 // cloudInitGroupGetCmd represents the cloud-init-defaults-get command
 var cloudInitGroupGetCmd = &cobra.Command{
-	Use:     "get [id...]",
+	Use:     "get [[ --cloud-config [--render] | --meta-data] id...]",
 	Short:   "Get group data for all groups or for a list of group IDs",
 	Example: `  ochami cloud-init group get
   ochami cloud-init group get compute`,
@@ -47,6 +47,7 @@ var cloudInitGroupGetCmd = &cobra.Command{
 		useCACert(cloudInitClient.OchamiClient)
 
 		// Get data
+		var outBytes []byte
 		if len(args) == 0 {
 			// No args passed, get all group data at once
 			henvs, errs, err := cloudInitClient.GetGroups()
@@ -90,11 +91,9 @@ var cloudInitGroupGetCmd = &cobra.Command{
 				log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
 				os.Exit(1)
 			}
-			if outBytes, err := client.FormatBody(groupSliceBytes, outFmt); err != nil {
+			if outBytes, err = client.FormatBody(groupSliceBytes, outFmt); err != nil {
 				log.Logger.Error().Err(err).Msg("failed to format output")
 				os.Exit(1)
-			} else {
-				fmt.Printf(string(outBytes))
 			}
 		} else {
 			// One or more arguments (group IDs) provided, get data
@@ -144,17 +143,30 @@ var cloudInitGroupGetCmd = &cobra.Command{
 				log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
 				os.Exit(1)
 			}
-			if outBytes, err := client.FormatBody(jsonGroups, outFmt); err != nil {
+			if outBytes, err = client.FormatBody(jsonGroups, outFmt); err != nil {
 				log.Logger.Error().Err(err).Msg("failed to format output")
 				os.Exit(1)
-			} else {
-				fmt.Printf(string(outBytes))
 			}
 		}
+
+		// Print data
+		fmt.Printf(string(outBytes))
+
+		// TODO: implement meta-data and template filling
+		//if cmd.Flag("cloud-config").Changed {
+		//	if cmd.Flag("render").Changed {
+		//	} else {
+		//	}
+		//} else if cmd.Flag("meta-data").Changed {
+		//} else {
+		//}
 	},
 }
 
 func init() {
 	cloudInitGroupGetCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output")
+	cloudInitGroupGetCmd.Flags().Bool("cloud-config", false, "get just the cloud-init config")
+	cloudInitGroupGetCmd.Flags().Bool("meta-data", false, "get just the meta-data")
+	cloudInitGroupGetCmd.Flags().Bool("render", false, "render cloud-init config with meta-data (requires --cloud-config)")
 	cloudInitGroupCmd.AddCommand(cloudInitGroupGetCmd)
 }
