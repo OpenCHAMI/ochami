@@ -22,7 +22,9 @@ pass -f to pass a file (optionally specifying --payload-format, JSON by default)
 containing the payload data. If - is used as the argument to -f, the data is
 read from standard input.
 
-This command sends a DELETE to SMD. An access token is required.`,
+This command sends a DELETE to SMD. An access token is required.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd iface delete decafc0ffeee
   ochami smd iface delete decafc0ffeee de:ad:be:ee:ee:ef
   ochami smd iface delete --all
@@ -50,6 +52,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -61,6 +64,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -105,6 +109,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 				} else {
 					log.Logger.Error().Err(err).Msg("failed to delete ethernet interfaces in SMD")
 				}
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else {
@@ -112,6 +117,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 			_, errs, err := smdClient.DeleteEthernetInterfaces(token, eIdSlice...)
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to delete ethernet interfaces in SMD")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			// Since smdClient.DeleteEthernetInterfaces does the deletion iteratively, we need to deal
@@ -130,6 +136,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 			// Warn the user if any errors occurred during deletion iterations
 			if errorsOccurred {
 				log.Logger.Warn().Msg("SMD ethernet interface deletion completed with errors")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		}

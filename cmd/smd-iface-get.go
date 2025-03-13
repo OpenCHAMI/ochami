@@ -21,12 +21,15 @@ var ifaceGetCmd = &cobra.Command{
 	Short: "Get some or all ethernet interfaces",
 	Long: `Get some or all ethernet interfaces optionally based on filter(s). If no options are
 passed, all ethernet interfaces are returned. Optionally, options can be passed to limit the
-ethernet interfaces returned.`,
+ethernet interfaces returned.
+
+See ochami-smd(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -34,6 +37,7 @@ ethernet interfaces returned.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -49,6 +53,7 @@ ethernet interfaces returned.`,
 			id, err := cmd.Flags().GetString("id")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to get id")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			byIP := false
@@ -62,12 +67,14 @@ ethernet interfaces returned.`,
 				} else {
 					log.Logger.Error().Err(err).Msg("failed to request ethernet interfaces by ID from SMD")
 				}
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			fmt.Println(string(httpEnv.Body))
 			os.Exit(0)
 		} else if cmd.Flag("by-ip").Changed {
 			log.Logger.Error().Msg("--by-ip can only be used with --id")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -80,6 +87,7 @@ ethernet interfaces returned.`,
 				s, err := cmd.Flags().GetStringSlice("mac")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch macs")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, m := range s {
@@ -90,6 +98,7 @@ ethernet interfaces returned.`,
 				s, err := cmd.Flags().GetStringSlice("ip")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch IPs")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, i := range s {
@@ -100,6 +109,7 @@ ethernet interfaces returned.`,
 				s, err := cmd.Flags().GetStringSlice("net")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch networks")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, n := range s {
@@ -110,6 +120,7 @@ ethernet interfaces returned.`,
 				s, err := cmd.Flags().GetStringSlice("comp-id")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch component IDs")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, c := range s {
@@ -120,6 +131,7 @@ ethernet interfaces returned.`,
 				s, err := cmd.Flags().GetStringSlice("type")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch type")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, t := range s {
@@ -130,6 +142,7 @@ ethernet interfaces returned.`,
 				s, err := cmd.Flags().GetString("older-than")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch older-than timestamp")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				values.Add("OlderThan", s)
@@ -138,6 +151,7 @@ ethernet interfaces returned.`,
 				s, err := cmd.Flags().GetString("newer-than")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch newer-than timestamp")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				values.Add("NewerThan", s)
@@ -150,6 +164,7 @@ ethernet interfaces returned.`,
 			} else {
 				log.Logger.Error().Err(err).Msg("failed to request ethernet interfaces from SMD")
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -157,10 +172,12 @@ ethernet interfaces returned.`,
 		outFmt, err := cmd.Flags().GetString("output-format")
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to format output")
+			logHelpError(cmd)
 			os.Exit(1)
 		} else {
 			fmt.Printf(string(outBytes))

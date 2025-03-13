@@ -14,7 +14,9 @@ var bootCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "Manage boot configuration for components",
 	Long: `Manage boot configuration for components. This is a metacommand. Commands
-under this one interact with the Boot Script Service (BSS).`,
+under this one interact with the Boot Script Service (BSS).
+
+See ochami-bss(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

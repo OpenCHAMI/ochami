@@ -13,7 +13,9 @@ var bootScriptCmd = &cobra.Command{
 	Use:   "script",
 	Args:  cobra.NoArgs,
 	Short: "Work with boot scripts for components",
-	Long:  `Work with boot scripts for components. This is a metacommand.`,
+	Long: `Work with boot scripts for components. This is a metacommand.
+
+See ochami-bss(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

@@ -23,7 +23,9 @@ var bootParamsGetCmd = &cobra.Command{
 parameters are returned. Optionally, --mac, --xname, and/or --nid can be passed at least once
 to get boot parameters for specific components.
 
-This command sends a GET to BSS. An access token is required.`,
+This command sends a GET to BSS. An access token is required.
+
+See ochami-bss(1) for more details.`,
 	Example: `  ochami bss boot params get
   ochami bss boot params get --mac 00:de:ad:be:ef:00
   ochami bss boot params get --mac 00:de:ad:be:ef:00,00:c0:ff:ee:00:00
@@ -44,6 +46,7 @@ This command sends a GET to BSS. An access token is required.`,
 		bssClient, err := bss.NewClient(bssBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new BSS client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -60,6 +63,7 @@ This command sends a GET to BSS. An access token is required.`,
 				s, err := cmd.Flags().GetStringSlice("xname")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch xname list")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, x := range s {
@@ -70,6 +74,7 @@ This command sends a GET to BSS. An access token is required.`,
 				s, err := cmd.Flags().GetStringSlice("mac")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch mac list")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, m := range s {
@@ -80,6 +85,7 @@ This command sends a GET to BSS. An access token is required.`,
 				s, err := cmd.Flags().GetInt32Slice("nid")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch nid list")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, n := range s {
@@ -95,16 +101,19 @@ This command sends a GET to BSS. An access token is required.`,
 			} else {
 				log.Logger.Error().Err(err).Msg("failed to request boot parameters from BSS")
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
 		outFmt, err := cmd.Flags().GetString("output-format")
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to format output")
+			logHelpError(cmd)
 			os.Exit(1)
 		} else {
 			fmt.Printf(string(outBytes))

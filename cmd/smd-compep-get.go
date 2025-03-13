@@ -17,12 +17,16 @@ import (
 // compepGetCmd represents the smd-compep-get command
 var compepGetCmd = &cobra.Command{
 	Use:   "get [<xname>...]",
-	Short: "Get all component endpoints or one identified by an xname",
+	Short: "Get all component endpoints or a subset, identified by xname",
+	Long: `Get all component endpoints or a subset, identified by xname.
+
+See ochami-smd(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -34,6 +38,7 @@ var compepGetCmd = &cobra.Command{
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -50,6 +55,7 @@ var compepGetCmd = &cobra.Command{
 				} else {
 					log.Logger.Error().Err(err).Msg("failed to request component endpoints from SMD")
 				}
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 
@@ -57,10 +63,12 @@ var compepGetCmd = &cobra.Command{
 			outFmt, err := cmd.Flags().GetString("output-format")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
 				log.Logger.Error().Err(err).Msg("failed to format output")
+				logHelpError(cmd)
 				os.Exit(1)
 			} else {
 				fmt.Printf(string(outBytes))
@@ -69,6 +77,7 @@ var compepGetCmd = &cobra.Command{
 			httpEnvs, errs, err := smdClient.GetComponentEndpoints(token, args...)
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to get component endpoints from SMD")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			// Since smdClient.GetComponentEndpoints does the deletion iteratively, we need to
@@ -104,6 +113,7 @@ var compepGetCmd = &cobra.Command{
 
 			// Warn the user if any errors occurred during deletion iterations
 			if errorsOccurred {
+				logHelpError(cmd)
 				log.Logger.Warn().Msg("SMD redfish endpoint deletion completed with errors")
 				os.Exit(1)
 			}
@@ -112,6 +122,7 @@ var compepGetCmd = &cobra.Command{
 			cesBytes, err := json.Marshal(ces)
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to unmarshal list of component endpoints")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 
@@ -119,10 +130,12 @@ var compepGetCmd = &cobra.Command{
 			outFmt, err := cmd.Flags().GetString("output-format")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			if outBytes, err := client.FormatBody(cesBytes, outFmt); err != nil {
 				log.Logger.Error().Err(err).Msg("failed to format output")
+				logHelpError(cmd)
 				os.Exit(1)
 			} else {
 				fmt.Printf(string(outBytes))

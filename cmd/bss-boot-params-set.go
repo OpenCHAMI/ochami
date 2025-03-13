@@ -27,7 +27,9 @@ file (optionally specifying --payload-format, JSON by default),
 but the rules above still apply for the payload. If the specified
 file path is -, the data is read from standard input.
 
-This command sends a PUT to BSS. An access token is required.`,
+This command sends a PUT to BSS. An access token is required.
+
+See ochami-bss(1) for more details.`,
 	Example: `  ochami bss boot params set --xname x1000c1s7b0 --kernel https://example.com/kernel
   ochami bss boot params set --xname x1000c1s7b0,x1000c1s7b1 --kernel https://example.com/kernel
   ochami bss boot params set --xname x1000c1s7b0 --xname x1000c1s7b1 --kernel https://example.com/kernel
@@ -52,6 +54,7 @@ This command sends a PUT to BSS. An access token is required.`,
 		bssBaseURI, err := getBaseURIBSS(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for BSS")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -63,6 +66,7 @@ This command sends a PUT to BSS. An access token is required.`,
 		bssClient, err := bss.NewClient(bssBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new BSS client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -80,6 +84,7 @@ This command sends a PUT to BSS. An access token is required.`,
 			bp.Hosts, err = cmd.Flags().GetStringSlice("xname")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch xname list")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		}
@@ -87,10 +92,12 @@ This command sends a PUT to BSS. An access token is required.`,
 			bp.Macs, err = cmd.Flags().GetStringSlice("mac")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch mac list")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			if err = bp.CheckMacs(); err != nil {
 				log.Logger.Error().Err(err).Msg("invalid mac(s)")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		}
@@ -98,6 +105,7 @@ This command sends a PUT to BSS. An access token is required.`,
 			bp.Nids, err = cmd.Flags().GetInt32Slice("nid")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch nid list")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		}
@@ -107,6 +115,7 @@ This command sends a PUT to BSS. An access token is required.`,
 			bp.Kernel, err = cmd.Flags().GetString("kernel")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch kernel uri")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		}
@@ -114,6 +123,7 @@ This command sends a PUT to BSS. An access token is required.`,
 			bp.Initrd, err = cmd.Flags().GetString("initrd")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch initrd uri")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		}
@@ -121,6 +131,7 @@ This command sends a PUT to BSS. An access token is required.`,
 			bp.Params, err = cmd.Flags().GetString("params")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch params")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		}
@@ -133,6 +144,7 @@ This command sends a PUT to BSS. An access token is required.`,
 			} else {
 				log.Logger.Error().Err(err).Msg("failed to set boot parameters in BSS")
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	},

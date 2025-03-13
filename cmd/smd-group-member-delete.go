@@ -17,11 +17,15 @@ var groupMemberDeleteCmd = &cobra.Command{
 	Use:   "delete <group_label> <component>...",
 	Args:  cobra.MinimumNArgs(2),
 	Short: "Delete one or more members from a group",
+	Long: `Delete one or more members froma group.
+
+See ochami-smd(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -33,6 +37,7 @@ var groupMemberDeleteCmd = &cobra.Command{
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -55,6 +60,7 @@ var groupMemberDeleteCmd = &cobra.Command{
 		_, errs, err := smdClient.DeleteGroupMembers(token, args[0], args[1:]...)
 		if err != nil {
 			log.Logger.Error().Err(err).Msgf("failed to delete members from group %s in SMD", args[0])
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		// Since smdClient.DeleteGroupMembers does the deletion iteratively, we need to deal with
@@ -72,6 +78,7 @@ var groupMemberDeleteCmd = &cobra.Command{
 		}
 		// Warn the user if any errors occurred during deletion iterations
 		if errorsOccurred {
+			logHelpError(cmd)
 			log.Logger.Warn().Msg("SMD group member deletion completed with errors")
 			os.Exit(1)
 		}

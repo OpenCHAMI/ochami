@@ -13,6 +13,9 @@ var pcsCmd = &cobra.Command{
 	Use:   "pcs",
 	Args:  cobra.NoArgs,
 	Short: "Interact with the Power Control Service (PCS)",
+	Long: `Interact with the Power Control Service (PCS).
+
+See ochami-pcs(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

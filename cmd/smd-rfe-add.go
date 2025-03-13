@@ -24,7 +24,9 @@ unless -f is passed to read from a payload file. Specifying -f also is
 mutually exclusive with the other flags of this command and its arguments.
 If - is used as the argument to -f, the data is read from standard input.
 
-This command sends a POST to SMD. An access token is required.`,
+This command sends a POST to SMD. An access token is required.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd rfe add x3000c1s7b56 bmc-node56 172.16.0.156 de:ca:fc:0f:fe:ee
   ochami smd rfe add -f payload.json
   ochami smd rfe add -f payload.yaml --payload-format yaml
@@ -46,6 +48,7 @@ This command sends a POST to SMD. An access token is required.`,
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -57,6 +60,7 @@ This command sends a POST to SMD. An access token is required.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -78,24 +82,28 @@ This command sends a POST to SMD. An access token is required.`,
 			if cmd.Flag("domain").Changed {
 				if rfe.Domain, err = cmd.Flags().GetString("domain"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch domain")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
 			if cmd.Flag("hostname").Changed {
 				if rfe.Hostname, err = cmd.Flags().GetString("hostname"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch hostname")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
 			if cmd.Flag("username").Changed {
 				if rfe.User, err = cmd.Flags().GetString("username"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch username")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
 			if cmd.Flag("password").Changed {
 				if rfe.Password, err = cmd.Flags().GetString("password"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch password")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
@@ -106,6 +114,7 @@ This command sends a POST to SMD. An access token is required.`,
 		_, errs, err := smdClient.PostRedfishEndpoints(rfes, token)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to add redfish endpoint in SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		// Since smdClient.PostRedfishEndpoints does the addition iteratively, we need to deal with
@@ -122,6 +131,7 @@ This command sends a POST to SMD. An access token is required.`,
 			}
 		}
 		if errorsOccurred {
+			logHelpError(cmd)
 			log.Logger.Warn().Msg("SMD redfish endpoint addition completed with errors")
 			os.Exit(1)
 		}

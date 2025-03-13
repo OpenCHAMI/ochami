@@ -14,7 +14,9 @@ var rfeCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "Manage redfish endpoints",
 	Long: `Manage redfish endpoints. This is a metacommand. Commands under this one
-interact with the State Management Database (SMD).`,
+interact with the State Management Database (SMD).
+
+See ochami-smd(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

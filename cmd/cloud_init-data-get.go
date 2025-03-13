@@ -22,7 +22,9 @@ var cloudInitDataGetCmd = &cobra.Command{
 	Long: `Get cloud-init data for an identifier. By default, user-data is
 retrieved. This also occurs if --user is passed. --meta or
 --vendor can also be specified to fetch cloud-init meta-data
-or vendor-data, respectively.`,
+or vendor-data, respectively.
+
+See ochami-cloud-init(1) for more details.`,
 	Example: `  ochami cloud-init data get compute
   ochami cloud-init data get --user compute
   ochami cloud-init data get --meta compute
@@ -32,6 +34,7 @@ or vendor-data, respectively.`,
 		cloudInitbaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for cloud-init")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -39,6 +42,7 @@ or vendor-data, respectively.`,
 		cloudInitClient, err := ci.NewClient(cloudInitbaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new cloud-init client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -71,6 +75,7 @@ or vendor-data, respectively.`,
 
 		if err != nil {
 			log.Logger.Error().Err(err).Msgf("failed to get %s from cloud-init", ciType)
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		// Since the cloud-init data get functions do the deletion
@@ -90,6 +95,7 @@ or vendor-data, respectively.`,
 		// Warn the user if any errors occurred during deletion iterations
 		if errorsOccurred {
 			log.Logger.Warn().Msgf("cloud-init %s get completed with errors", ciType)
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 

@@ -17,6 +17,10 @@ var configShowCmd = &cobra.Command{
 	Use:   "show [key]",
 	Args:  cobra.MaximumNArgs(1),
 	Short: "View configuration options the CLI sees from a config file",
+	Long: `View configuration options the CLI sees from a config file.
+
+See ochami-config(1) for details on the config commands.
+See ochami-config(5) for details on the configuration options.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// It doesn't make sense to show the config value from a config
 		// file that doesn't exist, so err if the specified config file
@@ -45,18 +49,21 @@ var configShowCmd = &cobra.Command{
 			cfg, err = config.ReadConfig(config.SystemConfigFile)
 			if err != nil {
 				log.Logger.Error().Err(err).Msgf("failed to read system config file")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else if cmd.Flags().Changed("user") {
 			cfg, err = config.ReadConfig(config.UserConfigFile)
 			if err != nil {
 				log.Logger.Error().Err(err).Msgf("failed to read user config file")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else if cmd.Flags().Changed("config") {
 			cfg, err = config.ReadConfig(cmd.Flag("config").Value.String())
 			if err != nil {
 				log.Logger.Error().Err(err).Msgf("failed to read config file %s", cmd.Flag("config").Value.String())
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else {
@@ -76,6 +83,7 @@ var configShowCmd = &cobra.Command{
 			} else {
 				log.Logger.Error().Err(err).Msgf("failed to get config for key %q", key)
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		if val != "" {

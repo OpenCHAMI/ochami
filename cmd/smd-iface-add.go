@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -25,7 +26,9 @@ are required unless -f is passed to read from a payload file. Specifying
 its arguments. If - is used as the argument to -f, the data is read
 from standard input.
 
-This command sends a POST to SMD. An access token is required.`,
+This command sends a POST to SMD. An access token is required.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd iface add x3000c1s7b55n0 de:ca:fc:0f:fe:ee NMN,172.16.0.55
   ochami smd iface add -d "Node Management for n55" x3000c1s7b55n0 de:ca:fc:0f:fe:ee NMN,172.16.0.55
   ochami smd iface add x3000c1s7b55n0 de:ca:fc:0f:fe:ee external,10.1.0.55 internal,172.16.0.55
@@ -39,8 +42,7 @@ This command sends a POST to SMD. An access token is required.`,
 			printUsageHandleError(cmd)
 			os.Exit(0)
 		} else if len(args) < 3 {
-			log.Logger.Error().Msgf("expected at least 3 arguments (comp_id, mac_addr, net_ip_paor) but got %d: %v", len(args), args)
-			os.Exit(1)
+			return fmt.Errorf("expected at least 3 arguments (comp_id, mac_addr, net_ip_paor) but got %d: %v", len(args), args)
 		}
 
 		return nil
@@ -50,6 +52,7 @@ This command sends a POST to SMD. An access token is required.`,
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -61,6 +64,7 @@ This command sends a POST to SMD. An access token is required.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -99,6 +103,7 @@ This command sends a POST to SMD. An access token is required.`,
 		_, errs, err := smdClient.PostEthernetInterfaces(eis, token)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to add ethernet interface in SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		// Since smdClient.PostEthernetInterfaces does the addition iteratively, we need to deal with
@@ -115,6 +120,7 @@ This command sends a POST to SMD. An access token is required.`,
 			}
 		}
 		if errorsOccurred {
+			logHelpError(cmd)
 			log.Logger.Warn().Msg("SMD ethernet interface addition completed with errors")
 			os.Exit(1)
 		}

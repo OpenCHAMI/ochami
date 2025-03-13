@@ -6,14 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gopkg.in/yaml.v3"
+	"net/http"
+	"os"
+	"strings"
+
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/pcs"
 	"github.com/elliotchance/pie/v2"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
-	"net/http"
-	"strings"
 )
 
 // For now use this to map API name to names that make more sense for the CLI, in
@@ -99,18 +101,25 @@ func flags() []string {
 var pcsStatusCmd = &cobra.Command{
 	Use:   "status",
 	Args:  cobra.NoArgs,
-	Short: "Get status of PCS service",
+	Short: "Get status of Power Control Service (PCS)",
+	Long: `Get status of Power Control Service (PCS).
+
+See ochami-pcs(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		pcsBaseURI, err := getBaseURIPCS(cmd)
 		if err != nil {
-			log.Logger.Fatal().Err(err).Msg("failed to get base URI for PCS")
+			log.Logger.Error().Err(err).Msg("failed to get base URI for PCS")
+			logHelpError(cmd)
+			os.Exit(1)
 		}
 
 		// Create client to make request to PCS
 		pcsClient, err := pcs.NewClient(pcsBaseURI, insecure)
 		if err != nil {
-			log.Logger.Fatal().Err(err).Msg("error creating new PCS client")
+			log.Logger.Error().Err(err).Msg("error creating new PCS client")
+			logHelpError(cmd)
+			os.Exit(1)
 		}
 
 		// Check if a CA certificate was passed and load it into client if valid
@@ -128,16 +137,20 @@ var pcsStatusCmd = &cobra.Command{
 			healthHttpEnv, err := pcsClient.GetHealth()
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Fatal().Err(err).Msg("PCS status (health) request yielded unsuccessful HTTP response")
+					log.Logger.Error().Err(err).Msg("PCS status (health) request yielded unsuccessful HTTP response")
 				} else {
-					log.Logger.Fatal().Err(err).Msg("failed to get PCS status (health)")
+					log.Logger.Error().Err(err).Msg("failed to get PCS status (health)")
 				}
+				logHelpError(cmd)
+				os.Exit(1)
 			}
 
 			// Unmarshall the health
 			err = json.Unmarshal(healthHttpEnv.Body, &health)
 			if err != nil {
-				log.Logger.Fatal().Msg("failed to unmarshal health")
+				log.Logger.Error().Msg("failed to unmarshal health")
+				logHelpError(cmd)
+				os.Exit(1)
 			}
 		}
 
@@ -168,7 +181,9 @@ var pcsStatusCmd = &cobra.Command{
 		if reportPCSState {
 			pcsStatus, err := getStatus(pcsClient)
 			if err != nil {
-				log.Logger.Fatal().Err(err).Msg("failed to get PCS status")
+				log.Logger.Error().Err(err).Msg("failed to get PCS status")
+				logHelpError(cmd)
+				os.Exit(1)
 			}
 
 			output.Status = pcsStatus
@@ -177,10 +192,14 @@ var pcsStatusCmd = &cobra.Command{
 		// Print output
 		outFmt, err := cmd.Flags().GetString("output-format")
 		if err != nil {
-			log.Logger.Fatal().Err(err).Msg("failed to get value for --output-format")
+			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			logHelpError(cmd)
+			os.Exit(1)
 		}
 		if outBytes, err := formatOutput(output, outFmt); err != nil {
-			log.Logger.Fatal().Err(err).Msg("failed to format output")
+			log.Logger.Error().Err(err).Msg("failed to format output")
+			logHelpError(cmd)
+			os.Exit(1)
 		} else {
 			fmt.Println(string(outBytes))
 		}

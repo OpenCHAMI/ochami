@@ -14,7 +14,9 @@ var bootParamsCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "Work with boot parameters for components",
 	Long: `Work with boot parameters for components, including kernel URI, initrd URI,
-and kernel command line arguments. This is a metacommand.`,
+and kernel command line arguments. This is a metacommand.
+
+See ochami-bss(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

@@ -22,13 +22,16 @@ var bootScriptGetCmd = &cobra.Command{
 	Long: `Get iPXE boot script for a component. Specifying one of --mac, --xname,
 or --nid is required to specify which component to fetch the boot script for.
 
-This command sends a GET to BSS. An access token is not required.`,
+This command sends a GET to BSS. An access token is not required.
+
+See ochami-bss(1) for more details.`,
 	Example: `  ochami boot script get --mac 00:c0:ff:ee:00:00`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		bssBaseURI, err := getBaseURIBSS(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for BSS")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -36,6 +39,7 @@ This command sends a GET to BSS. An access token is not required.`,
 		bssClient, err := bss.NewClient(bssBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new BSS client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -50,6 +54,7 @@ This command sends a GET to BSS. An access token is not required.`,
 			s, err := cmd.Flags().GetStringSlice("xname")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch xname list")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			for _, x := range s {
@@ -60,6 +65,7 @@ This command sends a GET to BSS. An access token is not required.`,
 			s, err := cmd.Flags().GetStringSlice("mac")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch mac list")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			for _, m := range s {
@@ -70,6 +76,7 @@ This command sends a GET to BSS. An access token is not required.`,
 			s, err := cmd.Flags().GetInt32Slice("nid")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch nid list")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			for _, n := range s {
@@ -82,6 +89,7 @@ This command sends a GET to BSS. An access token is not required.`,
 			s, err := cmd.Flags().GetInt("retry")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch number of retries")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			values.Add("retry", fmt.Sprintf("%d", s))
@@ -90,6 +98,7 @@ This command sends a GET to BSS. An access token is not required.`,
 			s, err := cmd.Flags().GetString("arch")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch arch")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			values.Add("arch", s)
@@ -98,6 +107,7 @@ This command sends a GET to BSS. An access token is not required.`,
 			s, err := cmd.Flags().GetInt("timestamp")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("unable to fetch timestamp")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			values.Add("timestamp", fmt.Sprintf("%d", s))
@@ -111,6 +121,7 @@ This command sends a GET to BSS. An access token is not required.`,
 			} else {
 				log.Logger.Error().Err(err).Msg("failed to request boot script from BSS")
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		fmt.Println(string(httpEnv.Body))

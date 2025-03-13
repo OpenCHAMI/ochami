@@ -33,7 +33,10 @@ If this is the first cluster created, the following is also set:
 default-cluster is used to determine which cluster in the list should be used for subcommands.
 
 This same command can be use to modify existing cluster information. Running the same command above
-with a different base URI will change the cluster base URI for the 'foobar' cluster.`,
+with a different base URI will change the cluster base URI for the 'foobar' cluster.
+
+See ochami-config(1) for details on the config commands.
+See ochami-config(5) for details on the configuration options.`,
 	Example: `  ochami config cluster set foobar cluster.uri https://foobar.openchami.cluster
   ochami config cluster set foobar cluster.smd.uri /hsm/v2
   ochami config cluster set foobar name new-foobar`,
@@ -61,11 +64,13 @@ with a different base URI will change the cluster base URI for the 'foobar' clus
 		if create, err := askToCreate(fileToModify); err != nil {
 			if err != FileExistsError {
 				log.Logger.Error().Err(err).Msg("error asking to create file")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else if create {
 			if err := createIfNotExists(fileToModify); err != nil {
 				log.Logger.Error().Err(err).Msg("error creating file")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else {
@@ -77,10 +82,12 @@ with a different base URI will change the cluster base URI for the 'foobar' clus
 		dflt, err := cmd.Flags().GetBool("default")
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to retrieve \"default\" flag")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		if err := config.ModifyConfigCluster(fileToModify, args[0], args[1], dflt, args[2]); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to modify config file")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	},

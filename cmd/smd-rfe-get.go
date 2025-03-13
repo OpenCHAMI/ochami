@@ -21,12 +21,15 @@ var rfeGetCmd = &cobra.Command{
 	Short: "Get all redfish endpoints or some based on filter(s)",
 	Long: `Get all redfish endpoints or some based on filter(s). If no options are passed,
 all redfish endpoints are returned. Optionally, options can be passed to limit the redfish
-endpoints returned.`,
+endpoints returned.
+
+See ochami-smd(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -38,6 +41,7 @@ endpoints returned.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -53,6 +57,7 @@ endpoints returned.`,
 				s, err := cmd.Flags().GetStringSlice("xname")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch xname list")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, x := range s {
@@ -63,6 +68,7 @@ endpoints returned.`,
 				s, err := cmd.Flags().GetStringSlice("mac")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch mac list")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, m := range s {
@@ -73,6 +79,7 @@ endpoints returned.`,
 				s, err := cmd.Flags().GetStringSlice("ip")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch ip list")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, i := range s {
@@ -83,6 +90,7 @@ endpoints returned.`,
 				s, err := cmd.Flags().GetStringSlice("fqdn")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch fqdn list")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, f := range s {
@@ -93,6 +101,7 @@ endpoints returned.`,
 				s, err := cmd.Flags().GetStringSlice("type")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch type list")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, t := range s {
@@ -103,6 +112,7 @@ endpoints returned.`,
 				s, err := cmd.Flags().GetStringSlice("uuid")
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch uuid list")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 				for _, u := range s {
@@ -118,6 +128,7 @@ endpoints returned.`,
 			} else {
 				log.Logger.Error().Err(err).Msg("failed to request redfish endpoints from SMD")
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -125,10 +136,12 @@ endpoints returned.`,
 		outFmt, err := cmd.Flags().GetString("output-format")
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to format output")
+			logHelpError(cmd)
 			os.Exit(1)
 		} else {
 			fmt.Printf(string(outBytes))
