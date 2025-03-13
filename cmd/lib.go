@@ -110,10 +110,12 @@ func initLogging(cmd *cobra.Command) error {
 func initConfigAndLogging(cmd *cobra.Command, createCfg bool) {
 	if err := initConfig(cmd, createCfg); err != nil {
 		earlyMsgf("failed to initialize config: %v", err)
+		earlyMsgf("see '%s --help' for long command help", cmd.CommandPath())
 		os.Exit(1)
 	}
 	if err := initLogging(cmd); err != nil {
 		earlyMsgf("failed to initialized logging: %v", err)
+		earlyMsgf("see '%s --help' for long command help", cmd.CommandPath())
 		os.Exit(1)
 	}
 }
@@ -370,6 +372,7 @@ func setTokenFromEnvVar(cmd *cobra.Command) {
 		log.Logger.Debug().Msg("--cluster not specified, using default-cluster: " + clusterName)
 	} else {
 		log.Logger.Error().Msg("No default-cluster specified and --token not passed")
+		logHelpError(cmd)
 		os.Exit(1)
 	}
 
@@ -386,6 +389,7 @@ func setTokenFromEnvVar(cmd *cobra.Command) {
 
 	log.Logger.Error().Msgf("Environment variable %s unset for reading token for cluster %q", envVarToRead, clusterName)
 	os.Exit(1)
+	logHelpError(cmd)
 }
 
 // handlePayload unmarshals a payload file into data for command cmd if
@@ -397,6 +401,7 @@ func handlePayload(cmd *cobra.Command, data any) {
 		err := client.ReadPayload(dFile, dFormat, data)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("unable to read payload for request")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	}
@@ -409,4 +414,20 @@ func printUsageHandleError(cmd *cobra.Command) {
 		log.Logger.Error().Err(err).Msg("failed to print usage")
 		os.Exit(1)
 	}
+	logHelpWarn(cmd)
+}
+
+// logHelpError logs a message at error level telling the user to use the
+// '--help' flag of the passed command to get more information on the command.
+// The full command invocation without flags or arguments is printed in the
+// message.
+func logHelpError(cmd *cobra.Command) {
+	log.Logger.Error().Msgf("see '%s --help' for long command help", cmd.CommandPath())
+}
+
+// logHelpWarn logs a message at warn level telling the user to use the '--help'
+// flag of the passed command to get more information on the command.  The full
+// command invocation without flags or arguments is printed in the message.
+func logHelpWarn(cmd *cobra.Command) {
+	log.Logger.Warn().Msgf("see '%s --help' for long command help", cmd.CommandPath())
 }

@@ -21,7 +21,9 @@ Alternatively, use -f to read the payload data from a file (optionally
 specifying --payload-format, JSON by default). If - is used as the
 argument to -f, the data is read from standard input.
 
-This command sends a DELETE to SMD. An access token is required.`,
+This command sends a DELETE to SMD. An access token is required.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd rfe delete x3000c1s7b56
   ochami smd rfe delete x3000c1s7b56 x3000c1s7b56
   ochami smd rfe delete --all
@@ -49,6 +51,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -60,6 +63,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -104,6 +108,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 				} else {
 					log.Logger.Error().Err(err).Msg("failed to delete redfish endpoints in SMD")
 				}
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else {
@@ -111,6 +116,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 			_, errs, err := smdClient.DeleteRedfishEndpoints(token, xnameSlice...)
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to delete redfish endpoints in SMD")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			// Since smdClient.DeleteRedfishEndpoints does the deletion iteratively, we need to deal with
@@ -130,6 +136,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 			if errorsOccurred {
 				log.Logger.Warn().Msg("SMD redfish endpoint deletion completed with errors")
 				os.Exit(1)
+				logHelpError(cmd)
 			}
 		}
 	},

@@ -49,7 +49,8 @@ nodes:
     - name: HSN
       ip_addr: 192.168.0.1
 
-`,
+
+See ochami-discover(1) for more details.`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// Check that all required args are passed
 		if len(args) == 0 && !cmd.Flag("payload").Changed {
@@ -64,6 +65,7 @@ nodes:
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -75,6 +77,7 @@ nodes:
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -96,6 +99,7 @@ nodes:
 		comps, rfes, ifaces, err := discover.DiscoveryInfoV2(smdBaseURI, nodes)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to construct structures to send to SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		log.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
@@ -428,6 +432,9 @@ nodes:
 
 		// Notify user if any request errors occurred
 		exitStatus := 0
+		if compErrorsOccurred || rfeErrorsOccurred || ifaceErrorsOccurred || groupErrorsOccurred {
+			logHelpError(cmd)
+		}
 		if compErrorsOccurred {
 			log.Logger.Warn().Msg("component requests completed with errors")
 			exitStatus = 1

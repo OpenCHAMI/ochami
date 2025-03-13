@@ -21,7 +21,9 @@ Alternatively, pass the group labels in an array of group structures
 within a payload file and specify that file via -f. If - is used as
 the argument to -f, the data is read from standard input.
 
-This command sends a DELETE to SMD. An access token is required.`,
+This command sends a DELETE to SMD. An access token is required.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd group delete compute
   ochami smd group delete -f payload.json
   ochami smd group delete -f payload.yaml --payload-format yaml
@@ -46,6 +48,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -57,6 +60,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -90,6 +94,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 		_, errs, err := smdClient.DeleteGroups(token, gLabelSlice...)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to delete groups in SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		// Since smdClient.DeleteGroups does the deletion iteratively, we need to deal with
@@ -107,6 +112,7 @@ This command sends a DELETE to SMD. An access token is required.`,
 		}
 		// Warn the user if any errors occurred during deletion iterations
 		if errorsOccurred {
+			logHelpError(cmd)
 			log.Logger.Warn().Msg("SMD group deletion completed with errors")
 			os.Exit(1)
 		}

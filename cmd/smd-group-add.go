@@ -22,7 +22,9 @@ Specifying -f also is mutually exclusive with the other flags of this commands
 and its arguments. If - is used as the argument to -f, the data is read from
 standard input.
 
-This command sends a POST to SMD. An access token is required.`,
+This command sends a POST to SMD. An access token is required.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd group add computes
   ochami smd group add -d "Compute group" computes
   ochami smd group add -d "Compute group" --tag tag1,tag2 --m x3000c1s7b0n1,x3000c1s7b1n1 computes
@@ -50,6 +52,7 @@ This command sends a POST to SMD. An access token is required.`,
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -61,6 +64,7 @@ This command sends a POST to SMD. An access token is required.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -77,24 +81,28 @@ This command sends a POST to SMD. An access token is required.`,
 			if cmd.Flag("description").Changed {
 				if group.Description, err = cmd.Flags().GetString("description"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch description")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
 			if cmd.Flag("tag").Changed {
 				if group.Tags, err = cmd.Flags().GetStringSlice("tag"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch tags")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
 			if cmd.Flag("exclusive-group").Changed {
 				if group.ExclusiveGroup, err = cmd.Flags().GetString("exclusive-group"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch exclusive group name")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
 			if cmd.Flag("member").Changed {
 				if group.Members.IDs, err = cmd.Flags().GetStringSlice("member"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch members")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
@@ -105,6 +113,7 @@ This command sends a POST to SMD. An access token is required.`,
 		_, errs, err := smdClient.PostGroups(groups, token)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to add group to SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		// Since smdClient.PostGroups does the addition iteratively, we need to deal with
@@ -121,6 +130,7 @@ This command sends a POST to SMD. An access token is required.`,
 			}
 		}
 		if errorsOccurred {
+			logHelpError(cmd)
 			log.Logger.Warn().Msg("SMD group addition completed with errors")
 			os.Exit(1)
 		}

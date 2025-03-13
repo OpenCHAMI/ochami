@@ -16,6 +16,10 @@ var configClusterShowCmd = &cobra.Command{
 	Use:   "show [cluster_name] [key]",
 	Args:  cobra.MaximumNArgs(2),
 	Short: "View cluster configuration options the CLI sees from a config file",
+	Long: `View cluster configuration options the CLI sees from a config file.
+
+See ochami-config(1) for details on the config commands.
+See ochami-config(5) for details on the configuration options.`,
 	Example: `  ochami config cluster show
   ochami config cluster show foobar
   ochami config cluster show foobar cluster.uri`,
@@ -46,11 +50,13 @@ var configClusterShowCmd = &cobra.Command{
 			cfg, err = config.ReadConfig(config.SystemConfigFile)
 			if err != nil {
 				log.Logger.Error().Err(err).Msgf("failed to read system config file")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else if cmd.Flags().Changed("user") {
 			cfg, err = config.ReadConfig(config.UserConfigFile)
 			if err != nil {
+				logHelpError(cmd)
 				log.Logger.Error().Err(err).Msgf("failed to read user config file")
 				os.Exit(1)
 			}
@@ -58,6 +64,7 @@ var configClusterShowCmd = &cobra.Command{
 			cfg, err = config.ReadConfig(cmd.Flag("config").Value.String())
 			if err != nil {
 				log.Logger.Error().Err(err).Msgf("failed to read config file %s", cmd.Flag("config").Value.String())
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else {
@@ -71,6 +78,7 @@ var configClusterShowCmd = &cobra.Command{
 			val, err = config.GetConfigString(cfg, "clusters", format)
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to fetch config for all clusters")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else {
@@ -83,6 +91,7 @@ var configClusterShowCmd = &cobra.Command{
 			}
 			if cfgCl == nil {
 				log.Logger.Error().Msgf("cluster %q not found", args[0])
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 
@@ -97,6 +106,7 @@ var configClusterShowCmd = &cobra.Command{
 				} else {
 					log.Logger.Error().Err(err).Msgf("failed to get cluster config for key %q", key)
 				}
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		}

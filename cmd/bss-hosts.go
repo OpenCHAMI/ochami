@@ -13,6 +13,9 @@ var bssHostsCmd = &cobra.Command{
 	Use:   "hosts",
 	Args:  cobra.NoArgs,
 	Short: "Work with hosts in BSS",
+	Long: `Work with hosts in BSS.
+
+See ochami-bss(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

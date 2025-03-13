@@ -13,6 +13,9 @@ var bssCmd = &cobra.Command{
 	Use:   "bss",
 	Args:  cobra.NoArgs,
 	Short: "Communicate with the Boot Script Service (BSS)",
+	Long: `Communicate with the Boot Script Service (BSS).
+
+See ochami-bss(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

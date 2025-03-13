@@ -21,7 +21,9 @@ or more NIDs, or a combination of both. Alternatively, specify the xnames in
 an array of component structures within a payload file and pass it to -f. If
 - is passed to -f, the data is read from standard input.
 
-This command sends a DELETE to SMD. An access token is required.`,
+This command sends a DELETE to SMD. An access token is required.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd component delete x3000c1s7b56n0
   ochami smd component delete x3000c1s7b56n0 x3000c1s7b56n1
   ochami smd component delete --all

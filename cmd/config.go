@@ -11,9 +11,13 @@ import (
 // The 'config' command is a metacommand that allows the user to show and set
 // configuration options in the passed config file.
 var configCmd = &cobra.Command{
-	Use:     "config",
-	Args:    cobra.NoArgs,
-	Short:   "Set or view configuration options",
+	Use:   "config",
+	Args:  cobra.NoArgs,
+	Short: "Set or view configuration options",
+	Long: `Set or view configuration options.
+
+See ochami-config(1) for details on the config commands.
+See ochami-config(5) for details on the configuration options.`,
 	Example: `ochami config show`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,

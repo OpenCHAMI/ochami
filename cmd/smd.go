@@ -13,6 +13,9 @@ var smdCmd = &cobra.Command{
 	Use:   "smd",
 	Args:  cobra.NoArgs,
 	Short: "Communicate with the State Management Database (SMD)",
+	Long: `Communicate with the State Management Database (SMD).
+
+See ochami-smd(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

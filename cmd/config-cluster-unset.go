@@ -12,9 +12,13 @@ import (
 
 // configClusterUnsetCmd represents the config-cluster-unset command
 var configClusterUnsetCmd = &cobra.Command{
-	Use:     "unset [--user | --system | --config <path>] <cluster_name> <key>",
-	Args:    cobra.ExactArgs(2),
-	Short:   "Unset parameter for a cluster",
+	Use:   "unset [--user | --system | --config <path>] <cluster_name> <key>",
+	Args:  cobra.ExactArgs(2),
+	Short: "Unset parameter for a cluster",
+	Long: `Unset parameter for a cluster.
+
+See ochami-config(1) for details on the config commands.
+See ochami-config(5) for details on the configuration options.`,
 	Example: `  ochami config cluster unset foobar cluster.smd.uri`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// It doesn't make sense to unset a cluster config from a
@@ -47,6 +51,7 @@ var configClusterUnsetCmd = &cobra.Command{
 		// Perform modification
 		if err := config.DeleteConfigCluster(fileToModify, args[0], args[1]); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to modify config file")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	},

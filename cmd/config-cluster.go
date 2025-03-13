@@ -13,6 +13,10 @@ var configClusterCmd = &cobra.Command{
 	Use:   "cluster",
 	Args:  cobra.NoArgs,
 	Short: "Manage cluster configuration",
+	Long: `Manage cluster configuration.
+
+See ochami-config(1) for details on the config commands.
+See ochami-config(5) for details on the configuration options.`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It

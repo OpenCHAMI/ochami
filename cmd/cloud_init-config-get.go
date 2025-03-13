@@ -19,6 +19,9 @@ var cloudInitConfigGetCmd = &cobra.Command{
 	Use:   "get [id]",
 	Args:  cobra.MaximumNArgs(1),
 	Short: "Get cloud-init configs, all or for an identifier",
+	Long: `Get cloud-init configs, all or for an identifier.
+
+See ochami-cloud-init(1) for more details.`,
 	Example: `ochami cloud-init config get
   ochami cloud-init config get compute
   ochami cloud-init config get --secure compute`,
@@ -27,6 +30,7 @@ var cloudInitConfigGetCmd = &cobra.Command{
 		cloudInitbaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for cloud-init")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -34,6 +38,7 @@ var cloudInitConfigGetCmd = &cobra.Command{
 		cloudInitClient, err := ci.NewClient(cloudInitbaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new cloud-init client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -61,6 +66,7 @@ var cloudInitConfigGetCmd = &cobra.Command{
 			} else {
 				log.Logger.Error().Err(err).Msg("failed to request configs from cloud-init")
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -68,10 +74,12 @@ var cloudInitConfigGetCmd = &cobra.Command{
 		outFmt, err := cmd.Flags().GetString("output-format")
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to format output")
+			logHelpError(cmd)
 			os.Exit(1)
 		} else {
 			fmt.Printf(string(outBytes))

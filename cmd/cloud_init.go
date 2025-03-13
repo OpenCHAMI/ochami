@@ -13,7 +13,9 @@ var cloudInitCmd = &cobra.Command{
 	Use:   "cloud-init",
 	Args:  cobra.NoArgs,
 	Short: "Interact with the cloud-init service",
-	Long:  `Interact with the cloud-init service. This is a metacommand.`,
+	Long: `Interact with the cloud-init service. This is a metacommand.
+
+See ochami-cloud-init(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

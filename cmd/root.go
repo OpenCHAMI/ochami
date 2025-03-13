@@ -62,7 +62,18 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("failed to execute root command")
+		log.Logger.Error().Err(err).Msg("failed to execute command")
+		if cmd, _, err := rootCmd.Find(os.Args[1:]); err != nil {
+			// Error looking up invoked command, default to printing
+			// help suggestion for root command, printing debug
+			// message only for debugging (most users don't need to
+			// know an error occurred).
+			log.Logger.Debug().Err(err).Msg("failed to lookup invoked command")
+			logHelpError(rootCmd)
+		} else {
+			// Print help suggestion for invoked command
+			logHelpError(cmd)
+		}
 		os.Exit(1)
 	}
 }

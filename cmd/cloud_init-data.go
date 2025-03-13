@@ -14,7 +14,9 @@ var cloudInitDataCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "View cloud-init data",
 	Long: `View cloud-init data. This is a metacommand. Commands under this one
-interact with the cloud-init service and deal with cloud-init data.`,
+interact with the cloud-init service and deal with cloud-init data.
+
+See ochami-cloud-init(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

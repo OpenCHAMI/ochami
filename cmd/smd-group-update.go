@@ -23,7 +23,9 @@ or --tag must be specified. Alternatively, pass -f to pass a file
 rules above still apply for the payload. If - is used as the
 argument to -f, the data is read from standard input.
 
-This command sends a PATCH to SMD. An access token is required.`,
+This command sends a PATCH to SMD. An access token is required.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd group update --description "New description for compute" compute
   ochami smd group update --tag existing_tag --tag new_tag compute
   ochami smd group update --tag existing_tag,new_tag compute
@@ -46,6 +48,7 @@ This command sends a PATCH to SMD. An access token is required.`,
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -57,6 +60,7 @@ This command sends a PATCH to SMD. An access token is required.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -75,12 +79,14 @@ This command sends a PATCH to SMD. An access token is required.`,
 			if cmd.Flag("description").Changed {
 				if group.Description, err = cmd.Flags().GetString("description"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch description")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
 			if cmd.Flag("tag").Changed {
 				if group.Tags, err = cmd.Flags().GetStringSlice("tag"); err != nil {
 					log.Logger.Error().Err(err).Msg("unable to fetch tags")
+					logHelpError(cmd)
 					os.Exit(1)
 				}
 			}
@@ -91,6 +97,7 @@ This command sends a PATCH to SMD. An access token is required.`,
 		_, errs, err := smdClient.PatchGroups(groups, token)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to patch group in SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		// Since smdClient.PatchGroups does the edition iteratively, we need to deal with
@@ -108,6 +115,7 @@ This command sends a PATCH to SMD. An access token is required.`,
 		}
 		if errorsOccurred {
 			log.Logger.Warn().Msg("SMD group update completed with errors")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	},

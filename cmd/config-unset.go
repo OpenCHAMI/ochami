@@ -22,7 +22,10 @@ is passed, this command edits the system configuration file. If --config
 is passed instead, this command edits the file at the path specified.
 
 This command does not handle cluster configs. For that, use the
-'ochami config cluster delete' command.`,
+'ochami config cluster delete' command.
+
+See ochami-config(1) for details on the config commands.
+See ochami-config(5) for details on the configuration options.`,
 	Example: `  ochami config unset log.format
   ochami config unset --user log.format
   ochami config unset --system log.format
@@ -58,12 +61,14 @@ This command does not handle cluster configs. For that, use the
 		// Refuse to modify config if user tries to modify cluster config
 		if strings.HasPrefix(args[0], "clusters") {
 			log.Logger.Error().Msg("`ochami config unset` is meant for unsetting general config, use `ochami config cluster delete` for deleting cluster config")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
 		// Perform modification
 		if err := config.DeleteConfig(fileToModify, args[0]); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to modify config file")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	},

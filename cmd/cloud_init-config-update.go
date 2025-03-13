@@ -27,7 +27,9 @@ one is being passed. An alternative to using -d would be to use -f
 and passing -, which will cause ochami to read the data from
 standard input.
 
-This command sends a PUT to cloud-init.`,
+This command sends a PUT to cloud-init.
+
+See ochami-cloud-init(1) for more details.`,
 	Example: `  ochami cloud-init config update -d \
     '[ \
        { \
@@ -53,6 +55,7 @@ This command sends a PUT to cloud-init.`,
 		cloudInitBaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for cloud-init")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -64,6 +67,7 @@ This command sends a PUT to cloud-init.`,
 		cloudInitClient, err := ci.NewClient(cloudInitBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new cloud-init client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -79,11 +83,13 @@ This command sends a PUT to cloud-init.`,
 			rawJSON, err := cmd.Flags().GetString("data")
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to fetch json data")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 			err = json.Unmarshal([]byte(rawJSON), &ciData)
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to marshal json data")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		}
@@ -97,6 +103,7 @@ This command sends a PUT to cloud-init.`,
 		}
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to set cloud-init configs")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		// Since cloudInitClient.Put* functions do the setting iteratively, we need to deal with
@@ -115,6 +122,7 @@ This command sends a PUT to cloud-init.`,
 		// Warn the user if any errors occurred during editing iterations
 		if errorsOccurred {
 			log.Logger.Warn().Msgf("cloud-init config setting completed with errors")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	},

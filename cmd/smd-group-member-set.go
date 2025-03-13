@@ -22,13 +22,16 @@ in the list are set as the only members of the group. If a component
 specified is already in the group, it remains in the group. If a
 component specified is not already in te group, it is added to the
 group. If a component is in the group but not specified, it is
-removed from the group.`,
+removed from the group.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd group member set compute x1000c1s7b1n0 x1000c1s7b2n0`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -40,6 +43,7 @@ removed from the group.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -54,6 +58,7 @@ removed from the group.`,
 			} else {
 				log.Logger.Error().Err(err).Msgf("failed to set group membership for group %s in SMD", args[0])
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	},

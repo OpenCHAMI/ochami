@@ -22,7 +22,10 @@ this command edits the system configuration file. If --config is passed
 instead, this command edits the file at the path specified.
 
 This command does not handle cluster configs. For that, use the
-'ochami config cluster set' command.`,
+'ochami config cluster set' command.
+
+See ochami-config(1) for details on the config commands.
+See ochami-config(5) for details on the configuration options.`,
 	Example: `  ochami config set log.format json
   ochami config set --user log.format json
   ochami config set --system log.format json
@@ -50,6 +53,7 @@ This command does not handle cluster configs. For that, use the
 		// Refuse to modify config if user tries to modify cluster config
 		if strings.HasPrefix(args[0], "clusters") {
 			log.Logger.Error().Msg("`ochami config set` is meant for modifying general config, use `ochami config cluster set` for modifying cluster config")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -57,11 +61,13 @@ This command does not handle cluster configs. For that, use the
 		if create, err := askToCreate(fileToModify); err != nil {
 			if err != FileExistsError {
 				log.Logger.Error().Err(err).Msg("error asking to create file")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else if create {
 			if err := createIfNotExists(fileToModify); err != nil {
 				log.Logger.Error().Err(err).Msg("error creating file")
+				logHelpError(cmd)
 				os.Exit(1)
 			}
 		} else {
@@ -72,6 +78,7 @@ This command does not handle cluster configs. For that, use the
 		// Perform modification
 		if err := config.ModifyConfig(fileToModify, args[0], args[1]); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to modify config file")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	},

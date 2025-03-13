@@ -22,7 +22,9 @@ var componentAddCmd = &cobra.Command{
 mutually exclusive with the other flags of this command. If - is
 used as the argument to -f, the data is read from standard input.
 
-This command sends a POST to SMD. An access token is required.`,
+This command sends a POST to SMD. An access token is required.
+
+See ochami-smd(1) for more details.`,
 	Example: `  ochami smd component add x3000c1s7b56n0 56
   ochami smd component add --state Ready --enabled --role Compute --arch X86 x3000c1s7b56n0 56
   ochami smd component add -f payload.json
@@ -45,6 +47,7 @@ This command sends a POST to SMD. An access token is required.`,
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -56,6 +59,7 @@ This command sends a POST to SMD. An access token is required.`,
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -90,6 +94,7 @@ This command sends a POST to SMD. An access token is required.`,
 			} else {
 				log.Logger.Error().Err(err).Msg("failed to add component(s) to SMD")
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 	},

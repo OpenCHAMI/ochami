@@ -18,11 +18,15 @@ var groupMemberGetCmd = &cobra.Command{
 	Use:   "get <group_label>",
 	Args:  cobra.ExactArgs(1),
 	Short: "Get members of a group",
+	Long: `Get members of a group.
+
+See ochami-smd(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -34,6 +38,7 @@ var groupMemberGetCmd = &cobra.Command{
 		smdClient, err := smd.NewClient(smdBaseURI, insecure)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("error creating new SMD client")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -48,6 +53,7 @@ var groupMemberGetCmd = &cobra.Command{
 			} else {
 				log.Logger.Error().Err(err).Msg("failed to request group members from SMD")
 			}
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 
@@ -55,10 +61,12 @@ var groupMemberGetCmd = &cobra.Command{
 		outFmt, err := cmd.Flags().GetString("output-format")
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get value for --output-format")
+			logHelpError(cmd)
 			os.Exit(1)
 		}
 		if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to format output")
+			logHelpError(cmd)
 			os.Exit(1)
 		} else {
 			fmt.Printf(string(outBytes))
