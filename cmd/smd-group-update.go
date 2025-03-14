@@ -15,6 +15,7 @@ import (
 // groupUpdateCmd represents the smd-group-update command
 var groupUpdateCmd = &cobra.Command{
 	Use:   "update -f <payload_file> | ([--description <description>] [--tag <tag>]... <group_label>)",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Update the description and/or tags of a group",
 	Long: `Update the description and/or tags of a group. At least one of --description
 or --tag must be specified. Alternatively, pass -f to pass a file
@@ -31,7 +32,7 @@ This command sends a PATCH to SMD. An access token is required.`,
   ochami smd group update -f payload.yaml --payload-format yaml
   echo '<json_data>' | ochami smd group update -f -
   echo '<yaml_data>' | ochami smd group update -f - --payload-format yaml`,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// First and foremost, make sure config is loaded and logging
 		// works.
 		initConfigAndLogging(cmd, true)
@@ -42,6 +43,9 @@ This command sends a PATCH to SMD. An access token is required.`,
 			os.Exit(0)
 		}
 
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {

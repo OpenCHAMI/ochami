@@ -34,11 +34,7 @@ This command sends a PATCH to BSS. An access token is required.`,
   ochami bss boot params update -f payload.yaml --payload-format yaml
   echo '<json_data>' | ochami bss boot params update -f -
   echo '<yaml_data>' | ochami bss boot params update -f - --payload-format yaml`,
-	Run: func(cmd *cobra.Command, args []string) {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// cmd.LocalFlags().NFlag() doesn't seem to work, so we check every flag
 		if len(args) == 0 &&
 			!cmd.Flag("xname").Changed && !cmd.Flag("nid").Changed && !cmd.Flag("mac").Changed &&
@@ -47,6 +43,13 @@ This command sends a PATCH to BSS. An access token is required.`,
 			os.Exit(0)
 		}
 
+		// First and foremost, make sure config is loaded and logging
+		// works.
+		initConfigAndLogging(cmd, true)
+
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		bssBaseURI, err := getBaseURIBSS(cmd)
 		if err != nil {

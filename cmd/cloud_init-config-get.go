@@ -22,11 +22,14 @@ var cloudInitConfigGetCmd = &cobra.Command{
 	Example: `ochami cloud-init config get
   ochami cloud-init config get compute
   ochami cloud-init config get --secure compute`,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// First and foremost, make sure config is loaded and logging
 		// works.
 		initConfigAndLogging(cmd, true)
 
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		cloudInitbaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)
 		if err != nil {

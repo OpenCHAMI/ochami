@@ -15,6 +15,7 @@ import (
 // configSetCmd represents the config-set command
 var configSetCmd = &cobra.Command{
 	Use:   "set [--user | --system | --config <path>] <key> <value>",
+	Args:  cobra.ExactArgs(2),
 	Short: "Modify ochami CLI configuration",
 	Long: `Modify ochami CLI configuration. By default, this command modifies the user
 config file, which also occurs if --user is passed. If --system is passed,
@@ -27,27 +28,20 @@ This command does not handle cluster configs. For that, use the
   ochami config set --user log.format json
   ochami config set --system log.format json
   ochami --config ./test.yaml config set log.format json`,
-	PreRun: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It
 		// will not work in init(). This means that this needs to be
 		// present in all child commands.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
-	},
-	Run: func(cmd *cobra.Command, args []string) {
+
 		// First and foremost, make sure config is loaded and logging
 		// works.
 		initConfigAndLogging(cmd, true)
 
-		// Ensure we have 2 args
-		if len(args) == 0 {
-			printUsageHandleError(cmd)
-			os.Exit(0)
-		} else if len(args) != 2 {
-			log.Logger.Error().Msgf("expected 2 arguments (key, value) but got %s: %v", len(args), args)
-			os.Exit(1)
-		}
-
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// We must have a config file in order to write config
 		var fileToModify string
 		if rootCmd.PersistentFlags().Lookup("config").Changed {

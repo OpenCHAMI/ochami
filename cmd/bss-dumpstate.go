@@ -18,11 +18,14 @@ var bssDumpStateCmd = &cobra.Command{
 	Use:   "dumpstate",
 	Args:  cobra.NoArgs,
 	Short: "Retrieve the current state of BSS",
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// First and foremost, make sure config is loaded and logging
 		// works.
 		initConfigAndLogging(cmd, true)
 
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		bssBaseURI, err := getBaseURIBSS(cmd)
 		if err != nil {
