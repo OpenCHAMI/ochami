@@ -22,13 +22,6 @@ var rfeGetCmd = &cobra.Command{
 	Long: `Get all redfish endpoints or some based on filter(s). If no options are passed,
 all redfish endpoints are returned. Optionally, options can be passed to limit the redfish
 endpoints returned.`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)

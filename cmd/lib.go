@@ -105,7 +105,8 @@ func initLogging(cmd *cobra.Command) error {
 // initConfigAndLogging is a wrapper around the config and logging init
 // functions that is meant to be the first thing a command runs in its "Run"
 // directive. createCfg determines whether a config file should be created if
-// missing.
+// missing. This creation only applies when a config file is explicitly
+// specified on the command line and not the merged config.
 func initConfigAndLogging(cmd *cobra.Command, createCfg bool) {
 	if err := initConfig(cmd, createCfg); err != nil {
 		earlyMsgf("failed to initialize config: %v", err)
@@ -405,7 +406,7 @@ func handlePayload(cmd *cobra.Command, data any) {
 // that handles errors.
 func printUsageHandleError(cmd *cobra.Command) {
 	if err := cmd.Usage(); err != nil {
-		earlyMsgf("failed to print usage: %v", err)
+		log.Logger.Error().Err(err).Msg("failed to print usage")
 		os.Exit(1)
 	}
 }

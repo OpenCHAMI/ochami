@@ -20,6 +20,14 @@ var configShowCmd = &cobra.Command{
 	Use:   "show",
 	Args:  cobra.NoArgs,
 	Short: "View configuration options the CLI sees from a config file",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// It doesn't make sense to show the config value from a config
+		// file that doesn't exist, so err if the specified config file
+		// doesn't exist.
+		initConfigAndLogging(cmd, false)
+
+		return nil
+	},
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		log.Logger.Debug().Msgf("COMMAND: %v", strings.Split(cmd.CommandPath(), " "))
 		// To mark both persistent and regular flags mutually exclusive,
@@ -27,10 +35,6 @@ var configShowCmd = &cobra.Command{
 		// will not work in init(). This means that this needs to be
 		// present in all child commands.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
-
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, false)
 
 		return nil
 	},

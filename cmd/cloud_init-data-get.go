@@ -27,13 +27,6 @@ or vendor-data, respectively.`,
   ochami cloud-init data get --user compute
   ochami cloud-init data get --meta compute
   ochami cloud-init data get --vendor compute`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		cloudInitbaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)

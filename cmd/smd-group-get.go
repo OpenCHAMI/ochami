@@ -26,13 +26,6 @@ var groupGetCmd = &cobra.Command{
   ochami smd group get --name group1 --name group2
   ochami smd group get --name group1,group2 --tag tag1,tag2
   ochami smd group get --name group1 --name group2 --tag tag1 --tag tag2`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
