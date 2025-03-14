@@ -19,11 +19,14 @@ var cloudInitConfigDeleteCmd = &cobra.Command{
 	Args:    cobra.MinimumNArgs(1),
 	Short:   "Delete one or more cloud-init configs",
 	Example: `  ochami cloud-init config delete compute`,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// First and foremost, make sure config is loaded and logging
 		// works.
 		initConfigAndLogging(cmd, true)
 
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		cloudInitBaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)
 		if err != nil {

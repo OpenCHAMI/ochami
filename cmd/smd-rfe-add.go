@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -16,6 +17,7 @@ import (
 // rfeAddCmd represents the smd-rfe-add command
 var rfeAddCmd = &cobra.Command{
 	Use:   "add -f <payload_file> | (<xname> <name> <ip_addr> <mac_addr>)",
+	Args:  cobra.MaximumNArgs(4),
 	Short: "Add new redfish endpoint(s)",
 	Long: `Add new redfish endpoint(s). An xname, name, IP address, and MAC address are required
 unless -f is passed to read from a payload file. Specifying -f also is
@@ -28,7 +30,7 @@ This command sends a POST to SMD. An access token is required.`,
   ochami smd rfe add -f payload.yaml --payload-format yaml
   echo '<json_data>' | ochami smd rfe add -f -
   echo '<yaml_data>' | ochami smd rfe add -f - --payload-format yaml`,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// First and foremost, make sure config is loaded and logging
 		// works.
 		initConfigAndLogging(cmd, true)
@@ -38,10 +40,12 @@ This command sends a POST to SMD. An access token is required.`,
 			printUsageHandleError(cmd)
 			os.Exit(0)
 		} else if len(args) > 4 {
-			log.Logger.Error().Msgf("expected 4 arguments (xname, name, ip_addr, mac_addr) but got %d: %v", len(args), args)
-			os.Exit(1)
+			return fmt.Errorf("expected 4 arguments (xname, name, ip_addr, mac_addr) but got %d: %v", len(args), args)
 		}
 
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {

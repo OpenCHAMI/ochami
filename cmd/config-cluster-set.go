@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"errors"
 	"os"
 
 	"github.com/OpenCHAMI/ochami/internal/config"
@@ -13,7 +12,8 @@ import (
 
 // configClusterSetCmd represents the config-cluster-set command
 var configClusterSetCmd = &cobra.Command{
-	Use:   "set [--user | --system] <cluster_name>",
+	Use:   "set [--user | --system | --config <path>] [-d] <cluster_name> <key> <value>",
+	Args:  cobra.ExactArgs(3),
 	Short: "Add or set parameters for a cluster",
 	Long: `Add cluster with its configuration or set the configuration for
 an existing cluster. For example:
@@ -37,27 +37,20 @@ with a different base URL will change the API base URL for the 'foobar' cluster.
 	Example: `  ochami config cluster set foobar cluster.api-uri https://foobar.openchami.cluster
   ochami config cluster set foobar cluster.smd-uri /hsm/v2
   ochami config cluster set foobar name new-foobar`,
-	PreRun: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It
 		// will not work in init(). This means that this needs to be
 		// present in all child commands.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
-	},
-	Run: func(cmd *cobra.Command, args []string) {
+
 		// First and foremost, make sure config is loaded and logging
 		// works.
 		initConfigAndLogging(cmd, true)
 
-		// Check that cluster name, key, val are only args
-		if len(args) == 0 {
-			printUsageHandleError(cmd)
-			os.Exit(0)
-		} else if len(args) > 1 {
-			log.Logger.Error().Msgf("expected 1 argument (cluster name) but got %d: %v", len(args), args)
-			os.Exit(1)
-		}
-
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// We must have a config file in order to write cluster info
 		var fileToModify string
 		if rootCmd.PersistentFlags().Lookup("config").Changed {

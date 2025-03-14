@@ -27,7 +27,7 @@ This command sends a DELETE to SMD. An access token is required.`,
   ochami smd group delete -f payload.yaml --payload-format yaml
   echo '<json_data>' | ochami smd group delete -f -
   echo '<yaml_data>' | ochami smd group delete -f - --payload-format yaml`,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// First and foremost, make sure config is loaded and logging
 		// works.
 		initConfigAndLogging(cmd, true)
@@ -43,6 +43,9 @@ This command sends a DELETE to SMD. An access token is required.`,
 			}
 		}
 
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
 		if err != nil {

@@ -15,12 +15,14 @@ var configCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	Short:   "Set or view configuration options",
 	Example: `ochami config show`,
-	PreRun: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It
 		// will not work in init(). This means that this needs to be
 		// present in all child commands.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
+
+		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
