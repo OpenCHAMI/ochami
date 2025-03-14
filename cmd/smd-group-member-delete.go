@@ -17,13 +17,6 @@ var groupMemberDeleteCmd = &cobra.Command{
 	Use:   "delete <group_label> <component>...",
 	Args:  cobra.MinimumNArgs(2),
 	Short: "Delete one or more members from a group",
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)

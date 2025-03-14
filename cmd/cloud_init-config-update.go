@@ -48,13 +48,6 @@ This command sends a PUT to cloud-init.`,
   ochami cloud-init config update -f payload.yaml --payload-format yaml
   echo '<json_data>' | ochami cloud-init config update -f -
   echo '<yaml_data>' | ochami cloud-init config update -f - --payload-format yaml`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		cloudInitBaseURI, err := getBaseURI(cmd, config.ServiceCloudInit)

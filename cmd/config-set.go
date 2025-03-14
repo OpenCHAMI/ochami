@@ -35,10 +35,6 @@ This command does not handle cluster configs. For that, use the
 		// present in all child commands.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
 
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {

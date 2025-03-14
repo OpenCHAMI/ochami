@@ -19,13 +19,6 @@ var bssHostsGetCmd = &cobra.Command{
 	Use:   "get",
 	Args:  cobra.NoArgs,
 	Short: "Get information on hosts known to BSS",
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		bssBaseURI, err := getBaseURIBSS(cmd)

@@ -38,6 +38,17 @@ See ochami(1) for more details on available commands.
 See ochami-config(1) for more details on how to configure ochami using the CLI.
 See ochami-config(5) for more details on configuring the ochami config file(s).`,
 	Version: version.Version,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Ask the user in any child commands to create the config file
+		// if missing. If this is undesired, define PersistentPreRunE in
+		// the child command with this line overridden with:
+		//
+		//   initConfigAndLogging(cmd, false)
+		//
+		initConfigAndLogging(cmd, true)
+
+		return nil
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			printUsageHandleError(cmd)

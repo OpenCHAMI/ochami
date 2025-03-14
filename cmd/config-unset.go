@@ -27,16 +27,20 @@ This command does not handle cluster configs. For that, use the
   ochami config unset --user log.format
   ochami config unset --system log.format
   ochami --config ./test.yaml config unset log.format`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// It doesn't make sense to unset from a config file that
+		// doesn't exist, so err if the specified config file doesn't
+		// exist.
+		initConfigAndLogging(cmd, false)
+
+		return nil
+	},
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It
 		// will not work in init(). This means that this needs to be
 		// present in all child commands.
 		cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
-
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
 
 		return nil
 	},

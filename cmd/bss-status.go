@@ -18,13 +18,6 @@ var bssStatusCmd = &cobra.Command{
 	Use:   "status",
 	Args:  cobra.NoArgs,
 	Short: "Get status of BSS service",
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		bssBaseURI, err := getBaseURIBSS(cmd)

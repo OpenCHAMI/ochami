@@ -51,10 +51,6 @@ nodes:
 
 `,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
 		// Check that all required args are passed
 		if len(args) == 0 && !cmd.Flag("payload").Changed {
 			printUsageHandleError(cmd)

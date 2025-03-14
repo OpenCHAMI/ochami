@@ -45,10 +45,6 @@ This command sends a PUT to BSS. An access token is required.`,
 			os.Exit(0)
 		}
 
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {

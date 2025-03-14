@@ -15,6 +15,14 @@ var configClusterDeleteCmd = &cobra.Command{
 	Use:   "delete <cluster_name>",
 	Args:  cobra.ExactArgs(1),
 	Short: "Delete a cluster from the configuration file",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// It doesn't make sense to delete a cluster from a
+		// non-existent config file, so err if the config file doesn't
+		// exist.
+		initConfigAndLogging(cmd, false)
+
+		return nil
+	},
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// To mark both persistent and regular flags mutually exclusive,
 		// this function must be run before the command is executed. It

@@ -30,10 +30,6 @@ This command sends a POST to SMD. An access token is required.`,
   echo '<json_data>' | ochami smd component add -f -
   echo '<yaml_data>' | ochami smd component add -f - --payload-format yaml`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
 		// Check that all required args are passed
 		if len(args) == 0 && !cmd.Flag("payload").Changed {
 			printUsageHandleError(cmd)

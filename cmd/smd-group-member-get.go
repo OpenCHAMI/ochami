@@ -18,13 +18,6 @@ var groupMemberGetCmd = &cobra.Command{
 	Use:   "get <group_label>",
 	Args:  cobra.ExactArgs(1),
 	Short: "Get members of a group",
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// First and foremost, make sure config is loaded and logging
-		// works.
-		initConfigAndLogging(cmd, true)
-
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Without a base URI, we cannot do anything
 		smdBaseURI, err := getBaseURISMD(cmd)
