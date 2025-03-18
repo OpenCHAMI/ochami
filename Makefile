@@ -38,6 +38,12 @@ ifeq ($(SHELL),)
 $(error '$(SHELL)' command not found.)
 endif
 
+# Recursive wildcard function, obtained from https://stackoverflow.com/a/18258352
+#
+# Arg 1: Space-separated list of directories to recurse into
+# Arg 2: Space-separated list of patterns to match
+rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+
 NAME      ?= ochami
 VERSION   ?= $(shell $(GIT) describe --tags --always --dirty --broken --abbrev=0)
 TAG       ?= $(shell $(GIT) describe --tags --always --abbrev=0)
@@ -58,7 +64,8 @@ LDFLAGS := -s \
 	   -X '$(IMPORT)internal/version.BuildHost=$(BUILDHOST)' \
 	   -X '$(IMPORT)internal/version.BuildUser=$(BUILDUSER)'
 
-INTERNAL := $(wildcard internal/*)
+INTERNAL := $(call rwildcard,internal,*.go)
+PKG      := $(call rwildcard,pkg,*.go)
 MANSRC   := $(wildcard man/*.sc)
 MANBIN   := $(subst .sc,,$(MANSRC))
 MAN1BIN  := $(filter %.1,$(MANBIN))
@@ -132,5 +139,5 @@ uninstall-man:
 	rm -f $(foreach man1page,$(subst man/,,$(MAN1BIN)),$(DESTDIR)$(mandir)/man1/$(man1page))
 	rm -f $(foreach man5page,$(subst man/,,$(MAN5BIN)),$(DESTDIR)$(mandir)/man5/$(man5page))
 
-$(NAME): *.go cmd/*.go $(foreach file,$(INTERNAL),$(wildcard $(file)/*.go))
+$(NAME): *.go cmd/*.go $(INTERNAL) $(PKG)
 	$(GO) build -v -ldflags="$(LDFLAGS)"
