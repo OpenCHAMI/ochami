@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"path"
 	"strings"
 
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -154,11 +153,16 @@ func (sc *SMDClient) GetStatus(component string) (client.HTTPEnvelope, error) {
 	)
 	switch component {
 	case "":
-		smdStatusEndpoint = path.Join(SMDRelpathService, "ready")
+		smdStatusEndpoint, err = url.JoinPath(SMDRelpathService, "ready")
 	case "all":
-		smdStatusEndpoint = path.Join(SMDRelpathService, "values")
+		smdStatusEndpoint, err = url.JoinPath(SMDRelpathService, "values")
 	default:
 		return henv, fmt.Errorf("GetStatus(): unknown status component: %s", component)
+	}
+
+	// Check that the JoinPath call was successful
+	if err != nil {
+		return henv, fmt.Errorf("GetStatus(): error creating SMD status endpoint: %w", err)
 	}
 
 	henv, err = sc.GetData(smdStatusEndpoint, "", nil)

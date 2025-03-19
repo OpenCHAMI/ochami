@@ -3,7 +3,7 @@ package bss
 import (
 	"encoding/json"
 	"fmt"
-	"path"
+	"net/url"
 
 	"github.com/OpenCHAMI/bss/pkg/bssTypes"
 	"github.com/OpenCHAMI/ochami/pkg/client"
@@ -206,17 +206,22 @@ func (bc *BSSClient) GetStatus(component string) (client.HTTPEnvelope, error) {
 	)
 	switch component {
 	case "":
-		bssStatusEndpoint = path.Join(BSSRelpathService, "status")
+		bssStatusEndpoint, err = url.JoinPath(BSSRelpathService, "status")
 	case "all":
-		bssStatusEndpoint = path.Join(BSSRelpathService, "status/all")
+		bssStatusEndpoint, err = url.JoinPath(BSSRelpathService, "status/all")
 	case "storage":
-		bssStatusEndpoint = path.Join(BSSRelpathService, "storage/status")
+		bssStatusEndpoint, err = url.JoinPath(BSSRelpathService, "storage/status")
 	case "smd":
-		bssStatusEndpoint = path.Join(BSSRelpathService, "hsm")
+		bssStatusEndpoint, err = url.JoinPath(BSSRelpathService, "hsm")
 	case "version":
-		bssStatusEndpoint = path.Join(BSSRelpathService, "version")
+		bssStatusEndpoint, err = url.JoinPath(BSSRelpathService, "version")
 	default:
 		return henv, fmt.Errorf("GetStatus(): unknown status component: %s", component)
+	}
+
+	// Check that the JoinPath call was successful
+	if err != nil {
+		return henv, fmt.Errorf("GetStatus(): error creating BSS status endpoint: %w", err)
 	}
 
 	henv, err = bc.GetData(bssStatusEndpoint, "", nil)

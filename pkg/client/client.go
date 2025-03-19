@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"strings"
 	"time"
 
@@ -86,7 +85,12 @@ func (oc *OchamiClient) GetURI(endpoint, query string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to parse base URI %s: %w", oc.BaseURI, err)
 	}
-	uri.Path = path.Join(uri.Path, endpoint)
+
+	uri.Path, err = url.JoinPath(uri.Path, endpoint)
+	if err != nil {
+		return "", fmt.Errorf("failed to join path %s with endpoint %s: %w", uri.Path, endpoint, err)
+	}
+
 	if query != "" {
 		uri.RawQuery = query
 	}
