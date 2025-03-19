@@ -100,8 +100,15 @@ type locationEntry struct {
 
 // CreateTransition is a wrapper function around OchamiClient.PostData to
 // hit the /transitions endpoint
-func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xnames []string) (client.HTTPEnvelope, error) {
+func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xnames []string, token string) (client.HTTPEnvelope, error) {
 	var henv client.HTTPEnvelope
+
+	headers := client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henv, fmt.Errorf("CreateTransition(): error setting token in HTTP headers: %w", err)
+		}
+	}
 
 	// Create the request body
 	location := []locationEntry{}
@@ -127,7 +134,7 @@ func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xname
 		return henv, fmt.Errorf("CreateTransition(): failed to create HTTPBody: %w", err)
 	}
 
-	henv, err = pc.PostData(PCSTransitions, "", nil, httpBody)
+	henv, err = pc.PostData(PCSTransitions, "", headers, httpBody)
 	if err != nil {
 		err = fmt.Errorf("CreateTransition(): error creating PCS health: %w", err)
 	}
@@ -137,13 +144,20 @@ func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xname
 
 // GetTransitions is a wrapper function around OchamiClient.GetData to
 // hit the /transitions endpoint
-func (pc *PCSClient) GetTransitions() (client.HTTPEnvelope, error) {
+func (pc *PCSClient) GetTransitions(token string) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
 		err  error
 	)
 
-	henv, err = pc.GetData(PCSTransitions, "", nil)
+	headers := client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henv, fmt.Errorf("GetTransitions(): error setting token in HTTP headers: %w", err)
+		}
+	}
+
+	henv, err = pc.GetData(PCSTransitions, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetTransitions(): error getting PCS transitions: %w", err)
 	}
@@ -153,12 +167,19 @@ func (pc *PCSClient) GetTransitions() (client.HTTPEnvelope, error) {
 
 // GetTransitions is a wrapper function around OchamiClient.GetData to
 // hit the /transitions/{transitionID} endpoint
-func (pc *PCSClient) GetTransition(id string) (client.HTTPEnvelope, error) {
+func (pc *PCSClient) GetTransition(id string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv                   client.HTTPEnvelope
 		err                    error
 		pcsTransitionsEndpoint string
 	)
+
+	headers := client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henv, fmt.Errorf("GetTransition(): error setting token in HTTP headers: %w", err)
+		}
+	}
 
 	pcsTransitionsEndpoint, err = url.JoinPath(PCSTransitions, id)
 	if err != nil {
@@ -166,7 +187,7 @@ func (pc *PCSClient) GetTransition(id string) (client.HTTPEnvelope, error) {
 		return henv, err
 	}
 
-	henv, err = pc.GetData(pcsTransitionsEndpoint, "", nil)
+	henv, err = pc.GetData(pcsTransitionsEndpoint, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetTransition(): error getting PCS transition: %w", err)
 	}
@@ -176,12 +197,19 @@ func (pc *PCSClient) GetTransition(id string) (client.HTTPEnvelope, error) {
 
 // DeleteTransitions is a wrapper function around OchamiClient.DeleteData to
 // hit the /transitions/{transitionID} endpoint
-func (pc *PCSClient) DeleteTransition(id string) (client.HTTPEnvelope, error) {
+func (pc *PCSClient) DeleteTransition(id string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv                  client.HTTPEnvelope
 		err                   error
 		pcsTransitionEndpoint string
 	)
+
+	headers := client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henv, fmt.Errorf("DeleteTransition(): error setting token in HTTP headers: %w", err)
+		}
+	}
 
 	pcsTransitionEndpoint, err = url.JoinPath(PCSTransitions, id)
 	if err != nil {
@@ -189,7 +217,7 @@ func (pc *PCSClient) DeleteTransition(id string) (client.HTTPEnvelope, error) {
 		return henv, err
 	}
 
-	henv, err = pc.DeleteData(pcsTransitionEndpoint, "", nil, nil)
+	henv, err = pc.DeleteData(pcsTransitionEndpoint, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteTransition(): error deleting PCS transition: %w", err)
 	}

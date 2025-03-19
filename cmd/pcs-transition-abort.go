@@ -37,6 +37,10 @@ See ochami-pcs(1) for more details.`,
 			os.Exit(1)
 		}
 
+		// This endpoint requires authentication, so a token is needed
+		setTokenFromEnvVar(cmd)
+		checkToken(cmd)
+
 		// Create client to make request to PCS
 		pcsClient, err := pcs.NewClient(pcsBaseURI, insecure)
 		if err != nil {
@@ -47,7 +51,7 @@ See ochami-pcs(1) for more details.`,
 		useCACert(pcsClient.OchamiClient)
 
 		// Abort the transition
-		transitionHttpEnv, err := pcsClient.DeleteTransition(transitionID)
+		transitionHttpEnv, err := pcsClient.DeleteTransition(transitionID, token)
 		if err != nil {
 			if errors.Is(err, client.UnsuccessfulHTTPError) {
 				log.Logger.Fatal().Err(err).Msg("PCS transition abort request yielded unsuccessful HTTP response")

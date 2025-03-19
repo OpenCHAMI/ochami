@@ -82,6 +82,10 @@ See ochami-pcs(1) for more details.`,
 			os.Exit(1)
 		}
 
+		// This endpoint requires authentication, so a token is needed
+		setTokenFromEnvVar(cmd)
+		checkToken(cmd)
+
 		// Create client to make request to PCS
 		pcsClient, err := pcs.NewClient(pcsBaseURI, insecure)
 		if err != nil {
@@ -100,7 +104,7 @@ See ochami-pcs(1) for more details.`,
 
 		// Poll transition state until it is complete or aborted
 		for {
-			transitionHttpEnv, err := pcsClient.GetTransition(transitionID)
+			transitionHttpEnv, err := pcsClient.GetTransition(transitionID, token)
 			if err != nil {
 				log.Logger.Fatal().Err(err).Msg("failed to get transition")
 			}
