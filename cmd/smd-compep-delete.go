@@ -155,7 +155,10 @@ See ochami-smd(1) for more details.`,
 func init() {
 	compepDeleteCmd.Flags().BoolP("all", "a", false, "delete all redfish endpoints in SMD")
 	compepDeleteCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	compepDeleteCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	compepDeleteCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
 	compepDeleteCmd.Flags().Bool("force", false, "do not ask before attempting deletion")
+
+	compepDeleteCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
+
 	compepCmd.AddCommand(compepDeleteCmd)
 }

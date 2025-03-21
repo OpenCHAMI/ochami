@@ -457,9 +457,10 @@ See ochami-discover(1) for more details.`,
 
 func init() {
 	discoverCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	discoverCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	discoverCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
 	discoverCmd.Flags().Bool("overwrite", false, "overwrite any existing information instead of failing")
 
+	discoverCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
 	discoverCmd.MarkFlagRequired("data")
 
 	rootCmd.AddCommand(discoverCmd)

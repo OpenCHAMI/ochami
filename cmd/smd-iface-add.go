@@ -137,8 +137,9 @@ See ochami-smd(1) for more details.`,
 func init() {
 	ifaceAddCmd.Flags().StringP("description", "D", "Undescribed Ethernet Interface", "description of interface")
 	ifaceAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	ifaceAddCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	ifaceAddCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
 
+	ifaceAddCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
 	ifaceAddCmd.MarkFlagsMutuallyExclusive("description", "data")
 
 	ifaceCmd.AddCommand(ifaceAddCmd)

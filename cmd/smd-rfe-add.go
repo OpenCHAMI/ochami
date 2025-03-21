@@ -167,8 +167,9 @@ func init() {
 	rfeAddCmd.Flags().String("username", "", "username to use when interrogating endpoint")
 	rfeAddCmd.Flags().String("password", "", "password to use when interrogating endpoint")
 	rfeAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	rfeAddCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	rfeAddCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
 
+	rfeAddCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
 	rfeAddCmd.MarkFlagsMutuallyExclusive("domain", "data")
 	rfeAddCmd.MarkFlagsMutuallyExclusive("hostname", "data")
 	rfeAddCmd.MarkFlagsMutuallyExclusive("username", "data")

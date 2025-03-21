@@ -140,8 +140,9 @@ func init() {
 	groupUpdateCmd.Flags().StringP("description", "D", "", "short description to update group with")
 	groupUpdateCmd.Flags().StringSlice("tag", []string{}, "one or more tags to set for group")
 	groupUpdateCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	groupUpdateCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	groupUpdateCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
 
+	groupUpdateCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
 	groupUpdateCmd.MarkFlagsOneRequired("description", "tag", "data")
 
 	groupCmd.AddCommand(groupUpdateCmd)

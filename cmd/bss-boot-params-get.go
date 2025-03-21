@@ -105,13 +105,7 @@ See ochami-bss(1) for more details.`,
 			os.Exit(1)
 		}
 
-		outFmt, err := cmd.Flags().GetString("format-output")
-		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
-			logHelpError(cmd)
-			os.Exit(1)
-		}
-		if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
+		if outBytes, err := client.FormatBody(httpEnv.Body, formatOutput); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to format output")
 			logHelpError(cmd)
 			os.Exit(1)
@@ -125,6 +119,9 @@ func init() {
 	bootParamsGetCmd.Flags().StringSliceP("xname", "x", []string{}, "one or more xnames whose boot parameters to get")
 	bootParamsGetCmd.Flags().StringSliceP("mac", "m", []string{}, "one or more MAC addresses whose boot parameters to get")
 	bootParamsGetCmd.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to get")
-	bootParamsGetCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,yaml)")
+	bootParamsGetCmd.Flags().VarP(&formatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
+
+	bootParamsGetCmd.RegisterFlagCompletionFunc("format-output", completionFormatData)
+
 	bootParamsCmd.AddCommand(bootParamsGetCmd)
 }

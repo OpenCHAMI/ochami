@@ -166,8 +166,9 @@ func init() {
 	groupAddCmd.Flags().StringP("exclusive-group", "e", "", "name of group that cannot share members with this one")
 	groupAddCmd.Flags().StringSliceP("member", "m", []string{}, "one or more component IDs to add to the new group")
 	groupAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	groupAddCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	groupAddCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
 
+	groupAddCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
 	groupAddCmd.MarkFlagsMutuallyExclusive("description", "data")
 	groupAddCmd.MarkFlagsMutuallyExclusive("tag", "data")
 	groupAddCmd.MarkFlagsMutuallyExclusive("exclusive-group", "data")

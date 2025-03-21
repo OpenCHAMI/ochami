@@ -8,18 +8,19 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/internal/version"
+	"github.com/OpenCHAMI/ochami/pkg/format"
 	"github.com/spf13/cobra"
-)
-
-const (
-	defaultInputFormat  = "json"
-	defaultOutputFormat = "json"
 )
 
 var (
 	configFile string
 	logLevel   string
 	logFormat  string
+
+	// Variables to store values of --format-output and --format-input.
+	// Default values are set here.
+	formatInput  = format.DataFormatJson
+	formatOutput = format.DataFormatJson
 
 	// These are only used by subcommands.
 	cacertPath string

@@ -152,8 +152,10 @@ See ochami-smd(1) for more details.`,
 func init() {
 	componentDeleteCmd.Flags().BoolP("all", "a", false, "delete all components in SMD")
 	componentDeleteCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	componentDeleteCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	componentDeleteCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
 	componentDeleteCmd.Flags().Bool("force", false, "do not ask before attempting deletion")
+
+	componentDeleteCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
 
 	componentCmd.AddCommand(componentDeleteCmd)
 }

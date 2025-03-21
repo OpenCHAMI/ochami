@@ -169,13 +169,7 @@ See ochami-smd(1) for more details.`,
 		}
 
 		// Print output
-		outFmt, err := cmd.Flags().GetString("format-output")
-		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
-			logHelpError(cmd)
-			os.Exit(1)
-		}
-		if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
+		if outBytes, err := client.FormatBody(httpEnv.Body, formatOutput); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to format output")
 			logHelpError(cmd)
 			os.Exit(1)
@@ -195,8 +189,9 @@ func init() {
 	ifaceGetCmd.Flags().StringSlice("type", []string{}, "filter ethernet interfaces by type")
 	ifaceGetCmd.Flags().String("older-than", "", "filter ethernet interfaces by update time older than specified time (RFC3339-formatted)")
 	ifaceGetCmd.Flags().String("newer-than", "", "filter ethernet interfaces by update time older than specified time (RFC3339-formatted)")
-	ifaceGetCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,yaml)")
+	ifaceGetCmd.Flags().VarP(&formatOutput, "format-output", "F", "format of output printed to standard output (json,yaml)")
 
+	ifaceGetCmd.RegisterFlagCompletionFunc("format-output", completionFormatData)
 	ifaceGetCmd.MarkFlagsMutuallyExclusive("id", "mac")
 	ifaceGetCmd.MarkFlagsMutuallyExclusive("id", "ip")
 	ifaceGetCmd.MarkFlagsMutuallyExclusive("id", "net")

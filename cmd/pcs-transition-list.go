@@ -61,12 +61,7 @@ See ochami-pcs(1) for more details.`,
 		}
 
 		// Print output
-		outFmt, err := cmd.Flags().GetString("format-output")
-		if err != nil {
-			log.Logger.Fatal().Err(err).Msg("failed to get value for --format-output")
-		}
-
-		if outBytes, err := format.FormatData(output, outFmt); err != nil {
+		if outBytes, err := format.FormatData(output, formatOutput); err != nil {
 			log.Logger.Fatal().Err(err).Msg("failed to format output")
 		} else {
 			fmt.Println(string(outBytes))
@@ -75,6 +70,9 @@ See ochami-pcs(1) for more details.`,
 }
 
 func init() {
-	pcsTransitionListCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,json-pretty,yaml)")
+	pcsTransitionListCmd.Flags().VarP(&formatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
+
+	pcsTransitionListCmd.RegisterFlagCompletionFunc("format-output", completionFormatData)
+
 	pcsTransitionCmd.AddCommand(pcsTransitionListCmd)
 }

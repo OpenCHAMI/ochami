@@ -154,7 +154,10 @@ See ochami-smd(1) for more details.`,
 func init() {
 	ifaceDeleteCmd.Flags().BoolP("all", "a", false, "delete all ethernet interfaces in SMD")
 	ifaceDeleteCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	ifaceDeleteCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	ifaceDeleteCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
 	ifaceDeleteCmd.Flags().Bool("force", false, "do not ask before attempting deletion")
+
+	ifaceDeleteCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
+
 	ifaceCmd.AddCommand(ifaceDeleteCmd)
 }

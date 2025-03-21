@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -18,6 +17,7 @@ import (
 	oio "github.com/OpenCHAMI/ochami/internal/io"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/internal/version"
+	"github.com/OpenCHAMI/ochami/pkg/format"
 )
 
 var (
@@ -348,41 +348,13 @@ func (oc *OchamiClient) UseCACert(caCertPath string) error {
 // returning it. If an unmarshalling error occurs or either of the arguments are
 // empty, nil and an error are returned. Current file formats supported are JSON
 // and YAML.
-func BytesToHTTPBody(data []byte, format string) (HTTPBody, error) {
+func BytesToHTTPBody(data []byte, inFormat format.DataFormat) (HTTPBody, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("byte slice is empty")
 	}
-	if format == "" {
-		return nil, fmt.Errorf("format is empty")
-	}
 
-	var b HTTPBody
-	var err error
-	switch strings.ToLower(format) {
-	case "json":
-		var j interface{}
-		err = json.Unmarshal(data, &j)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
-		}
-		b, err = json.Marshal(j)
-		if err != nil {
-			err = fmt.Errorf("failed to marshal JSON: %w", err)
-		}
-	case "yaml":
-		var y interface{}
-		err = yaml.Unmarshal(data, &y)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal YAML: %w", err)
-		}
-		y = CanonicalizeInterface(y)
-		b, err = json.Marshal(y)
-		if err != nil {
-			err = fmt.Errorf("failed to marshal JSON (converted from YAML): %w", err)
-		}
-	}
-
-	return b, err
+	b, err := format.FormatData(data, inFormat)
+	return HTTPBody(b), err
 }
 
 // FileToHTTPBody takes a file path and string representing the format of the
@@ -390,12 +362,9 @@ func BytesToHTTPBody(data []byte, format string) (HTTPBody, error) {
 // in JSON form, returning it. If an unmarshalling error occurs or either of the
 // arguments are empty, nil and an error are returned. Current file formats
 // supported are JSON and YAML.
-func FileToHTTPBody(path, format string) (HTTPBody, error) {
+func FileToHTTPBody(path string, inFormat format.DataFormat) (HTTPBody, error) {
 	if path == "" {
 		return nil, fmt.Errorf("file path is empty")
-	}
-	if format == "" {
-		return nil, fmt.Errorf("format is empty")
 	}
 
 	contents, err := os.ReadFile(path)
@@ -403,41 +372,17 @@ func FileToHTTPBody(path, format string) (HTTPBody, error) {
 		return nil, fmt.Errorf("failed to read file %q: %w", path, err)
 	}
 
-	var b HTTPBody
-	switch strings.ToLower(format) {
-	case "json":
-		var j interface{}
-		err = json.Unmarshal(contents, &j)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal JSON contents from %q: %w", path, err)
-		}
-		b, err = json.Marshal(j)
-		if err != nil {
-			err = fmt.Errorf("failed to marshal JSON from file %q: %w", path, err)
-		}
-	case "yaml":
-		var y interface{}
-		err = yaml.Unmarshal(contents, &y)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal YAML contents from %q: %w", path, err)
-		}
-		y = CanonicalizeInterface(y)
-		b, err = json.Marshal(y)
-		if err != nil {
-			err = fmt.Errorf("failed to marshal JSON (converted from YAML) from file %q: %w", path, err)
-		}
-	}
-
-	return b, err
+	b, err := format.FormatData(contents, inFormat)
+	return HTTPBody(b), err
 }
 
 // ReadPayloadFile reads in the file pointed to by path and unmarshals the data
 // into value v. The data can be in formats other than JSON (whichever formats
 // FileToHTTPBody supports), such as YAML. If a marshalling/unmarshalling error
 // occurs or either path or format are empty, an error is returned.
-func ReadPayloadFile(path, format string, v any) error {
+func ReadPayloadFile(path string, inFormat format.DataFormat, v any) error {
 	log.Logger.Debug().Msgf("payload file: %s", path)
-	log.Logger.Debug().Msgf("payload file format: %s", format)
+	log.Logger.Debug().Msgf("payload file format: %s", inFormat)
 
 	var body HTTPBody
 	var err error
@@ -449,12 +394,12 @@ func ReadPayloadFile(path, format string, v any) error {
 			return fmt.Errorf("unable to read from stdin: %w", err)
 		}
 		log.Logger.Debug().Msgf("bytes read: %q", data)
-		body, err = BytesToHTTPBody(data, format)
+		body, err = BytesToHTTPBody(data, inFormat)
 		if err != nil {
 			return fmt.Errorf("unable to create HTTP body from bytes: %w", err)
 		}
 	} else {
-		body, err = FileToHTTPBody(path, format)
+		body, err = FileToHTTPBody(path, inFormat)
 		if err != nil {
 			return fmt.Errorf("unable to create HTTP body from file: %w", err)
 		}
@@ -472,7 +417,7 @@ func ReadPayloadFile(path, format string, v any) error {
 // ReadPayload unmarshals data formatted as format into v. If data begins with
 // "@", it is treated as a file path and calls ReadPayloadFile to read the
 // contents. If the file path is "-", the data is read from standard input.
-func ReadPayload(data, format string, v any) error {
+func ReadPayload(data string, format format.DataFormat, v any) error {
 	if strings.HasPrefix(data, "@") {
 		// Passed data is actually a file path, return data within file.
 		return ReadPayloadFile(strings.TrimPrefix(data, "@"), format, v)

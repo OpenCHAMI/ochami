@@ -166,7 +166,9 @@ func init() {
 	bootParamsUpdateCmd.Flags().StringSliceP("mac", "m", []string{}, "one or more MAC addresses whose boot parameters to update")
 	bootParamsUpdateCmd.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to update")
 	bootParamsUpdateCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootParamsUpdateCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	bootParamsUpdateCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
+
+	bootParamsUpdateCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
 
 	bootParamsUpdateCmd.MarkFlagsOneRequired("xname", "mac", "nid", "data")
 	bootParamsUpdateCmd.MarkFlagsOneRequired("kernel", "initrd", "params", "data")

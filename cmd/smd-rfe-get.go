@@ -133,13 +133,7 @@ See ochami-smd(1) for more details.`,
 		}
 
 		// Print output
-		outFmt, err := cmd.Flags().GetString("format-output")
-		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get value for --format-output")
-			logHelpError(cmd)
-			os.Exit(1)
-		}
-		if outBytes, err := client.FormatBody(httpEnv.Body, outFmt); err != nil {
+		if outBytes, err := client.FormatBody(httpEnv.Body, formatOutput); err != nil {
 			log.Logger.Error().Err(err).Msg("failed to format output")
 			logHelpError(cmd)
 			os.Exit(1)
@@ -156,6 +150,9 @@ func init() {
 	rfeGetCmd.Flags().StringSlice("uuid", []string{}, "filter redfish endpoints by UUID")
 	rfeGetCmd.Flags().StringSliceP("mac", "m", []string{}, "filter redfish endpoints by MAC address")
 	rfeGetCmd.Flags().StringSliceP("ip", "i", []string{}, "filter redfish endpoints by IP address")
-	rfeGetCmd.Flags().StringP("format-output", "F", defaultOutputFormat, "format of output printed to standard output (json,yaml)")
+	rfeGetCmd.Flags().VarP(&formatOutput, "format-output", "F", "format of output printed to standard output (json,yaml)")
+
+	rfeGetCmd.RegisterFlagCompletionFunc("format-output", completionFormatData)
+
 	rfeCmd.AddCommand(rfeGetCmd)
 }

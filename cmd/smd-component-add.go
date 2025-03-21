@@ -128,7 +128,9 @@ func init() {
 	componentAddCmd.Flags().String("role", "Compute", "role of new component")
 	componentAddCmd.Flags().String("arch", "X86", "CPU architecture of new component")
 	componentAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	componentAddCmd.Flags().StringP("format-input", "f", defaultInputFormat, "format of input payload data (json,yaml)")
+	componentAddCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,yaml)")
+
+	componentAddCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
 
 	componentAddCmd.MarkFlagsMutuallyExclusive("state", "data")
 	componentAddCmd.MarkFlagsMutuallyExclusive("enabled", "data")
