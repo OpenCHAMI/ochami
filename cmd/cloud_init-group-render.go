@@ -75,6 +75,12 @@ See ochami-cloud-init(1) for more details.`,
 		}
 		ciConfigFileBytes := henvs[0].Body
 
+		// Don't try to get meta-data and render if config is empty
+		if len(ciConfigFileBytes) == 0 {
+			log.Logger.Warn().Msgf("cloud-config for group %s was empty, cannot render for node %s", args[0], args[1])
+			os.Exit(0)
+		}
+
 		// Get node instance data
 		henvs, errs, err = cloudInitClient.GetNodeData(ci.CloudInitMetaData, token, args[1])
 		if err != nil {
