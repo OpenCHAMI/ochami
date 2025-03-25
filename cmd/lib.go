@@ -406,6 +406,15 @@ func handlePayload(cmd *cobra.Command, v any) {
 	}
 }
 
+// handlePayloadStdin is similar to handlePayload except the data is read from
+// standard input.
+func handlePayloadStdin(cmd *cobra.Command, v any) {
+	if err := client.ReadPayloadStdin(formatInput, v); err != nil {
+		log.Logger.Error().Err(err).Msg("error reading payload data from stdin")
+		os.Exit(1)
+	}
+}
+
 // printUsageHandleError is a simple wrapper around printing a command's usage
 // that handles errors.
 func printUsageHandleError(cmd *cobra.Command) {
