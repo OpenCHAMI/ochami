@@ -58,7 +58,7 @@ See ochami-cloud-init(1) for more details.`,
 		useCACert(cloudInitClient.OchamiClient)
 
 		// Get group config
-		henvs, errs, err := cloudInitClient.GetNodeGroupData(args[1], args[0])
+		henvs, errs, err := cloudInitClient.GetNodeGroupData(token, args[1], args[0])
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get cloud-init group")
 			logHelpError(cmd)
@@ -76,7 +76,7 @@ See ochami-cloud-init(1) for more details.`,
 		ciConfigFileBytes := henvs[0].Body
 
 		// Get node instance data
-		henvs, errs, err = cloudInitClient.GetNodeData(ci.CloudInitMetaData, args[1])
+		henvs, errs, err = cloudInitClient.GetNodeData(ci.CloudInitMetaData, token, args[1])
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get cloud-init node meta-data")
 			logHelpError(cmd)

@@ -46,7 +46,7 @@ See ochami-cloud-init(1) for more details.`,
 		useCACert(cloudInitClient.OchamiClient)
 
 		// Get data
-		henv, err := cloudInitClient.GetDefaults()
+		henv, err := cloudInitClient.GetDefaults(token)
 		if err != nil {
 			log.Logger.Error().Err(err).Msgf("failed to get defaults")
 			logHelpError(cmd)

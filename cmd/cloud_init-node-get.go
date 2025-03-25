@@ -58,7 +58,7 @@ See ochami-cloud-init(1) for more details.`,
 		checkToken(cmd)
 
 		// Get node group data
-		henvs, errs, err := cloudInitClient.GetNodeGroupData(args[0], args[1:]...)
+		henvs, errs, err := cloudInitClient.GetNodeGroupData(token, args[0], args[1:]...)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get node group data")
 			logHelpError(cmd)
@@ -129,7 +129,7 @@ See ochami-cloud-init(1) for more details.`,
 		cloudInitClient := cloudInitGetClient(cmd)
 
 		// Get meta-data
-		henvs, errs, err := cloudInitClient.GetNodeData(ci.CloudInitMetaData, args...)
+		henvs, errs, err := cloudInitClient.GetNodeData(ci.CloudInitMetaData, token, args...)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get node meta-data")
 			logHelpError(cmd)
@@ -213,7 +213,7 @@ See ochami-cloud-init(1) for more details.`,
 		cloudInitClient := cloudInitGetClient(cmd)
 
 		// Get user-data
-		henvs, errs, err := cloudInitClient.GetNodeData(ci.CloudInitUserData, args...)
+		henvs, errs, err := cloudInitClient.GetNodeData(ci.CloudInitUserData, token, args...)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get node user-data")
 			logHelpError(cmd)
@@ -284,7 +284,7 @@ See ochami-cloud-init(1) for more details.`,
 		cloudInitClient := cloudInitGetClient(cmd)
 
 		// Get vendor-data
-		henvs, errs, err := cloudInitClient.GetNodeData(ci.CloudInitVendorData, args...)
+		henvs, errs, err := cloudInitClient.GetNodeData(ci.CloudInitVendorData, token, args...)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get node vendor-data")
 			logHelpError(cmd)

@@ -86,8 +86,18 @@ func NewClient(baseURI string, insecure bool) (*CloudInitClient, error) {
 
 // GetDefaults is a wrapper function around OchamiClient.GetData that returns
 // the result of querying the cloud-init cluster-defaults endpoint.
-func (cic *CloudInitClient) GetDefaults() (client.HTTPEnvelope, error) {
-	henv, err := cic.GetData(CloudInitRelpathDefaults, "", nil)
+func (cic *CloudInitClient) GetDefaults(token string) (client.HTTPEnvelope, error) {
+	var (
+		henv    client.HTTPEnvelope
+		headers *client.HTTPHeaders
+	)
+	headers = client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henv, fmt.Errorf("GetDefaults(): error setting token in HTTP headers: %w", err)
+		}
+	}
+	henv, err := cic.GetData(CloudInitRelpathDefaults, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetDefaults(): error getting cloud-init cluster-defaults: %w", err)
 	}
@@ -97,13 +107,20 @@ func (cic *CloudInitClient) GetDefaults() (client.HTTPEnvelope, error) {
 // GetGroups is a wrapper function around OchamiClient.Getdata that returns
 // group data for a list of group ids. If none are passed, all group data is
 // returned.
-func (cic *CloudInitClient) GetGroups(ids ...string) ([]client.HTTPEnvelope, []error, error) {
+func (cic *CloudInitClient) GetGroups(token string, ids ...string) ([]client.HTTPEnvelope, []error, error) {
 	var (
-		errors []error
-		henvs  []client.HTTPEnvelope
+		errors  []error
+		headers *client.HTTPHeaders
+		henvs   []client.HTTPEnvelope
 	)
+	headers = client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henvs, errors, fmt.Errorf("GetGroups(): error setting token in HTTP headers: %w", err)
+		}
+	}
 	if len(ids) == 0 {
-		henv, err := cic.GetData(CloudInitRelpathGroups, "", nil)
+		henv, err := cic.GetData(CloudInitRelpathGroups, "", headers)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("GetGroups(): failed to GET all groups from cloud-init: %w", err)
@@ -121,7 +138,7 @@ func (cic *CloudInitClient) GetGroups(ids ...string) ([]client.HTTPEnvelope, []e
 				henvs = append(henvs, henv)
 				continue
 			}
-			henv, err = cic.GetData(finalEP, "", nil)
+			henv, err = cic.GetData(finalEP, "", headers)
 			henvs = append(henvs, henv)
 			if err != nil {
 				newErr := fmt.Errorf("GetGroups(): failed to GET group from cloud-init: %w", err)
@@ -141,13 +158,20 @@ func (cic *CloudInitClient) GetGroups(ids ...string) ([]client.HTTPEnvelope, []e
 // OchamiClient.GetData. Slices containing the client.HTTPEnvelope and error for
 // each request is returned, along with a separate single error if a function
 // error occurred.
-func (cic *CloudInitClient) GetNodeData(dataType CIDataType, ids ...string) ([]client.HTTPEnvelope, []error, error) {
+func (cic *CloudInitClient) GetNodeData(dataType CIDataType, token string, ids ...string) ([]client.HTTPEnvelope, []error, error) {
 	var (
-		errors []error
-		henvs  []client.HTTPEnvelope
+		errors  []error
+		headers *client.HTTPHeaders
+		henvs   []client.HTTPEnvelope
 	)
 	if len(ids) == 0 {
 		return henvs, errors, fmt.Errorf("GetNodeData(): at least one ID is required")
+	}
+	headers = client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henvs, errors, fmt.Errorf("GetNodeData(): error setting token in HTTP headers: %w", err)
+		}
 	}
 	for _, id := range ids {
 		var henv client.HTTPEnvelope
@@ -158,7 +182,7 @@ func (cic *CloudInitClient) GetNodeData(dataType CIDataType, ids ...string) ([]c
 			henvs = append(henvs, henv)
 			continue
 		}
-		henv, err = cic.GetData(finalEP, "", nil)
+		henv, err = cic.GetData(finalEP, "", headers)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("GetNodeData(): failed to GET node data from cloud-init: %w", err)
@@ -177,16 +201,23 @@ func (cic *CloudInitClient) GetNodeData(dataType CIDataType, ids ...string) ([]c
 // iteratively calling OchamiClient.GetData. Slices containing the
 // client.HTTPEnvelope and error for each request are returned, along with a
 // separate single error if a function error occurred.
-func (cic *CloudInitClient) GetNodeGroupData(id string, groups ...string) ([]client.HTTPEnvelope, []error, error) {
+func (cic *CloudInitClient) GetNodeGroupData(token, id string, groups ...string) ([]client.HTTPEnvelope, []error, error) {
 	var (
-		errors []error
-		henvs  []client.HTTPEnvelope
+		errors  []error
+		headers *client.HTTPHeaders
+		henvs   []client.HTTPEnvelope
 	)
 	if strings.Trim(id, " ") == "" {
 		return henvs, errors, fmt.Errorf("GetNodeGroupData(): group cannot be blank")
 	}
 	if len(groups) == 0 {
 		return henvs, errors, fmt.Errorf("GetNodeGroupData(): at least one group is required")
+	}
+	headers = client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henvs, errors, fmt.Errorf("GetNodeGroupData(): error setting token in HTTP headers: %w", err)
+		}
 	}
 	for _, group := range groups {
 		var henv client.HTTPEnvelope
@@ -197,7 +228,7 @@ func (cic *CloudInitClient) GetNodeGroupData(id string, groups ...string) ([]cli
 			henvs = append(henvs, henv)
 			continue
 		}
-		henv, err = cic.GetData(finalEP, "", nil)
+		henv, err = cic.GetData(finalEP, "", headers)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("GetNodeGroupData(): failed to GET node group data from cloud-init: %w", err)

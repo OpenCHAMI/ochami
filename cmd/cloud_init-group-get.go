@@ -44,7 +44,7 @@ func cloudInitGetGroupData(cmd *cobra.Command, args []string) (groupSlice []cist
 	// Get data
 	if len(args) == 0 {
 		// No args passed, get all group data at once
-		henvs, errs, err := cloudInitClient.GetGroups()
+		henvs, errs, err := cloudInitClient.GetGroups(token)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get all groups from cloud-init")
 			logHelpError(cmd)
@@ -75,7 +75,7 @@ func cloudInitGetGroupData(cmd *cobra.Command, args []string) (groupSlice []cist
 	} else {
 		// One or more arguments (group IDs) provided, get data
 		// for just those groups.
-		henvs, errs, err := cloudInitClient.GetGroups(args...)
+		henvs, errs, err := cloudInitClient.GetGroups(token, args...)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get cloud-init groups")
 			logHelpError(cmd)
