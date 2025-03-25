@@ -159,6 +159,10 @@ See ochami-cloud-init(1) for more details.`,
 		}
 		var configSlice []configGroup
 		for _, config := range groupSlice {
+			if len(config.File.Content) == 0 {
+				log.Logger.Warn().Msgf("cloud-config for %s was empty, not printing", config.Name)
+				continue
+			}
 			newCfg := configGroup{
 				Name:     config.Name,
 				Data:     config.Data,
