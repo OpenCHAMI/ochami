@@ -42,6 +42,10 @@ See ochami-cloud-init(1) for more details.`,
 			os.Exit(1)
 		}
 
+		// This endpoint requires authentication, so a token is needed
+		setTokenFromEnvVar(cmd)
+		checkToken(cmd)
+
 		// Create client to make request to cloud-init
 		cloudInitClient, err := ci.NewClient(cloudInitbaseURI, insecure)
 		if err != nil {

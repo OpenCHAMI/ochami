@@ -53,6 +53,10 @@ See ochami-cloud-init(1) for more details.`,
 		// Set up cloud-init client
 		cloudInitClient := cloudInitGetClient(cmd)
 
+		// This endpoint requires authentication, so a token is needed
+		setTokenFromEnvVar(cmd)
+		checkToken(cmd)
+
 		// Get node group data
 		henvs, errs, err := cloudInitClient.GetNodeGroupData(args[0], args[1:]...)
 		if err != nil {
