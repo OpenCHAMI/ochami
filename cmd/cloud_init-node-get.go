@@ -133,6 +133,10 @@ See ochami-cloud-init(1) for more details.`,
 		// Set up cloud-init client
 		cloudInitClient := cloudInitGetClient(cmd)
 
+		// This endpoint requires authentication, so a token is needed
+		setTokenFromEnvVar(cmd)
+		checkToken(cmd)
+
 		// Get meta-data
 		henvs, errs, err := cloudInitClient.GetNodeData(ci.CloudInitMetaData, token, args...)
 		if err != nil {
@@ -217,6 +221,10 @@ See ochami-cloud-init(1) for more details.`,
 		// Set up cloud-init client
 		cloudInitClient := cloudInitGetClient(cmd)
 
+		// This endpoint requires authentication, so a token is needed
+		setTokenFromEnvVar(cmd)
+		checkToken(cmd)
+
 		// Get user-data
 		henvs, errs, err := cloudInitClient.GetNodeData(ci.CloudInitUserData, token, args...)
 		if err != nil {
@@ -287,6 +295,10 @@ See ochami-cloud-init(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Set up cloud-init client
 		cloudInitClient := cloudInitGetClient(cmd)
+
+		// This endpoint requires authentication, so a token is needed
+		setTokenFromEnvVar(cmd)
+		checkToken(cmd)
 
 		// Get vendor-data
 		henvs, errs, err := cloudInitClient.GetNodeData(ci.CloudInitVendorData, token, args...)
