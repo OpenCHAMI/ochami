@@ -85,7 +85,12 @@ See ochami-cloud-init(1) for more details.`,
 
 		// Collect node group data into string array
 		var gSlice []string
-		for _, henv := range henvs {
+		for idx, henv := range henvs {
+			// Warn and don't add to list if cloud-config is empty for group
+			if len(henv.Body) == 0 {
+				log.Logger.Warn().Msgf("cloud-config for group %s was empty, not printing for node %s", args[1+idx], args[0])
+				continue
+			}
 			gSlice = append(gSlice, string(henv.Body))
 		}
 
