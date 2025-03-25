@@ -378,8 +378,7 @@ func FileToHTTPBody(path string, inFormat format.DataFormat) (HTTPBody, error) {
 		return nil, fmt.Errorf("failed to read file %q: %w", path, err)
 	}
 
-	b, err := format.MarshalData(contents, inFormat)
-	return HTTPBody(b), err
+	return BytesToHTTPBody(contents, inFormat)
 }
 
 // ReadPayloadFile reads in the file pointed to by path and unmarshals the data
