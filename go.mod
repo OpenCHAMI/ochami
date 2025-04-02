@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/OpenCHAMI/bss v1.31.3
-	github.com/OpenCHAMI/cloud-init v1.1.2
+	github.com/OpenCHAMI/cloud-init v1.2.0
 	github.com/OpenCHAMI/smd/v2 v2.17.7
 	github.com/elliotchance/pie/v2 v2.9.1
 	github.com/go-viper/mapstructure/v2 v2.2.1
