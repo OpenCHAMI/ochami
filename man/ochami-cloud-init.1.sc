@@ -405,8 +405,8 @@ Subcommands for this command are as follows:
 	time can be printed.
 
 	This command works by fetching the group config for _group_ and _id_
-	(*cloud-init node get*), fetching the meta-data for _id_ (*cloud-init node
-	get meta-data*), then using the meta-data to render the group config
+	(*cloud-init node get group*), fetching the meta-data for _id_ (*cloud-init
+	node get meta-data*), then using the meta-data to render the group config
 	locally. Note that this command only renders the group configuration for a
 	node and does not go through cloud-init's full render process.
 
