@@ -378,8 +378,7 @@ func FileToHTTPBody(path string, inFormat format.DataFormat) (HTTPBody, error) {
 		return nil, fmt.Errorf("failed to read file %q: %w", path, err)
 	}
 
-	b, err := format.MarshalData(contents, inFormat)
-	return HTTPBody(b), err
+	return BytesToHTTPBody(contents, inFormat)
 }
 
 // ReadPayloadFile reads in the file pointed to by path and unmarshals the data
@@ -424,7 +423,46 @@ func ReadPayload(data string, format format.DataFormat, v any) error {
 	}
 	body, err := BytesToHTTPBody([]byte(data), format)
 	if err != nil {
-		return fmt.Errorf("unable to create HTTP body from payload string: %w", err)
+		return fmt.Errorf("unable to create HTTP body from string: %w", err)
+	}
+	log.Logger.Debug().Msgf("body bytes: %q", body)
+
+	err = json.Unmarshal(body, v)
+	if err != nil {
+		err = fmt.Errorf("unable to unmarshal bytes into value: %w", err)
+	}
+
+	return err
+}
+
+// ReadPayloadData is like ReadPayload except it doesn't check the data for a @
+// prefix. It marshals the data raw into v.
+func ReadPayloadData(data string, format format.DataFormat, v any) error {
+	body, err := BytesToHTTPBody([]byte(data), format)
+	if err != nil {
+		return fmt.Errorf("unable to create HTTP body from string: %w", err)
+	}
+	log.Logger.Debug().Msgf("body bytes: %q", body)
+
+	err = json.Unmarshal(body, v)
+	if err != nil {
+		err = fmt.Errorf("unable to unmarshal bytes into value: %w", err)
+	}
+
+	return err
+}
+
+// ReadPayloadStdin is like ReadPayloadData except it reads the data from
+// standard input instead of from a positional argument.
+func ReadPayloadStdin(format format.DataFormat, v any) error {
+	data, err := oio.ReadStdin()
+	if err != nil {
+		return fmt.Errorf("unable to read from stdin: %w", err)
+	}
+	log.Logger.Debug().Msgf("bytes read: %q", data)
+	body, err := BytesToHTTPBody(data, format)
+	if err != nil {
+		return fmt.Errorf("unable to create HTTP body from bytes: %w", err)
 	}
 	log.Logger.Debug().Msgf("body bytes: %q", body)
 

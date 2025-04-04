@@ -8,13 +8,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// cloudInitDataCmd represents the cloud-init-data command
-var cloudInitDataCmd = &cobra.Command{
-	Use:   "data",
+// cloudInitNodeCmd represents the "cloud-init node" command
+var cloudInitNodeCmd = &cobra.Command{
+	Use:   "node",
 	Args:  cobra.NoArgs,
-	Short: "View cloud-init data",
-	Long: `View cloud-init data. This is a metacommand. Commands under this one
-interact with the cloud-init service and deal with cloud-init data.
+	Short: "Manage cloud-init node-specific config",
+	Long: `Manage cloud-init node-specific config.
 
 See ochami-cloud-init(1) for more details.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -26,5 +25,5 @@ See ochami-cloud-init(1) for more details.`,
 }
 
 func init() {
-	cloudInitCmd.AddCommand(cloudInitDataCmd)
+	cloudInitCmd.AddCommand(cloudInitNodeCmd)
 }
