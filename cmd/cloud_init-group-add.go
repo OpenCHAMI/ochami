@@ -74,7 +74,7 @@ See ochami-cloud-init(1) for more details.`,
 		// Check if a CA certificate was passed and load it into client if valid
 		useCACert(cloudInitClient.OchamiClient)
 
-		// The ClusterDefaults data we will send
+		// The group data we will send
 		ciGroups := []cistore.GroupData{}
 
 		// Read payload from file or stdin.
