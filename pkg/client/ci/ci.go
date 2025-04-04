@@ -361,6 +361,60 @@ func (cic *CloudInitClient) PutGroups(ciGroups []cistore.GroupData, token string
 	return henvs, errors, nil
 }
 
+// PutInstanceInfo sends a PUT to cloud-init for each instance info in
+// instanceInfoList, using the "id" field to determine which node to use.
+func (cic *CloudInitClient) PutInstanceInfo(instanceInfoList []cistore.OpenCHAMIInstanceInfo, token string) ([]client.HTTPEnvelope, []error, error) {
+	var (
+		errors  []error
+		henvs   []client.HTTPEnvelope
+		headers *client.HTTPHeaders
+	)
+	headers = client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henvs, errors, fmt.Errorf("PutInstanceInfo(): error setting token in HTTP headers: %w", err)
+		}
+	}
+	if len(instanceInfoList) == 0 {
+		return henvs, errors, fmt.Errorf("PutInstanceInfo(): at least one instance info is required")
+	}
+	for _, instanceInfo := range instanceInfoList {
+		var (
+			body    client.HTTPBody
+			err     error
+			finalEP string
+		)
+		if strings.Trim(instanceInfo.ID, " ") == "" {
+			newErr := fmt.Errorf("PutInstanceInfo(): id cannot be blank")
+			errors = append(errors, newErr)
+			henvs = append(henvs, client.HTTPEnvelope{})
+			continue
+		}
+		if finalEP, err = url.JoinPath(CloudInitRelpathInstanceInfo, instanceInfo.ID); err != nil {
+			newErr := fmt.Errorf("PutInstanceInfo(): failed to join paths %q and %q: %w", CloudInitRelpathInstanceInfo, instanceInfo.ID, err)
+			errors = append(errors, newErr)
+			henvs = append(henvs, client.HTTPEnvelope{})
+			continue
+		}
+		if body, err = json.Marshal(instanceInfo); err != nil {
+			newErr := fmt.Errorf("PutInstanceInfo(): failed to marshal instance info data: %w", err)
+			errors = append(errors, newErr)
+			henvs = append(henvs, client.HTTPEnvelope{})
+			continue
+		}
+		henv, err := cic.PutData(finalEP, "", headers, body)
+		henvs = append(henvs, henv)
+		if err != nil {
+			newErr := fmt.Errorf("PutInstanceInfo(): failed to PUT instance info for %q to cloud-init: %w", instanceInfo.ID, err)
+			errors = append(errors, newErr)
+			continue
+		}
+		errors = append(errors, nil)
+	}
+
+	return henvs, errors, nil
+}
+
 // DeleteGroups takes a token and group names and iteratively calls
 // OchamiClient.DeleteData for each group. The iteration is necessary as the
 // delete endpoint only allows deleting one group at a time. A slice of
