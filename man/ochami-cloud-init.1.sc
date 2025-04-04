@@ -18,7 +18,8 @@ ochami cloud-init group set [OPTIONS]++
 ochami cloud-init node get group [OPTIONS] _group_ _id_...++
 ochami cloud-init node get meta-data [OPTIONS] _id_...++
 ochami cloud-init node get user-data [OPTIONS] _id_...++
-ochami cloud-init node get vendor-data [OPTIONS] _id_...
+ochami cloud-init node get vendor-data [OPTIONS] _id_...++
+ochami cloud-init node set [OPTIONS]
 
 # DATA STRUCTURE
 
@@ -563,6 +564,43 @@ Subcommands for this command are as follows:
 		*--no-header*
 			Never print a header for each config returned, even if more than one
 			are printed.
+
+*set* [-f _format_] < _file_++
+*set* [-f _format_] -d @_file_++
+*set* [-f _format_] -d @- < _file_++
+*set* [-f _format_] -d _data_
+	Set node-specific meta-data for one or more nodes. This command only accepts
+	an array of instance info (see *INSTANCE INFO*) and uses the *id* field to
+	determine which nodes whose data to set.
+
+	In the first and third forms of the command, data is read from standard
+	input.
+
+	In the second form of the command, a file containing the payload data is
+	passed. This is convenient for dealing with many cloud-init node instance
+	info at once.
+
+	In the fourth form of the command, the payload is passed raw on the command
+	line. This data is passed raw to the server.
+
+	This command sends a PUT to the */cloud-init/admin/instance-info/{id}*
+	endpoint for each *{id}*.
+
+	This command accepts the following options:
+
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
+
+	*-f, --format-input* _format_
+		Format of raw data being used by *-d* as the payload. Supported formats
+		are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
 
 # AUTHOR
 
