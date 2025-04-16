@@ -49,8 +49,8 @@ See ochami-smd(1) for more details.`,
   }'
 
   # Add redfish endpoints using input payload file
-  ochami smd rfe add -f @payload.json
-  ochami smd rfe add -f @payload.yaml -f yaml
+  ochami smd rfe add -d @payload.json
+  ochami smd rfe add -d @payload.yaml -f yaml
 
   # Add redfish endpoints using data from standard input
   echo '<json_data>' | ochami smd rfe add -d @-

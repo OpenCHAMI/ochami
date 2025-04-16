@@ -436,6 +436,146 @@ Subcommands for this command are as follows:
 		this flag can be specified multiple times or this flag can be specified
 		once and multiple xnames, separated by commas.
 
+## rfe
+
+Manage Redfish endpoints. 
+
+Subcommands for this command are as follows:
+
+*add* [--domain _domain_] [--hostname _hostname_] [--username _user_] [--password _pass_] _xname_ _name_ _ip_addr_ _mac_addr_++
+*add* [-f _format_] -d _data_++
+*add* [-f _format_] -d @_path_++
+*add* [-f _format_] -d @-++
+	Add one or more new Redfish endpoints to SMD.
+
+	In the first form of the command, an _xname_ (unique identifier), _name_
+	(human-readable name), _ip_addr_ (IP address), and _mac_addr_ (MAC address)
+	are required to identify and define the endpoint to add. Optional flags like
+	*--domain*, *--hostname*, *--username*, and *--password* can provide
+	additional details.
+
+	In the second form of the command, payload data is passed using the *-d*
+	flag. The argument can be the raw _data_ itself, a _path_ to a file prefixed
+	with '@' (e.g., `@payload.json`), or '@-' to read the data from standard
+	input. The format of this data defaults to JSON but can be changed using the
+	*-f* flag. This method is convenient for adding multiple endpoints or
+	endpoints with complex configurations defined in the payload.
+
+	In the third form of the command, a file containing the payload data is
+	passed. This is convenient in cases of dealing with many components at once.
+
+	In the fourth form of the command, the payload data is read from standard
+	input.
+
+	This command sends a POST request to SMD's /RedfishEndpoints endpoint. An
+	access token is required.
+
+	This command accepts the following options:
+
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
+
+	*--domain* _domain_
+		Specify the domain part of the Redfish endpoint's FQDN.
+
+	*-f, --format-input* _format_
+		Format of input payload data used by *-d*. Supported formats are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+	*--hostname* _hostname_
+		Specify the hostname part of the Redfish endpoint's FQDN.
+
+	*--password* _password_
+		Specify the password to use when interrogating the endpoint (stored in SMD).
+
+	*--username* _username_
+		Specify the username to use when interrogating the endpoint (stored in SMD).
+
+*delete* [--no-confirm] --all++
+*delete* [--no-confirm] _xname_...++
+*delete* [-f _format_] [--no-confirm] -d _data_++
+*delete* [-f _format_] [--no-confirm] -d @_path_++
+*delete* [-f _format_] [--no-confirm] -d @-++
+	Delete one or more Redfish endpoints in SMD. Unless *--no-confirm* is passed, the
+	user may be asked to confirm deletion.
+
+	In the first form of the command, all Redfish endpoints are deleted.
+
+	In the second form of the command, one or more _xname_ arguments identifying the
+	endpoint(s) to delete are specified.
+
+	In the third form of the command, payload data identifying the endpoints to
+	delete is passed using the *-d* flag. The argument can be the raw _data_
+	itself, a _path_ to a file prefixed with '@' (e.g., `@payload.json`), or
+	'@-' to read the data from standard input. The format of this data defaults
+	to JSON but can be changed using the *-f* flag.
+
+	This command sends one or more DELETE requests to SMD's /RedfishEndpoints
+	endpoint. An access token is required.
+
+	This command accepts the following options:
+
+	*-a, --all*
+		Delete *all* Redfish endpoints in SMD.
+
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ payload, the _path_ to a file containing the payload
+		(prefixed with '@'), or '@-' to read the payload data from standard input.
+
+	*--no-confirm*
+		Do not ask the user to confirm deletion.
+
+	*-f, --format-input* _format_
+		Format of input payload data used by *-d*. Supported formats are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+*get* [-F _format_] [--fqdn _fqdn_,...] [-i _ip_,...] [-m _mac_,...] [--type _type_,...] [--uuid _uuid_,...] [-x _xname_,...]
+	Get all Redfish endpoints or filter by various attributes.
+
+	If no filter flags are passed, all Redfish endpoints are returned.
+	Otherwise, only the endpoint(s) matching the specified filter criteria are
+	returned. Multiple filters can be combined. For flags accepting multiple
+	values (like *--xname*), values can be comma-separated or the flag can be
+	repeated.
+
+	This command sends a GET request to SMD's /RedfishEndpoints endpoint.
+
+	This command accepts the following options:
+
+	*-F, --format-output* _format_
+		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+	*--fqdn* _fqdn_,...
+		Filter Redfish endpoints by one or more Fully Qualified Domain Names (FQDNs).
+
+	*-i, --ip* _ip_,...
+		Filter Redfish endpoints by one or more IP addresses.
+
+	*-m, --mac* _mac_,...
+		Filter Redfish endpoints by one or more MAC addresses.
+
+	*--type* _type_,...
+		Filter Redfish endpoints by one or more types (e.g., *NodeBMC*, *RouterBMC*).
+
+	*--uuid* _uuid_,...
+		Filter Redfish endpoints by one or more UUIDs.
+
+	*-x, --xname* _xname_,...
+		Filter Redfish endpoints by one or more xnames.
+
 ## group
 
 Manage SMD groups. For managing group membership, see *group member* below.
