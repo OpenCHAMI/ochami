@@ -449,8 +449,10 @@ Subcommands for this command are as follows:
 *get*
 	Get all Redfish endpoints or select based on filter(s).
 
-*add* _xname_ _name_ _ip_addr_ _mac_addr_ [--domain _domain_] [--hostname _hostname_] [--username _user_] [--password _pass_]++
-*add* -d (_data_ | @_path_ | @-) [-f _format_]
+*add* [--domain _domain_] [--hostname _hostname_] [--username _user_] [--password _pass_] _xname_ _name_ _ip_addr_ _mac_addr_++
+*add* [-f _format_] -d _data_++
+*add* [-f _format_] -d @_path_++
+*add* [-f _format_] -d @-++
 	Add one or more new Redfish endpoints to SMD.
 
 	In the first form of the command, an _xname_ (unique identifier), _name_
@@ -472,8 +474,10 @@ Subcommands for this command are as follows:
 	This command accepts the following options:
 
 	*-d, --data* (_data_ | @_path_ | @-)
-		Specify raw _data_ payload, the _path_ to a file containing the payload
-		(prefixed with '@'), or '@-' to read the payload data from standard input.
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
 
 	*--domain* _domain_
 		Specify the domain part of the Redfish endpoint's FQDN.
@@ -494,15 +498,17 @@ Subcommands for this command are as follows:
 	*--username* _username_
 		Specify the username to use when interrogating the endpoint (stored in SMD).
 
-*delete* --all [--force]++
-*delete* _xname_... [--force]++
-*delete* -d (_data_ | @_path_ | @-) [-f _format_] [--force]
-	Delete one or more Redfish endpoints in SMD. Unless *--force* is passed, the
+*delete* [--no-confirm] --all++
+*delete* [--no-confirm] _xname_...++
+*delete* [-f _format_] [--no-confirm] -d _data_++
+*delete* [-f _format_] [--no-confirm] -d @_path_++
+*delete* [-f _format_] [--no-confirm] -d @-++
+	Delete one or more Redfish endpoints in SMD. Unless *--no-confirm* is passed, the
 	user may be asked to confirm deletion.
 
 	In the first form of the command, all Redfish endpoints are deleted.
 
-	In the second form of the command, one or more _xname_s identifying the
+	In the second form of the command, one or more _xname_ arguments identifying the
 	endpoint(s) to delete are specified.
 
 	In the third form of the command, payload data identifying the endpoints to
@@ -523,7 +529,7 @@ Subcommands for this command are as follows:
 		Specify raw _data_ payload, the _path_ to a file containing the payload
 		(prefixed with '@'), or '@-' to read the payload data from standard input.
 
-	*--force*
+	*--no-confirm*
 		Do not ask the user to confirm deletion.
 
 	*-f, --format-input* _format_
