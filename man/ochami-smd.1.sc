@@ -442,13 +442,6 @@ Manage Redfish endpoints.
 
 Subcommands for this command are as follows:
 
-*add*
-	Add new Redfish endpoint(s).
-*delete*
-	Delete one or more Redfish endpoints.
-*get*
-	Get all Redfish endpoints or select based on filter(s).
-
 *add* [--domain _domain_] [--hostname _hostname_] [--username _user_] [--password _pass_] _xname_ _name_ _ip_addr_ _mac_addr_++
 *add* [-f _format_] -d _data_++
 *add* [-f _format_] -d @_path_++
@@ -467,6 +460,12 @@ Subcommands for this command are as follows:
 	input. The format of this data defaults to JSON but can be changed using the
 	*-f* flag. This method is convenient for adding multiple endpoints or
 	endpoints with complex configurations defined in the payload.
+
+	In the third form of the command, a file containing the payload data is
+	passed. This is convenient in cases of dealing with many components at once.
+
+	In the fourth form of the command, the payload data is read from standard
+	input.
 
 	This command sends a POST request to SMD's /RedfishEndpoints endpoint. An
 	access token is required.
