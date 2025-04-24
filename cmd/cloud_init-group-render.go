@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
+	"strings"
 
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
@@ -100,8 +101,23 @@ See ochami-cloud-init(1) for more details.`,
 			os.Exit(1)
 		}
 
+		// Remove '## template: jinja' from first line since already rendered
+		trimmedOut := out
+		lines := strings.SplitN(out, "\n", 2) // Split only into first line and the rest
+		firstLine := strings.TrimRight(lines[0], "\r")
+		if firstLine == "## template: jinja" {
+			if len(lines) > 1 {
+				// Return everything after the first line
+				trimmedOut = lines[1]
+			}
+			// Only one line, and it matched, result is empty
+		} else {
+			// First line didn't match; return as-is
+			trimmedOut = out
+		}
+
 		// Print rendered cloud config
-		fmt.Println(out)
+		fmt.Println(trimmedOut)
 	},
 }
 
