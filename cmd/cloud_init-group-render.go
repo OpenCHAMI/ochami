@@ -12,7 +12,8 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/client/ci"
-	"github.com/nikolalohinski/gonja"
+	"github.com/nikolalohinski/gonja/v2"
+	"github.com/nikolalohinski/gonja/v2/exec"
 	"github.com/spf13/cobra"
 )
 
@@ -94,7 +95,8 @@ See ochami-cloud-init(1) for more details.`,
 			logHelpError(cmd)
 			os.Exit(1)
 		}
-		out, err := tpl.Execute(dsWrapper)
+		tplCtx := exec.NewContext(dsWrapper)
+		out, err := tpl.ExecuteToString(tplCtx)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to render template")
 			logHelpError(cmd)
