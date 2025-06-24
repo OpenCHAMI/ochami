@@ -91,7 +91,7 @@ See ochami-discover(1) for more details.`,
 
 		// Put together payload for different endpoints
 		log.Logger.Debug().Msg("generating redfish structures to send to SMD")
-		comps, rfes, ifaces, err := discover.DiscoveryInfoV2(smdBaseURI, nodes)
+		comps, rfes, _, err := discover.DiscoveryInfoV2(smdBaseURI, nodes)
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to construct structures to send to SMD")
 			logHelpError(cmd)
@@ -238,87 +238,87 @@ See ochami-discover(1) for more details.`,
 		}
 
 		// Send EthernetInterface requests
-		var (
-			ifaceErrorsOccurred bool = false
-			ifaceHenvs          []client.HTTPEnvelope
-			ifaceErrs           []error
-			ifaceErr            error
-		)
-		if cmd.Flag("overwrite").Changed {
-			// SMD's EthernetInterface API does not allow the PUT
-			// method. Instead, we loop over each ethernet interface
-			// to add and attempt a POST. Iff a 409 is returned for
-			// that interface, a PATCH is attempted. Otherwise, an
-			// error has occurred.
-			for _, iface := range ifaces {
-				// Attempt to POST the ethernet interface
-				ifaceListWrapper := []smd.EthernetInterface{iface}
-				ifaceHenvs, ifaceErrs, ifaceErr = smdClient.PostEthernetInterfaces(ifaceListWrapper, token)
+		// var (
+		// 	ifaceErrorsOccurred bool = false
+		// 	ifaceHenvs          []client.HTTPEnvelope
+		// 	ifaceErrs           []error
+		// 	ifaceErr            error
+		// )
+		// if cmd.Flag("overwrite").Changed {
+		// 	// SMD's EthernetInterface API does not allow the PUT
+		// 	// method. Instead, we loop over each ethernet interface
+		// 	// to add and attempt a POST. Iff a 409 is returned for
+		// 	// that interface, a PATCH is attempted. Otherwise, an
+		// 	// error has occurred.
+		// 	for _, iface := range ifaces {
+		// 		// Attempt to POST the ethernet interface
+		// 		ifaceListWrapper := []smd.EthernetInterface{iface}
+		// 		ifaceHenvs, ifaceErrs, ifaceErr = smdClient.PostEthernetInterfaces(ifaceListWrapper, token)
 
-				if ifaceErr != nil {
-					// An error in the function occurred, err for
-					// this interface and move on.
-					log.Logger.Error().Err(ifaceErr).Msg("failed to add ethernet interface to SMD")
-					ifaceErrorsOccurred = true
-					continue
-				}
+		// 		if ifaceErr != nil {
+		// 			// An error in the function occurred, err for
+		// 			// this interface and move on.
+		// 			log.Logger.Error().Err(ifaceErr).Msg("failed to add ethernet interface to SMD")
+		// 			ifaceErrorsOccurred = true
+		// 			continue
+		// 		}
 
-				if ifaceErrs[0] != nil {
-					// An HTTP error occurred
-					if errors.Is(ifaceErrs[0], client.UnsuccessfulHTTPError) {
-						if ifaceHenvs[0].StatusCode == 409 {
-							// Ethernet interface exists, patch it
-							log.Logger.Info().Msgf("ethernet interface with MAC address %s exists, attempting to update it", iface.MACAddress)
-							_, patchErrs, patchErr := smdClient.PatchEthernetInterfaces(ifaceListWrapper, token)
-							if patchErr != nil {
-								log.Logger.Error().Err(patchErr).Msg("failed to update existing ethernet interface in SMD")
-								ifaceErrorsOccurred = true
-								continue
-							}
-							if patchErrs[0] != nil {
-								var errMsg string
-								if errors.Is(patchErrs[0], client.UnsuccessfulHTTPError) {
-									errMsg = "SMD ethernet interface PATCH yielded unsuccessful HTTP response"
-								} else {
-									errMsg = "failed to update existing ethernet interface in SMD"
-								}
-								log.Logger.Error().Err(patchErrs[0]).Msg(errMsg)
-								ifaceErrorsOccurred = true
-								continue
-							}
-						} else {
-							// Some other HTTP error occurred, err
-							log.Logger.Error().Err(ifaceErrs[0]).Msg("SMD ethernet interface POST yield non-409 (duplicate) failure")
-							ifaceErrorsOccurred = true
-							continue
-						}
-					} else {
-						log.Logger.Error().Err(ifaceErrs[0]).Msg("failed to add ethernet interface to SMD")
-						ifaceErrorsOccurred = true
-						continue
-					}
-				}
-			}
-		} else {
-			// --overwrite was not passed, perform regular POST.
-			_, ifaceErrs, ifaceErr = smdClient.PostEthernetInterfaces(ifaces, token)
-			if ifaceErr != nil {
-				log.Logger.Error().Err(ifaceErr).Msg("failed to add ethernet interfaces to SMD")
-				ifaceErrorsOccurred = true
-			}
-			for _, err := range ifaceErrs {
-				if err != nil {
-					var errMsg string
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						errMsg = "SMD ethernet interface request yielded unsuccessful HTTP response"
-					} else {
-						errMsg = "failed to add ethernet interface to SMD"
-					}
-					log.Logger.Error().Err(err).Msg(errMsg)
-					ifaceErrorsOccurred = true
-				}
-			}
-		}
+		// 		if ifaceErrs[0] != nil {
+		// 			// An HTTP error occurred
+		// 			if errors.Is(ifaceErrs[0], client.UnsuccessfulHTTPError) {
+		// 				if ifaceHenvs[0].StatusCode == 409 {
+		// 					// Ethernet interface exists, patch it
+		// 					log.Logger.Info().Msgf("ethernet interface with MAC address %s exists, attempting to update it", iface.MACAddress)
+		// 					_, patchErrs, patchErr := smdClient.PatchEthernetInterfaces(ifaceListWrapper, token)
+		// 					if patchErr != nil {
+		// 						log.Logger.Error().Err(patchErr).Msg("failed to update existing ethernet interface in SMD")
+		// 						ifaceErrorsOccurred = true
+		// 						continue
+		// 					}
+		// 					if patchErrs[0] != nil {
+		// 						var errMsg string
+		// 						if errors.Is(patchErrs[0], client.UnsuccessfulHTTPError) {
+		// 							errMsg = "SMD ethernet interface PATCH yielded unsuccessful HTTP response"
+		// 						} else {
+		// 							errMsg = "failed to update existing ethernet interface in SMD"
+		// 						}
+		// 						log.Logger.Error().Err(patchErrs[0]).Msg(errMsg)
+		// 						ifaceErrorsOccurred = true
+		// 						continue
+		// 					}
+		// 				} else {
+		// 					// Some other HTTP error occurred, err
+		// 					log.Logger.Error().Err(ifaceErrs[0]).Msg("SMD ethernet interface POST yield non-409 (duplicate) failure")
+		// 					ifaceErrorsOccurred = true
+		// 					continue
+		// 				}
+		// 			} else {
+		// 				log.Logger.Error().Err(ifaceErrs[0]).Msg("failed to add ethernet interface to SMD")
+		// 				ifaceErrorsOccurred = true
+		// 				continue
+		// 			}
+		// 		}
+		// 	}
+		// } else {
+		// 	// --overwrite was not passed, perform regular POST.
+		// 	_, ifaceErrs, ifaceErr = smdClient.PostEthernetInterfaces(ifaces, token)
+		// 	if ifaceErr != nil {
+		// 		log.Logger.Error().Err(ifaceErr).Msg("failed to add ethernet interfaces to SMD")
+		// 		ifaceErrorsOccurred = true
+		// 	}
+		// 	for _, err := range ifaceErrs {
+		// 		if err != nil {
+		// 			var errMsg string
+		// 			if errors.Is(err, client.UnsuccessfulHTTPError) {
+		// 				errMsg = "SMD ethernet interface request yielded unsuccessful HTTP response"
+		// 			} else {
+		// 				errMsg = "failed to add ethernet interface to SMD"
+		// 			}
+		// 			log.Logger.Error().Err(err).Msg(errMsg)
+		// 			ifaceErrorsOccurred = true
+		// 		}
+		// 	}
+		// }
 
 		// Put together list of groups to add and which components to add to those groups
 		groupsToAdd := make(map[string]smd.Group)
@@ -427,7 +427,7 @@ See ochami-discover(1) for more details.`,
 
 		// Notify user if any request errors occurred
 		exitStatus := 0
-		if compErrorsOccurred || rfeErrorsOccurred || ifaceErrorsOccurred || groupErrorsOccurred {
+		if compErrorsOccurred || rfeErrorsOccurred || groupErrorsOccurred {
 			logHelpError(cmd)
 		}
 		if compErrorsOccurred {
@@ -438,10 +438,10 @@ See ochami-discover(1) for more details.`,
 			log.Logger.Warn().Msg("redfish endpoint requests completed with errors")
 			exitStatus = 1
 		}
-		if ifaceErrorsOccurred {
-			log.Logger.Warn().Msg("ethernet interface requests completed with errors")
-			exitStatus = 1
-		}
+		// if ifaceErrorsOccurred {
+		// 	log.Logger.Warn().Msg("ethernet interface requests completed with errors")
+		// 	exitStatus = 1
+		// }
 		if groupErrorsOccurred {
 			log.Logger.Warn().Msg("group requests completed with errors")
 			exitStatus = 1
