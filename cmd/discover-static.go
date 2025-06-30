@@ -14,6 +14,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	DISCOVER_V1 int = iota + 1 // 1
+	DISCOVER_V2                // 2
+)
+
 // discoverStaticCmd represents the discover-static command
 var discoverStaticCmd = &cobra.Command{
 	Use:   "static [--overwrite] [-d (<data> | @<path>)] [-f <format>]",
@@ -239,16 +244,16 @@ See ochami-discover(1) for more details.`,
 
 		// Send EthernetInterface requests
 		var (
-			ifaceErrorsOccurred bool = false // could also just be...ifaceErr != nil || len(ifaceErrs) > 0
+			ifaceErrorsOccurred bool = false
 			ifaceHenvs          []client.HTTPEnvelope
 			ifaceErrs           []error
 			ifaceErr            error
 		)
 		discoveryVersion, err := cmd.Flags().GetInt("discovery-version")
 		if err != nil {
-			log.Logger.Warn().Err(err).Msgf("could not get discovery version...using default value of %d", discoveryVersion)
+			log.Logger.Warn().Err(err).Msgf("could not get discovery version, using default value of %d", discoveryVersion)
 		}
-		if discoveryVersion == 1 {
+		if discoveryVersion == 2 {
 			if cmd.Flag("overwrite").Changed {
 				// SMD's EthernetInterface API does not allow the PUT
 				// method. Instead, we loop over each ethernet interface
@@ -433,7 +438,7 @@ See ochami-discover(1) for more details.`,
 
 		// Notify user if any request errors occurred
 		exitStatus := 0
-		if compErrorsOccurred || rfeErrorsOccurred || groupErrorsOccurred {
+		if compErrorsOccurred || rfeErrorsOccurred || ifaceErrorsOccurred || groupErrorsOccurred {
 			logHelpError(cmd)
 		}
 		if compErrorsOccurred {
@@ -457,7 +462,7 @@ See ochami-discover(1) for more details.`,
 }
 
 func init() {
-	discoverStaticCmd.Flags().Int("discovery-version", 1, "set version for discovery method to use")
+	discoverStaticCmd.Flags().Int("discovery-version", DISCOVER_V2, "set version for discovery method to use")
 	discoverStaticCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	discoverStaticCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	discoverStaticCmd.Flags().Bool("overwrite", false, "overwrite any existing information instead of failing")
