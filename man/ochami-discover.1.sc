@@ -91,6 +91,11 @@ RedfishEndpoints, EthernetInterfaces, Components, and groups data in SMD
 corresponding to each node. It also creates Components corresponding to each
 node's BMC which corresponds to each RedfishEndpoint created.
 
+The *--discovery-version* sets which discovery method to use when running the
+*static* subcommand. If the version is set the 1, an additional request is made
+to create the EthernetInterfaces separately in SMD. Otherwise, the EthernetInterfaces
+are created with the first discovery request.
+
 This command accepts the following options:
 
 *-d, --data* (_data_ | @_path_ | @-)
@@ -109,6 +114,9 @@ This command accepts the following options:
 *--overwrite*
 	Instead of failing if data already exists, overwrite it with new data
 	contained in the payload.
+
+*--discovery-version*
+  Set the version of the discovery method to use for static discovery.
 
 # XNAMES
 
