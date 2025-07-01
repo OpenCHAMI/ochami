@@ -22,24 +22,24 @@ format is as follows:
 ```
 nodes:
 - name: node01
-	nid: 1
-	xname: x1000c1s7b0n0
-	bmc_mac: de:ca:fc:0f:ee:ee
-	bmc_ip: 172.16.0.101
-	group: compute
-	interfaces:
-	- mac_addr: de:ad:be:ee:ee:f1
-		ip_addrs:
-		- name: internal
-			ip_addr: 172.16.0.1
-	- mac_addr: de:ad:be:ee:ee:f2
-		ip_addrs:
-		- name: external
-			ip_addr: 10.15.3.100
-	- mac_addr: 02:00:00:91:31:b3
-		ip_addrs:
-		- name: HSN
-			ip_addr: 192.168.0.1
+		nid: 1
+		xname: x1000c1s7b0n0
+		bmc_mac: de:ca:fc:0f:ee:ee
+		bmc_ip: 172.16.0.101
+		group: compute
+		interfaces:
+		- mac_addr: de:ad:be:ee:ee:f1
+			ip_addrs:
+			- name: internal
+				ip_addr: 172.16.0.1
+		- mac_addr: de:ad:be:ee:ee:f2
+			ip_addrs:
+			- name: external
+				ip_addr: 10.15.3.100
+		- mac_addr: 02:00:00:91:31:b3
+			ip_addrs:
+			- name: HSN
+				ip_addr: 192.168.0.1
 ```
 
 A description of each key in the above is as follows:
@@ -97,6 +97,7 @@ to create the EthernetInterfaces separately in SMD. If set to 2 (the default),
 the EthernetInterfaces are created with the first discovery request.
 This flag is only for backward compatibility with earlier versions of SMD and
 may be deprecated in a later version of ochami.
+
 This command accepts the following options:
 
 *-d, --data* (_data_ | @_path_ | @-)
@@ -117,8 +118,8 @@ This command accepts the following options:
 	contained in the payload.
 
 *--discovery-version*
-	Set the version of the discovery method to use for static discovery.
-	Set the version of the discovery method to use for static discovery.
+			Set the version of the discovery method to use for static discovery.
+			Set the version of the discovery method to use for static discovery.
 	 
 				Possible values are:
 				- _1_
