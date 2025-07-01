@@ -21,8 +21,23 @@ const (
 
 // discoverStaticCmd represents the discover-static command
 var discoverStaticCmd = &cobra.Command{
-	Use:   "static [--overwrite] [-d (<data> | @<path>)] [-f <format>]",
-	Args:  cobra.NoArgs,
+	Use: "static [--overwrite] [-d (<data> | @<path>)] [-f <format>]",
+	Args: func(cmd *cobra.Command, args []string) error {
+		// get the discovery version value
+		discoveryVersion, err := cmd.Flags().GetInt("discovery-version")
+		if err != nil {
+			return err
+		}
+		// check that value of discovery-version is valid or else...
+		switch discoveryVersion {
+		case DISCOVER_V1:
+			fallthrough
+		case DISCOVER_V2:
+			return cobra.NoArgs(cmd, args)
+		default:
+			return fmt.Errorf("--discovery-version value must be 1 or 2")
+		}
+	},
 	Short: "Populate SMD with data statically",
 	Long: `Populate SMD using static data. This data can be from a file (if an
 argument is passed) or from standard input. This "fake" discovery
@@ -249,10 +264,8 @@ See ochami-discover(1) for more details.`,
 			ifaceErrs           []error
 			ifaceErr            error
 		)
-		discoveryVersion, err := cmd.Flags().GetInt("discovery-version")
-		if err != nil {
-			log.Logger.Warn().Err(err).Msgf("could not get discovery version, using default value of %d", discoveryVersion)
-		}
+		// get discovery version value (err handled in cmd.Args)
+		discoveryVersion, _ := cmd.Flags().GetInt("discovery-version")
 		if discoveryVersion == 2 {
 			if cmd.Flag("overwrite").Changed {
 				// SMD's EthernetInterface API does not allow the PUT
