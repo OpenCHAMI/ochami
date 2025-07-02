@@ -105,6 +105,13 @@ This command accepts the following options:
 	or to read the data from standard input (@-). The format of data read in any
 	of these forms is JSON by default unless *-f* is specified to change it.
 
+*--discovery-version*
+	Set the version of the discovery method to use for static discovery.
+
+	Possible values are:
+	- _1_
+	- _2_ (default)
+
 *-f, --format-input* _format_
 	Format of the input data. If unspecified, the payload format is _json_ by
 	default. Supported formats are:
@@ -117,13 +124,6 @@ This command accepts the following options:
 	Instead of failing if data already exists, overwrite it with new data
 	contained in the payload.
 
-*--discovery-version*
-			Set the version of the discovery method to use for static discovery.
-			Set the version of the discovery method to use for static discovery.
-	 
-				Possible values are:
-				- _1_
-				- _2_ (default)
 
 # XNAMES
 
