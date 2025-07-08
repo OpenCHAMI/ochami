@@ -14,11 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	DISCOVER_V1 int = iota + 1 // 1
-	DISCOVER_V2                // 2
-)
-
 // discoverStaticCmd represents the discover-static command
 var discoverStaticCmd = &cobra.Command{
 	Use: "static [--overwrite] [-d (<data> | @<path>)] [-f <format>]",
@@ -30,9 +25,7 @@ var discoverStaticCmd = &cobra.Command{
 		}
 		// check that value of discovery-version is valid or else...
 		switch discoveryVersion {
-		case DISCOVER_V1:
-			fallthrough
-		case DISCOVER_V2:
+		case int(discover.DiscoveryMethodV1), int(discover.DiscoveryMethodV2):
 			return cobra.NoArgs(cmd, args)
 		default:
 			return fmt.Errorf("--discovery-version value must be 1 or 2")
@@ -475,7 +468,7 @@ See ochami-discover(1) for more details.`,
 }
 
 func init() {
-	discoverStaticCmd.Flags().Int("discovery-version", DISCOVER_V2, "set version for discovery method to use")
+	discoverStaticCmd.Flags().Var(&discoveryVersion, "discovery-version", "set version for discovery method to use")
 	discoverStaticCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	discoverStaticCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	discoverStaticCmd.Flags().Bool("overwrite", false, "overwrite any existing information instead of failing")

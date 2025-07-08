@@ -8,6 +8,7 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/internal/version"
+	"github.com/OpenCHAMI/ochami/pkg/discover"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 	"github.com/spf13/cobra"
 )
@@ -21,6 +22,9 @@ var (
 	// Default values are set here.
 	formatInput  = format.DataFormatJson
 	formatOutput = format.DataFormatJson
+
+	// Variable to store the value of --discovery-method.
+	discoveryVersion = discover.DiscoveryMethodV2
 
 	// These are only used by subcommands.
 	cacertPath string
