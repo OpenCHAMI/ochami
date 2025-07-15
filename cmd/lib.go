@@ -19,6 +19,7 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/config"
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/OpenCHAMI/ochami/pkg/discover"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
 
@@ -446,6 +447,16 @@ func logHelpWarn(cmd *cobra.Command) {
 func completionFormatData(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	var helpSlice []string
 	for k, v := range format.DataFormatHelp {
+		helpSlice = append(helpSlice, fmt.Sprintf("%s\t%s", k, v))
+	}
+	return helpSlice, cobra.ShellCompDirectiveDefault
+}
+
+// completionDiscoveryVersion is the cobra completion function for the
+// --discovery-version flag.
+func completionDiscoveryVersion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	var helpSlice []string
+	for k, v := range discover.DiscoveryVersionHelp {
 		helpSlice = append(helpSlice, fmt.Sprintf("%s\t%s", k, v))
 	}
 	return helpSlice, cobra.ShellCompDirectiveDefault

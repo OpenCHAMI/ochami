@@ -18,7 +18,6 @@ import (
 // discoverStaticCmd represents the discover-static command
 var discoverStaticCmd = &cobra.Command{
 	Use:   "static [--overwrite] [-d (<data> | @<path>)] [-f <format>]",
-	Args:  cobra.NoArgs,
 	Short: "Populate SMD with data statically",
 	Long: `Populate SMD using static data. This data can be from a file (if an
 argument is passed) or from standard input. This "fake" discovery
@@ -245,78 +244,81 @@ See ochami-discover(1) for more details.`,
 			ifaceErrs           []error
 			ifaceErr            error
 		)
-		if cmd.Flag("overwrite").Changed {
-			// SMD's EthernetInterface API does not allow the PUT
-			// method. Instead, we loop over each ethernet interface
-			// to add and attempt a POST. Iff a 409 is returned for
-			// that interface, a PATCH is attempted. Otherwise, an
-			// error has occurred.
-			for _, iface := range ifaces {
-				// Attempt to POST the ethernet interface
-				ifaceListWrapper := []smd.EthernetInterface{iface}
-				ifaceHenvs, ifaceErrs, ifaceErr = smdClient.PostEthernetInterfaces(ifaceListWrapper, token)
+		// get discovery version value (err handled in cmd.Args)
+		if discoveryVersion == discover.DiscoveryMethodV2 {
+			if cmd.Flag("overwrite").Changed {
+				// SMD's EthernetInterface API does not allow the PUT
+				// method. Instead, we loop over each ethernet interface
+				// to add and attempt a POST. If a 409 is returned for
+				// that interface, a PATCH is attempted. Otherwise, an
+				// error has occurred.
+				for _, iface := range ifaces {
+					// Attempt to POST the ethernet interface
+					ifaceListWrapper := []smd.EthernetInterface{iface}
+					ifaceHenvs, ifaceErrs, ifaceErr = smdClient.PostEthernetInterfaces(ifaceListWrapper, token)
 
-				if ifaceErr != nil {
-					// An error in the function occurred, err for
-					// this interface and move on.
-					log.Logger.Error().Err(ifaceErr).Msg("failed to add ethernet interface to SMD")
-					ifaceErrorsOccurred = true
-					continue
-				}
+					if ifaceErr != nil {
+						// An error in the function occurred, err for
+						// this interface and move on.
+						log.Logger.Error().Err(ifaceErr).Msg("failed to add ethernet interface to SMD")
+						ifaceErrorsOccurred = true
+						continue
+					}
 
-				if ifaceErrs[0] != nil {
-					// An HTTP error occurred
-					if errors.Is(ifaceErrs[0], client.UnsuccessfulHTTPError) {
-						if ifaceHenvs[0].StatusCode == 409 {
-							// Ethernet interface exists, patch it
-							log.Logger.Info().Msgf("ethernet interface with MAC address %s exists, attempting to update it", iface.MACAddress)
-							_, patchErrs, patchErr := smdClient.PatchEthernetInterfaces(ifaceListWrapper, token)
-							if patchErr != nil {
-								log.Logger.Error().Err(patchErr).Msg("failed to update existing ethernet interface in SMD")
-								ifaceErrorsOccurred = true
-								continue
-							}
-							if patchErrs[0] != nil {
-								var errMsg string
-								if errors.Is(patchErrs[0], client.UnsuccessfulHTTPError) {
-									errMsg = "SMD ethernet interface PATCH yielded unsuccessful HTTP response"
-								} else {
-									errMsg = "failed to update existing ethernet interface in SMD"
+					if ifaceErrs[0] != nil {
+						// An HTTP error occurred
+						if errors.Is(ifaceErrs[0], client.UnsuccessfulHTTPError) {
+							if ifaceHenvs[0].StatusCode == 409 {
+								// Ethernet interface exists, patch it
+								log.Logger.Info().Msgf("ethernet interface with MAC address %s exists, attempting to update it", iface.MACAddress)
+								_, patchErrs, patchErr := smdClient.PatchEthernetInterfaces(ifaceListWrapper, token)
+								if patchErr != nil {
+									log.Logger.Error().Err(patchErr).Msg("failed to update existing ethernet interface in SMD")
+									ifaceErrorsOccurred = true
+									continue
 								}
-								log.Logger.Error().Err(patchErrs[0]).Msg(errMsg)
+								if patchErrs[0] != nil {
+									var errMsg string
+									if errors.Is(patchErrs[0], client.UnsuccessfulHTTPError) {
+										errMsg = "SMD ethernet interface PATCH yielded unsuccessful HTTP response"
+									} else {
+										errMsg = "failed to update existing ethernet interface in SMD"
+									}
+									log.Logger.Error().Err(patchErrs[0]).Msg(errMsg)
+									ifaceErrorsOccurred = true
+									continue
+								}
+							} else {
+								// Some other HTTP error occurred, err
+								log.Logger.Error().Err(ifaceErrs[0]).Msg("SMD ethernet interface POST yield non-409 (duplicate) failure")
 								ifaceErrorsOccurred = true
 								continue
 							}
 						} else {
-							// Some other HTTP error occurred, err
-							log.Logger.Error().Err(ifaceErrs[0]).Msg("SMD ethernet interface POST yield non-409 (duplicate) failure")
+							log.Logger.Error().Err(ifaceErrs[0]).Msg("failed to add ethernet interface to SMD")
 							ifaceErrorsOccurred = true
 							continue
 						}
-					} else {
-						log.Logger.Error().Err(ifaceErrs[0]).Msg("failed to add ethernet interface to SMD")
-						ifaceErrorsOccurred = true
-						continue
 					}
 				}
-			}
-		} else {
-			// --overwrite was not passed, perform regular POST.
-			_, ifaceErrs, ifaceErr = smdClient.PostEthernetInterfaces(ifaces, token)
-			if ifaceErr != nil {
-				log.Logger.Error().Err(ifaceErr).Msg("failed to add ethernet interfaces to SMD")
-				ifaceErrorsOccurred = true
-			}
-			for _, err := range ifaceErrs {
-				if err != nil {
-					var errMsg string
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						errMsg = "SMD ethernet interface request yielded unsuccessful HTTP response"
-					} else {
-						errMsg = "failed to add ethernet interface to SMD"
-					}
-					log.Logger.Error().Err(err).Msg(errMsg)
+			} else {
+				// --overwrite was not passed, perform regular POST.
+				_, ifaceErrs, ifaceErr = smdClient.PostEthernetInterfaces(ifaces, token)
+				if ifaceErr != nil {
+					log.Logger.Error().Err(ifaceErr).Msg("failed to add ethernet interfaces to SMD")
 					ifaceErrorsOccurred = true
+				}
+				for _, err := range ifaceErrs {
+					if err != nil {
+						var errMsg string
+						if errors.Is(err, client.UnsuccessfulHTTPError) {
+							errMsg = "SMD ethernet interface request yielded unsuccessful HTTP response"
+						} else {
+							errMsg = "failed to add ethernet interface to SMD"
+						}
+						log.Logger.Error().Err(err).Msg(errMsg)
+						ifaceErrorsOccurred = true
+					}
 				}
 			}
 		}
@@ -452,11 +454,13 @@ See ochami-discover(1) for more details.`,
 }
 
 func init() {
+	discoverStaticCmd.Flags().Var(&discoveryVersion, "discovery-version", "set version for discovery method to use")
 	discoverStaticCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	discoverStaticCmd.Flags().VarP(&formatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	discoverStaticCmd.Flags().Bool("overwrite", false, "overwrite any existing information instead of failing")
 
 	cloudInitGroupAddCmd.RegisterFlagCompletionFunc("format-input", completionFormatData)
+	discoverStaticCmd.RegisterFlagCompletionFunc("discovery-version", completionDiscoveryVersion)
 
 	discoverCmd.AddCommand(discoverStaticCmd)
 }
