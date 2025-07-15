@@ -13,9 +13,9 @@ const (
 )
 
 var (
-	DisocveryVersionHelp = map[int]string{
-		int(DiscoveryMethodV1): "One-line JSON format",
-		int(DiscoveryMethodV2): "Unindented JSON format",
+	DiscoveryVersionHelp = map[int]string{
+		int(DiscoveryMethodV1): "Discovery with additional request to add EthernetInterfaces",
+		int(DiscoveryMethodV2): "Discovery without request to add EthernetInterfaces",
 	}
 )
 
@@ -41,5 +41,5 @@ func (dv *DiscoveryVersion) Set(v string) error {
 }
 
 func (dv DiscoveryVersion) Type() string {
-	return "DiscoveryVersion "
+	return "DiscoveryVersion"
 }
