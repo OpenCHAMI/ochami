@@ -270,21 +270,31 @@ func RemoveFromSlice[T any](slice []T, index int) []T {
 // GlobalKoanf structure with a configuration that is a merge of, in ascending
 // order of priority (higher is more priority:
 //
-// 1. DefaultConfig
-// 2. System config file (/etc/ochami/config.yaml)
-// 3. User config file (~/.config/ochami/config.yaml)
+//  1. DefaultConfig
+//  2. System config file (/etc/ochami/config.yaml)
+//  3. User config file
+//     a. ${XDG_CONFIG_HOME}/ochami/config.yaml if set, otherwise
+//     b. ~/.config/ochami/config.yaml
 //
 // If any of the system or user config file fails to load, it is skipped in the
 // merging.
 func LoadGlobalConfigMerged() error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 
-	// Generate user config path: ~/.config/ochami/config.yaml
-	user, err := user.Current()
-	if err != nil {
-		return fmt.Errorf("unable to fetch current user: %w", err)
+	// Generate user config path:
+	//
+	// - ${XDG_CONFIG_HOME}/ochami/config.yaml if XDG_CONFIG_HOME is set, or
+	// - ~/.config/ochami/config.yaml if not
+	//
+	if cfgUserBase := os.Getenv("XDG_CONFIG_HOME"); cfgUserBase != "" {
+		UserConfigFile = filepath.Join(cfgUserBase, "ochami", "config.yaml")
+	} else {
+		user, err := user.Current()
+		if err != nil {
+			return fmt.Errorf("unable to fetch current user: %w", err)
+		}
+		UserConfigFile = filepath.Join(user.HomeDir, ".config", "ochami", "config.yaml")
 	}
-	UserConfigFile = filepath.Join(user.HomeDir, ".config", "ochami", "config.yaml")
 
 	// Read config from each file in slice
 	type FileCfgMap struct {
