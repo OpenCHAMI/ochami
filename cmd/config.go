@@ -39,6 +39,7 @@ See ochami-config(5) for details on the configuration options.`,
 func init() {
 	configCmd.PersistentFlags().Bool("system", false, "modify system config")
 	configCmd.PersistentFlags().Bool("user", true, "modify user config")
+	configCmd.PersistentFlags().Bool("create", false, "create config file and parent directories if they do not exist")
 
 	rootCmd.AddCommand(configCmd)
 }
