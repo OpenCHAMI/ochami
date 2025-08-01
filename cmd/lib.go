@@ -216,6 +216,44 @@ func createIfNotExists(path string) error {
 	return nil
 }
 
+// handleFileCreation checks if a file should be created based on the --create flag.
+// If --create is set, it automatically creates the file. If not set, it prompts the user.
+func handleFileCreation(cmd *cobra.Command, fileToModify string) {
+	createFlag, err := cmd.Flags().GetBool("create")
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("failed to retrieve \"create\" flag")
+		logHelpError(cmd)
+		os.Exit(1)
+	}
+
+	if createFlag {
+		// Automatically create file if --create flag is set
+		if err := createIfNotExists(fileToModify); err != nil {
+			log.Logger.Error().Err(err).Msg("error creating file")
+			logHelpError(cmd)
+			os.Exit(1)
+		}
+	} else {
+		// Use existing askToCreate logic when --create flag is not set
+		if create, err := ios.askToCreate(fileToModify); err != nil {
+			if err != FileExistsError {
+				log.Logger.Error().Err(err).Msg("error asking to create file")
+				logHelpError(cmd)
+				os.Exit(1)
+			}
+		} else if create {
+			if err := createIfNotExists(fileToModify); err != nil {
+				log.Logger.Error().Err(err).Msg("error creating file")
+				logHelpError(cmd)
+				os.Exit(1)
+			}
+		} else {
+			log.Logger.Error().Msg("user declined to create file, not modifying")
+			os.Exit(0)
+		}
+	}
+}
+
 // checkToken takes a pointer to a Cobra command and checks to see if --token
 // was set. If not, an error is printed and the program exits.
 func checkToken(cmd *cobra.Command) {
