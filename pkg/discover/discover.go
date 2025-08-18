@@ -153,7 +153,6 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 		systemMap := make(map[string]string)
 		managerMap := make(map[string]string)
 
-		// Create fake BMC "System" for node if it doesn't already exist
 		if _, ok := systemMap[node.Xname]; !ok {
 			log.Logger.Debug().Msgf("node %s: generating fake BMC System", node.Xname)
 			base.Path = "/redfish/v1/Systems/" + node.Xname
@@ -169,6 +168,13 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 			} else {
 				s.UUID = sysUUID.String()
 			}
+
+			// Fake discovery as of v0.5.1 does not have a field to indicate supported power actions, and PCS requires
+			// them. We don't have direct configuration for the System struct that contains this either, so in lieu of
+			// that, simply add every possible action from from the Redfish Reference 6.5.5.1 ResetType:
+			// https://www.dmtf.org/sites/default/files/standards/documents/DSP2046_2023.3.html#aggregate-102
+			s.Actions = []string{"On", "ForceOff", "GracefulShutdown", "GracefulRestart", "ForceRestart", "Nmi",
+				"ForceOn", "PushPowerButton", "PowerCycle", "Suspend", "Pause", "Resume"}
 
 			// Node interfaces
 			for idx, iface := range node.Ifaces {

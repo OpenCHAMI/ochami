@@ -90,6 +90,13 @@ type RedfishEndpointV2 struct {
 	Managers      []Manager `json:"Managers" yaml:"Managers"`
 }
 
+// This struct is a partially duplicated copy of the schemas InventoryDetail type, originally from SMD:
+// https://github.com/OpenCHAMI/schemas/blob/9aad17a286c405e1d75463298ec8db553cc4ca12/schemas/inventory.go#L61-L88
+// smd.parseRedfishEndpointDataV2 unmarshals the Systems field of a RedfishEndpoint request into one:
+// https://github.com/OpenCHAMI/smd/blob/f07680ffb6c41e75945bc32bc7ba948a56afe2e5/cmd/smd/smd-api.go#L2826-L2842
+// SMD will have zero values for any fields this currently lacks, and will have unexpected behavior when it tries to
+// use them later.
+
 // System represents data that would be retrieved from BMC System data, except
 // reduced to a minimum needed for discovery.
 type System struct {
@@ -97,6 +104,7 @@ type System struct {
 	UUID               string                      `json:"uuid" yaml:"uuid"`
 	Name               string                      `json:"name" yaml:"name"`
 	EthernetInterfaces []schemas.EthernetInterface `json:"ethernet_interfaces" yaml:"ethernet_interfaces"`
+	Actions            []string                    `json:"actions" yaml:"actions"`
 }
 
 // Manager represents data that would be retrieved from BMC Manager data, except
