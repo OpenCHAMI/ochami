@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/openchami/schemas/schemas/csm"
+	"github.com/openchami/smd/pkg/schemas/schemas/csm"
 	"github.com/spf13/cobra"
 
 	"github.com/OpenCHAMI/ochami/internal/log"

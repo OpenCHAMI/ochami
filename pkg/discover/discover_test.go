@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/openchami/schemas/schemas"
+	"github.com/openchami/smd/pkg/schemas"
 )
 
 func TestNodeList_String(t *testing.T) {

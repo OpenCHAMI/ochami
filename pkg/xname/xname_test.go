@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openchami/schemas/schemas/csm"
+	"github.com/openchami/smd/pkg/schemas/schemas/csm"
 )
 
 func TestXNameComponentsToString(t *testing.T) {

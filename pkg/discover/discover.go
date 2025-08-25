@@ -5,7 +5,7 @@ import (
 	"net/url"
 
 	"github.com/google/uuid"
-	"github.com/openchami/schemas/schemas"
+	"github.com/openchami/smd/pkg/schemas"
 
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client/smd"
