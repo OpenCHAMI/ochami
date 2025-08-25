@@ -3,7 +3,7 @@ package xname
 import (
 	"fmt"
 
-	"github.com/openchami/schemas/schemas/csm"
+	"github.com/openchami/smd/pkg/schemas/csm"
 )
 
 func XNameComponentsToString(x csm.XNameComponents) string {

@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/openchami/schemas/schemas"
-	"github.com/openchami/schemas/schemas/csm"
+	"github.com/openchami/smd/pkg/schemas"
+	"github.com/openchami/smd/pkg/schemas/csm"
 
 	"github.com/OpenCHAMI/ochami/internal/log"
 	"github.com/OpenCHAMI/ochami/pkg/client"

@@ -170,8 +170,8 @@ github.com/nikolalohinski/gonja v1.5.3/go.mod h1:RmjwxNiXAEqcq1HeK5SSMmqFJvKOfTf
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.8.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.5.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
-github.com/openchami/schemas v0.0.0-20240826142248-37b8af32208a h1:iAN40nKkCzegDri4Sjay48HaehOcqYBgioODmRL9wtw=
-github.com/openchami/schemas v0.0.0-20240826142248-37b8af32208a/go.mod h1:3dridLqXvAdO0ypPXuxnXRgaK2h/dItVKGseCgFQ13k=
+github.com/openchami/smd/pkg/schemas v0.0.0-20240826142248-37b8af32208a h1:iAN40nKkCzegDri4Sjay48HaehOcqYBgioODmRL9wtw=
+github.com/openchami/smd/pkg/schemas v0.0.0-20240826142248-37b8af32208a/go.mod h1:3dridLqXvAdO0ypPXuxnXRgaK2h/dItVKGseCgFQ13k=
 github.com/pelletier/go-toml/v2 v2.2.3 h1:YmeHyLY8mFWbdkNWwpr+qIL2bEqT0o95WSdkNHvL12M=
 github.com/pelletier/go-toml/v2 v2.2.3/go.mod h1:MfCQTFTvCcUyyvvwm1+G6H/jORL20Xlb6rzQu9GuUkc=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
