@@ -18,7 +18,7 @@ require (
 	github.com/knadh/koanf/v2 v2.1.2
 	github.com/lestrrat-go/jwx v1.2.30
 	github.com/nikolalohinski/gonja v1.5.3
-	github.com/openchami/schemas v0.0.0-20240826142248-37b8af32208a
+	github.com/openchami/smd/pkg/schemas v0.0.0-20240826142248-37b8af32208a
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.9.1
 	github.com/synackd/go-kargs v0.0.1-beta.1
