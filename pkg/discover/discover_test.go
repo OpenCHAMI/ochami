@@ -32,12 +32,13 @@ func TestNodeList_String(t *testing.T) {
 				},
 			},
 			{
-				Name:   "nid2",
-				NID:    2,
-				Xname:  "x1000c0s1b0n0",
-				Group:  "compute",
-				BMCMac: "de:ad:be:ee:ef:01",
-				BMCIP:  "172.16.101.2",
+				Name:    "nid2",
+				NID:     2,
+				Xname:   "x1000c0s1b0n0",
+				Group:   "compute",
+				BMCMac:  "de:ad:be:ee:ef:01",
+				BMCIP:   "172.16.101.2",
+				BMCFQDN: "nid2.bmc.example.com",
 				Ifaces: []Iface{
 					{
 						MACAddr: "de:ca:fc:0f:fe:e2",
@@ -53,8 +54,8 @@ func TestNodeList_String(t *testing.T) {
 		},
 	}
 	want := `[` +
-		`node0={name="nid1" nid=1 xname=x1000c0s0b0n0 bmc_mac=de:ad:be:ee:ef:00 bmc_ip=172.16.101.1 interfaces=[iface0={mac_addr=de:ca:fc:0f:fe:e1 ip_addrs=[ip0={network="mgmt" ip_addr=172.16.100.1}]}]} ` +
-		`node1={name="nid2" nid=2 xname=x1000c0s1b0n0 bmc_mac=de:ad:be:ee:ef:01 bmc_ip=172.16.101.2 interfaces=[iface0={mac_addr=de:ca:fc:0f:fe:e2 ip_addrs=[ip0={network="mgmt" ip_addr=172.16.100.2}]}]}` +
+		`node0={name="nid1" nid=1 xname=x1000c0s0b0n0 bmc_mac=de:ad:be:ee:ef:00 bmc_ip=172.16.101.1 bmc_fqdn= interfaces=[iface0={mac_addr=de:ca:fc:0f:fe:e1 ip_addrs=[ip0={network="mgmt" ip_addr=172.16.100.1}]}]} ` +
+		`node1={name="nid2" nid=2 xname=x1000c0s1b0n0 bmc_mac=de:ad:be:ee:ef:01 bmc_ip=172.16.101.2 bmc_fqdn=nid2.bmc.example.com interfaces=[iface0={mac_addr=de:ca:fc:0f:fe:e2 ip_addrs=[ip0={network="mgmt" ip_addr=172.16.100.2}]}]}` +
 		`]`
 	if got := nl.String(); got != want {
 		t.Errorf("NodeList.String() = %q, want %q", got, want)
@@ -63,12 +64,13 @@ func TestNodeList_String(t *testing.T) {
 
 func TestNode_String(t *testing.T) {
 	node := Node{
-		Name:   "node1",
-		NID:    1,
-		Xname:  "x1000c0s0b0n0",
-		Group:  "grp",
-		BMCMac: "de:ca:fc:0f:fe:e1",
-		BMCIP:  "172.16.101.1",
+		Name:    "node1",
+		NID:     1,
+		Xname:   "x1000c0s0b0n0",
+		Group:   "grp",
+		BMCMac:  "de:ca:fc:0f:fe:e1",
+		BMCIP:   "172.16.101.1",
+		BMCFQDN: "node1.bmc.example.com",
 		Ifaces: []Iface{
 			{
 				MACAddr: "de:ad:be:ee:ef:01",
@@ -78,7 +80,7 @@ func TestNode_String(t *testing.T) {
 			},
 		},
 	}
-	want := `name="node1" nid=1 xname=x1000c0s0b0n0 bmc_mac=de:ca:fc:0f:fe:e1 bmc_ip=172.16.101.1 ` +
+	want := `name="node1" nid=1 xname=x1000c0s0b0n0 bmc_mac=de:ca:fc:0f:fe:e1 bmc_ip=172.16.101.1 bmc_fqdn=node1.bmc.example.com ` +
 		`interfaces=[iface0={mac_addr=de:ad:be:ee:ef:01 ip_addrs=[ip0={network="net" ip_addr=10.0.0.1}]}]`
 	if got := node.String(); got != want {
 		t.Errorf("Node.String() = %q, want %q", got, want)
@@ -119,12 +121,13 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 	nl := NodeList{
 		Nodes: []Node{
 			{
-				Name:   "n42",
-				NID:    42,
-				Xname:  "invalid", // force xname->BMCXname to error & fallback
-				Group:  "g",
-				BMCMac: "de:ca:fc:0f:fe:e1",
-				BMCIP:  "172.16.101.1",
+				Name:    "n42",
+				NID:     42,
+				Xname:   "invalid", // force xname->BMCXname to error & fallback
+				Group:   "g",
+				BMCMac:  "de:ca:fc:0f:fe:e1",
+				BMCIP:   "172.16.101.1",
+				BMCFQDN: "n42.bmc.example.com",
 				Ifaces: []Iface{
 					{
 						MACAddr: "de:ad:be:ee:ef:01",
@@ -161,7 +164,7 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 	}
 	r := rfes.RedfishEndpoints[0]
 	node := nl.Nodes[0]
-	if r.Name != node.Name || r.Type != "NodeBMC" || r.MACAddr != node.BMCMac || r.IPAddress != node.BMCIP {
+	if r.Name != node.Name || r.Type != "NodeBMC" || r.MACAddr != node.BMCMac || r.IPAddress != node.BMCIP || r.FQDN != node.BMCFQDN {
 		t.Errorf("RedfishEndpoint fields = %+v", r)
 	}
 	if r.SchemaVersion != 1 {

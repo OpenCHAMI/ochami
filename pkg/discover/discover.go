@@ -35,18 +35,19 @@ func (nl NodeList) String() string {
 // Node represents a node entry in a payload file. Multiple of these are send to
 // SMD to "discover" them.
 type Node struct {
-	Name   string  `json:"name" yaml:"name"`
-	NID    int64   `json:"nid" yaml:"nid"`
-	Xname  string  `json:"xname" yaml:"xname"`
-	Group  string  `json:"group" yaml:"group"`
-	BMCMac string  `json:"bmc_mac" yaml:"bmc_mac"`
-	BMCIP  string  `json:"bmc_ip" yaml:"bmc_ip"`
-	Ifaces []Iface `json:"interfaces" yaml:"interfaces"`
+	Name    string  `json:"name" yaml:"name"`
+	NID     int64   `json:"nid" yaml:"nid"`
+	Xname   string  `json:"xname" yaml:"xname"`
+	Group   string  `json:"group" yaml:"group"`
+	BMCMac  string  `json:"bmc_mac" yaml:"bmc_mac"`
+	BMCIP   string  `json:"bmc_ip" yaml:"bmc_ip"`
+	BMCFQDN string  `json:"bmc_fqdn" yaml:"bmc_fqdn"`
+	Ifaces  []Iface `json:"interfaces" yaml:"interfaces"`
 }
 
 func (n Node) String() string {
-	nStr := fmt.Sprintf("name=%q nid=%d xname=%s bmc_mac=%s bmc_ip=%s interfaces=[",
-		n.Name, n.NID, n.Xname, n.BMCMac, n.BMCIP)
+	nStr := fmt.Sprintf("name=%q nid=%d xname=%s bmc_mac=%s bmc_ip=%s bmc_fqdn=%s interfaces=[",
+		n.Name, n.NID, n.Xname, n.BMCMac, n.BMCIP, n.BMCFQDN)
 	for idx, iface := range n.Ifaces {
 		if idx == 0 {
 			nStr += fmt.Sprintf("iface%d={%s}", idx, iface)
@@ -147,6 +148,7 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 		rfe.ID = bmcXname
 		rfe.MACAddr = node.BMCMac
 		rfe.IPAddress = node.BMCIP
+		rfe.FQDN = node.BMCFQDN
 		rfe.SchemaVersion = 1 // Tells SMD to use new (v2) parsing code
 
 		// Deduplication maps for fake BMC Managers and Systems
