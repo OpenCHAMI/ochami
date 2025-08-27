@@ -153,6 +153,7 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 		systemMap := make(map[string]string)
 		managerMap := make(map[string]string)
 
+		// Create fake BMC "System" for node if it doesn't already exist
 		if _, ok := systemMap[node.Xname]; !ok {
 			log.Logger.Debug().Msgf("node %s: generating fake BMC System", node.Xname)
 			base.Path = "/redfish/v1/Systems/" + node.Xname
