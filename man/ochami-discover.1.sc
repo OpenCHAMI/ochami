@@ -26,7 +26,8 @@ nodes:
   xname: x1000c1s7b0n0
   bmc_mac: de:ca:fc:0f:ee:ee
   bmc_ip: 172.16.0.101
-  group: compute
+  groups:
+  - compute
   interfaces:
   - mac_addr: de:ad:be:ee:ee:f1
     ip_addrs:
@@ -56,8 +57,10 @@ is used as the unique identifier for the node within the Component that gets
 created for node.
 - *bmc_mac* - MAC address of node's BMC.
 - *bmc_ip* - Desired IP address of node's BMC.
-- *group* - Optional group to add node to. This will get created during
-discovery if it does not exist.
+- *group* - *DEPRECATED.* Use *groups* instead. *group* will be removed in a
+future release.
+- *groups* - Optional list of groups to add node to. These will get created
+during discovery if they do not exist.
 - *interfaces* - A list of network interfaces for the node.
     - *mac_addr* - MAC address of network interface.
     - *ip_addrs* - List of IP addresses assigned to interface.

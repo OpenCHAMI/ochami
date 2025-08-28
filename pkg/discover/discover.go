@@ -35,13 +35,14 @@ func (nl NodeList) String() string {
 // Node represents a node entry in a payload file. Multiple of these are send to
 // SMD to "discover" them.
 type Node struct {
-	Name   string  `json:"name" yaml:"name"`
-	NID    int64   `json:"nid" yaml:"nid"`
-	Xname  string  `json:"xname" yaml:"xname"`
-	Group  string  `json:"group" yaml:"group"`
-	BMCMac string  `json:"bmc_mac" yaml:"bmc_mac"`
-	BMCIP  string  `json:"bmc_ip" yaml:"bmc_ip"`
-	Ifaces []Iface `json:"interfaces" yaml:"interfaces"`
+	Name   string   `json:"name" yaml:"name"`
+	NID    int64    `json:"nid" yaml:"nid"`
+	Xname  string   `json:"xname" yaml:"xname"`
+	Group  string   `json:"group" yaml:"group"` // DEPRECATED
+	Groups []string `json:"groups" yaml:"groups"`
+	BMCMac string   `json:"bmc_mac" yaml:"bmc_mac"`
+	BMCIP  string   `json:"bmc_ip" yaml:"bmc_ip"`
+	Ifaces []Iface  `json:"interfaces" yaml:"interfaces"`
 }
 
 func (n Node) String() string {
@@ -240,4 +241,16 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 		rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
 	}
 	return comps, rfes, ifaces, nil
+}
+
+// AddMemberToGroup adds xname to group, ensuring deduplication.
+func AddMemberToGroup(group smd.Group, xname string) smd.Group {
+	for _, x := range group.Members.IDs {
+		if x == xname {
+			return group
+		}
+	}
+	g := group
+	g.Members.IDs = append(g.Members.IDs, xname)
+	return g
 }

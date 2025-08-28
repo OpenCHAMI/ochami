@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -35,7 +36,9 @@ nodes:
   xname: x1000c1s7b0n0
   bmc_mac: de:ca:fc:0f:ee:ee
   bmc_ip: 172.16.0.101
-  group: compute
+  groups:
+  - compute
+  - slurm
   interfaces:
   - mac_addr: de:ad:be:ee:ee:f1
     ip_addrs:
@@ -326,17 +329,40 @@ See ochami-discover(1) for more details.`,
 		// Put together list of groups to add and which components to add to those groups
 		groupsToAdd := make(map[string]smd.Group)
 		for _, node := range nodes.Nodes {
+			// node.Group IS DEPRECATED IN FAVOR OF node.groups. This block should be
+			// deleted when node.Group is removed.
+			//
+			// For now, we merge node.Group with node.Groups. Since we use a dictionary for
+			// deduplication, this is trivial.
 			if node.Group != "" {
+				if len(strings.Trim(node.Name, " \t")) == 0 {
+					log.Logger.Warn().Msgf("node %s contains 'group', which is deprecated; use 'groups' instead", node.Xname)
+				} else {
+					log.Logger.Warn().Msgf("node %s (%s) contains 'group', which is deprecated; use 'groups' instead", node.Xname, node.Name)
+				}
 				if g, ok := groupsToAdd[node.Group]; !ok {
+					// Group doesn't exist yet, populate groupsToAdd with it
 					newGroup := smd.Group{
 						Label:       node.Group,
 						Description: fmt.Sprintf("The %s group", node.Group),
 					}
-					newGroup.Members.IDs = []string{node.Xname}
-					groupsToAdd[node.Group] = newGroup
+					groupsToAdd[node.Group] = discover.AddMemberToGroup(newGroup, node.Xname)
 				} else {
-					g.Members.IDs = append(g.Members.IDs, node.Xname)
-					groupsToAdd[node.Group] = g
+					// Update group membership with new node in groupsToAdd map
+					groupsToAdd[node.Group] = discover.AddMemberToGroup(g, node.Xname)
+				}
+			}
+			for _, group := range node.Groups {
+				if g, ok := groupsToAdd[group]; !ok {
+					// Group doesn't exist yet, populate groupsToAdd with it
+					newGroup := smd.Group{
+						Label:       group,
+						Description: fmt.Sprintf("The %s group", group),
+					}
+					groupsToAdd[group] = discover.AddMemberToGroup(newGroup, node.Xname)
+				} else {
+					// Update group membership with new node in groupsToAdd map
+					groupsToAdd[group] = discover.AddMemberToGroup(g, node.Xname)
 				}
 			}
 		}
