@@ -113,8 +113,11 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 		return comps, rfes, ifaces, fmt.Errorf("invalid URI: %s", baseURI)
 	}
 
-	// Deduplication map for Components
-	compMap := make(map[string]string)
+	var (
+		compMap    = make(map[string]string) // Deduplication map for SMD Components
+		systemMap  = make(map[string]string) // Deduplication map for BMC Systems
+		managerMap = make(map[string]string) // Deduplication map for BMC Managers
+	)
 	for _, node := range nl.Nodes {
 		log.Logger.Debug().Msgf("generating component structure for node with xname %s", node.Xname)
 		if _, ok := compMap[node.Xname]; !ok {
@@ -149,10 +152,6 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 		rfe.MACAddr = node.BMCMac
 		rfe.IPAddress = node.BMCIP
 		rfe.SchemaVersion = 1 // Tells SMD to use new (v2) parsing code
-
-		// Deduplication maps for fake BMC Managers and Systems
-		systemMap := make(map[string]string)
-		managerMap := make(map[string]string)
 
 		// Create fake BMC "System" for node if it doesn't already exist
 		if _, ok := systemMap[node.Xname]; !ok {
