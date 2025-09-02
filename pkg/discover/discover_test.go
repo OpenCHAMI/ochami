@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
 	"github.com/openchami/schemas/schemas"
 
 	"github.com/OpenCHAMI/ochami/pkg/client/smd"
@@ -193,6 +194,13 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 		IP:          node.Ifaces[0].IPAddrs[0].IPAddr,
 	}); !reflect.DeepEqual(e, want) {
 		t.Errorf("System.EthernetInterface = %+v, want %+v", e, want)
+	}
+	if !reflect.DeepEqual(
+		sys.Actions,
+		[]string{"On", "ForceOff", "GracefulShutdown", "GracefulRestart", "ForceRestart", "Nmi", "ForceOn",
+			"PushPowerButton", "PowerCycle", "Suspend", "Pause", "Resume"},
+	) {
+		t.Error("System.Actions does not match the expected value")
 	}
 
 	// Managers

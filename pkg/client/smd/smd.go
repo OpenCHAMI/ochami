@@ -97,6 +97,7 @@ type System struct {
 	UUID               string                      `json:"uuid" yaml:"uuid"`
 	Name               string                      `json:"name" yaml:"name"`
 	EthernetInterfaces []schemas.EthernetInterface `json:"ethernet_interfaces" yaml:"ethernet_interfaces"`
+	Actions            []string                    `json:"actions" yaml:"actions"`
 }
 
 // Manager represents data that would be retrieved from BMC Manager data, except
