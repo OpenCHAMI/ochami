@@ -63,12 +63,15 @@ func newIOStream(stdin io.Reader, stdout, stderr io.Writer) ioStream {
 // askToCreate prompts the user to, if path does not exist, to create a blank
 // file at path. If it exists, nil is returned. If the user declines, a
 // UserDeclinedError is returned. If an error occurs during creation, an error
-// is returned.
-func (i ioStream) askToCreate(path string) (bool, error) {
+// is returned. If noConfirm is true, it automatically returns true without prompting.
+func (i ioStream) askToCreate(path string, noConfirm bool) (bool, error) {
 	if path == "" {
 		return false, fmt.Errorf("path cannot be empty")
 	}
 	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if noConfirm {
+			return true, nil
+		}
 		respConfigCreate, err2 := i.loopYesNo(fmt.Sprintf("%s does not exist. Create it?", path))
 		if err2 != nil {
 			return false, fmt.Errorf("error fetching user input: %w", err2)
@@ -118,7 +121,7 @@ func initConfig(cmd *cobra.Command, create bool) error {
 	if configFile != "" {
 		if create {
 			// Try to create config file with default values if it doesn't exist
-			if cr, err := ios.askToCreate(configFile); err != nil {
+			if cr, err := ios.askToCreate(configFile, false); err != nil {
 				// Only return error if error is not one that the file
 				// already exists.
 				if !errors.Is(err, FileExistsError) {
@@ -216,6 +219,34 @@ func createIfNotExists(path string) error {
 	}
 
 	return nil
+}
+
+// handleFileCreation checks if a file should be created based on the --no-confirm flag.
+// The flag is passed to askToCreate which handles the logic.
+func handleFileCreation(cmd *cobra.Command, fileToModify string) {
+	noConfirmFlag, err := cmd.Flags().GetBool("no-confirm")
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("failed to retrieve \"no-confirm\" flag")
+		logHelpError(cmd)
+		os.Exit(1)
+	}
+
+	if create, err := ios.askToCreate(fileToModify, noConfirmFlag); err != nil {
+		if err != FileExistsError {
+			log.Logger.Error().Err(err).Msg("error asking to create file")
+			logHelpError(cmd)
+			os.Exit(1)
+		}
+	} else if create {
+		if err := createIfNotExists(fileToModify); err != nil {
+			log.Logger.Error().Err(err).Msg("error creating file")
+			logHelpError(cmd)
+			os.Exit(1)
+		}
+	} else {
+		log.Logger.Error().Msg("user declined to create file, not modifying")
+		os.Exit(0)
+	}
 }
 
 // checkToken takes a pointer to a Cobra command and checks to see if --token
