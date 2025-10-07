@@ -21,7 +21,7 @@ func TestIOStream_askToCreate(t *testing.T) {
 		errBuf := &bytes.Buffer{}
 		ios := newIOStream(inBuf, outBuf, errBuf)
 
-		got, err := ios.askToCreate("")
+		got, err := ios.askToCreate("", false)
 		if got != false {
 			t.Errorf("askToCreate(\"\") = %v, want false", got)
 		}
@@ -49,7 +49,7 @@ func TestIOStream_askToCreate(t *testing.T) {
 		errBuf := &bytes.Buffer{}
 		ios := newIOStream(inBuf, outBuf, errBuf)
 
-		got, err := ios.askToCreate(f)
+		got, err := ios.askToCreate(f, false)
 		if got != false {
 			t.Errorf("askToCreate(%q) = %v, want false", f, got)
 		}
@@ -74,7 +74,7 @@ func TestIOStream_askToCreate(t *testing.T) {
 		errBuf := &bytes.Buffer{}
 		ios := newIOStream(inBuf, outBuf, errBuf)
 
-		got, err := ios.askToCreate(path)
+		got, err := ios.askToCreate(path, false)
 		if got != false {
 			t.Errorf("askToCreate(%q) decline = %v, want false", path, got)
 		}
@@ -100,7 +100,7 @@ func TestIOStream_askToCreate(t *testing.T) {
 		errBuf := &bytes.Buffer{}
 		ios := newIOStream(inBuf, outBuf, errBuf)
 
-		got, err := ios.askToCreate(path)
+		got, err := ios.askToCreate(path, false)
 		if got != true {
 			t.Errorf("askToCreate(%q) accept = %v, want true", path, got)
 		}
@@ -110,6 +110,31 @@ func TestIOStream_askToCreate(t *testing.T) {
 		wantPrompt := fmt.Sprintf("%s does not exist. Create it? [yn]:", path)
 		if errBuf.String() != wantPrompt {
 			t.Errorf("stderr = %q, want %q", errBuf.String(), wantPrompt)
+		}
+		if outBuf.Len() != 0 {
+			t.Errorf("stdout = %q, want empty", outBuf.String())
+		}
+	})
+
+	t.Run("nonexistent file, no-confirm flag", func(t *testing.T) {
+		t.Parallel()
+		tmp := t.TempDir()
+		path := filepath.Join(tmp, "noexist3")
+
+		inBuf := &bytes.Buffer{}
+		outBuf := &bytes.Buffer{}
+		errBuf := &bytes.Buffer{}
+		ios := newIOStream(inBuf, outBuf, errBuf)
+
+		got, err := ios.askToCreate(path, true)
+		if got != true {
+			t.Errorf("askToCreate(%q) noConfirm = %v, want true", path, got)
+		}
+		if err != nil {
+			t.Errorf("askToCreate(%q) noConfirm error = %v, want nil", path, err)
+		}
+		if errBuf.Len() != 0 {
+			t.Errorf("stderr = %q, want empty (no prompt should be shown)", errBuf.String())
 		}
 		if outBuf.Len() != 0 {
 			t.Errorf("stdout = %q, want empty", outBuf.String())
