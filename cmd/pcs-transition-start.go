@@ -15,8 +15,8 @@ import (
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
 
-var xnames []string
 var operation string
+var transitionsXnames []string
 
 // validOperations returns a list of valid PCS operations
 func validOperations() []string {
@@ -68,7 +68,7 @@ See ochami-pcs(1) for more details.`,
 
 		// Get the list of target components
 		var err error
-		xnames, err = cmd.Flags().GetStringSlice("xname")
+		transitionsXnames, err = cmd.Flags().GetStringSlice("xname")
 		if err != nil {
 			log.Logger.Error().Err(err).Msg("failed to get value for --xname")
 			logHelpError(cmd)
@@ -76,7 +76,7 @@ See ochami-pcs(1) for more details.`,
 		}
 
 		// Create transition
-		transitionHttpEnv, err := pcsClient.CreateTransition(operation, nil, xnames, token)
+		transitionHttpEnv, err := pcsClient.CreateTransition(operation, nil, transitionsXnames, token)
 		if err != nil {
 			if errors.Is(err, client.UnsuccessfulHTTPError) {
 				log.Logger.Error().Err(err).Msg("PCS transition create request yielded unsuccessful HTTP response")
