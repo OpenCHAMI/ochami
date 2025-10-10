@@ -132,57 +132,21 @@ aurs:
       install -Dm644 ./man/*.1 "${pkgdir}/usr/share/man/man1/"
       install -Dm644 ./man/*.5 "${pkgdir}/usr/share/man/man5/"
 
-dockers:
+dockers_v2:
   - dockerfile: goreleaser.dockerfile
-    image_templates:
-      - &amd64_linux_image ghcr.io/openchami/{{ .ProjectName }}:{{ .Tag }}-amd64
-      - ghcr.io/openchami/{{ .ProjectName }}:v{{ .Major }}-amd64
-      - ghcr.io/openchami/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-amd64
-    use: buildx
-    goarch: amd64
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-    extra_files:
-      - LICENSE
-  - dockerfile: goreleaser.dockerfile
-    image_templates:
-      - &arm64v8_linux_image ghcr.io/openchami/{{ .ProjectName }}:{{ .Tag }}-arm64
-      - ghcr.io/openchami/{{ .ProjectName }}:v{{ .Major }}-arm64
-      - ghcr.io/openchami/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-arm64
-    use: buildx
-    goarch: arm64
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-    extra_files:
-      - LICENSE
-
-docker_manifests:
-  - name_template: "ghcr.io/openchami/{{ .ProjectName }}:latest"
-    image_templates:
-      - *amd64_linux_image
-      - *arm64v8_linux_image
-  - name_template: "ghcr.io/openchami/{{ .ProjectName }}:{{ .Tag }}"
-    image_templates:
-      - *amd64_linux_image
-      - *arm64v8_linux_image
-  - name_template: "ghcr.io/openchami/{{ .ProjectName }}:{{ .Major }}"
-    image_templates:
-      - *amd64_linux_image
-      - *arm64v8_linux_image
-  - name_template: "ghcr.io/openchami/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}"
-    image_templates:
-      - *amd64_linux_image
-      - *arm64v8_linux_image
+    images:
+      - ghcr.io/openchami/{{ .ProjectName }}
+    tags:
+      - "{{ .Tag }}"
+      - "v{{ .Major }}"
+      - "v{{ .Major }}.{{ .Minor }}"
+    labels:
+      "org.opencontainers.image.description": "OpenCHAMI CLI utility"
+      "org.opencontainers.image.created": "{{ .Date }}"
+      "org.opencontainers.image.title": "{{ .ProjectName }}"
+      "org.opencontainers.image.revision": "{{ .FullCommit }}"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "{{ .GitURL }}"
 
 checksum:
   name_template: checksums.txt
