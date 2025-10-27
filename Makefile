@@ -68,6 +68,13 @@ all: binaries
 .PHONY: binaries
 binaries: $(NAME)
 
+.PHONY: unittest
+unittest:
+ifeq ($(GO),)
+	$(error go command not found.)
+endif
+	$(GO) test -cover -v ./...
+
 .PHONY: clean
 clean:
 ifeq ($(GO),)

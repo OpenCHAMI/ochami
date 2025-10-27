@@ -235,6 +235,177 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 	}
 }
 
+func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
+	base := "http://example.com"
+	bmc0Xname := "x1000c0s0b0"
+	// bmc1Xname := "x1000c0s0b0"
+	nodes := NodeList{
+		Nodes: []Node{
+			{
+				Name:   "x1000c0s0b0n0",
+				NID:    42,
+				Xname:  "x1000c0s0b0n0",
+				Group:  "g",
+				BMCMac: "de:ca:fc:0f:fe:e1",
+				BMCIP:  "172.16.101.1",
+				Ifaces: []Iface{
+					{
+						MACAddr: "de:ad:be:ee:ef:01",
+						IPAddrs: []IfaceIP{
+							{Network: "netA", IPAddr: "10.0.0.1"},
+							{Network: "netB", IPAddr: "10.0.0.2"},
+						},
+					},
+				},
+			},
+			{
+				Name:   "x1000c0s0b0n1",
+				NID:    43,
+				Xname:  "x1000c0s0b0n1",
+				Group:  "g",
+				BMCMac: "de:ca:fc:0f:fe:e1",
+				BMCIP:  "172.16.101.1",
+				Ifaces: []Iface{
+					{
+						MACAddr: "de:ad:be:ee:ef:02",
+						IPAddrs: []IfaceIP{
+							{Network: "netA", IPAddr: "10.0.0.3"},
+							{Network: "netB", IPAddr: "10.0.0.4"},
+						},
+					},
+				},
+			},
+			{
+				Name:   "x1000c0s0b1n0",
+				NID:    44,
+				Xname:  "x1000c0s0b1n0",
+				Group:  "g",
+				BMCMac: "de:ca:fc:0f:fe:e2",
+				BMCIP:  "172.16.101.2",
+				Ifaces: []Iface{
+					{
+						MACAddr: "de:ad:be:ee:ef:01",
+						IPAddrs: []IfaceIP{
+							{Network: "netA", IPAddr: "10.0.0.5"},
+							{Network: "netB", IPAddr: "10.0.0.6"},
+						},
+					},
+				},
+			},
+			{
+				Name:   "x1000c0s0b1n1",
+				NID:    45,
+				Xname:  "x1000c0s0b1n1",
+				Group:  "g",
+				BMCMac: "de:ca:fc:0f:fe:e2",
+				BMCIP:  "172.16.101.2",
+				Ifaces: []Iface{
+					{
+						MACAddr: "de:ad:be:ee:ef:02",
+						IPAddrs: []IfaceIP{
+							{Network: "netA", IPAddr: "10.0.0.7"},
+							{Network: "netB", IPAddr: "10.0.0.8"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	comps, rfes, ifaces, err := DiscoveryInfoV2(base, nodes)
+	if err != nil {
+		t.Fatalf("DiscoveryInfoV2 returned error: %v", err)
+	}
+
+	// Components
+	if len(comps.Components) != 4 {
+		t.Fatalf("got %d components, want 4", len(comps.Components))
+	}
+	c := comps.Components[0]
+	if want := nodes.Nodes[0].Xname; c.ID != want {
+		t.Errorf("component ID = %q, want %q", c.ID, want)
+	}
+	if c.NID != nodes.Nodes[0].NID || c.Type != "Node" || c.State != "On" || !c.Enabled {
+		t.Errorf("component = %+v", c)
+	}
+
+	// RedfishEndpoints
+	if len(rfes.RedfishEndpoints) != 2 {
+		t.Fatalf("got %d redfish endpoints, want 2", len(rfes.RedfishEndpoints))
+	}
+	r := rfes.RedfishEndpoints[0]
+	node := nodes.Nodes[0]
+	if r.Name != node.Name || r.Type != "NodeBMC" || r.MACAddr != node.BMCMac || r.IPAddress != node.BMCIP || r.FQDN != node.BMCFQDN {
+		t.Errorf("RedfishEndpoint fields = %+v", r)
+	}
+	if r.SchemaVersion != 1 {
+		t.Errorf("SchemaVersion = %d, want 1", r.SchemaVersion)
+	}
+
+	// Systems
+	if len(r.Systems) != 2 {
+		t.Fatalf("got %d systems, want 2", len(r.Systems))
+	}
+	sys := r.Systems[0]
+	expectedSysURI := fmt.Sprintf("%s/redfish/v1/Systems/%s", base, node.Xname)
+	if sys.URI != expectedSysURI || sys.Name != node.Name {
+		t.Errorf("System = %+v", sys)
+	}
+	if len(sys.EthernetInterfaces) != 1 {
+		t.Fatalf("got %d system EthernetInterfaces, want 1", len(sys.EthernetInterfaces))
+	}
+	e := sys.EthernetInterfaces[0]
+	if want := (schemas.EthernetInterface{
+		Name:        node.Xname,
+		Description: fmt.Sprintf("Interface 0 for %s", node.Name),
+		MAC:         node.Ifaces[0].MACAddr,
+		IP:          node.Ifaces[0].IPAddrs[0].IPAddr,
+	}); !reflect.DeepEqual(e, want) {
+		t.Errorf("System.EthernetInterface = %+v, want %+v", e, want)
+	}
+	if !reflect.DeepEqual(
+		sys.Actions,
+		[]string{"On", "ForceOff", "GracefulShutdown", "GracefulRestart", "ForceRestart", "Nmi", "ForceOn",
+			"PushPowerButton", "PowerCycle", "Suspend", "Pause", "Resume"},
+	) {
+		t.Error("System.Actions does not match the expected value")
+	}
+
+	// Managers
+	if len(r.Managers) != 1 {
+		t.Fatalf("got %d managers, want 1", len(r.Managers))
+	}
+	m := r.Managers[0]
+	expectedMgrURI := fmt.Sprintf("%s/redfish/v1/Managers/%s", base, bmc0Xname)
+	if m.System.URI != expectedMgrURI || m.System.Name != bmc0Xname || m.Type != "NodeBMC" {
+		t.Errorf("URI: %s, expected: %s", m.System.URI, expectedMgrURI)
+		t.Errorf("Name: %s, expected: %s", m.System.Name, node.Xname)
+		t.Errorf("Type: %s, expected: NodeBMC", m.Type)
+		t.Errorf("Manager = %+v", m)
+	}
+	if m.UUID == uuid.Nil.String() {
+		t.Error("Manager.UUID is nil, want a real UUID")
+	}
+
+	// EthernetInterface slice
+	if len(ifaces) != 4 {
+		t.Fatalf("got %d smd.EthernetInterface, want 4", len(ifaces))
+	}
+	se := ifaces[0]
+	if se.ComponentID != node.Xname || se.Type != "Node" {
+		t.Errorf("EthernetInterface = %+v", se)
+	}
+	if len(se.IPAddresses) != len(node.Ifaces[0].IPAddrs) {
+		t.Fatalf("got %d IPAddresses, want %d", len(se.IPAddresses), len(node.Ifaces[0].IPAddrs))
+	}
+	for i, ip := range se.IPAddresses {
+		orig := node.Ifaces[0].IPAddrs[i]
+		if ip.IPAddress != orig.IPAddr || ip.Network != orig.Network {
+			t.Errorf("IPAddresses[%d] = %+v, want %+v", i, ip, orig)
+		}
+	}
+}
+
 func TestAddMemberToGroup(t *testing.T) {
 	newGroup := func(members []string) smd.Group {
 		var g smd.Group

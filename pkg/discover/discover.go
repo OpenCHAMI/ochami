@@ -115,9 +115,11 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 	}
 
 	var (
-		compMap    = make(map[string]string) // Deduplication map for SMD Components
-		systemMap  = make(map[string]string) // Deduplication map for BMC Systems
-		managerMap = make(map[string]string) // Deduplication map for BMC Managers
+		compMap     = make(map[string]string)                 // Deduplication map for SMD Components
+		systemMap   = make(map[string]string)                 // Deduplication map for BMC Systems
+		managerMap  = make(map[string]string)                 // Deduplication map for BMC Managers
+		bmcs        = make(map[string]*smd.RedfishEndpointV2) // RedfishEndpoints for each BMC, the key is the mac to the BMC
+		bmcsInOrder []*smd.RedfishEndpointV2                  // Contains the same objects as the bmcs map. This maintains the order that the objects were created
 	)
 	for _, node := range nl.Nodes {
 		log.Logger.Debug().Msgf("generating component structure for node with xname %s", node.Xname)
@@ -137,7 +139,6 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 		}
 
 		log.Logger.Debug().Msgf("generating redfish structure for node with xname %s", node.Xname)
-		var rfe smd.RedfishEndpointV2
 
 		// Differentiate node Xname from BMC Xname
 		bmcXname, err := xname.NodeXnameToBMCXname(node.Xname)
@@ -146,14 +147,22 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 			bmcXname = node.Xname
 		}
 
-		// Populate rfe base data
-		rfe.Name = node.Name
-		rfe.Type = "NodeBMC"
-		rfe.ID = bmcXname
-		rfe.MACAddr = node.BMCMac
-		rfe.IPAddress = node.BMCIP
-		rfe.FQDN = node.BMCFQDN
-		rfe.SchemaVersion = 1 // Tells SMD to use new (v2) parsing code
+		var rfe *smd.RedfishEndpointV2
+		if r, found := bmcs[node.BMCMac]; found {
+			rfe = r
+		} else {
+			// Populate rfe base data
+			rfe = &smd.RedfishEndpointV2{}
+			rfe.Name = node.Name
+			rfe.Type = "NodeBMC"
+			rfe.ID = bmcXname
+			rfe.MACAddr = node.BMCMac
+			rfe.IPAddress = node.BMCIP
+			rfe.FQDN = node.BMCFQDN
+			rfe.SchemaVersion = 1 // Tells SMD to use new (v2) parsing code
+			bmcs[rfe.MACAddr] = rfe
+			bmcsInOrder = append(bmcsInOrder, rfe)
+		}
 
 		// Create fake BMC "System" for node if it doesn't already exist
 		if _, ok := systemMap[node.Xname]; !ok {
@@ -246,7 +255,9 @@ func DiscoveryInfoV2(baseURI string, nl NodeList) (smd.ComponentSlice, smd.Redfi
 		} else {
 			log.Logger.Debug().Msgf("BMC %s: fake BMC Manager already exists, skipping creation", bmcXname)
 		}
-		rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
+	}
+	for _, rfe := range bmcsInOrder {
+		rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, *rfe)
 	}
 	return comps, rfes, ifaces, nil
 }
