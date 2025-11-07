@@ -73,7 +73,53 @@ Subcommands for this command are as follows:
 
 ## status
 
-Manage power status.
+Display power status.
+
+Subcommands for this command are as follows:
+
+*show* [-F _format_] _xname_
+	Show the power status of a component.
+
+	This command accepts the following options:
+
+	*-F, --format-output* _format_
+		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+	*xname*
+		XName of the component to show the power status for.
+
+*list* [-F _format_]
+	List the power status of all components.
+
+	This command accepts the following options:
+
+	*-F, --format-output* _format_
+		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+	*-x, --xname* _xname_,...
+		Comma-separated list of xnames to show power status for. If not
+		specified, status for all components will be shown.
+
+	*-p, --power-filter* _state_
+		power state filter. Supported values are:
+
+		- _on_
+		- _off_
+		- _undefined_
+
+	*-m, --mgmt-filter* _state_
+		management state filter. Supported values are:
+
+		- _available_
+		- _unavailable_
 
 ## transitions
 

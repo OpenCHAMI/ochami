@@ -17,6 +17,7 @@ const (
 	PCSRelpathReadiness = "/readiness"
 	PCSRelpathHealth    = "/health"
 	PCSTransitions      = "/transitions"
+	PCSStatus           = "/power-status"
 )
 
 // PCSClient is an OchamiClient that has its BasePath set configured to the one
@@ -220,6 +221,44 @@ func (pc *PCSClient) DeleteTransition(id string, token string) (client.HTTPEnvel
 	henv, err = pc.DeleteData(pcsTransitionEndpoint, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteTransition(): error deleting PCS transition: %w", err)
+	}
+
+	return henv, err
+}
+
+// GetTransitions is a wrapper function around OchamiClient.GetData to
+// hit the /power-status endpoint
+func (pc *PCSClient) GetStatus(xnames []string, powerStateFilter string, mgmtStateFilter string, token string) (client.HTTPEnvelope, error) {
+	var (
+		henv client.HTTPEnvelope
+		err  error
+	)
+
+	headers := client.NewHTTPHeaders()
+	if token != "" {
+		if err := headers.SetAuthorization(token); err != nil {
+			return henv, fmt.Errorf("GetStatus(): error setting token in HTTP headers: %w", err)
+		}
+	}
+
+	values := url.Values{}
+	for _, xname := range xnames {
+		values.Add("xname", xname)
+	}
+
+	if powerStateFilter != "" {
+		values.Add("powerStateFilter", powerStateFilter)
+	}
+
+	if mgmtStateFilter != "" {
+		values.Add("managementStateFilter", mgmtStateFilter)
+	}
+
+	query := values.Encode()
+
+	henv, err = pc.GetData(PCSStatus, query, headers)
+	if err != nil {
+		err = fmt.Errorf("GetStatus(): error getting power state: %w", err)
 	}
 
 	return henv, err
