@@ -16,6 +16,28 @@ import (
 	"github.com/OpenCHAMI/ochami/pkg/discover"
 )
 
+func discoverStaticDeprecatedFormat(cmd *cobra.Command) bool {
+	discoveryData := make(map[string]([]map[string]any))
+	if cmd.Flag("data").Changed {
+		handlePayload(cmd, &discoveryData)
+	} else {
+		handlePayloadStdin(cmd, &discoveryData)
+	}
+	deprecatedFormat := false
+	for _, node := range discoveryData["nodes"] {
+		if _, bmcIpFound := node["bmc_ip"]; bmcIpFound {
+			log.Logger.Warn().Msg("deprecated nodes key bmc_ip found, using old discovery format")
+			deprecatedFormat = true
+			break
+		} else if _, bmcMacFound := node["bmc_mac"]; bmcMacFound {
+			log.Logger.Warn().Msg("deprecated nodes key bmc_mac found, using old discovery format")
+			deprecatedFormat = true
+			break
+		}
+	}
+	return deprecatedFormat
+}
+
 // discoverStaticCmd represents the discover-static command
 var discoverStaticCmd = &cobra.Command{
 	Use:   "static [--overwrite] [-d (<data> | @<path>)] [-f <format>]",
@@ -82,25 +104,98 @@ See ochami-discover(1) for more details.`,
 			log.Logger.Warn().Msg("--overwrite passed; overwriting any existing data")
 		}
 
-		// Read data from file or stdin
-		nodes := discover.NodeList{}
-		if cmd.Flag("data").Changed {
-			handlePayload(cmd, &nodes)
-		} else {
-			handlePayloadStdin(cmd, &nodes)
-		}
-		log.Logger.Debug().Msgf("read %d nodes", len(nodes.Nodes))
-		log.Logger.Debug().Msgf("nodes: %s", nodes)
+		// Declare structures to send to SMD here so either discovery
+		// format can be used to generate them.
+		var (
+			comps  smd.ComponentSlice
+			rfes   smd.RedfishEndpointSliceV2
+			ifaces []smd.EthernetInterface
+		)
 
-		// Put together payload for different endpoints
-		log.Logger.Debug().Msg("generating redfish structures to send to SMD")
-		comps, rfes, ifaces, err := discover.DiscoveryInfoV2(smdBaseURI, nodes)
-		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to construct structures to send to SMD")
-			logHelpError(cmd)
-			os.Exit(1)
+		// This is a temporary structure that keeps basic node
+		// information that is common between the deprecated format and
+		// the new format for discovery. It's here so that we don't have
+		// to duplicate loops due to the differing formats. Once the
+		// deprecated format is removed, this can go away.
+		type NodeCommon struct {
+			Name   string
+			Xname  string
+			Group  string
+			Groups []string
 		}
-		log.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
+		var nodesCommon []NodeCommon
+
+		// Read data from file or stdin into map to determine which
+		// discovery method to use.
+		useDeprecatedFormat := discoverStaticDeprecatedFormat(cmd)
+		if useDeprecatedFormat {
+			log.Logger.Warn().Msg("using deprecated discovery format which will be removed in a future version")
+
+			// Read data from file or stdin
+			nodes := discover.NodeListDeprecated{}
+			if cmd.Flag("data").Changed {
+				handlePayload(cmd, &nodes)
+			} else {
+				handlePayloadStdin(cmd, &nodes)
+			}
+			log.Logger.Debug().Msgf("read %d nodes", len(nodes.Nodes))
+			log.Logger.Debug().Msgf("nodes: %s", nodes)
+
+			// Add nodes to node list in common format
+			for _, n := range nodes.Nodes {
+				commonNode := NodeCommon{
+					Name:   n.Name,
+					Xname:  n.Xname,
+					Group:  n.Group,
+					Groups: n.Groups,
+				}
+				nodesCommon = append(nodesCommon, commonNode)
+			}
+
+			// Put together payload for different endpoints
+			log.Logger.Debug().Msg("generating redfish structures to send to SMD")
+			var err error
+			comps, rfes, ifaces, err = discover.DiscoveryInfoV2Deprecated(smdBaseURI, nodes)
+			if err != nil {
+				log.Logger.Error().Err(err).Msg("failed to construct structures to send to SMD")
+				logHelpError(cmd)
+				os.Exit(1)
+			}
+			log.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
+		} else {
+			// Read data from file or stdin
+			items := discover.DiscoveryItems{}
+			if cmd.Flag("data").Changed {
+				handlePayload(cmd, &items)
+			} else {
+				handlePayloadStdin(cmd, &items)
+			}
+			log.Logger.Debug().Msgf("read %d bmcs", len(items.BMCs))
+			log.Logger.Debug().Msgf("bmcs: %s", items.BMCs)
+			log.Logger.Debug().Msgf("read %d nodes", len(items.Nodes))
+			log.Logger.Debug().Msgf("nodes: %s", items.Nodes)
+
+			// Add nodes to node list in common format
+			for _, n := range items.Nodes {
+				commonNode := NodeCommon{
+					Name:   n.Name,
+					Xname:  n.Xname,
+					Groups: n.Groups,
+				}
+				nodesCommon = append(nodesCommon, commonNode)
+			}
+
+			// Put together payload for different endpoints
+			log.Logger.Debug().Msg("generating redfish structures to send to SMD")
+			var err error
+			comps, rfes, ifaces, err = discover.DiscoveryInfoV2(smdBaseURI, items)
+			if err != nil {
+				log.Logger.Error().Err(err).Msg("failed to construct structures to send to SMD")
+				logHelpError(cmd)
+				os.Exit(1)
+			}
+			log.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
+		}
 
 		// Send Component requests
 		// NOTE: These are sent *before* the RedfishEndpoints so the
@@ -329,7 +424,11 @@ See ochami-discover(1) for more details.`,
 
 		// Put together list of groups to add and which components to add to those groups
 		groupsToAdd := make(map[string]smd.Group)
-		for _, node := range nodes.Nodes {
+		for _, node := range nodesCommon {
+			// nodesCommon is temporary. Once the deprecated
+			// discovery format is removed, this can be switched to
+			// items.Nodes.
+
 			// node.Group IS DEPRECATED IN FAVOR OF node.groups. This block should be
 			// deleted when node.Group is removed.
 			//
