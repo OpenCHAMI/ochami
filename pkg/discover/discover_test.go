@@ -12,129 +12,29 @@ import (
 	"github.com/OpenCHAMI/ochami/pkg/client/smd"
 )
 
-func TestNodeList_String(t *testing.T) {
-	nl := NodeList{
-		Nodes: []Node{
-			{
-				Name:   "nid1",
-				NID:    1,
-				Xname:  "x1000c0s0b0n0",
-				Group:  "compute",
-				BMCMac: "de:ad:be:ee:ef:00",
-				BMCIP:  "172.16.101.1",
-				Ifaces: []Iface{
-					{
-						MACAddr: "de:ca:fc:0f:fe:e1",
-						IPAddrs: []IfaceIP{
-							{
-								Network: "mgmt",
-								IPAddr:  "172.16.100.1",
-							},
-						},
-					},
-				},
-			},
-			{
-				Name:    "nid2",
-				NID:     2,
-				Xname:   "x1000c0s1b0n0",
-				Group:   "compute",
-				BMCMac:  "de:ad:be:ee:ef:01",
-				BMCIP:   "172.16.101.2",
-				BMCFQDN: "nid2.bmc.example.com",
-				Ifaces: []Iface{
-					{
-						MACAddr: "de:ca:fc:0f:fe:e2",
-						IPAddrs: []IfaceIP{
-							{
-								Network: "mgmt",
-								IPAddr:  "172.16.100.2",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	want := `[` +
-		`node0={name="nid1" nid=1 xname=x1000c0s0b0n0 bmc_mac=de:ad:be:ee:ef:00 bmc_ip=172.16.101.1 bmc_fqdn= interfaces=[iface0={mac_addr=de:ca:fc:0f:fe:e1 ip_addrs=[ip0={network="mgmt" ip_addr=172.16.100.1}]}]} ` +
-		`node1={name="nid2" nid=2 xname=x1000c0s1b0n0 bmc_mac=de:ad:be:ee:ef:01 bmc_ip=172.16.101.2 bmc_fqdn=nid2.bmc.example.com interfaces=[iface0={mac_addr=de:ca:fc:0f:fe:e2 ip_addrs=[ip0={network="mgmt" ip_addr=172.16.100.2}]}]}` +
-		`]`
-	if got := nl.String(); got != want {
-		t.Errorf("NodeList.String() = %q, want %q", got, want)
-	}
-}
-
-func TestNode_String(t *testing.T) {
-	node := Node{
-		Name:    "node1",
-		NID:     1,
-		Xname:   "x1000c0s0b0n0",
-		Group:   "grp",
-		BMCMac:  "de:ca:fc:0f:fe:e1",
-		BMCIP:   "172.16.101.1",
-		BMCFQDN: "node1.bmc.example.com",
-		Ifaces: []Iface{
-			{
-				MACAddr: "de:ad:be:ee:ef:01",
-				IPAddrs: []IfaceIP{
-					{Network: "net", IPAddr: "10.0.0.1"},
-				},
-			},
-		},
-	}
-	want := `name="node1" nid=1 xname=x1000c0s0b0n0 bmc_mac=de:ca:fc:0f:fe:e1 bmc_ip=172.16.101.1 bmc_fqdn=node1.bmc.example.com ` +
-		`interfaces=[iface0={mac_addr=de:ad:be:ee:ef:01 ip_addrs=[ip0={network="net" ip_addr=10.0.0.1}]}]`
-	if got := node.String(); got != want {
-		t.Errorf("Node.String() = %q, want %q", got, want)
-	}
-}
-
-func TestIface_String(t *testing.T) {
-	iface := Iface{
-		MACAddr: "00:00:00:00:00:00",
-		IPAddrs: []IfaceIP{
-			{Network: "n1", IPAddr: "172.16.0.1"},
-			{Network: "n2", IPAddr: "172.16.0.2"},
-		},
-	}
-	want := `mac_addr=00:00:00:00:00:00 ip_addrs=[ip0={network="n1" ip_addr=172.16.0.1} ip1={network="n2" ip_addr=172.16.0.2}]`
-	if got := iface.String(); got != want {
-		t.Errorf("Iface.String() = %q, want %q", got, want)
-	}
-}
-
-func TestIfaceIP_String(t *testing.T) {
-	ip := IfaceIP{Network: "nw", IPAddr: "1.2.3.4"}
-	want := `network="nw" ip_addr=1.2.3.4`
-	if got := ip.String(); got != want {
-		t.Errorf("IfaceIP.String() = %q, want %q", got, want)
-	}
-}
-
-func TestDiscoveryInfoV2_InvalidURI(t *testing.T) {
-	_, _, _, err := DiscoveryInfoV2("://bad_uri", NodeList{})
+func TestDiscoveryInfoV2Deprecated_InvalidURI(t *testing.T) {
+	_, _, _, err := DiscoveryInfoV2Deprecated("://bad_uri", NodeListDeprecated{})
 	if err == nil {
 		t.Fatal("expected error for invalid URI, got nil")
 	}
 }
 
-func TestDiscoveryInfoV2_Success(t *testing.T) {
+func TestDiscoveryInfoV2Deprecated_Success(t *testing.T) {
 	base := "http://example.com"
-	nl := NodeList{
-		Nodes: []Node{
+	nl := NodeListDeprecated{
+		Nodes: []NodeDeprecated{
 			{
-				Name:    "n42",
+				Network: "n42",
 				NID:     42,
 				Xname:   "invalid", // force xname->BMCXname to error & fallback
 				Group:   "g",
 				BMCMac:  "de:ca:fc:0f:fe:e1",
 				BMCIP:   "172.16.101.1",
 				BMCFQDN: "n42.bmc.example.com",
-				Ifaces: []Iface{
+				Ifaces: []IfaceDeprecated{
 					{
 						MACAddr: "de:ad:be:ee:ef:01",
-						IPAddrs: []IfaceIP{
+						IPAddrs: []IfaceIPDeprecated{
 							{Network: "netA", IPAddr: "10.0.0.1"},
 							{Network: "netB", IPAddr: "10.0.0.2"},
 						},
@@ -144,9 +44,9 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 		},
 	}
 
-	comps, rfes, ifaces, err := DiscoveryInfoV2(base, nl)
+	comps, rfes, ifaces, err := DiscoveryInfoV2Deprecated(base, nl)
 	if err != nil {
-		t.Fatalf("DiscoveryInfoV2 returned error: %v", err)
+		t.Fatalf("DiscoveryInfoV2Deprecated returned error: %v", err)
 	}
 
 	// Components
@@ -167,7 +67,7 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 	}
 	r := rfes.RedfishEndpoints[0]
 	node := nl.Nodes[0]
-	if r.Name != node.Name || r.Type != "NodeBMC" || r.MACAddr != node.BMCMac || r.IPAddress != node.BMCIP || r.FQDN != node.BMCFQDN {
+	if r.Network != node.Network || r.Type != "NodeBMC" || r.MACAddr != node.BMCMac || r.IPAddress != node.BMCIP || r.FQDN != node.BMCFQDN {
 		t.Errorf("RedfishEndpoint fields = %+v", r)
 	}
 	if r.SchemaVersion != 1 {
@@ -180,7 +80,7 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 	}
 	sys := r.Systems[0]
 	expectedSysURI := fmt.Sprintf("%s/redfish/v1/Systems/%s", base, node.Xname)
-	if sys.URI != expectedSysURI || sys.Name != node.Name {
+	if sys.URI != expectedSysURI || sys.Network != node.Network {
 		t.Errorf("System = %+v", sys)
 	}
 	if len(sys.EthernetInterfaces) != 1 {
@@ -188,8 +88,8 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 	}
 	e := sys.EthernetInterfaces[0]
 	if want := (schemas.EthernetInterface{
-		Name:        node.Xname,
-		Description: fmt.Sprintf("Interface 0 for %s", node.Name),
+		Network:     node.Xname,
+		Description: fmt.Sprintf("Interface 0 for %s", node.Network),
 		MAC:         node.Ifaces[0].MACAddr,
 		IP:          node.Ifaces[0].IPAddrs[0].IPAddr,
 	}); !reflect.DeepEqual(e, want) {
@@ -209,7 +109,7 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 	}
 	m := r.Managers[0]
 	expectedMgrURI := fmt.Sprintf("%s/redfish/v1/Managers/%s", base, node.Xname)
-	if m.System.URI != expectedMgrURI || m.System.Name != node.Xname || m.Type != "NodeBMC" {
+	if m.System.URI != expectedMgrURI || m.System.Network != node.Xname || m.Type != "NodeBMC" {
 		t.Errorf("Manager = %+v", m)
 	}
 	if m.UUID == uuid.Nil.String() {
@@ -235,23 +135,23 @@ func TestDiscoveryInfoV2_Success(t *testing.T) {
 	}
 }
 
-func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
+func TestDiscoveryInfoV2Deprecated_MultipleNodesPerBMC(t *testing.T) {
 	base := "http://example.com"
 	bmc0Xname := "x1000c0s0b0"
 	// bmc1Xname := "x1000c0s0b0"
-	nodes := NodeList{
-		Nodes: []Node{
+	nodes := NodeListDeprecated{
+		Nodes: []NodeDeprecated{
 			{
-				Name:   "x1000c0s0b0n0",
-				NID:    42,
-				Xname:  "x1000c0s0b0n0",
-				Group:  "g",
-				BMCMac: "de:ca:fc:0f:fe:e1",
-				BMCIP:  "172.16.101.1",
-				Ifaces: []Iface{
+				Network: "x1000c0s0b0n0",
+				NID:     42,
+				Xname:   "x1000c0s0b0n0",
+				Group:   "g",
+				BMCMac:  "de:ca:fc:0f:fe:e1",
+				BMCIP:   "172.16.101.1",
+				Ifaces: []IfaceDeprecated{
 					{
 						MACAddr: "de:ad:be:ee:ef:01",
-						IPAddrs: []IfaceIP{
+						IPAddrs: []IfaceIPDeprecated{
 							{Network: "netA", IPAddr: "10.0.0.1"},
 							{Network: "netB", IPAddr: "10.0.0.2"},
 						},
@@ -259,16 +159,16 @@ func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
 				},
 			},
 			{
-				Name:   "x1000c0s0b0n1",
-				NID:    43,
-				Xname:  "x1000c0s0b0n1",
-				Group:  "g",
-				BMCMac: "de:ca:fc:0f:fe:e1",
-				BMCIP:  "172.16.101.1",
-				Ifaces: []Iface{
+				Network: "x1000c0s0b0n1",
+				NID:     43,
+				Xname:   "x1000c0s0b0n1",
+				Group:   "g",
+				BMCMac:  "de:ca:fc:0f:fe:e1",
+				BMCIP:   "172.16.101.1",
+				Ifaces: []IfaceDeprecated{
 					{
 						MACAddr: "de:ad:be:ee:ef:02",
-						IPAddrs: []IfaceIP{
+						IPAddrs: []IfaceIPDeprecated{
 							{Network: "netA", IPAddr: "10.0.0.3"},
 							{Network: "netB", IPAddr: "10.0.0.4"},
 						},
@@ -276,16 +176,16 @@ func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
 				},
 			},
 			{
-				Name:   "x1000c0s0b1n0",
-				NID:    44,
-				Xname:  "x1000c0s0b1n0",
-				Group:  "g",
-				BMCMac: "de:ca:fc:0f:fe:e2",
-				BMCIP:  "172.16.101.2",
-				Ifaces: []Iface{
+				Network: "x1000c0s0b1n0",
+				NID:     44,
+				Xname:   "x1000c0s0b1n0",
+				Group:   "g",
+				BMCMac:  "de:ca:fc:0f:fe:e2",
+				BMCIP:   "172.16.101.2",
+				Ifaces: []IfaceDeprecated{
 					{
 						MACAddr: "de:ad:be:ee:ef:01",
-						IPAddrs: []IfaceIP{
+						IPAddrs: []IfaceIPDeprecated{
 							{Network: "netA", IPAddr: "10.0.0.5"},
 							{Network: "netB", IPAddr: "10.0.0.6"},
 						},
@@ -293,16 +193,16 @@ func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
 				},
 			},
 			{
-				Name:   "x1000c0s0b1n1",
-				NID:    45,
-				Xname:  "x1000c0s0b1n1",
-				Group:  "g",
-				BMCMac: "de:ca:fc:0f:fe:e2",
-				BMCIP:  "172.16.101.2",
-				Ifaces: []Iface{
+				Network: "x1000c0s0b1n1",
+				NID:     45,
+				Xname:   "x1000c0s0b1n1",
+				Group:   "g",
+				BMCMac:  "de:ca:fc:0f:fe:e2",
+				BMCIP:   "172.16.101.2",
+				Ifaces: []IfaceDeprecated{
 					{
 						MACAddr: "de:ad:be:ee:ef:02",
-						IPAddrs: []IfaceIP{
+						IPAddrs: []IfaceIPDeprecated{
 							{Network: "netA", IPAddr: "10.0.0.7"},
 							{Network: "netB", IPAddr: "10.0.0.8"},
 						},
@@ -312,9 +212,9 @@ func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
 		},
 	}
 
-	comps, rfes, ifaces, err := DiscoveryInfoV2(base, nodes)
+	comps, rfes, ifaces, err := DiscoveryInfoV2Deprecated(base, nodes)
 	if err != nil {
-		t.Fatalf("DiscoveryInfoV2 returned error: %v", err)
+		t.Fatalf("DiscoveryInfoV2Deprecated returned error: %v", err)
 	}
 
 	// Components
@@ -335,7 +235,7 @@ func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
 	}
 	r := rfes.RedfishEndpoints[0]
 	node := nodes.Nodes[0]
-	if r.Name != node.Name || r.Type != "NodeBMC" || r.MACAddr != node.BMCMac || r.IPAddress != node.BMCIP || r.FQDN != node.BMCFQDN {
+	if r.Network != node.Network || r.Type != "NodeBMC" || r.MACAddr != node.BMCMac || r.IPAddress != node.BMCIP || r.FQDN != node.BMCFQDN {
 		t.Errorf("RedfishEndpoint fields = %+v", r)
 	}
 	if r.SchemaVersion != 1 {
@@ -348,7 +248,7 @@ func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
 	}
 	sys := r.Systems[0]
 	expectedSysURI := fmt.Sprintf("%s/redfish/v1/Systems/%s", base, node.Xname)
-	if sys.URI != expectedSysURI || sys.Name != node.Name {
+	if sys.URI != expectedSysURI || sys.Network != node.Network {
 		t.Errorf("System = %+v", sys)
 	}
 	if len(sys.EthernetInterfaces) != 1 {
@@ -356,8 +256,8 @@ func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
 	}
 	e := sys.EthernetInterfaces[0]
 	if want := (schemas.EthernetInterface{
-		Name:        node.Xname,
-		Description: fmt.Sprintf("Interface 0 for %s", node.Name),
+		Network:     node.Xname,
+		Description: fmt.Sprintf("Interface 0 for %s", node.Network),
 		MAC:         node.Ifaces[0].MACAddr,
 		IP:          node.Ifaces[0].IPAddrs[0].IPAddr,
 	}); !reflect.DeepEqual(e, want) {
@@ -377,9 +277,9 @@ func TestDiscoveryInfoV2_MultipleNodesPerBMC(t *testing.T) {
 	}
 	m := r.Managers[0]
 	expectedMgrURI := fmt.Sprintf("%s/redfish/v1/Managers/%s", base, bmc0Xname)
-	if m.System.URI != expectedMgrURI || m.System.Name != bmc0Xname || m.Type != "NodeBMC" {
+	if m.System.URI != expectedMgrURI || m.System.Network != bmc0Xname || m.Type != "NodeBMC" {
 		t.Errorf("URI: %s, expected: %s", m.System.URI, expectedMgrURI)
-		t.Errorf("Name: %s, expected: %s", m.System.Name, node.Xname)
+		t.Errorf("Network: %s, expected: %s", m.System.Network, node.Xname)
 		t.Errorf("Type: %s, expected: NodeBMC", m.Type)
 		t.Errorf("Manager = %+v", m)
 	}
