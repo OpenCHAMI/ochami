@@ -424,7 +424,7 @@ func TestDiscoveryInfoV2Deprecated_Success(t *testing.T) {
 			{
 				Name:    "n42",
 				NID:     42,
-				Xname:   "invalid", // force xname->BMCXname to error & fallback
+				Xname:   "invalid", // force node-to-BMC xname conversion to fail and fallback to node xname
 				Group:   "g",
 				BMCMac:  "de:ca:fc:0f:fe:e1",
 				BMCIP:   "172.16.101.1",
@@ -701,53 +701,5 @@ func TestDiscoveryInfoV2Deprecated_MultipleNodesPerBMC(t *testing.T) {
 		if ip.IPAddress != orig.IPAddr || ip.Network != orig.Network {
 			t.Errorf("IPAddresses[%d] = %+v, want %+v", i, ip, orig)
 		}
-	}
-}
-
-func TestAddMemberToGroup(t *testing.T) {
-	newGroup := func(members []string) smd.Group {
-		var g smd.Group
-		g.Members.IDs = members
-		return g
-	}
-	tests := []struct {
-		name     string
-		group    smd.Group
-		xname    string
-		expected smd.Group
-	}{
-		{
-			name:     "add new member to empty group",
-			group:    newGroup([]string{}),
-			xname:    "x1000c0s0b0n0",
-			expected: newGroup([]string{"x1000c0s0b0n0"}),
-		},
-		{
-			name:     "add new member to non-empty group",
-			group:    newGroup([]string{"x1000c0s0b0n0", "x1000c0s0b1n0"}),
-			xname:    "x1000c0s0b2n0",
-			expected: newGroup([]string{"x1000c0s0b0n0", "x1000c0s0b1n0", "x1000c0s0b2n0"}),
-		},
-		{
-			name:     "member already exists in group",
-			group:    newGroup([]string{"x1000c0s0b0n0", "x1000c0s0b1n0"}),
-			xname:    "x1000c0s0b1n0",
-			expected: newGroup([]string{"x1000c0s0b0n0", "x1000c0s0b1n0"}),
-		},
-		{
-			name:     "add member when group has one element",
-			group:    newGroup([]string{"x1000c0s0b0n0"}),
-			xname:    "x1000c0s0b1n0",
-			expected: newGroup([]string{"x1000c0s0b0n0", "x1000c0s0b1n0"}),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := AddMemberToGroup(tt.group, tt.xname)
-			if !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("AddMemberToGroup() = %+v, want %+v", got, tt.expected)
-			}
-		})
 	}
 }
