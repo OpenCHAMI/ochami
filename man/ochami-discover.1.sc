@@ -15,18 +15,87 @@ with the data.
 
 # DATA STRUCTURE
 
-The format of the data for *static* discovery is a *nodes* object containing an
-array of node data.  An example of such an array containing one node in YAML
-format is as follows:
+The format of the data for *static* discovery is a document containing a *bmcs*
+array and, optionally, a *nodes* array. One or more nodes are mapped to a BMC
+via its xname. An example of such an array containing one node mapped to one BMC
+in YAML format is as follows:
+
+```
+bmcs:
+- name: bmc01
+  xname: x1000c1s0b0
+  mac: de:ca:fc:0f:ee:ee
+  ip: 172.16.0.101
+  fqdn: x1000c1s0b0.openchami.cluster
+
+nodes:
+- name: node01
+  nid: 1
+  xname: x1000c1s0b0n0
+  groups:
+  - compute
+  interfaces:
+  - mac_addr: de:ad:be:ee:ee:f1
+    ip_addrs:
+    - name: internal
+      ip_addr: 172.16.0.1
+  - mac_addr: de:ad:be:ee:ee:f2
+    ip_addrs:
+    - name: external
+      ip_addr: 10.15.3.100
+  - mac_addr: 02:00:00:91:31:b3
+    ip_addrs:
+    - name: HSN
+      ip_addr: 192.168.0.1
+  bmc: x1000c1s0b0
+```
+
+## BMC Keys
+
+- *name* (OPTIONAL) - A short name identifying the BMC. Can be used by a node to map it to a BMC.
+- *xname* - Unique xname for the BMC. By default, this is used by nodes to map them to a BMC. This must be a BMC xname (see *XNAMES*) and not a node xname.
+- *mac* - MAC address of BMC.
+- *ip* - Desired IP address of BMC.
+- *fqdn* (OPTIONAL) - Desired fully-qualified domain name for BMC. By default, the xname is used.
+
+## Node Keys
+
+- *name* - A short name identifying the node. This is used as the
+RedfishEndpoint name and is used to generate a short description of the node for
+the description field in EthernetInterfaces it creates.
+- *nid* - The node ID number unique to the node. This used in the NID field in
+the Component that is created for the node.
+- *xname* - The xname unique to the node. It is important that this is a node
+xname (see *XNAMES*) because this is used to calculate a BMC xname for the
+RedfishEndpoint and Component structures created for the BMC for the node. This
+is used as the unique identifier for the node within the Component that gets
+created for node.
+- *bmc* (OPTIONAL) - The value of  a *name* or *xname* field of an entry in the
+*bmcs* array to map this node to. If this is not specified, the *xname* field
+will be used to determine the BMC xname to map to by truncating the node portion
+(e.g. *n0*). Multiple nodes can map to a single BMC.
+- *groups* (OPTIONAL) - List of groups to add node to. These will get created
+during discovery if they do not exist.
+- *interfaces* - A list of network interfaces for the node.
+    - *mac_addr* - MAC address of network interface.
+    - *ip_addrs* - List of IP addresses assigned to interface.
+        - *name* - Short name identifying the network for the IP address.
+        - *ip_addr* - IP address for interface.
+
+# OLD DATA STRUCTURE (DEPRECATED)
+
+The following is the old format for static discovery that is now deprecated. To
+convert the old format to the new one, use *ochami-discover-old2new* (see
+*Migrating to New Format*).
 
 ```
 nodes:
 - name: node01
   nid: 1
-  xname: x1000c1s7b0n0
+  xname: x1000c1s0b0n0
   bmc_mac: de:ca:fc:0f:ee:ee
   bmc_ip: 172.16.0.101
-  bmc_fqdn: x1000c1s7b0n0.openchami.example
+  bmc_fqdn: x1000c1s0b0.openchami.cluster
   groups:
   - compute
   interfaces:
@@ -44,30 +113,33 @@ nodes:
       ip_addr: 192.168.0.1
 ```
 
-A description of each key in the above is as follows:
+The keys are the same as the keys in the new *nodes* structure except that *bmc* is replaced by the *bmc_\** keys below.
 
-- *name* - A short name identifying the node. This is used as the
-RedfishEndpoint name and is used to generate a short description of the node for
-the description field in EthernetInterfaces it creates.
-- *nid* - The node ID number unique to the node. This used in the NID field in
-the Component that is created for the node.
-- *xname* - The xname unique to the node. It is important that this is a node
-xname (see *XNAMES*) because this is used to calculate a BMC xname for the
-RedfishEndpoint and Component structures created for the BMC for the node. This
-is used as the unique identifier for the node within the Component that gets
-created for node.
 - *bmc_mac* - MAC address of node's BMC.
 - *bmc_ip* - Desired IP address of node's BMC.
 - *bmc_fqdn* - FQDN of node's BMC. If omitted, SMD sets this equal to the xname.
 - *group* - *DEPRECATED.* Use *groups* instead. *group* will be removed in a
 future release.
-- *groups* - Optional list of groups to add node to. These will get created
-during discovery if they do not exist.
-- *interfaces* - A list of network interfaces for the node.
-    - *mac_addr* - MAC address of network interface.
-    - *ip_addrs* - List of IP addresses assigned to interface.
-        - *name* - Short name identifying the network for the IP address.
-        - *ip_addr* - IP address for interface.
+
+## Migrating to New Format
+
+A Python script is provided for migrating to the new discovery format. It is
+located at */usr/libexec/ochami/ochami-discovery-old2new.py*. It will convert
+between YAML and JSON, but PyYAML is needed for YAML processing. To use the
+script:
+
+```
+# Prepare Python venv with PyYAML
+python3 -m venv ochami-venv
+source ochami-venv/bin/activate
+pip install pyyaml
+
+# Run conversion script
+/usr/libexec/ochami/ochami-discovery-old2new.py < /path/to/old/nodes.yaml > /path/to/new/nodes.yaml
+
+# Deactivate venv
+deactivate
+```
 
 # COMMANDS
 
