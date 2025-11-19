@@ -48,6 +48,7 @@ archives:
       - LICENSE
       - completions/
       - doc/
+      - extras/
       - man/*.1
       - man/*.5
 
@@ -81,6 +82,10 @@ nfpms:
         dst: /usr/share/doc/ochami/config.example.yaml
         file_info:
           mode: 0644
+      - src: extras/scripts/ochami-discovery-old2new.py
+        dst: /usr/libexec/ochami/ochami-discovery-old2new.py
+        file_info:
+          mode: 0755
       - src: man/*.1
         dst: /usr/share/man/man1/
         file_info:
@@ -131,6 +136,9 @@ aurs:
       mkdir -p "${pkgdir}/usr/share/man/man5"
       install -Dm644 ./man/*.1 "${pkgdir}/usr/share/man/man1/"
       install -Dm644 ./man/*.5 "${pkgdir}/usr/share/man/man5/"
+
+      # Extras
+      install -Dm755 "./extras/scripts/ochami-discovery-old2new.py" "${pkgdir}/usr/libexec/ochami/ochami-discovery-old2new.py"
 
 dockers:
   - dockerfile: goreleaser.dockerfile

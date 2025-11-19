@@ -17,6 +17,8 @@ prefix      ?= /usr/local
 exec_prefix ?= $(prefix)
 bindir      ?= $(exec_prefix)/bin
 mandir      ?= $(exec_prefix)/man
+libexecdir  ?= $(prefix)/usr/libexec/ochami
+sharedir    ?= $(prefix)/usr/share
 
 # Check that commands are present
 ifeq ($(GIT),)
@@ -62,6 +64,8 @@ MANBIN   := $(subst .sc,,$(MANSRC))
 MAN1BIN  := $(filter %.1,$(MANBIN))
 MAN5BIN  := $(filter %.5,$(MANBIN))
 
+HELPERS := extras/scripts/ochami-discovery-old2new.py
+
 .PHONY: all
 all: binaries
 
@@ -97,7 +101,7 @@ completions: $(NAME)
 distclean: clean clean-completions clean-man
 
 .PHONY: install
-install: install-prog install-completions install-man
+install: install-prog install-helper install-completions install-man
 
 .PHONY: install-prog
 install-prog: $(NAME)
@@ -106,14 +110,23 @@ ifeq ($(INSTALL),)
 endif
 	$(INSTALL_PROGRAM) $(NAME) $(DESTDIR)$(bindir)/$(NAME)
 
+.PHONY: install-helper
+install-helper: $(HELPERS)
+ifeq ($(INSTALL),)
+	$(error install command not found.)
+endif
+	for h in $(HELPERS); do \
+		$(INSTALL_PROGRAM) "$$h" "$(DESTDIR)$(libexecdir)/$$(basename $$h)"; \
+	done
+
 .PHONY: install-completions
 install-completions: completions
 ifeq ($(INSTALL),)
 	$(error install command not found.)
 endif
-	$(INSTALL_DATA) ./completions/ochami.bash $(DESTDIR)/usr/share/bash-completion/completions/ochami
-	$(INSTALL_DATA) ./completions/ochami.fish $(DESTDIR)/usr/share/fish/vendor_completions.d/ochami.fish
-	$(INSTALL_DATA) ./completions/ochami.zsh $(DESTDIR)/usr/share/zsh/site-functions/_ochami
+	$(INSTALL_DATA) ./completions/ochami.bash $(DESTDIR)$(sharedir)/bash-completion/completions/ochami
+	$(INSTALL_DATA) ./completions/ochami.fish $(DESTDIR)$(sharedir)/fish/vendor_completions.d/ochami.fish
+	$(INSTALL_DATA) ./completions/ochami.zsh $(DESTDIR)$(sharedir)/zsh/site-functions/_ochami
 
 .PHONY: install-man
 install-man: $(MANBIN)
