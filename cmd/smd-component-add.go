@@ -41,7 +41,7 @@ See ochami-smd(1) for more details.`,
 	"NID": 56,
 	"State": "Ready",
 	"Role": "Compute",
-	"Enabled": "True",
+	"Enabled": true,
 	"Arch": "X86"
       }
     ]
