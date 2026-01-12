@@ -1,3 +1,10 @@
+<!--
+SPDX-FileCopyrightText: © 2024-2025 Triad National Security, LLC. All rights reserved.
+SPDX-FileCopyrightText: © 2025 OpenCHAMI a Series of LF Projects, LLC
+
+SPDX-License-Identifier: MIT
+-->
+
 # ochami: OpenCHAMI Command Line Interface
 
 <!-- Text width is 80, only use spaces and use 4 spaces instead of tabs -->
