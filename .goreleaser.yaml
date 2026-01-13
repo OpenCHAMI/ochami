@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: © 2024-2025 Triad National Security, LLC. All rights reserved.
+# SPDX-FileCopyrightText: © 2025 OpenCHAMI a Series of LF Projects, LLC
+#
+# SPDX-License-Identifier: MIT
+
 version: 2
 
 before:
@@ -45,7 +50,7 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     files:
-      - LICENSE
+      - LICENSES/MIT.txt
       - completions/
       - doc/
       - extras/
@@ -121,7 +126,8 @@ aurs:
       install -Dm755 "./ochami" "${pkgdir}/usr/bin/ochami"
 
       # License
-      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/ochami/LICENSE"
+      mkdir -p "${pkgdir}/usr/share/licenses/ochami/LICENSES"
+      install -Dm644 ./LICENSES/MIT.txt "${pkgdir}/usr/share/licenses/ochami/LICENSES/"
 
       # Completions
       install -Dm644 "./completions/ochami.bash" "${pkgdir}/usr/share/bash-completion/completions/ochami"
@@ -156,7 +162,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.version={{ .Version }}"
     extra_files:
-      - LICENSE
+      - LICENSES/MIT.txt
   - dockerfile: goreleaser.dockerfile
     image_templates:
       - &arm64v8_linux_image ghcr.io/openchami/{{ .ProjectName }}:{{ .Tag }}-arm64
@@ -172,7 +178,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.version={{ .Version }}"
     extra_files:
-      - LICENSE
+      - LICENSES/MIT.txt
 
 docker_manifests:
   - name_template: "ghcr.io/openchami/{{ .ProjectName }}:latest"

@@ -1,5 +1,8 @@
-// This source code is licensed under the license found in the LICENSE file at
-// the root directory of this source tree.
+// SPDX-FileCopyrightText: © 2024-2025 Triad National Security, LLC. All rights reserved.
+// SPDX-FileCopyrightText: © 2025 OpenCHAMI a Series of LF Projects, LLC
+//
+// SPDX-License-Identifier: MIT
+
 package cli
 
 // lib.go provides library functions to the cmd package, a.k.a. all cobra

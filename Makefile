@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 OpenCHAMI a Series of LF Projects, LLC
+#
+# SPDX-License-Identifier: MIT
 
 # Set path to commands
 GO      ?= $(shell command -v go 2>/dev/null)
