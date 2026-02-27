@@ -418,6 +418,38 @@ func ReadPayloadFile(path string, inFormat format.DataFormat, v any) error {
 	return err
 }
 
+// ReadPayloadFileSlice is similar to ReadPayloadFile except that the data is
+// assumed to be structured (e.g. JSON, YAML) and is unmarshalled into a slice
+// of a generic type. If the data is not a sequence but is a single element, v
+// will be a slice with only that item as its member.
+func ReadPayloadFileSlice[T any](path string, inFormat format.DataFormat, v *[]T) error {
+	log.Logger.Debug().Msgf("payload file: %s", path)
+	log.Logger.Debug().Msgf("payload file format: %s", inFormat)
+
+	var data []byte
+	var err error
+	if path == "-" {
+		log.Logger.Debug().Msg("payload file was -, reading from stdin")
+		data, err = oio.ReadStdin()
+		if err != nil {
+			return fmt.Errorf("unable to read from stdin: %w", err)
+		}
+	} else {
+		data, err = os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("unable to read data from file: %w", err)
+		}
+	}
+	log.Logger.Debug().Msgf("bytes read: %q", data)
+
+	err = format.UnmarshalDataSlice[T](data, v, inFormat)
+	if err != nil {
+		err = fmt.Errorf("unable to unmarshal %s bytes into slice: %w", inFormat, err)
+	}
+
+	return err
+}
+
 // ReadPayload unmarshals data formatted as format into v. If data begins with
 // "@", it is treated as a file path and calls ReadPayloadFile to read the
 // contents. If the file path is "-", the data is read from standard input.
@@ -440,6 +472,28 @@ func ReadPayload(data string, format format.DataFormat, v any) error {
 	return err
 }
 
+// ReadPayloadSlice is similar to ReadPayload, except that it unmarshals into a
+// slice. data is assumed to be structured data (e.g. JSON, YAML). If the data
+// is a single element, the slice will container only that element.
+func ReadPayloadSlice[T any](data string, inFormat format.DataFormat, v *[]T) error {
+	if strings.HasPrefix(data, "@") {
+		// Passed data is actually a file path, return data within file.
+		return ReadPayloadFileSlice[T](strings.TrimPrefix(data, "@"), inFormat, v)
+	}
+	body, err := BytesToHTTPBody([]byte(data), inFormat)
+	if err != nil {
+		return fmt.Errorf("unable to create HTTP body from string: %w", err)
+	}
+	log.Logger.Debug().Msgf("body bytes: %q", body)
+
+	err = format.UnmarshalDataSlice[T](body, v, inFormat)
+	if err != nil {
+		err = fmt.Errorf("unable to unmarshal bytes into slice: %w", err)
+	}
+
+	return err
+}
+
 // ReadPayloadData is like ReadPayload except it doesn't check the data for a @
 // prefix. It marshals the data raw into v.
 func ReadPayloadData(data string, format format.DataFormat, v any) error {
@@ -452,6 +506,22 @@ func ReadPayloadData(data string, format format.DataFormat, v any) error {
 	err = json.Unmarshal(body, v)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal bytes into value: %w", err)
+	}
+
+	return err
+}
+
+// ReadPayloadDataSlice is like ReadPayloadData except that v is a typed slice.
+func ReadPayloadDataSlice[T any](data string, inFormat format.DataFormat, v *[]T) error {
+	body, err := BytesToHTTPBody([]byte(data), inFormat)
+	if err != nil {
+		return fmt.Errorf("unable to create HTTP body from string: %w", err)
+	}
+	log.Logger.Debug().Msgf("body bytes: %q", body)
+
+	err = format.UnmarshalDataSlice[T](body, v, inFormat)
+	if err != nil {
+		err = fmt.Errorf("unable to unmarshal bytes into slice: %w", err)
 	}
 
 	return err
@@ -474,6 +544,28 @@ func ReadPayloadStdin(format format.DataFormat, v any) error {
 	err = json.Unmarshal(body, v)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal bytes into value: %w", err)
+	}
+
+	return err
+}
+
+// ReadPayloadStdinSlice is like ReadPayloadStdin except that v is a typed
+// slice.
+func ReadPayloadStdinSlice[T any](inFormat format.DataFormat, v *[]T) error {
+	data, err := oio.ReadStdin()
+	if err != nil {
+		return fmt.Errorf("unable to read from stdin: %w", err)
+	}
+	log.Logger.Debug().Msgf("bytes read: %q", data)
+	body, err := BytesToHTTPBody(data, inFormat)
+	if err != nil {
+		return fmt.Errorf("unable to create HTTP body from bytes: %w", err)
+	}
+	log.Logger.Debug().Msgf("body bytes: %q", body)
+
+	err = format.UnmarshalDataSlice[T](body, v, inFormat)
+	if err != nil {
+		err = fmt.Errorf("unable to unmarshal bytes into slice: %w", err)
 	}
 
 	return err

@@ -15,6 +15,7 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/version"
 
 	// Subcommands
+	boot_cmd "github.com/OpenCHAMI/ochami/cmd/boot"
 	bss_cmd "github.com/OpenCHAMI/ochami/cmd/bss"
 	cloud_init_cmd "github.com/OpenCHAMI/ochami/cmd/cloud_init"
 	config_cmd "github.com/OpenCHAMI/ochami/cmd/config"
@@ -81,6 +82,7 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 
 	// Add subcommands
 	rootCmd.AddCommand(
+		boot_cmd.NewCmd(),
 		bss_cmd.NewCmd(),
 		cloud_init_cmd.NewCmd(),
 		config_cmd.NewCmd(),

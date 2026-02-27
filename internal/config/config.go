@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
 	kyaml "github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
@@ -28,6 +29,7 @@ import (
 type ServiceName string
 
 const (
+	ServiceBoot      ServiceName = ""
 	ServiceBSS       ServiceName = "bss"
 	ServiceCloudInit ServiceName = "cloud-init"
 	ServicePCS       ServiceName = "pcs"
@@ -35,10 +37,11 @@ const (
 )
 
 const (
-	DefaultBasePathBSS       = "/boot/v1"
-	DefaultBasePathCloudInit = "/cloud-init"
-	DefaultBasePathPCS       = "/"
-	DefaultBasePathSMD       = "/hsm/v2"
+	DefaultBasePathBootService = "/boot"
+	DefaultBasePathBSS         = "/boot/v1"
+	DefaultBasePathCloudInit   = "/cloud-init"
+	DefaultBasePathPCS         = "/"
+	DefaultBasePathSMD         = "/hsm/v2"
 
 	SystemConfigFile = "/etc/ochami/config.yaml"
 )
@@ -50,6 +53,7 @@ var DefaultConfig = Config{
 		Format: "rfc3339",
 		Level:  "warning",
 	},
+	Timeout: 30 * time.Second,
 }
 
 var (
@@ -67,8 +71,71 @@ var (
 // Config represents the structure of a configuration file.
 type Config struct {
 	Log            ConfigLog       `yaml:"log,omitempty"`
+	Timeout        time.Duration   `yaml:"timeout,omitempty"`
 	DefaultCluster string          `yaml:"default-cluster,omitempty"`
 	Clusters       []ConfigCluster `yaml:"clusters,omitempty"`
+}
+
+// UnmarshalYAML unmarshals YAML into a Config, handling default values. For
+// instance, it detects if 'timeout' is present in the YAML and, if not, assigns
+// the default value.
+func (c *Config) UnmarshalYAML(value *yaml.Node) error {
+	type alias Config
+
+	// If node is top-level document (DocumentNode), work with MappingNode contained within
+	n := value
+	if n.Kind == yaml.DocumentNode && len(n.Content) == 1 {
+		n = n.Content[0]
+	}
+
+	// Detect whether config keys were explicitly set
+	hasTimeout := false
+	if n.Kind == yaml.MappingNode {
+		// Iterate over keys to find desired one
+		//
+		// Order of nodes in MappingNode are key, val, key, val, ...
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			switch n.Content[i].Value {
+			case "timeout":
+				// Make sure a value was passed
+				if len(n.Content[i+1].Value) == 0 {
+					return ErrInvalidConfigVal{
+						Key:      "timeout",
+						Value:    "empty value",
+						Expected: "duration",
+						Line:     n.Content[i].Line,
+					}
+				} else if _, err := time.ParseDuration(n.Content[i+1].Value); err != nil {
+					return ErrInvalidConfigVal{
+						Key:      "timeout",
+						Value:    "invalid duration",
+						Expected: "duration",
+						Line:     n.Content[i].Line,
+					}
+				}
+				// If key was found and is not empty, set our sentinal
+				hasTimeout = true
+				break
+			}
+		}
+	}
+
+	// Decode once into a alias type to avoid infinite recursion when unmarshalling
+	var tmp alias
+	if err := n.Decode(&tmp); err != nil {
+		return err
+	}
+
+	// Set default value only if the key was not present
+	if !hasTimeout {
+		tmp.Timeout = 30 * time.Second
+	}
+
+	// Assign temporarily-aliased struct back to receiver
+	*c = Config(tmp)
+
+	// No errors occurred
+	return nil
 }
 
 // GetCluster searches for a cluster by name and returns it if it exists in the
@@ -97,12 +164,13 @@ type ConfigCluster struct {
 // ConfigClusterConfig is the actual structure for an individual cluster
 // configuration.
 type ConfigClusterConfig struct {
-	URI        string                 `yaml:"uri,omitempty"`
-	BSS        ConfigClusterBSS       `yaml:"bss,omitempty"`
-	CloudInit  ConfigClusterCloudInit `yaml:"cloud-init,omitempty"`
-	PCS        ConfigClusterPCS       `yaml:"pcs,omitempty"`
-	SMD        ConfigClusterSMD       `yaml:"smd,omitempty"`
-	EnableAuth bool                   `yaml:"enable-auth"`
+	URI         string                   `yaml:"uri,omitempty"`
+	BootService ConfigClusterBootService `yaml:"boot-service,omitempty"`
+	BSS         ConfigClusterBSS         `yaml:"bss,omitempty"`
+	CloudInit   ConfigClusterCloudInit   `yaml:"cloud-init,omitempty"`
+	PCS         ConfigClusterPCS         `yaml:"pcs,omitempty"`
+	SMD         ConfigClusterSMD         `yaml:"smd,omitempty"`
+	EnableAuth  bool                     `yaml:"enable-auth"`
 }
 
 // UnmarshalYAML unmarshals YAML into a ConfigClusterConfig, handling default
@@ -117,7 +185,7 @@ func (c *ConfigClusterConfig) UnmarshalYAML(value *yaml.Node) error {
 		n = n.Content[0]
 	}
 
-	// Detect whether "enable-auth" was explicitly set
+	// Detect whether config keys were explicitly set
 	hasEnableAuth := false
 	if n.Kind == yaml.MappingNode {
 		// Iterate over keys to find desired one
@@ -158,6 +226,13 @@ func (c *ConfigClusterConfig) UnmarshalYAML(value *yaml.Node) error {
 
 	// No errors occurred
 	return nil
+}
+
+// ConfigClusterBootService represents configuration specifically for the
+// boot service.
+type ConfigClusterBootService struct {
+	APIVersion string `yaml:"api-version,omitempty"`
+	URI        string `yaml:"uri,omitempty"`
 }
 
 // ConfigClusterBSS represents configuration specifically for the Boot Script
@@ -252,6 +327,15 @@ func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, 
 	var svcURI *url.URL
 	var err error
 	switch svcName {
+	case ServiceBoot:
+		if ccc.URI == "" && ccc.BootService.URI == "" {
+			return "", ErrMissingURI{Service: svcName}
+		}
+		if ccc.BootService.URI != "" {
+			svcURI, err = url.Parse(ccc.BootService.URI)
+		} else {
+			svcURI, err = url.Parse(DefaultBasePathBootService)
+		}
 	case ServiceBSS:
 		if ccc.URI == "" && ccc.BSS.URI == "" {
 			return "", ErrMissingURI{Service: svcName}

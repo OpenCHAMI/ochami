@@ -286,6 +286,10 @@ func UseCACert(client *client.OchamiClient) {
 	}
 }
 
+func GetBaseURIBootService(cmd *cobra.Command) (string, error) {
+	return GetBaseURI(cmd, config.ServiceBoot)
+}
+
 func GetBaseURIBSS(cmd *cobra.Command) (string, error) {
 	return GetBaseURI(cmd, config.ServiceBSS)
 }
@@ -355,6 +359,8 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 		log.Logger.Debug().Msg("using base URI passed on command line")
 		ccc := config.ConfigClusterConfig{URI: cmd.Flag("cluster-uri").Value.String()}
 		switch serviceName {
+		case config.ServiceBoot:
+			ccc.BootService.URI = cmd.Flag("uri").Value.String()
 		case config.ServiceBSS:
 			ccc.BSS.URI = cmd.Flag("uri").Value.String()
 		case config.ServiceCloudInit:
@@ -379,6 +385,85 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 	}
 
 	return baseURI, err
+}
+
+func GetAPIVersion(cmd *cobra.Command, serviceName config.ServiceName) (string, error) {
+	// Precedence of getting API version for requests (higher numbers override
+	// all preceding numbers):
+	//
+	// 1. If "default-cluster" is set in config file (config file must be
+	//    specified), use cluster identified by that name as source of info.
+	// 2. If --cluster is set, search config file for matching name and read
+	//    details from there.
+	// 3. If flags corresponding to cluster info (e.g. --cluster-uri,
+	//    --uri) are set, read details from them.
+	var (
+		apiVersion    string
+		clusterName   string
+		clusterToUse  config.ConfigCluster
+		clusterConfig config.ConfigClusterConfig
+		clusterList   = config.GlobalConfig.Clusters
+	)
+	if config.GlobalConfig.DefaultCluster != "" {
+		// 3. Check 'default-cluster'
+		clusterName = config.GlobalConfig.DefaultCluster
+		clusterList = config.GlobalConfig.Clusters
+		log.Logger.Debug().Msgf("using API version from %s in default cluster %s", serviceName, clusterName)
+		for _, c := range clusterList {
+			if c.Name == clusterName {
+				clusterToUse = c
+				break
+			}
+		}
+		if clusterToUse == (config.ConfigCluster{}) {
+			return "", fmt.Errorf("default cluster %s not found", clusterName)
+		}
+		clusterConfig = clusterToUse.Cluster
+	} else if cmd.Flag("cluster").Changed {
+		// 2. Check --cluster (overrides "default-cluster").
+		clusterName = cmd.Flag("cluster").Value.String()
+		log.Logger.Debug().Msgf("reading API version for %s from cluster %s passed from command line", serviceName, clusterName)
+		for _, c := range clusterList {
+			if c.Name == clusterName {
+				clusterToUse = c
+				break
+			}
+		}
+		if clusterToUse == (config.ConfigCluster{}) {
+			return "", fmt.Errorf("cluster %s not found", clusterName)
+		}
+
+		clusterConfig = clusterToUse.Cluster
+	}
+
+	if !cmd.Flag("api-version").Changed {
+		switch serviceName {
+		case config.ServiceBoot:
+			apiVersion = clusterConfig.BootService.APIVersion
+		default:
+			return "", fmt.Errorf("unknown service %q specified when fetching API version", serviceName)
+		}
+	} else {
+		// 1. Check flag (--api-version) and override any previously-set values
+		// while leaving unspecified ones alone.
+		apiVersion = cmd.Flag("api-version").Value.String()
+	}
+
+	return apiVersion, nil
+}
+
+// GetTimeout returns the timeout specified by --timeout, if passed. Otherwise,
+// the config value of timeout is used. If that is not set, the compile-time
+// default is used.
+func GetTimeout(cmd *cobra.Command) time.Duration {
+	if cmd.Flag("timeout").Changed {
+		if dur, err := cmd.Flags().GetDuration("timeout"); err != nil {
+			log.Logger.Warn().Err(err).Msgf("failed to get timeout from flag, falling back to config value of %s", config.GlobalConfig.Timeout)
+		} else {
+			return dur
+		}
+	}
+	return config.GlobalConfig.Timeout
 }
 
 // HandleToken is a wrapper function around code that reads, checks, and
@@ -492,10 +577,32 @@ func HandlePayload(cmd *cobra.Command, v any) {
 	}
 }
 
+// HandlePayloadSlice is similar to HandlePayload except that it unmarshals the
+// payload data into a typed slice.
+func HandlePayloadSlice[T any](cmd *cobra.Command, v *[]T) {
+	if cmd.Flag("data").Changed {
+		data := cmd.Flag("data").Value.String()
+		if err := client.ReadPayloadSlice[T](data, FormatInput, v); err != nil {
+			log.Logger.Error().Err(err).Msg("unable to read payload data or file into slice")
+			LogHelpError(cmd)
+			os.Exit(1)
+		}
+	}
+}
+
 // HandlePayloadStdin is similar to HandlePayload except the data is read from
 // standard input.
 func HandlePayloadStdin(cmd *cobra.Command, v any) {
 	if err := client.ReadPayloadStdin(FormatInput, v); err != nil {
+		log.Logger.Error().Err(err).Msg("error reading payload data from stdin")
+		os.Exit(1)
+	}
+}
+
+// HandlePayloadStdinSlice is similar to HandlePayloadStdin except that it
+// unmarshals the payload data into a typed slice.
+func HandlePayloadStdinSlice[T any](cmd *cobra.Command, v *[]T) {
+	if err := client.ReadPayloadStdinSlice[T](FormatInput, v); err != nil {
 		log.Logger.Error().Err(err).Msg("error reading payload data from stdin")
 		os.Exit(1)
 	}
@@ -542,6 +649,16 @@ func CompletionDiscoveryVersion(cmd *cobra.Command, args []string, toComplete st
 	var helpSlice []string
 	for k, v := range discover.DiscoveryVersionHelp {
 		helpSlice = append(helpSlice, fmt.Sprintf("%d\t%s", k, v))
+	}
+	return helpSlice, cobra.ShellCompDirectiveDefault
+}
+
+// CompletionPatchMethod is the cobra completion function for the --patch-method
+// flag.
+func CompletionPatchMethod(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	var helpSlice []string
+	for k, v := range client.PatchMethodHelp {
+		helpSlice = append(helpSlice, fmt.Sprintf("%s\t%s", k, v))
 	}
 	return helpSlice, cobra.ShellCompDirectiveDefault
 }

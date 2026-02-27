@@ -18,12 +18,16 @@ List of available commands:
 
 [[ *Command*
 :< *Description*
+|  *boot*
+:  Communicate with the OpenCHAMI boot service
 |  *bss*
 :  Communicate with the Boot Script Service (BSS)
 |  *cloud-init*
 :  Manage cloud-init configurations
 |  *discover*
 :  Simulate discovery of BMCs and nodes to populate SMD by reading an input file
+|  *pcs*
+:  Communicate with the Power Control Service (PCS)
 |  *smd*
 :  Communicate with the State Management Database (SMD)
 |  *config*
@@ -179,8 +183,8 @@ Written by Devon T. Bautista and maintained by the OpenCHAMI developers.
 
 # SEE ALSO
 
-*ochami-bss*(1), *ochami-cloud-init*(1), *ochami-config*(1),
-*ochami-discover*(1), *ochami-smd*(1), *ochami-config*(5)
+*ochami-boot*(1), *ochami-bss*(1), *ochami-cloud-init*(1), *ochami-config*(1),
+*ochami-discover*(1), *ochami-pcs*(1), *ochami-smd*(1), *ochami-config*(5)
 
 ; Vim modeline settings
 ; vim: set tw=80 noet sts=4 ts=4 sw=4 syntax=scdoc:

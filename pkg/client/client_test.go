@@ -10,7 +10,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/OpenCHAMI/ochami/pkg/format"
@@ -265,6 +267,155 @@ func TestReadPayload(t *testing.T) {
 				if got := m[k]; got != v {
 					t.Errorf("%s[%q] = %d, want %d", tc.name, k, got, v)
 				}
+			}
+		})
+	}
+}
+
+func TestReadPayloadSlice(t *testing.T) {
+	type Item struct {
+		K int `json:"k" yaml:"k"`
+	}
+
+	// Prepare temp files
+	dir := t.TempDir()
+	jsonSinglePath := filepath.Join(dir, "single.json")
+	if err := ioutil.WriteFile(jsonSinglePath, []byte(`{"k":7}`), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	jsonArrayPath := filepath.Join(dir, "array.json")
+	if err := ioutil.WriteFile(jsonArrayPath, []byte(`[{"k":1},{"k":2}]`), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	yamlSinglePath := filepath.Join(dir, "single.yaml")
+	if err := ioutil.WriteFile(yamlSinglePath, []byte("k: 9\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	yamlArrayPath := filepath.Join(dir, "array.yaml")
+	if err := ioutil.WriteFile(yamlArrayPath, []byte("- k: 3\n- k: 4\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Prepare stdin payload for "@-" case
+	oldStdin := os.Stdin
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	os.Stdin = r
+	t.Cleanup(func() {
+		_ = r.Close()
+		os.Stdin = oldStdin
+	})
+	if _, err := w.Write([]byte(`{"k":42}`)); err != nil {
+		t.Fatalf("write stdin pipe: %v", err)
+	}
+	_ = w.Close()
+
+	tests := []struct {
+		name    string
+		input   string
+		fmt     format.DataFormat
+		want    []Item
+		wantErr bool
+	}{
+		{
+			name:  "json single object (inline)",
+			input: `{"k":7}`,
+			fmt:   format.DataFormatJson,
+			want:  []Item{{K: 7}},
+		},
+		{
+			name:  "json array (inline)",
+			input: `[{"k":1},{"k":2}]`,
+			fmt:   format.DataFormatJson,
+			want:  []Item{{K: 1}, {K: 2}},
+		},
+		{
+			name:  "yaml single mapping (inline)",
+			input: "k: 9\n",
+			fmt:   format.DataFormatYaml,
+			want:  []Item{{K: 9}},
+		},
+		{
+			name:  "yaml sequence (inline)",
+			input: "- k: 3\n- k: 4\n",
+			fmt:   format.DataFormatYaml,
+			want:  []Item{{K: 3}, {K: 4}},
+		},
+		{
+			name:  "json single object via @file",
+			input: "@" + jsonSinglePath,
+			fmt:   format.DataFormatJson,
+			want:  []Item{{K: 7}},
+		},
+		{
+			name:  "json array via @file",
+			input: "@" + jsonArrayPath,
+			fmt:   format.DataFormatJson,
+			want:  []Item{{K: 1}, {K: 2}},
+		},
+		{
+			name:  "yaml single mapping via @file",
+			input: "@" + yamlSinglePath,
+			fmt:   format.DataFormatYaml,
+			want:  []Item{{K: 9}},
+		},
+		{
+			name:  "yaml sequence via @file",
+			input: "@" + yamlArrayPath,
+			fmt:   format.DataFormatYaml,
+			want:  []Item{{K: 3}, {K: 4}},
+		},
+		{
+			name:  "stdin via @-",
+			input: "@-",
+			fmt:   format.DataFormatJson,
+			want:  []Item{{K: 42}},
+		},
+		{
+			name:    "empty input",
+			input:   "   \n\t",
+			fmt:     format.DataFormatJson,
+			wantErr: true,
+		},
+		{
+			name:    "missing file via @file",
+			input:   "@" + filepath.Join(dir, "does_not_exist.json"),
+			fmt:     format.DataFormatJson,
+			wantErr: true,
+		},
+		{
+			name:    "malformed json",
+			input:   `{"k":}`,
+			fmt:     format.DataFormatJson,
+			wantErr: true,
+		},
+		{
+			name:    "wrong top-level (scalar)",
+			input:   `123`,
+			fmt:     format.DataFormatJson,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		// Create per-iteration copy of test tt so that running
+		// tests in parallel does not reuse the same test for
+		// each run.
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			// Start with a non-empty slice to ensure the function overwrites it.
+			got := []Item{{K: -1}}
+			err := ReadPayloadSlice[Item](tc.input, tc.fmt, &got)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("ReadPayloadSlice error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if tc.wantErr {
+				return
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("got %#v, want %#v", got, tc.want)
 			}
 		})
 	}

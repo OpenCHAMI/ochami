@@ -63,11 +63,19 @@ These configuration options are global configuration options.
 		- _warning_
 		- _debug_
 
+*timeout:* _duration_
+	The timeout to use for HTTP requests. This is a duration string as accepted
+	by Go's duration parser (e.g. _30s_, _5m_, _1m30s_).
+
+	Default: *30s*
+
+	This option can be overridden by the *--timeout* flag.
+
 # CLUSTER CONFIGURATION
 
 These configuration options apply only to cluster configuration, i.e. under the
 *clusters* key. The value for the *cluster* key is an array with each item in
-the array containing the below configuration options.
+the array containing a *cluster* mapping with the below configuration options.
 
 *name:* _cluster_name_
 	The name of the cluster. This is what *--cluster* and the *default-cluster*
@@ -77,6 +85,7 @@ the array containing the below configuration options.
 	The service-specific configuration for *<service>*. Currently recognized
 	values of *<service>* are:
 
+	- _boot-service_ (boot-service)
 	- _bss_ (Boot Script Service)
 	- _cloud-init_ (cloud-init)
 	- _pcs_ (Power Control Service)
@@ -103,6 +112,14 @@ the array containing the below configuration options.
 		*cluster.<service>.uri* directive for the *<service>*, so at least one
 		of these need to be set.  Otherwise, the base URI is not able to be
 		determined for that service.
+
+	*api-version:* _version_
+		(Optional, boot-service only.) Specify the boot-service API version to
+		use for requests (e.g. _v1beta2_). If unset or empty, the boot-service
+		client uses its default API version.
+
+		This option can be overridden by the *--api-version* flag on
+		boot-service-related commands (e.g. *ochami boot*).
 
 *enable-auth:* true|false
 	Enable authentication for this cluster.
@@ -156,14 +173,17 @@ log:
 ```
 clusters:
     - cluster:
+        boot-service:
+          api-version: v1beta2
+          uri: https://localhost:27776/boot
         bss:
-		  uri: https://localhost:27778/boot/v1
+          uri: https://localhost:27778/boot/v1
         cloud-init:
-		  uri: https://localhost:27777/cloud-init
+          uri: https://localhost:27777/cloud-init
         pcs:
-		  uri: https://localhost:28007/
+          uri: https://localhost:28007/
         smd:
-		  uri: https://localhost:27779/hsm/v2
+          uri: https://localhost:27779/hsm/v2
       name: foobar
 default-cluster: foobar
 log:

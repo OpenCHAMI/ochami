@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/knadh/koanf/v2"
 	"gopkg.in/yaml.v3"
@@ -848,6 +849,7 @@ log:
     level: info`),
 			},
 			want: Config{
+				Timeout: 30 * time.Second,
 				Log: ConfigLog{
 					Format: "rfc3339",
 					Level:  "info",
@@ -1131,6 +1133,7 @@ func TestDeleteConfig(t *testing.T) {
 		path := filepath.Join(tmp, "cfg.yaml")
 
 		initial := Config{
+			Timeout:        30 * time.Second,
 			DefaultCluster: "x",
 			Log: ConfigLog{
 				Format: "f",

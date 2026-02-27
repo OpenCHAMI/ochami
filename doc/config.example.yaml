@@ -28,6 +28,14 @@ log:
 # config file.
 #default-cluster: local
 
+# Specify the timeout duration to use when making requests to OpenCHAMI
+# services.
+#
+# This can be overridden by some service commands with their --timeout flag.
+#
+# Default: 30s
+#timeout: 30s
+
 ################################################################################
 #
 # CLUSTER-SPECIFIC OPTIONS
@@ -52,9 +60,12 @@ log:
 #
 # <service> - (OPTIONAL) Set specific service options for <service>. <service>
 #             is the name of an OpenCHAMI service in lower case, e.g. 'bss',
-#             'cloud-init'.
+#             'cloud-init', 'boot-service'.
 #
 #             Keys include:
+#
+#             api-version - (boot-service only) Set the API version for the
+#                           boot service to use, overriding the default.
 #
 #             uri - Override the service's base path or replace its base URI
 #                   entirely. If the value is a relative path (e.g. "/smd"),
@@ -108,4 +119,7 @@ log:
 #          uri: https://localhost:27777/cloud-init
 #        pcs:
 #          uri: https://localhost:28007
+#        boot-service:
+#          api-version: v1
+#          uri: https://localhost:27776/boot
 clusters: []
