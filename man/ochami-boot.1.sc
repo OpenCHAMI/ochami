@@ -8,7 +8,8 @@ ochami-boot - Communicate with the Boot Service
 
 ochami boot bmc (add | delete | get | list | patch | set) [OPTIONS]++
 ochami boot config (add | delete | get | list | patch | set) [OPTIONS]++
-ochami boot node (add | delete | get | list | patch | set) [OPTIONS]
+ochami boot node (add | delete | get | list | patch | set) [OPTIONS]++
+ochami boot service status [OPTIONS]
 
 # DATA STRUCTURE
 
@@ -639,6 +640,26 @@ Subcommands for this command are as follows:
 		are:
 
 		- _json_ (default)
+		- _yaml_
+
+## service
+
+Manage and check boot-service itself.
+
+Subcommands for this command are as follows:
+
+*status* [-F _format_]
+	Display status of the boot service.
+
+	This command sends a GET to boot-service's health endpoint.
+
+	This command accepts the following options:
+
+	*-F, --format-output* _format_
+		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
 		- _yaml_
 
 # AUTHOR
