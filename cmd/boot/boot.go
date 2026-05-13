@@ -16,6 +16,7 @@ import (
 	bmc_cmd "github.com/OpenCHAMI/ochami/cmd/boot/bmc"
 	config_cmd "github.com/OpenCHAMI/ochami/cmd/boot/config"
 	node_cmd "github.com/OpenCHAMI/ochami/cmd/boot/node"
+	service_cmd "github.com/OpenCHAMI/ochami/cmd/boot/service"
 )
 
 func NewCmd() *cobra.Command {
@@ -45,6 +46,7 @@ See ochami-boot(1) for more details.`,
 		bmc_cmd.NewCmd(),
 		config_cmd.NewCmd(),
 		node_cmd.NewCmd(),
+		service_cmd.NewCmd(),
 	)
 
 	return bootCmd
