@@ -70,8 +70,8 @@ prefix      ?= /usr/local
 exec_prefix ?= $(prefix)
 bindir      ?= $(exec_prefix)/bin
 mandir      ?= $(exec_prefix)/man
-libexecdir  ?= $(prefix)/usr/libexec/$(NAME)
-sharedir    ?= $(prefix)/usr/share
+libexecdir  ?= $(prefix)/libexec/$(NAME)
+sharedir    ?= $(prefix)/share
 
 .PHONY: all
 all: binaries ## Build everything

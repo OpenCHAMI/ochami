@@ -8,8 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
-	"github.com/openchami/boot-service/pkg/resources/node"
 
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
@@ -19,7 +19,7 @@ import (
 // function, passing it context. The output is a slice of the nodes it created,
 // each element of which corresponds to an error in an error slice, followed by
 // an error that is populatd if an error occurred in the function itself.
-func (bsc *BootServiceClient) AddNodes(token string, nodes []boot_service_client.CreateNodeRequest) (nodesAdded []*node.Node, errors []error, funcErr error) {
+func (bsc *BootServiceClient) AddNodes(token string, nodes []boot_service_client.CreateNodeRequest) (nodesAdded []*api.Node, errors []error, funcErr error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
@@ -115,7 +115,7 @@ func (bsc *BootServiceClient) ListNodes(token string, outFormat format.DataForma
 // function. It accepts data that represents a patch formatted as patchFormat
 // and sends it as JSON to the boot-service via a PATCH request for the node
 // identified by uid.
-func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*node.Node, error) {
+func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.Node, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
@@ -150,7 +150,7 @@ func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMe
 // SetNode is a wrapper that calls the boot-service client's UpdateNode()
 // function, passing it context. The output is a pointer to the node
 // details that got updated, along with an error if one occurred.
-func (bsc *BootServiceClient) SetNode(token string, uid string, node boot_service_client.UpdateNodeRequest) (*node.Node, error) {
+func (bsc *BootServiceClient) SetNode(token string, uid string, node boot_service_client.UpdateNodeRequest) (*api.Node, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 

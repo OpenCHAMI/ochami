@@ -8,8 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
-	"github.com/openchami/boot-service/pkg/resources/bmc"
 
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
@@ -19,7 +19,7 @@ import (
 // function, passing it context. The output is a slice of the BMCs it created,
 // each element of which corresponds to an error in an error slice, followed by
 // an error that is populatd if an error occurred in the function itself.
-func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.CreateBMCRequest) (bmcsAdded []*bmc.BMC, errors []error, funcErr error) {
+func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.CreateBMCRequest) (bmcsAdded []*api.BMC, errors []error, funcErr error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
@@ -115,7 +115,7 @@ func (bsc *BootServiceClient) ListBMCs(token string, outFormat format.DataFormat
 // function. It accepts data that represents a patch formatted as patchFormat
 // and sends it as JSON to the boot-service via a PATCH request for the BMC
 // identified by uid.
-func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*bmc.BMC, error) {
+func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.BMC, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
@@ -150,7 +150,7 @@ func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMet
 // SetBMC is a wrapper that calls the boot-service client's UpdateBMC()
 // function, passing it context. The output is a pointer to the BMC details that
 // got updated, along with an error if one occurred.
-func (bsc *BootServiceClient) SetBMC(token string, uid string, bmc boot_service_client.UpdateBMCRequest) (*bmc.BMC, error) {
+func (bsc *BootServiceClient) SetBMC(token string, uid string, bmc boot_service_client.UpdateBMCRequest) (*api.BMC, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 

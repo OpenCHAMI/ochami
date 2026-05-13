@@ -8,8 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
-	"github.com/openchami/boot-service/pkg/resources/bootconfiguration"
 
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
@@ -20,7 +20,7 @@ import (
 // of the boot configurations it created, each element of which corresponds to
 // an error in an error slice, followed by an error that is populatd if an error
 // occurred in the function itself.
-func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_service_client.CreateBootConfigurationRequest) (cfgsAdded []*bootconfiguration.BootConfiguration, errors []error, funcErr error) {
+func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_service_client.CreateBootConfigurationRequest) (cfgsAdded []*api.BootConfiguration, errors []error, funcErr error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
@@ -116,7 +116,7 @@ func (bsc *BootServiceClient) ListBootConfigs(token string, outFormat format.Dat
 // PatchBootConfiguration() function. It accepts data that represents a patch
 // formatted as patchFormat and sends it as JSON to the boot-service via a PATCH
 // request for the boot configuration identified by uid.
-func (bsc *BootServiceClient) PatchBootConfig(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*bootconfiguration.BootConfiguration, error) {
+func (bsc *BootServiceClient) PatchBootConfig(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.BootConfiguration, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
@@ -152,7 +152,7 @@ func (bsc *BootServiceClient) PatchBootConfig(token string, patchFormat client.P
 // UpdateBootConfiguration() function, passing it context. The output is a
 // pointer to the boot configuration that got updated, along with an error if
 // one occurred.
-func (bsc *BootServiceClient) SetBootConfig(token string, uid string, bootCfg boot_service_client.UpdateBootConfigurationRequest) (*bootconfiguration.BootConfiguration, error) {
+func (bsc *BootServiceClient) SetBootConfig(token string, uid string, bootCfg boot_service_client.UpdateBootConfigurationRequest) (*api.BootConfiguration, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
