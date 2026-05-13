@@ -147,6 +147,7 @@ See ochami-smd(1) for more details.`,
 					}
 					values.Add("NewerThan", s)
 				}
+				qstr = values.Encode()
 			}
 			httpEnv, err := smdClient.GetEthernetInterfaces(qstr)
 			if err != nil {
