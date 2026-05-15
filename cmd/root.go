@@ -22,6 +22,7 @@ import (
 	config_cmd "github.com/OpenCHAMI/ochami/cmd/config"
 	discover_cmd "github.com/OpenCHAMI/ochami/cmd/discover"
 	pcs_cmd "github.com/OpenCHAMI/ochami/cmd/pcs"
+	rcs_cmd "github.com/OpenCHAMI/ochami/cmd/rcs"
 	smd_cmd "github.com/OpenCHAMI/ochami/cmd/smd"
 	version_cmd "github.com/OpenCHAMI/ochami/cmd/version"
 )
@@ -100,6 +101,7 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 		bss_cmd.NewCmd(),
 		cloud_init_cmd.NewCmd(),
 		config_cmd.NewCmd(),
+		rcs_cmd.NewCmd(),
 		discover_cmd.NewCmd(),
 		pcs_cmd.NewCmd(),
 		version_cmd.NewCmd(),

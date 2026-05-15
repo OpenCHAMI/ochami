@@ -35,6 +35,7 @@ const (
 	ServiceCloudInit ServiceName = "cloud-init"
 	ServicePCS       ServiceName = "pcs"
 	ServiceSMD       ServiceName = "smd"
+	ServiceRCS       ServiceName = "rcs"
 )
 
 const (
@@ -43,6 +44,7 @@ const (
 	DefaultBasePathCloudInit   = "/cloud-init"
 	DefaultBasePathPCS         = "/"
 	DefaultBasePathSMD         = "/hsm/v2"
+	DefaultBasePathRCS         = "/remote-console"
 
 	SystemConfigFile = "/etc/ochami/config.yaml"
 )
@@ -173,6 +175,7 @@ type ConfigClusterConfig struct {
 	CloudInit   ConfigClusterCloudInit   `yaml:"cloud-init,omitempty"`
 	PCS         ConfigClusterPCS         `yaml:"pcs,omitempty"`
 	SMD         ConfigClusterSMD         `yaml:"smd,omitempty"`
+	RCS         ConfigClusterRCS         `yaml:"rcs,omitempty"`
 	EnableAuth  bool                     `yaml:"enable-auth"`
 }
 
@@ -250,6 +253,10 @@ type ConfigClusterCloudInit struct {
 	URI string `yaml:"uri,omitempty"`
 }
 
+type ConfigClusterRCS struct {
+	URI string `yaml:"uri,omitempty"`
+}
+
 // ConfigClusterPCS represents configuration specifically for the Power Control
 // Service.
 type ConfigClusterPCS struct {
@@ -293,6 +300,11 @@ func (ccc *ConfigClusterConfig) MergeURIConfig(c ConfigClusterConfig) ConfigClus
 		newCCC.SMD = ConfigClusterSMD{URI: c.SMD.URI}
 	} else {
 		newCCC.SMD.URI = compare(ccc.SMD.URI, c.SMD.URI)
+	}
+	if ccc.RCS == (ConfigClusterRCS{}) {
+		newCCC.RCS = ConfigClusterRCS{URI: c.RCS.URI}
+	} else {
+		newCCC.RCS.URI = compare(ccc.RCS.URI, c.RCS.URI)
 	}
 
 	return newCCC
@@ -374,6 +386,15 @@ func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, 
 			svcURI, err = url.Parse(ccc.SMD.URI)
 		} else {
 			svcURI, err = url.Parse(DefaultBasePathSMD)
+		}
+	case ServiceRCS:
+		if ccc.URI == "" && ccc.RCS.URI == "" {
+			return "", ErrMissingURI{Service: svcName}
+		}
+		if ccc.RCS.URI != "" {
+			svcURI, err = url.Parse(ccc.RCS.URI)
+		} else {
+			svcURI, err = url.Parse(DefaultBasePathRCS)
 		}
 	default:
 		return "", ErrUnknownService{Service: string(svcName)}
