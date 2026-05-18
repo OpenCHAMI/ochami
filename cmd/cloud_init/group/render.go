@@ -90,6 +90,25 @@ See ochami-cloud-init(1) for more details.`,
 				os.Exit(1)
 			}
 			dsWrapper["ds"] = map[string]interface{}{"meta_data": ciData}
+
+			// Read any extra variables specified (This is mostly copy-pasted from cli.HandlePayload)
+			// The primary difference is the flag name
+			extraVarsMap := make(map[string]interface{})
+			if cmd.Flag("extra-vars").Changed {
+				extraVars := cmd.Flag("extra-vars").Value.String()
+				if err := client.ReadPayload(extraVars, cli.FormatInput, &extraVarsMap); err != nil {
+					log.Logger.Error().Err(err).Msg("unable to read extra variable data or file")
+					cli.LogHelpError(cmd)
+					os.Exit(1)
+				}
+			}
+
+			// Apply extra variables to the context
+			for k, v := range extraVarsMap {
+				dsWrapper[k] = v
+			}
+
+			// Construct the context for the template
 			refData := exec.NewContext(dsWrapper)
 
 			// Render
@@ -110,6 +129,9 @@ See ochami-cloud-init(1) for more details.`,
 			out.Flush()
 		},
 	}
+
+	// Create flags
+	groupRenderCmd.Flags().StringP("extra-vars", "", "", "extra variables to be passed to the template renderer or (if starting with @) file containing extra variables to be passed to the template renderer (can be - to read from stdin)")
 
 	return groupRenderCmd
 }
