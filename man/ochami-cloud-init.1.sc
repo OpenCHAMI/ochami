@@ -13,7 +13,7 @@ ochami cloud-init group delete [OPTIONS] ([-d (_data_ | @_path_)] [-f _format_])
 ochami cloud-init group get [OPTIONS] raw [_id_...]++
 ochami cloud-init group get [OPTIONS] config [_id_...]++
 ochami cloud-init group get [OPTIONS] meta-data [_id_...]++
-ochami cloud-init group render _group_ _id_++
+ochami cloud-init group render ([-e (_extra-variables_ | @_path_)] [-f _format_]) _group_ _id_++
 ochami cloud-init group set [OPTIONS]++
 ochami cloud-init node get group [OPTIONS] _group_ _id_...++
 ochami cloud-init node get meta-data [OPTIONS] _id_...++
@@ -426,6 +426,21 @@ Subcommands for this command are as follows:
 
 	- */cloud-init/admin/impersonation/{id}/{group}.yaml*
 	- */cloud-init/admin/impersonation/{id}/meta-data*
+
+	This command accepts the following options:
+
+	*-e, --extra-vars* (_extra-vars_ | @_path_ | @-)
+		Specify _extra-vars_ to be passed to the template, the _path_ to a
+		file to read extra variables from, or to read the extra variables from
+		standard input (@-). The format of the extra variables read in any of
+		these forms is JSON by default unless *-f* is specified to change it.
+
+	*-f, --format-input* _format_
+		Format of the extra variables being used by *-e*. Supported formats are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
 
 *set* [-f _format_] < _file_++
 *set* [-f _format_] -d @_file_++
