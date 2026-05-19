@@ -132,7 +132,7 @@ See ochami-cloud-init(1) for more details.`,
 
 	// Create flags
 	groupRenderCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
-	groupRenderCmd.Flags().StringP("extra-vars", "", "", "extra variables to be passed to the template renderer or (if starting with @) file containing extra variables to be passed to the template renderer (can be - to read from stdin)")
+	groupRenderCmd.Flags().StringP("extra-vars", "e", "", "extra variables to be passed to the template renderer or (if starting with @) file containing extra variables (can be - to read from stdin)")
 
 	groupRenderCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
