@@ -24,6 +24,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/OpenCHAMI/ochami/pkg/format"
 )
 
 type ServiceName string
@@ -70,10 +71,12 @@ var (
 
 // Config represents the structure of a configuration file.
 type Config struct {
-	Log            ConfigLog       `yaml:"log,omitempty"`
-	Timeout        time.Duration   `yaml:"timeout,omitempty"`
-	DefaultCluster string          `yaml:"default-cluster,omitempty"`
-	Clusters       []ConfigCluster `yaml:"clusters,omitempty"`
+	Log                 ConfigLog         `yaml:"log,omitempty"`
+	Timeout             time.Duration     `yaml:"timeout,omitempty"`
+	DefaultCluster      string            `yaml:"default-cluster,omitempty"`
+	DefaultInputFormat  format.DataFormat `yaml:"default-input-format,omitempty"`
+	DefaultOutputFormat format.DataFormat `yaml:"default-output-format,omitempty"`
+	Clusters            []ConfigCluster   `yaml:"clusters,omitempty"`
 }
 
 // UnmarshalYAML unmarshals YAML into a Config, handling default values. For
