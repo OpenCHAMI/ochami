@@ -368,7 +368,7 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 		case config.ServicePCS:
 			ccc.PCS.URI = cmd.Flag("uri").Value.String()
 		case config.ServiceSMD:
-			ccc.SMD.URI = cmd.Flag("uri").Value.String()
+			ccc.SMD.URI = cmd.Flag("cluster-uri").Value.String()
 		default:
 			return "", fmt.Errorf("unknown service %q specified when generating base URI", serviceName)
 		}
