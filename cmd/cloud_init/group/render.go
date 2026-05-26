@@ -38,9 +38,9 @@ See ochami-cloud-init(1) for more details.`,
 
   # Render group 'compute' cloud-init config for node x1000c0s0b0n0, loading extra variables in
   # from extra-vars.json, stdin, and directly, respectively
-  ochami-dev -k cloud-init group render --extra-vars @extra-vars.json compute x1000c0s0b0n0
-  ochami-dev -k cloud-init group render --extra-vars @- compute x1000c0s0b0n0
-  ochami-dev -k cloud-init group render --extra-vars '{"key":"value"}' compute x1000c0s0b0n0`,
+  ochami -k cloud-init group render --extra-vars @extra-vars.json compute x1000c0s0b0n0
+  ochami -k cloud-init group render --extra-vars @- compute x1000c0s0b0n0
+  ochami -k cloud-init group render --extra-vars '{"key":"value"}' compute x1000c0s0b0n0`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create client to use for requests
 			cloudInitClient := cloud_init_lib.GetClient(cmd)
