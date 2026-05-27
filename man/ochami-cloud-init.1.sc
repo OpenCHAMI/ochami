@@ -435,6 +435,66 @@ Subcommands for this command are as follows:
 		standard input (@-). The format of the extra variables read in any of
 		these forms is JSON by default unless *-f* is specified to change it.
 
+		For example, given the following cloud-init template and assuming that
+		node *x3000c0s0b100n0* belongs to a *test* SMD group:
+
+		```
+		## template: jinja
+		#cloud-config
+		# v1.variant={{ v1.variant }}
+		{%- if v1.variant == 'suse' %}
+		{%- set def_dir = '/foo' %}
+		{%- else %}
+		{%- set def_dir = '/bar' %}
+		{%- endif %}
+		write_files:
+		  - content: |
+			   my stuff
+			path: {{ def_dir }}/myfile
+			permissions: '0644'
+			owner: 'root:root'
+		```
+
+		Running
+
+		```
+		ochami cloud-init group render -e '{"v1":{"variant":"suse"}}' test x3000c0s0b100n0
+		```
+
+		will render:
+
+		```
+		## template: jinja
+		#cloud-config
+		# v1.variant=suse
+		write_files:
+		  - content: |
+			   my stuff
+			path: /foo/myfile
+			permissions: '0644'
+			owner: 'root:root'
+		```
+
+		while running
+
+		```
+		ochami cloud-init group render -e '{"v1":{"variant":"rhel"}}' test x3000c0s0b100n0
+		```
+
+		will render:
+
+		```
+		## template: jinja
+		#cloud-config
+		# v1.variant=rhel
+		write_files:
+		  - content: |
+			   my stuff
+			path: /bar/myfile
+			permissions: '0644'
+			owner: 'root:root'
+		```
+
 	*-f, --format-input* _format_
 		Format of the extra variables being used by *-e*. Supported formats are:
 
