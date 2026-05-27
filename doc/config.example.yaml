@@ -40,11 +40,11 @@ log:
 # line. These are overridden by the *--format-input* and *--format-output* options,
 # respectively.
 # 
-# Default: json
-# Supported:
-# - json
-# - json-pretty
-# - yaml
+# Available values are:
+#
+# json (default)
+# json-pretty
+# yaml
 #default-input-format: json
 #default-output-format: json
 
