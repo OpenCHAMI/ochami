@@ -812,6 +812,25 @@ Subcommands for this command are as follows:
 
 This command is DEPRECATED. Use *service status* instead.
 
+## membership
+
+Get the groups a node is a member of.
+
+*membership* <node>
+	Gets the memberships of a node.
+
+	This commands sends a GET to endpoints under SMD's /memberships endpoint.
+
+	This command accepts the following options:
+
+	*-F, --format-output* _format_
+		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+
 # AUTHOR
 
 Written by Devon T. Bautista and maintained by the OpenCHAMI developers.

@@ -41,6 +41,7 @@ See ochami-smd(1) for more details.`,
 		newCmdGroupGet(),
 		member_cmd.NewCmd(),
 		newCmdGroupUpdate(),
+		newCmdGroupMembership(),
 	)
 
 	return groupCmd
