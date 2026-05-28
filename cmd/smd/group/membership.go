@@ -21,7 +21,7 @@ import (
 )
 
 func newCmdGroupMembership() *cobra.Command {
-	// groupGetCmd represents the "smd group get" command
+	// groupGetCmd represents the "smd group membership" command
 
 	var groupMembershipCmd = &cobra.Command{
 		Use:   "membership <node>",
@@ -30,7 +30,7 @@ func newCmdGroupMembership() *cobra.Command {
 		Long: `Get all group memberships of a node.
 
 See ochami-smd(1) for more details.`,
-		Example: `  ochami smd group get x1000c0s0b0n0`,
+		Example: `  ochami smd group membership x1000c0s0b0n0`,
 		Run: func(cmd *cobra.Command, args []string) {
 
 			params := url.Values{}
