@@ -413,13 +413,9 @@ func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, 
 // a node name, which it passes to the GetData function using the SMD node
 // membership endpoint. It also takes a token, which it puts into the headers as
 // the authorization bearer.
-func (sc *SMDClient) GetGroupMembership(node, token string) (client.HTTPEnvelope, error) {
-	if node == "" {
+func (sc *SMDClient) GetGroupMembership(qstr, token string) (client.HTTPEnvelope, error) {
+	if qstr == "" {
 		return client.HTTPEnvelope{}, fmt.Errorf("GetGroupMembership(): node name cannot be empty")
-	}
-	finalEP, err := url.JoinPath(SMDRelpathMemberships, node)
-	if err != nil {
-		return client.HTTPEnvelope{}, fmt.Errorf("GetGroupMembership(): failed to join membership path (%s) with node name %s: %w", SMDRelpathMemberships, node, err)
 	}
 	headers := client.NewHTTPHeaders()
 	if token != "" {
@@ -427,9 +423,9 @@ func (sc *SMDClient) GetGroupMembership(node, token string) (client.HTTPEnvelope
 			return client.HTTPEnvelope{}, fmt.Errorf("GetGroupMembership(): error setting token in HTTP headers: %w", err)
 		}
 	}
-	henv, err := sc.GetData(finalEP, "", headers)
+	henv, err := sc.GetData(SMDRelpathMemberships, qstr, headers)
 	if err != nil {
-		err = fmt.Errorf("GetGroupMembership(): error getting group memberships for node %s: %w", node, err)
+		err = fmt.Errorf("GetGroupMembership(): error getting group memberships for query %s: %w", qstr, err)
 	}
 
 	return henv, err
