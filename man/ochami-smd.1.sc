@@ -748,7 +748,7 @@ Subcommands for this command are as follows:
 		need to be kept are passed to this flag.
 
 *membership* [-F _format_] [FILTERS]
-	Gets the memberships of a node.
+	Gets the memberships of one or more nodes.
 
 	This commands sends a GET to endpoints under SMD's /memberships endpoint.
 
