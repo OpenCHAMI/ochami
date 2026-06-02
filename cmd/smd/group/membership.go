@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -22,12 +23,11 @@ import (
 
 func newCmdGroupMembership() *cobra.Command {
 	// groupMembershipCmd represents the "smd group membership" command
-
 	var groupMembershipCmd = &cobra.Command{
-		Use:   "membership --id <xname> [Other Flags]",
+		Use:   "membership --id <xname>",
 		Args:  cobra.NoArgs,
-		Short: "Get all group memberships of a node",
-		Long: `Get all group memberships of a node.
+		Short: "Get all group memberships of one or more nodes",
+		Long: `Get all group memberships of one or more nodes.
 
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group membership x1000c0s0b0n0`,
@@ -54,14 +54,14 @@ See ochami-smd(1) for more details.`,
 					os.Exit(1)
 				}
 				for _, v := range values {
-					params.Add(flag, v)
+					params.Add(strings.ReplaceAll(flag, "_", "-"), v)
 				}
 			}
 
 			for _, flag := range []string{
 				"enabled",
-				"nid_start",
-				"nid_end",
+				"nid-start",
+				"nid-end",
 				"partition",
 				"group",
 			} {
@@ -72,7 +72,7 @@ See ochami-smd(1) for more details.`,
 						cli.LogHelpError(cmd)
 						os.Exit(1)
 					}
-					params.Add(flag, value)
+					params.Add(strings.ReplaceAll(flag, "_", "-"), value)
 				}
 			}
 
@@ -118,8 +118,8 @@ See ochami-smd(1) for more details.`,
 	groupMembershipCmd.Flags().StringArray("class", nil, "Filter the results based on HMS hardware class. Can be specified multiple times for selecting entries with different classes.")
 	groupMembershipCmd.Flags().StringArray("nid", nil, "Filter the results based on NID. Can be specified multiple times for selecting entries with multiple specific NIDs.")
 	groupMembershipCmd.Flags().String("enabled", "", "Filter the results based on enabled status (true or false).")
-	groupMembershipCmd.Flags().String("nid_start", "", "Filter the results based on NIDs equal to or greater than the provided integer.")
-	groupMembershipCmd.Flags().String("nid_end", "", "Filter the results based on NIDs less than or equal to the provided integer.")
+	groupMembershipCmd.Flags().String("nid-start", "", "Filter the results based on NIDs equal to or greater than the provided integer.")
+	groupMembershipCmd.Flags().String("nid-end", "", "Filter the results based on NIDs less than or equal to the provided integer.")
 	groupMembershipCmd.Flags().String("partition", "", "Restrict search to the given partition (p#.#). One partition can be combined with at most one group argument which will be treated as a logical AND. NULL will return components in NO partition.")
 	groupMembershipCmd.Flags().String("group", "", "Restrict search to the given group label. One group can be combined with at most one partition argument which will be treated as a logical AND. NULL will return components in NO groups.")
 
