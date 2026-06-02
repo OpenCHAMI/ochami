@@ -769,6 +769,13 @@ Subcommands for this command are as follows:
 		Filter the results based on HMS flag value like OK, Alert etc. Can be
 		specified multiple times for selecting entries with different flags.
 
+	*-F, --format-output* _format_
+		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
 	*--group* _group_
 		Restrict search to the given group label. One group can be combined with
 		at most one partition argument which will be treated as a logical AND.
@@ -837,13 +844,6 @@ Subcommands for this command are as follows:
 		Filter the results based on HMS type like Node, NodeEnclosure, NodeBMC
 		etc. Can be specified multiple times for selecting entries of multiple
 		types.
-	
-	*-F, --format-output* _format_
-		Output response data in specified _format_. Supported values are:
-
-		- _json_ (default)
-		- _json-pretty_
-		- _yaml_
 
 ## group member
 
