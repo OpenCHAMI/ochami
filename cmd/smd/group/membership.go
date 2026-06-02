@@ -56,7 +56,7 @@ See ochami-smd(1) for more details.`,
 				"class",
 				"nid",
 			} {
-				values, err := cmd.Flags().GetStringArray(flag)
+				values, err := cmd.Flags().GetStringSlice(flag)
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to parse flags")
 					cli.LogHelpError(cmd)
