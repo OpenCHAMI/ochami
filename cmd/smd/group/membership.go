@@ -113,7 +113,6 @@ See ochami-smd(1) for more details.`,
 	}
 
 	// Create flags
-
 	groupMembershipCmd.Flags().StringArray("id", nil, "filter the results based on xname ID(s)")
 	groupMembershipCmd.Flags().StringArray("type", nil, "filter the results based on HMS type")
 	groupMembershipCmd.Flags().StringArray("state", nil, "filter the results based on HMS state")
