@@ -51,6 +51,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AUR_SSH_KEY: ${{ secrets.AUR_PRIVATE_KEY }}
+          IS_PR_BUILD: 'false'
         with:
           version: '~> v2'
           args: release --clean --release-notes ../notes.md
