@@ -62,7 +62,7 @@ See ochami-smd(1) for more details.`,
 					os.Exit(1)
 				}
 				for _, v := range values {
-					params.Add(strings.ReplaceAll(flag, "_", "-"), v)
+					params.Add(strings.ReplaceAll(flag, "-", "_"), v)
 				}
 			}
 
@@ -80,7 +80,7 @@ See ochami-smd(1) for more details.`,
 						cli.LogHelpError(cmd)
 						os.Exit(1)
 					}
-					params.Add(strings.ReplaceAll(flag, "_", "-"), value)
+					params.Add(strings.ReplaceAll(flag, "-", "_"), value)
 				}
 			}
 
