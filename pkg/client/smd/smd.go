@@ -415,7 +415,7 @@ func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, 
 // the authorization bearer.
 func (sc *SMDClient) GetGroupMembership(qstr, token string) (client.HTTPEnvelope, error) {
 	if qstr == "" {
-		return client.HTTPEnvelope{}, fmt.Errorf("GetGroupMembership(): node name cannot be empty")
+		return client.HTTPEnvelope{}, fmt.Errorf("GetGroupMembership(): filter cannot be empty")
 	}
 	headers := client.NewHTTPHeaders()
 	if token != "" {
