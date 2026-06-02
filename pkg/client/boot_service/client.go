@@ -9,6 +9,7 @@ import (
 	"time"
 
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
+	"github.com/rs/zerolog"
 
 	"github.com/OpenCHAMI/ochami/pkg/client"
 )
@@ -25,13 +26,13 @@ type BootServiceClient struct {
 	Timeout time.Duration
 }
 
-// NewClient takes a baseURI, timeout duration, and optional API version string
-// and returns a pointer to a new BootServiceClient.  If an error occurred
-// creating the embedded OchamiClient or the boot service client, it is
+// NewClient takes a baseURI, timeout duration, optional API version string, and
+// logger and returns a pointer to a new BootServiceClient.  If an error
+// occurred creating the embedded OchamiClient or the boot service client, it is
 // returned. If insecure is true, TLS certificates will not be verified. An API
 // version can also be specified (e.g. 'v1beta2'), though it can be left blank
 // to use the default.
-func NewClient(baseURI string, insecure bool, timeout time.Duration, apiVersion string) (*BootServiceClient, error) {
+func NewClient(baseURI string, insecure bool, timeout time.Duration, apiVersion string, logger zerolog.Logger) (*BootServiceClient, error) {
 	// Create OchamiClient to ensure http client is configured via ochami CLI
 	// flags/config.
 	oc, err := client.NewOchamiClient(serviceNameBootService, baseURI, insecure)
@@ -41,7 +42,7 @@ func NewClient(baseURI string, insecure bool, timeout time.Duration, apiVersion 
 
 	// Create boot-service client via its API, using the http client from the
 	// OchamiClient so that passed certs or --insecure is honored.
-	bsc, err := boot_service_client.NewClient(baseURI, oc.Client)
+	bsc, err := boot_service_client.NewClient(baseURI, oc.Client, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create %s client: %w", serviceNameBootService, err)
 	}

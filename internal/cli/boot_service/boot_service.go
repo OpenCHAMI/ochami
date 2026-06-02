@@ -32,7 +32,7 @@ func GetClient(cmd *cobra.Command) *boot_service.BootServiceClient {
 	}
 
 	// Create client to make request to boot-service
-	bootServiceClient, err := boot_service.NewClient(bootServiceBaseURI, cli.Insecure, cli.GetTimeout(cmd), apiVersion)
+	bootServiceClient, err := boot_service.NewClient(bootServiceBaseURI, cli.Insecure, cli.GetTimeout(cmd), apiVersion, log.Logger)
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("error creating new boot-service client")
 		cli.LogHelpError(cmd)
