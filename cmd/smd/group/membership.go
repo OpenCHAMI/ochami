@@ -21,7 +21,7 @@ import (
 )
 
 func newCmdGroupMembership() *cobra.Command {
-	// groupGetCmd represents the "smd group membership" command
+	// groupMembershipCmd represents the "smd group membership" command
 
 	var groupMembershipCmd = &cobra.Command{
 		Use:   "membership --id <xname> [Other Flags]",
