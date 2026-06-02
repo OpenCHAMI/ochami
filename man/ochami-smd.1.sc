@@ -798,12 +798,14 @@ Subcommands for this command are as follows:
 	*--role* _role_
 		Filter the results based on HMS role. Can be specified multiple times for
 		selecting entries with different roles. Valid values are:
+
 		- Compute
 		- Service
 		- System
 		- Application
 		- Storage
 		- Management
+
 		Additional valid values may be added via configuration file. See the
 		results of 'GET /service/values/role' for the complete list.
 
@@ -819,9 +821,11 @@ Subcommands for this command are as follows:
 	*--subrole* _subrole_
 		Filter the results based on HMS subrole. Can be specified multiple times
 		for selecting entries with different subroles. Valid values are:
+
 		- Master
 		- Worker
 		- Storage
+
 		Additional valid values may be added via configuration file. See the
 		results of 'GET /service/values/subrole' for the complete list.
 
