@@ -183,7 +183,7 @@ dockers:
       - LICENSES/MIT.txt
 
 docker_manifests:
-  - name_template: '{{ if ne .Env.IS_PR_BUILD \"true\" }}ghcr.io/openchami/{{ .ProjectName }}:latest{{ end }}'
+  - name_template: '{{ if ne .Env.IS_PR_BUILD "true" }}ghcr.io/openchami/{{ .ProjectName }}:latest{{ end }}'
     skip_push: '{{ eq .Env.IS_PR_BUILD "true" }}'
     image_templates:
       - *amd64_linux_image
