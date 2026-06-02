@@ -747,7 +747,7 @@ Subcommands for this command are as follows:
 		flag will *replace* any existing tags, so be sure any existing tags that
 		need to be kept are passed to this flag.
 
-*membership*
+*membership* [-F _format_] [FILTERS]
 	Gets the memberships of a node.
 
 	This commands sends a GET to endpoints under SMD's /memberships endpoint.
