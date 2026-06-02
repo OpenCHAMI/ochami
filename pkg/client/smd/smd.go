@@ -414,9 +414,6 @@ func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, 
 // membership endpoint. It also takes a token, which it puts into the headers as
 // the authorization bearer.
 func (sc *SMDClient) GetGroupMembership(qstr, token string) (client.HTTPEnvelope, error) {
-	if qstr == "" {
-		return client.HTTPEnvelope{}, fmt.Errorf("GetGroupMembership(): filter cannot be empty")
-	}
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		if err := headers.SetAuthorization(token); err != nil {
