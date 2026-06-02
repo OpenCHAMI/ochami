@@ -34,7 +34,7 @@ See ochami-smd(1) for more details.`,
   ochami smd group membership
 
   # Get group membership for a subset of nodes (two)
-  ochami smd group membership x1000c0s0b0n0 x1000c0s1b0n0
+  ochami smd group membership --id x1000c0s0b0n0 --id x1000c0s1b0n0
 
   # Get group membership for nodes whose IDs are between 1000
   # and 2000 and are of x86 architecture
