@@ -35,6 +35,7 @@ See ochami-smd(1) for more details.`,
 
   # Get group membership for a subset of nodes (two)
   ochami smd group membership --id x1000c0s0b0n0 --id x1000c0s1b0n0
+  ochami smd group membership --id x1000c0s0b0n0,x1000c0s1b0n0
 
   # Get group membership for nodes whose IDs are between 1000
   # and 2000 and are of x86 architecture
@@ -113,17 +114,17 @@ See ochami-smd(1) for more details.`,
 	}
 
 	// Create flags
-	groupMembershipCmd.Flags().StringArray("id", nil, "filter the results based on xname ID(s)")
-	groupMembershipCmd.Flags().StringArray("type", nil, "filter the results based on HMS type")
-	groupMembershipCmd.Flags().StringArray("state", nil, "filter the results based on HMS state")
-	groupMembershipCmd.Flags().StringArray("flag", nil, "filter the results based on HMS flag value")
-	groupMembershipCmd.Flags().StringArray("role", nil, "filter the results based on HMS role")
-	groupMembershipCmd.Flags().StringArray("subrole", nil, "filter the results based on HMS subrole")
-	groupMembershipCmd.Flags().StringArray("softwarestatus", nil, "filter the results based on software status")
-	groupMembershipCmd.Flags().StringArray("subtype", nil, "filter the results based on HMS subtype")
-	groupMembershipCmd.Flags().StringArray("arch", nil, "filter the results based on architecture")
-	groupMembershipCmd.Flags().StringArray("class", nil, "filter the results based on HMS hardware class")
-	groupMembershipCmd.Flags().StringArray("nid", nil, "filter the results based on NID")
+	groupMembershipCmd.Flags().StringSlice("id", nil, "filter the results based on xname ID(s)")
+	groupMembershipCmd.Flags().StringSlice("type", nil, "filter the results based on HMS type")
+	groupMembershipCmd.Flags().StringSlice("state", nil, "filter the results based on HMS state")
+	groupMembershipCmd.Flags().StringSlice("flag", nil, "filter the results based on HMS flag value")
+	groupMembershipCmd.Flags().StringSlice("role", nil, "filter the results based on HMS role")
+	groupMembershipCmd.Flags().StringSlice("subrole", nil, "filter the results based on HMS subrole")
+	groupMembershipCmd.Flags().StringSlice("softwarestatus", nil, "filter the results based on software status")
+	groupMembershipCmd.Flags().StringSlice("subtype", nil, "filter the results based on HMS subtype")
+	groupMembershipCmd.Flags().StringSlice("arch", nil, "filter the results based on architecture")
+	groupMembershipCmd.Flags().StringSlice("class", nil, "filter the results based on HMS hardware class")
+	groupMembershipCmd.Flags().StringSlice("nid", nil, "filter the results based on NID")
 	groupMembershipCmd.Flags().String("enabled", "", "filter the results based on enabled status")
 	groupMembershipCmd.Flags().String("nid-start", "", "filter the results based on NIDs equal to or greater than the provided integer")
 	groupMembershipCmd.Flags().String("nid-end", "", "filter the results based on NIDs less than or equal to the provided integer")
