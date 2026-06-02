@@ -30,7 +30,15 @@ func newCmdGroupMembership() *cobra.Command {
 		Long: `Get all group memberships of one or more nodes.
 
 See ochami-smd(1) for more details.`,
-		Example: `  ochami smd group membership x1000c0s0b0n0`,
+		Example: `  # Get group membership for all nodes,
+  ochami smd group membership
+
+  # Get group membership for a subset of nodes (two)
+  ochami smd group membership x1000c0s0b0n0 x1000c0s1b0n0
+
+  # Get group membership for nodes whose IDs are between 1000
+  # and 2000 and are of x86 architecture
+  ochami smd group membership --nid-start 1000 --nid-end 2000 --arch X86`,
 		Run: func(cmd *cobra.Command, args []string) {
 
 			params := url.Values{}
