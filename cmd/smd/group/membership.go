@@ -24,7 +24,7 @@ import (
 func newCmdGroupMembership() *cobra.Command {
 	// groupMembershipCmd represents the "smd group membership" command
 	var groupMembershipCmd = &cobra.Command{
-		Use:   "membership --id <xname>",
+		Use:   "membership",
 		Args:  cobra.NoArgs,
 		Short: "Get all group memberships of one or more nodes",
 		Long: `Get all group memberships of one or more nodes.
