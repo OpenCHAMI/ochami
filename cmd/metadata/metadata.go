@@ -13,6 +13,7 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/config"
 
 	// Subcommands
+	defaults_cmd "github.com/OpenCHAMI/ochami/cmd/metadata/defaults"
 	service_cmd "github.com/OpenCHAMI/ochami/cmd/metadata/service"
 )
 
@@ -43,6 +44,7 @@ See ochami-metadata(1) for more details.`,
 
 	// Add subcommands
 	metadataCmd.AddCommand(
+		defaults_cmd.NewCmd(),
 		service_cmd.NewCmd(),
 	)
 
