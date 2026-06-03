@@ -173,7 +173,7 @@ type ConfigClusterConfig struct {
 	BootService     ConfigClusterBootService     `yaml:"boot-service,omitempty"`
 	BSS             ConfigClusterBSS             `yaml:"bss,omitempty"`
 	CloudInit       ConfigClusterCloudInit       `yaml:"cloud-init,omitempty"`
-	MetadataService ConfigClusterMetadataService `yaml:"metadata-service",omitempty`
+	MetadataService ConfigClusterMetadataService `yaml:"metadata-service,omitempty"`
 	PCS             ConfigClusterPCS             `yaml:"pcs,omitempty"`
 	SMD             ConfigClusterSMD             `yaml:"smd,omitempty"`
 	EnableAuth      bool                         `yaml:"enable-auth"`
