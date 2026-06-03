@@ -286,6 +286,10 @@ func UseCACert(client *client.OchamiClient) {
 	}
 }
 
+func GetBaseURIMetadataService(cmd *cobra.Command) (string, error) {
+	return GetBaseURI(cmd, config.ServiceMetadata)
+}
+
 func GetBaseURIBootService(cmd *cobra.Command) (string, error) {
 	return GetBaseURI(cmd, config.ServiceBoot)
 }
@@ -369,6 +373,8 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 				ccc.BSS.URI = cmd.Flag("uri").Value.String()
 			case config.ServiceCloudInit:
 				ccc.CloudInit.URI = cmd.Flag("uri").Value.String()
+			case config.ServiceMetadata:
+				ccc.MetadataService.URI = cmd.Flag("uri").Value.String()
 			case config.ServicePCS:
 				ccc.PCS.URI = cmd.Flag("uri").Value.String()
 			case config.ServiceSMD:
@@ -445,6 +451,8 @@ func GetAPIVersion(cmd *cobra.Command, serviceName config.ServiceName) (string, 
 		switch serviceName {
 		case config.ServiceBoot:
 			apiVersion = clusterConfig.BootService.APIVersion
+		case config.ServiceMetadata:
+			apiVersion = clusterConfig.MetadataService.APIVersion
 		default:
 			return "", fmt.Errorf("unknown service %q specified when fetching API version", serviceName)
 		}

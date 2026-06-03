@@ -10,6 +10,7 @@ go 1.26.3
 require (
 	github.com/OpenCHAMI/bss v1.32.1
 	github.com/OpenCHAMI/cloud-init v1.2.3
+	github.com/OpenCHAMI/metadata-service v0.1.1
 	github.com/OpenCHAMI/smd/v2 v2.18.0
 	github.com/elliotchance/pie/v2 v2.9.1
 	github.com/google/uuid v1.6.0
@@ -43,6 +44,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
+	github.com/flosch/pongo2/v6 v6.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
@@ -91,3 +93,5 @@ require (
 	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 )
+
+replace github.com/OpenCHAMI/ochami => ./
