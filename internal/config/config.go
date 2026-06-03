@@ -33,16 +33,18 @@ const (
 	ServiceBoot      ServiceName = ""
 	ServiceBSS       ServiceName = "bss"
 	ServiceCloudInit ServiceName = "cloud-init"
+	ServiceMetadata  ServiceName = "metadata-service"
 	ServicePCS       ServiceName = "pcs"
 	ServiceSMD       ServiceName = "smd"
 )
 
 const (
-	DefaultBasePathBootService = "/boot"
-	DefaultBasePathBSS         = "/boot/v1"
-	DefaultBasePathCloudInit   = "/cloud-init"
-	DefaultBasePathPCS         = "/"
-	DefaultBasePathSMD         = "/hsm/v2"
+	DefaultBasePathBootService     = "/boot"
+	DefaultBasePathBSS             = "/boot/v1"
+	DefaultBasePathCloudInit       = "/cloud-init"
+	DefaultBasePathMetadataService = "/metadata-service"
+	DefaultBasePathPCS             = "/"
+	DefaultBasePathSMD             = "/hsm/v2"
 
 	SystemConfigFile = "/etc/ochami/config.yaml"
 )
@@ -167,13 +169,14 @@ type ConfigCluster struct {
 // ConfigClusterConfig is the actual structure for an individual cluster
 // configuration.
 type ConfigClusterConfig struct {
-	URI         string                   `yaml:"uri,omitempty"`
-	BootService ConfigClusterBootService `yaml:"boot-service,omitempty"`
-	BSS         ConfigClusterBSS         `yaml:"bss,omitempty"`
-	CloudInit   ConfigClusterCloudInit   `yaml:"cloud-init,omitempty"`
-	PCS         ConfigClusterPCS         `yaml:"pcs,omitempty"`
-	SMD         ConfigClusterSMD         `yaml:"smd,omitempty"`
-	EnableAuth  bool                     `yaml:"enable-auth"`
+	URI             string                       `yaml:"uri,omitempty"`
+	BootService     ConfigClusterBootService     `yaml:"boot-service,omitempty"`
+	BSS             ConfigClusterBSS             `yaml:"bss,omitempty"`
+	CloudInit       ConfigClusterCloudInit       `yaml:"cloud-init,omitempty"`
+	MetadataService ConfigClusterMetadataService `yaml:"metadata-service",omitempty`
+	PCS             ConfigClusterPCS             `yaml:"pcs,omitempty"`
+	SMD             ConfigClusterSMD             `yaml:"smd,omitempty"`
+	EnableAuth      bool                         `yaml:"enable-auth"`
 }
 
 // UnmarshalYAML unmarshals YAML into a ConfigClusterConfig, handling default
@@ -250,6 +253,13 @@ type ConfigClusterCloudInit struct {
 	URI string `yaml:"uri,omitempty"`
 }
 
+// ConfigClusterMetadataService represents configuration specifically for the
+// metadata service.
+type ConfigClusterMetadataService struct {
+	APIVersion string `yaml:"api-version,omitempty"`
+	URI        string `yaml:"uri,omitempty"`
+}
+
 // ConfigClusterPCS represents configuration specifically for the Power Control
 // Service.
 type ConfigClusterPCS struct {
@@ -288,6 +298,11 @@ func (ccc *ConfigClusterConfig) MergeURIConfig(c ConfigClusterConfig) ConfigClus
 		newCCC.PCS = ConfigClusterPCS{URI: c.PCS.URI}
 	} else {
 		newCCC.PCS.URI = compare(ccc.PCS.URI, c.PCS.URI)
+	}
+	if ccc.MetadataService == (ConfigClusterMetadataService{}) {
+		newCCC.MetadataService = ConfigClusterMetadataService{URI: c.MetadataService.URI}
+	} else {
+		newCCC.MetadataService.URI = compare(ccc.MetadataService.URI, c.MetadataService.URI)
 	}
 	if ccc.SMD == (ConfigClusterSMD{}) {
 		newCCC.SMD = ConfigClusterSMD{URI: c.SMD.URI}
@@ -356,6 +371,15 @@ func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, 
 			svcURI, err = url.Parse(ccc.CloudInit.URI)
 		} else {
 			svcURI, err = url.Parse(DefaultBasePathCloudInit)
+		}
+	case ServiceMetadata:
+		if ccc.URI == "" && ccc.MetadataService.URI == "" {
+			return "", ErrMissingURI{Service: svcName}
+		}
+		if ccc.MetadataService.URI != "" {
+			svcURI, err = url.Parse(ccc.MetadataService.URI)
+		} else {
+			svcURI, err = url.Parse(DefaultBasePathMetadataService)
 		}
 	case ServicePCS:
 		if ccc.URI == "" && ccc.PCS.URI == "" {
