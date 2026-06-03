@@ -111,7 +111,7 @@ JSON form below:
 	base URI (set with the *--cluster-uri* flag or the *cluster.uri* cluster
 	config option), which is required to be set if a relative path is used here.
 
-	The boot service has no base path by default.
+	The boot service has a base path of */boot-service* by default.
 
 	See *ochami*(1) for *--cluster-uri* and *ochami-config*(5) for details on
 	cluster configuration options.
