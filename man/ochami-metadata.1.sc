@@ -8,18 +8,62 @@ ochami-metadata - Communicate with the Metadata Service
 
 *ochami metadata* [_global-options_] _command_ [_command-options_] [_arguments_]
 
-*ochami metadata defaults list* [OPTIONS]++
+*ochami metadata defaults list* [-F _format_]++
 *ochami metadata service status* [-F _format_]
 
 # DATA STRUCTURE
 
 ## CLUSTER DEFAULTS
 
-The data structure for sending and receiving cluster defaults is detailed in
-JSON form below:
+The whole data structure used with cluster defaults is in JSON Form below:
 
 ```
+{
+  "apiVersion": "cloud-init.openchami.io/v1",
+  "kind": "ClusterDefaults",
+  "metadata": {
+    "name": "demo-cluster-defaults",
+    "uid": "clusterdefaults-demo-01hzy7h9xq6b8m2p4v1n3r5t7w",
+    "labels": {
+      "cluster": "demo",
+      "environment": "production"
+    },
+    "annotations": {
+      "contact.email": "hpc-ops@example.com",
+      "deployment.notes": "Default metadata for the demo OpenCHAMI cluster"
+    },
+    "createdAt": "2026-01-15T18:30:00Z",
+    "updatedAt": "2026-01-15T19:45:00Z"
+  },
+  "spec": {
+    "description": "Cluster-wide defaults for the demo OpenCHAMI environment",
+    "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+    "cloud_provider": "on-prem",
+    "region": "us-west-dc1",
+    "availability_zone": "rack-row-a",
+    "cluster_name": "demo",
+    "short_name": "nid",
+    "nid_length": 4,
+    "public_keys": [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLtQNuzGcMDatF+YVMMkuxbX2c5v2OxWftBhEVfFb+U hpc-admin@demo-login",
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB4vVRvkzmGE5PyWX2fuzJEgEfET4PRLHXCnD1uFZ8ZL automation@demo-login"
+    ]
+  },
+  "status": {
+    "phase": "Ready",
+    "message": "Cluster defaults are active",
+    "ready": true
+  }
+}
 ```
+
+The above is an example of what is returned when fetching cluster defaults.
+
+When creating/updating cluster defaults, only the *spec* portion is used. The
+required fields are:
+
+- *base_url*
+- *cluster_name*
 
 ## GROUP
 
@@ -75,6 +119,26 @@ detailed in JSON form below:
 	cluster configuration options.
 
 # COMMANDS
+
+## defaults
+
+Manage cluster defaults in the metadata service.
+
+Subcommands for this command are as follows:
+
+*list* [-F _format_]
+	List cluster defaults known to metadata-service.
+
+	This command sends a GET to metadata-service's cluster defaults endpoint.
+
+	This command accepts the following options:
+
+	*-F, --format-output* _format_
+		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
 
 ## service
 
