@@ -27,24 +27,24 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Set node details using payload data
   ochami boot node set nod-bc76f7f2 -d \
     '{
-      "xname": "x1000c0s0b0n0",
-      "nid": 42,
-      "bootMac": "de:ca:fc:0f:fe:e1",
-      "role": "example-role",
-      "subRole": "example-subrole",
-      "hostname": "ex01.example.org",
-      "interfaces": [
-        {
-          "type": "management",
-          "mac": "de:ca:fc:0f:fe:e1",
-          "ip": "172.16.0.1"
-        }
-      ],
-      "groups": [
-        "group1",
-        "group2"
-      ]
-    }'
+       "xname": "x1000c0s0b0n0",
+       "nid": 42,
+       "bootMac": "de:ca:fc:0f:fe:e1",
+       "role": "example-role",
+       "subRole": "example-subrole",
+       "hostname": "ex01.example.org",
+       "interfaces": [
+         {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e1",
+           "ip": "172.16.0.1"
+         }
+       ],
+       "groups": [
+         "group1",
+         "group2"
+       ]
+     }'
 
   # Set boot configuration using input payload file
   ochami boot node set -d @payload.json nod-bc76f7f2

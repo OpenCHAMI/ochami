@@ -27,14 +27,14 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Set BMC details using payload data
   ochami boot bmc set bmc-773d99bf -d \
     '{
-      "xname": "x1000c0s0b0",
-      "description": "This node's BMC",
-      "interface": {
-        "type": "management",
-        "mac": "de:ca:fc:0f:fe:e1",
-        "ip": "172.16.0.254"
-      }
-    }'
+       "xname": "x1000c0s0b0",
+       "description": "This node's BMC",
+       "interface": {
+         "type": "management",
+         "mac": "de:ca:fc:0f:fe:e1",
+         "ip": "172.16.0.254"
+       }
+     }'
 
   # Set BMC details using input payload file
   ochami boot bmc set -d @payload.json bmc-773d99bf

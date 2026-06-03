@@ -27,46 +27,46 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add boot configuration using payload data
   ochami boot config add -d \
     '{
-      "hosts": [
-        "item1",
-        "item2"
-      ],
-      "macs": [
-        "de:ca:fc:0f:fe:e1",
-        "de:ca:fc:0f:fe:e2"
-      ],
-      "nids": [
-        1,
-        2
-      ],
-      "groups": [
-        "group1",
-        "group2"
-      ],
-      "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
-      "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
-      "params": "console=tty0,115200n8 console=ttyS0,115200n8",
-      "priority": 42
-    }'
+       "hosts": [
+         "item1",
+         "item2"
+       ],
+       "macs": [
+         "de:ca:fc:0f:fe:e1",
+         "de:ca:fc:0f:fe:e2"
+       ],
+       "nids": [
+         1,
+         2
+       ],
+       "groups": [
+         "group1",
+         "group2"
+       ],
+       "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
+       "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
+       "params": "console=tty0,115200n8 console=ttyS0,115200n8",
+       "priority": 42
+     }'
 
   # Add multiple boot configurations using payload data
   ochami boot config add -d \
     '[
-      {
-        "hosts": ["host1"],
-        "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
-        "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
-        "params": "console=tty0,115200n8 console=ttyS0,115200n8",
-        "priority": 42
-      },
-      {
-        "macs": ["de:ca:fc:0f:fe:ee"],
-        "kernel": "http://s3.openchami.cluster/kernels/vmlinuz2",
-        "initrd": "http://s3.openchami.cluster/initrds/initramfs2.img",
-        "params": "ip=dhcp",
-        "priority": 43
-      }
-    ]'
+       {
+         "hosts": ["host1"],
+         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
+         "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
+         "params": "console=tty0,115200n8 console=ttyS0,115200n8",
+         "priority": 42
+       },
+       {
+         "macs": ["de:ca:fc:0f:fe:ee"],
+         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz2",
+         "initrd": "http://s3.openchami.cluster/initrds/initramfs2.img",
+         "params": "ip=dhcp",
+         "priority": 43
+       }
+     ]'
 
   # Add boot configuration using input payload file
   ochami boot config add -d @payload.json

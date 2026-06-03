@@ -27,37 +27,37 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add BMC using payload data
   ochami boot bmc add -d \
     '{
-      "xname": "x1000c0s0b0",
-      "description": "This node's BMC",
-      "interface": {
-        "type": "management",
-        "mac": "de:ca:fc:0f:fe:e1",
-        "ip": "172.16.0.254"
-      }
-    }'
+       "xname": "x1000c0s0b0",
+       "description": "This node's BMC",
+       "interface": {
+         "type": "management",
+         "mac": "de:ca:fc:0f:fe:e1",
+         "ip": "172.16.0.254"
+       }
+     }'
 
   # Add multiple BMCs using payload data
   ochami boot bmc add -d \
     '[
-      {
-        "xname": "x1000c0s0b0",
-        "description": "Node 1's BMC",
-        "interface": {
-          "type": "management",
-          "mac": "de:ca:fc:0f:fe:e1",
-          "ip": "172.16.0.1"
-        }
-      },
-      {
-        "xname": "x1000c0s0b1",
-        "description": "Node 2's BMC",
-        "interface": {
-          "type": "management",
-          "mac": "de:ca:fc:0f:fe:e2",
-          "ip": "172.16.0.2"
-        }
-      }
-    ]'
+       {
+         "xname": "x1000c0s0b0",
+         "description": "Node 1's BMC",
+         "interface": {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e1",
+           "ip": "172.16.0.1"
+         }
+       },
+       {
+         "xname": "x1000c0s0b1",
+         "description": "Node 2's BMC",
+         "interface": {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e2",
+           "ip": "172.16.0.2"
+         }
+       }
+     ]'
 
   # Add BMCs using input payload file
   ochami boot bmc add -d @payload.json

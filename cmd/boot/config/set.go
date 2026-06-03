@@ -27,27 +27,27 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Set boot configuration using payload data
   ochami boot config set boo-914afad2 -d \
     '{
-      "hosts": [
-        "item1",
-        "item2"
-      ],
-      "macs": [
-        "de:ca:fc:0f:fe:e1",
-        "de:ca:fc:0f:fe:e2"
-      ],
-      "nids": [
-        1,
-        2
-      ],
-      "groups": [
-        "group1",
-        "group2"
-      ],
-      "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
-      "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
-      "params": "console=tty0,115200n8 console=ttyS0,115200n8",
-      "priority": 42
-    }'
+       "hosts": [
+         "item1",
+         "item2"
+       ],
+       "macs": [
+         "de:ca:fc:0f:fe:e1",
+         "de:ca:fc:0f:fe:e2"
+       ],
+       "nids": [
+         1,
+         2
+       ],
+       "groups": [
+         "group1",
+         "group2"
+       ],
+       "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
+       "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
+       "params": "console=tty0,115200n8 console=ttyS0,115200n8",
+       "priority": 42
+     }'
 
   # Set boot configuration using input payload file
   ochami boot config set -d @payload.json boo-914afad2

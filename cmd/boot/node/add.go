@@ -27,55 +27,55 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add node using payload data
   ochami boot node add -d \
     '{
-      "xname": "x1000c0s0b0n0",
-      "nid": 42,
-      "bootMac": "de:ca:fc:0f:fe:e1",
-      "role": "example-role",
-      "subRole": "example-subrole",
-      "hostname": "ex01.example.org",
-      "interfaces": [
-        {
-          "type": "management",
-          "mac": "de:ca:fc:0f:fe:e1",
-          "ip": "172.16.0.1"
-        }
-      ],
-      "groups": [
-        "group1",
-        "group2"
-      ]
-    }'
+       "xname": "x1000c0s0b0n0",
+       "nid": 42,
+       "bootMac": "de:ca:fc:0f:fe:e1",
+       "role": "example-role",
+       "subRole": "example-subrole",
+       "hostname": "ex01.example.org",
+       "interfaces": [
+         {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e1",
+           "ip": "172.16.0.1"
+         }
+       ],
+       "groups": [
+         "group1",
+         "group2"
+       ]
+     }'
 
   # Add multiple nodes using payload data
   ochami boot node add -d \
     '[
-      {
-        "xname": "x1000c0s0b0n0",
-        "nid": 42,
-        "bootMac": "de:ca:fc:0f:fe:e1",
-        "hostname": "ex01.example.org",
-        "interfaces": [
-          {
-            "type": "management",
-            "mac": "de:ca:fc:0f:fe:e1",
-            "ip": "172.16.0.1"
-          }
-        ]
-      },
-      {
-        "xname": "x1000c0s0b0n1",
-        "nid": 43,
-        "bootMac": "de:ca:fc:0f:fe:e2",
-        "hostname": "ex02.example.org",
-        "interfaces": [
-          {
-            "type": "management",
-            "mac": "de:ca:fc:0f:fe:e2",
-            "ip": "172.16.0.2"
-          }
-        ]
-      }
-    ]'
+       {
+         "xname": "x1000c0s0b0n0",
+         "nid": 42,
+         "bootMac": "de:ca:fc:0f:fe:e1",
+         "hostname": "ex01.example.org",
+         "interfaces": [
+           {
+             "type": "management",
+             "mac": "de:ca:fc:0f:fe:e1",
+             "ip": "172.16.0.1"
+           }
+         ]
+       },
+       {
+         "xname": "x1000c0s0b0n1",
+         "nid": 43,
+         "bootMac": "de:ca:fc:0f:fe:e2",
+         "hostname": "ex02.example.org",
+         "interfaces": [
+           {
+             "type": "management",
+             "mac": "de:ca:fc:0f:fe:e2",
+             "ip": "172.16.0.2"
+           }
+         ]
+       }
+     ]'
 
   # Add nodes using input payload file
   ochami boot node add -d @payload.json
