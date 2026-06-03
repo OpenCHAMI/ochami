@@ -15,8 +15,9 @@ import (
 	"github.com/OpenCHAMI/ochami/pkg/client/boot_service"
 )
 
-// GetClient sets up the BSS client with the BSS base URI and certificates
-// (if necessary) and returns it. This function is used by each subcommand.
+// GetClient sets up the boot-service client with the boot-service base URI and
+// certificates (if necessary) and returns it. This function is used by each
+// subcommand.
 func GetClient(cmd *cobra.Command) *boot_service.BootServiceClient {
 	// Without a base URI, we cannot do anything
 	bootServiceBaseURI, err := cli.GetBaseURIBootService(cmd)
