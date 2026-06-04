@@ -52,7 +52,9 @@ See ochami-boot(1) for more details.`,
 
   # Set boot configuration using data from stdin
   echo '<json_data>' | ochami boot node set -d @- nod-bc76f7f2
-  echo '<yaml_data>' | ochami boot node set -d @- -f yaml nod-bc76f7f2`,
+  echo '<json_data>' | ochami boot node set nod-bc76f7f2
+  echo '<yaml_data>' | ochami boot node set -d @- -f yaml nod-bc76f7f2
+  echo '<yaml_data>' | ochami boot node set -f yaml nod-bc76f7f2`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create client to use for requests
 			bootServiceClient := boot_service_lib.GetClient(cmd)
@@ -62,7 +64,11 @@ See ochami-boot(1) for more details.`,
 
 			// Read node data
 			node := boot_service_client.UpdateNodeRequest{}
-			cli.HandlePayload(cmd, &node)
+			if cmd.Flag("data").Changed {
+				cli.HandlePayload(cmd, &node)
+			} else {
+				cli.HandlePayloadStdin(cmd, &node)
+			}
 
 			// Send off requests
 			nodeSet, err := bootServiceClient.SetNode(cli.Token, args[0], node)
@@ -79,8 +85,6 @@ See ochami-boot(1) for more details.`,
 	// Create flags
 	bootNodeSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	bootNodeSetCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
-
-	bootNodeSetCmd.MarkFlagsOneRequired("data")
 
 	bootNodeSetCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
