@@ -8,12 +8,37 @@ import (
 	"context"
 	"fmt"
 
-	//api "github.com/openchami/metadata-service/apis/metadata.openchami.io/v1"
-	//metadata_service_client "github.com/openchami/metadata-service/pkg/client"
+	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
+	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 
-	//"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
+
+// AddDefaults is a wrapper that calls the metadata-service client's
+// CreateClusterDefaults() function, passing it context. The output is a slice
+// of the ClusterDefaults it created, each element of which corresponds to an
+// error in an error slice, followed by an error that is populatd if an error
+// occurred in the function itself.
+func (msc *MetadataServiceClient) AddDefaults(token string, defaults []metadata_service_client.CreateClusterDefaultsRequest) (defaultsAdded []*api.ClusterDefaults, errors []error, funcErr error) {
+	// TODO: metadata-service client functions don't support tokens yet.
+	_ = token
+
+	// TODO: Make concurrent
+	for _, d := range defaults {
+		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+		defer cancel()
+
+		item, err := msc.Client.CreateClusterDefaults(ctx, d)
+		if err != nil {
+			newErr := fmt.Errorf("failed to add cluster defaults %+v: %w", d, err)
+			errors = append(errors, newErr)
+			defaultsAdded = append(defaultsAdded, nil)
+		}
+		defaultsAdded = append(defaultsAdded, item)
+	}
+
+	return
+}
 
 // ListDefaults is a wrapper that calls the metadata-service client's
 // GetClusterDefaultss() function, passing it context. The output is a []byte

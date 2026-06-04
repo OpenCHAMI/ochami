@@ -8,6 +8,7 @@ ochami-metadata - Communicate with the Metadata Service
 
 *ochami metadata* [_global-options_] _command_ [_command-options_] [_arguments_]
 
+*ochami metadata defaults add* [-f _format_] [-d (_data_ | @_path_)]++
 *ochami metadata defaults list* [-F _format_]++
 *ochami metadata service status* [-F _format_]
 
@@ -125,6 +126,40 @@ detailed in JSON form below:
 Manage cluster defaults in the metadata service.
 
 Subcommands for this command are as follows:
+
+*add* [-f _format_] < _file_++
+*add* [-f _format_] -d @_file_++
+*add* [-f _format_] -d @- < _file_++
+*add* [-f _format_] -d _data_
+	Set one or more cluster defaults in metadata-service
+
+	In the first and third forms of the command, data is read from standard
+	input.
+
+	In the second form of the command, a file containing the payload data is
+	passed.
+
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
+
+	This command sends one or more POST requests to metadata-service's cluster
+	defaults endpoint.
+
+	This command accepts the following flags:
+
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
+
+	*-f, --format-input* _format_
+		Format of raw data being used by stdin/*-d* as the payload. Supported
+		formats are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
 
 *list* [-F _format_]
 	List cluster defaults known to metadata-service.
