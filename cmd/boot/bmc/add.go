@@ -65,7 +65,9 @@ See ochami-boot(1) for more details.`,
 
   # Add BMCs using data from stdin
   echo '<json_data>' | ochami boot bmc add -d @-
-  echo '<yaml_data>' | ochami boot bmc add -d @- -f yaml`,
+  echo '<json_data>' | ochami boot bmc add
+  echo '<yaml_data>' | ochami boot bmc add -d @- -f yaml
+  echo '<yaml_data>' | ochami boot bmc add -f yaml`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create client to use for requests
 			bootServiceClient := boot_service_lib.GetClient(cmd)
@@ -75,7 +77,11 @@ See ochami-boot(1) for more details.`,
 
 			// Read node data
 			bmcs := []boot_service_client.CreateBMCRequest{}
-			cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+			if cmd.Flag("data").Changed {
+				cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+			} else {
+				cli.HandlePayloadStdinSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+			}
 
 			// Send off requests
 			bmcsCreated, errs, err := bootServiceClient.AddBMCs(cli.Token, bmcs)
@@ -105,8 +111,6 @@ See ochami-boot(1) for more details.`,
 	// Create flags
 	bootBmcAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	bootBmcAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
-
-	bootBmcAddCmd.MarkFlagsOneRequired("data")
 
 	bootBmcAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
