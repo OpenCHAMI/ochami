@@ -376,8 +376,9 @@ Subcommands for this command are as follows:
 		- _yaml_
 
 *patch* ([--add _key_=_val_]... | [--remove _key_=_val_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
-*patch* [ -p _patch_method_] -d @_file_ [-f _format_] _uid_++
-*patch* [ -p _patch_method_] -d @- [-f _format_] _uid_ < _file_
+*patch* [ -f _format_] [ -p _patch_method_] -d @_file_ _uid_++
+*patch* [ -f _format_] [ -p _patch_method_] -d @- _uid_ < _file_++
+*patch* [ -f _format_] [ -p _patch_method_] _uid_ < _file_
 	Using various patch methods, patch specification for an existing boot
 	configuration identified by _uid_.
 
@@ -391,8 +392,8 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
-	In the second and third forms of the command, patch data is supplied along
-	with an optional *--patch-method* flag to specify the patch method.
+	In the second through fourth forms of the command, patch data is supplied
+	along with an optional *--patch-method* flag to specify the patch method.
 
 	This command sends a PATCH request to boot-service's
 	/bootconfiguration/_uid_ endpoint.
@@ -411,8 +412,8 @@ Subcommands for this command are as follows:
 		to change it.
 
 	*-f, --format-input* _format_
-		Format of raw data being used by *-d* as the payload. Supported formats
-		are:
+		Format of raw data being used by stdin/*-d* as the payload. Supported
+		formats are:
 
 		- _json_ (default)
 		- _yaml_
