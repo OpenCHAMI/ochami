@@ -55,7 +55,9 @@ See ochami-boot(1) for more details.`,
 
   # Set boot configuration using data from stdin
   echo '<json_data>' | ochami boot config set -d @- boo-914afad2
-  echo '<yaml_data>' | ochami boot config set -d @- -f yaml boo-914afad2`,
+  echo '<json_data>' | ochami boot config set boo-914afad2
+  echo '<yaml_data>' | ochami boot config set -d @- -f yaml boo-914afad2
+  echo '<yaml_data>' | ochami boot config set -f yaml boo-914afad2`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create client to use for requests
 			bootServiceClient := boot_service_lib.GetClient(cmd)
@@ -65,7 +67,11 @@ See ochami-boot(1) for more details.`,
 
 			// Read boot configuration data
 			bcs := boot_service_client.UpdateBootConfigurationRequest{}
-			cli.HandlePayload(cmd, &bcs)
+			if cmd.Flag("data").Changed {
+				cli.HandlePayload(cmd, &bcs)
+			} else {
+				cli.HandlePayloadStdin(cmd, &bcs)
+			}
 
 			// Send off requests
 			cfgSet, err := bootServiceClient.SetBootConfig(cli.Token, args[0], bcs)
@@ -82,8 +88,6 @@ See ochami-boot(1) for more details.`,
 	// Create flags
 	bootConfigSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	bootConfigSetCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
-
-	bootConfigSetCmd.MarkFlagsOneRequired("data")
 
 	bootConfigSetCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 

@@ -438,9 +438,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* -d _data_ [-f _format_] _uid_++
-*set* -d @_file_ [-f _format_] _uid_++
-*set* -d @- [-f _format_] _uid_ < _file_
+*set* [-f _format_] < _file_++
+*set* [-f _format_] -d @_file_++
+*set* [-f _format_] -d @- < _file_++
+*set* [-f _format_] -d _data_
 	Set the specification of a boot configuration identified by _uid_. The
 	entire specification for the boot configuration gets replaced with the
 	specification that is passed.
