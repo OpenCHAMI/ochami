@@ -298,9 +298,10 @@ Manage boot configurations stored in the boot service.
 
 Subcommands for this command are as follows:
 
-*add* -d _data_ [-f _format_]++
-*add* -d @_file_ [-f _format_]++
-*add* -d @- [-f _format_] < _file_
+*add* [-f _format_] < _file_++
+*add* [-f _format_] -d @_file_++
+*add* [-f _format_] -d @- < _file_++
+*add* [-f _format_] -d _data_
 	Add new boot configuration to be able to be used by nodes. If boot
 	configuration already exists for the specified components, this command will
 	fail.
