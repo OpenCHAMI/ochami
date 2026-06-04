@@ -41,12 +41,12 @@ If --set/--unset/--add/--remove are specified or --patch-method is 'keyval',
 the manual, key-value patch method using dot notation (e.g. key.subkey=value)
 is used.
 
-Otherwise, --data can be used to pass in raw patch data, using --patch-format
-to specify the patch format (see examples below).
+Otherwise, stdin and/or --data can be used to pass in raw patch data, using
+--patch-format to specify the patch format (see examples below).
 
---format-input can only be used with --data. It can be used to tell ochami to
-use a different format (e.g. YAML) for the data input for either of these
-methods.
+--format-input can only be used with stdin/--data. It can be used to tell
+ochami to use a different format (e.g. YAML) for the data input for either
+of these methods.
 
 See ochami-boot(1) for more details.`,
 		Example: `  # Patch using JSON patch (RFC 6902)
@@ -67,7 +67,9 @@ See ochami-boot(1) for more details.`,
 
   # Patch using stdin
   echo '<json_data>' | ochami boot bmc patch bmc-773d99bf -d @-
-  echo '<yaml_data>' | ochami boot bmc patch bmc-773d99bf -f yaml -d @-`,
+  echo '<json_data>' | ochami boot bmc patch bmc-773d99bf
+  echo '<yaml_data>' | ochami boot bmc patch bmc-773d99bf -d @- -f yaml
+  echo '<yaml_data>' | ochami boot bmc patch bmc-773d99bf -f yaml`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create client to use for requests
 			bootServiceClient := boot_service_lib.GetClient(cmd)
@@ -89,7 +91,11 @@ See ochami-boot(1) for more details.`,
 				}
 				patchData = pd
 			} else {
-				cli.HandlePayload(cmd, &patchData)
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &patchData)
+				} else {
+					cli.HandlePayloadStdin(cmd, &patchData)
+				}
 			}
 
 			bmcPatched, err := bootServiceClient.PatchBMC(cli.Token, formatPatch, args[0], patchData)
@@ -116,7 +122,6 @@ See ochami-boot(1) for more details.`,
 		bootBmcPatchCmd.MarkFlagsMutuallyExclusive("format-input", flag)
 		bootBmcPatchCmd.MarkFlagsMutuallyExclusive("data", flag)
 	}
-	bootBmcPatchCmd.MarkFlagsOneRequired("data", "set", "unset", "add", "remove")
 
 	bootBmcPatchCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
