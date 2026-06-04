@@ -479,9 +479,10 @@ Manage nodes stored in boot-service.
 
 Subcommands for this command are as follows:
 
-*add* -d _data_ [-f _format_]++
-*add* -d @_file_ [-f _format_]++
-*add* -d @- [-f _format_] < _file_
+*add* [-f _format_] < _file_++
+*add* [-f _format_] -d @_file_++
+*add* [-f _format_] -d @- < _file_++
+*add* [-f _format_] -d _data_
 	Add one or more nodes to boot-service.
 
 	In the first form of the command, raw data is passed as an argument to be
