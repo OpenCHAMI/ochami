@@ -25,7 +25,7 @@ func newCmdBootBmcGet() *cobra.Command {
 
 See ochami-boot(1) for more details.`,
 		Example: `  # Get info about a BMC
-  ochami boot node get bmc-773d99bf`,
+  ochami boot bmc get bmc-773d99bf`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create client to use for requests
 			bootServiceClient := boot_service_lib.GetClient(cmd)
