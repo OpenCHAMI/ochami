@@ -10,6 +10,7 @@ ochami-metadata - Communicate with the Metadata Service
 
 *ochami metadata defaults add* [-f _format_] [-d (_data_ | @_path_)]++
 *ochami metadata defaults list* [-F _format_]++
+*ochami metadata defaults set* [-f _format_] [-d (_data_ | @_path_)] _uid_++
 *ochami metadata service status* [-F _format_]
 
 # DATA STRUCTURE
@@ -175,6 +176,41 @@ Subcommands for this command are as follows:
 		- _json-pretty_
 		- _yaml_
 
+*set* [-f _format_] < _file_++
+*set* [-f _format_] -d @_file_++
+*set* [-f _format_] -d @- < _file_++
+*set* [-f _format_] -d _data_
+	Set the specification of a cluster defaults identified by _uid_. The entire
+	specification for the cluster defaults is replaced with the specification
+	that is passed.
+
+	In the first and third forms of the command, data is read from standard
+	input.
+
+	In the second form of the command, a file containing the payload data is
+	passed.
+
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
+
+	This command sends a PUT request to metadata-service's cluster defaults
+	endpoint.
+
+	This command accepts the following options:
+
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
+
+	*-f, --format-input* _format_
+		Format of raw data being used by *-d* as the payload. Supported formats
+		are:
+
+		- _json_ (default)
+		- _yaml_
+
 ## service
 
 Manage and check metadata-service itself.
@@ -190,6 +226,41 @@ Subcommands for this command are as follows:
 
 	*-F, --format-output* _format_
 		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+*set* [-f _format_] _uid_ < _file_++
+*set* [-f _format_] -d @_file_ _uid_++
+*set* [-f _format_] -d @- < _file_ _uid_++
+*set* [-f _format_] -d _data_ _uid_
+	Set the spec for an existing cluster defaults in metadata-service, specified
+	by UID.
+
+	In the first and third forms of the command, data is read from standard
+	input.
+
+	In the second form of the command, a file containing the payload data is
+	passed.
+
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
+
+	This command sends a POST request to metadata-service's cluster defaults
+	endpoint.
+
+	This command accepts the following flags:
+
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
+
+	*-f, --format-input* _format_
+		Format of raw data being used by stdin/*-d* as the payload. Supported
+		formats are:
 
 		- _json_ (default)
 		- _json-pretty_
