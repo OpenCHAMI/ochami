@@ -10,6 +10,7 @@ ochami-metadata - Communicate with the Metadata Service
 
 *ochami metadata defaults add* [-f _format_] [-d (_data_ | @_path_)]++
 *ochami metadata defaults delete* [--no-confirm] _uid_...++
+*ochami metadata defaults get* [-F _format_] _uid_++
 *ochami metadata defaults list* [-F _format_]++
 *ochami metadata defaults patch* [-f _format_] [-p _patch_method_] [-d (_data_ | @_path_ | @-)] _uid_++
 *ochami metadata defaults patch* (--add _key_=_val_ | --remove _key_=_val_ | --set _key_=_val_ | --unset _key_)... _uid_++
@@ -176,6 +177,20 @@ Subcommands for this command are as follows:
 
 	*--no-confirm*
 		Do not ask the user to confirm deletion. Use with caution.
+
+*get* [-F _format_] _uid_
+	Get details for cluster defaults identified by _uid_.
+
+	This command sends a GET to metadata-service's cluster defaults endpoint.
+
+	This command accepts the following options:
+
+	*-F, --format-output* _format_
+		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
 
 *list* [-F _format_]
 	List cluster defaults known to metadata-service.

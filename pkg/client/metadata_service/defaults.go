@@ -67,6 +67,30 @@ func (msc *MetadataServiceClient) DeleteDefaults(token string, uids []string) (d
 	return
 }
 
+// GetDefaults is a wrapper that calls the metadata-service client's
+// GetClusterDefaults() function, passing it context and a UID. The output is a
+// []byte containing the entity's cluster defaults information, formatted as
+// outFormat.
+func (msc *MetadataServiceClient) GetDefaults(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	// TODO: metadata-service client functions don't support tokens yet.
+	_ = token
+
+	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+	defer cancel()
+
+	defaults, err := msc.Client.GetClusterDefaults(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("request to get cluster defaults info for %s failed: %w", uid, err)
+	}
+
+	out, err := format.MarshalData(defaults, outFormat)
+	if err != nil {
+		return nil, fmt.Errorf("formatting cluster defaults info for %s failed: %w", uid, err)
+	}
+
+	return out, nil
+}
+
 // ListDefaults is a wrapper that calls the metadata-service client's
 // GetClusterDefaultss() function, passing it context. The output is a []byte
 // containing the cluster defaults formatted as outFormat.
