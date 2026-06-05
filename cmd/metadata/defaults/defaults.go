@@ -35,6 +35,7 @@ See ochami-metadata(1) for more details.`,
 	metadataDefaultsCmd.AddCommand(
 		newCmdMetadataDefaultsAdd(),
 		newCmdMetadataDefaultsList(),
+		newCmdMetadataDefaultsSet(),
 	)
 
 	return metadataDefaultsCmd

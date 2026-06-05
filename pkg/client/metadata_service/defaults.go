@@ -62,3 +62,22 @@ func (msc *MetadataServiceClient) ListDefaults(token string, outFormat format.Da
 
 	return out, nil
 }
+
+// SetDefaults is a wrapper that calls the metadata-service client's
+// UpdateClusterDefaults() function, passing it context. The output is a pointer
+// to the cluster defaults details that got updated, along with an error if one
+// occurred.
+func (msc *MetadataServiceClient) SetDefaults(token string, uid string, defaults metadata_service_client.UpdateClusterDefaultsRequest) (*api.ClusterDefaults, error) {
+	// TODO: metadata-service client functions don't support tokens yet.
+	_ = token
+
+	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+	defer cancel()
+
+	item, err := msc.Client.UpdateClusterDefaults(ctx, uid, defaults)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set cluster defaults %+v: %w", defaults, err)
+	}
+
+	return item, nil
+}
