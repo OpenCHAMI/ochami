@@ -39,6 +39,21 @@ See ochami-boot(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
+			// Ask before attempting deletion unless --no-confirm was passed
+			if !cmd.Flag("no-confirm").Changed {
+				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+				if err != nil {
+					log.Logger.Error().Err(err).Msg("failed to fetch user input")
+					os.Exit(1)
+				} else if !respDelete {
+					log.Logger.Info().Msg("user aborted boot config deletion")
+					os.Exit(0)
+				} else {
+					log.Logger.Debug().Msg("user answered affirmatively to delete boot config(s)")
+				}
+			}
+
 			// Send off requests
 			bcfgsDeleted, errs, err := bootServiceClient.DeleteBootConfigs(cli.Token, args)
 			if err != nil {
