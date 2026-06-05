@@ -10,6 +10,8 @@ ochami-metadata - Communicate with the Metadata Service
 
 *ochami metadata defaults add* [-f _format_] [-d (_data_ | @_path_)]++
 *ochami metadata defaults list* [-F _format_]++
+*ochami metadata defaults patch* [-f _format_] [-p _patch_method_] [-d (_data_ | @_path_ | @-)] _uid_++
+*ochami metadata defaults patch* (--add _key_=_val_ | --remove _key_=_val_ | --set _key_=_val_ | --unset _key_)... _uid_++
 *ochami metadata defaults set* [-f _format_] [-d (_data_ | @_path_)] _uid_++
 *ochami metadata service status* [-F _format_]
 
@@ -230,6 +232,71 @@ Subcommands for this command are as follows:
 		- _json_ (default)
 		- _json-pretty_
 		- _yaml_
+
+*patch* ([--add _key_=_val_]... | [--remove _key_=_val_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
+*patch* [ -f _format_] [ -p _patch_method_] -d @_file_ _uid_++
+*patch* [ -f _format_] [ -p _patch_method_] -d @- _uid_ < _file_++
+*patch* [ -f _format_] [ -p _patch_method_] _uid_ < _file_
+	Using various patch methods, patch the specification for an existing cluster
+	defaults identified by _uid_.
+
+	*IMPORTANT:* Only the spec portion of the resource can be patched.  Metadata
+	(name, labels, annotations) and status are managed by the API.  Attempts to
+	patch metadata or status fields will be ignored.
+
+	In the first form of the command, at least one of *--add*, *--remove*,
+	*--set*, or *--unset* is passed. Each of these flags can be specified more
+	than once, but at least one of them must be passed in this form. This method
+	uses add/remove/set/unset flags to perform the patch. For _key_, dot
+	notation is used for subkeys (e.g. _key.subkey_).
+
+	In the second through fourth forms of the command, patch data is supplied
+	along with an optional *--patch-method* flag to specify the patch method.
+
+	This command sends a PATCH request to metadata-service's cluster defaults
+	endpoint.
+
+	This command accepts the following options:
+
+	*--add* _key_[[._subkey_]...]=_val_
+		Add value to array field, creating the field if necessary. Only can be
+		used with _keyval_ patch method (automatic if any of
+		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
+
+	*-f, --format-input* _format_
+		Format of raw data being used by stdin/*-d* as the payload. Supported
+		formats are:
+
+		- _json_ (default)
+		- _yaml_
+
+	*-p, --patch-method* _patch_method_
+		Specify patch method for patch data. Supported methods are:
+
+		- _rfc7386_ (default): RFC 7386 JSON Merge Patch
+		- _rfc6902_: RFC 6902 JSON Patch
+		- _keyval_: key=value format using dot notation for subkeys
+
+	*--remove* _key_[[._subkey_]...]=_val_
+		Remove value from array field. Only can be used with _keyval_ patch
+		method (automatic if any of
+		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+	*--set* _key_[[._subkey_]...]=_val_
+		Set key with its value, overwriting any previous value and creating if the
+		key doesn't exist. Only can be used with _keyval_ patch method (automatic
+		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
+
+	*--unset* _key_[[._subkey_]...]
+		Unset key (and its value). Only can be used with _keyval_ patch method
+		(automatic if any of
+		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 *set* [-f _format_] _uid_ < _file_++
 *set* [-f _format_] -d @_file_ _uid_++

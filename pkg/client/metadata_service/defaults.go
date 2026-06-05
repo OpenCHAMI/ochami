@@ -11,6 +11,7 @@ import (
 	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 
+	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
 
@@ -61,6 +62,42 @@ func (msc *MetadataServiceClient) ListDefaults(token string, outFormat format.Da
 	}
 
 	return out, nil
+}
+
+// PatchDefaults is a wrapper that calls the metadata-service client's
+// PatchClusterDefaults() function. It accepts data that represents a patch
+// formatted as patchFormat and sends it as JSON to the metadata-service via a
+// PATCH request for the cluster defaults identified by uid.
+func (msc *MetadataServiceClient) PatchDefaults(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.ClusterDefaults, error) {
+	// TODO: metadata-service client functions don't support tokens yet.
+	_ = token
+
+	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+	defer cancel()
+
+	outData, err := format.MarshalData(data, format.DataFormatJson)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert data to JSON: %w", err)
+	}
+
+	var contentType string
+	switch patchFormat {
+	case client.PatchMethodRFC6902:
+		contentType = "application/json-patch+json"
+	case client.PatchMethodRFC7386:
+		contentType = "application/merge-patch+json"
+	case client.PatchMethodKeyVal:
+		contentType = "application/merge-patch+json"
+	default:
+		return nil, fmt.Errorf("unknown patch format: %s", patchFormat)
+	}
+
+	item, err := msc.Client.PatchClusterDefaults(ctx, uid, outData, contentType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to patch cluster defaults for %s: %w", uid, err)
+	}
+
+	return item, nil
 }
 
 // SetDefaults is a wrapper that calls the metadata-service client's
