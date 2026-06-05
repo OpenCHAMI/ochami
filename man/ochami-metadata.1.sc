@@ -284,7 +284,7 @@ Subcommands for this command are as follows:
 *add* [-f _format_] -d @_file_++
 *add* [-f _format_] -d @- < _file_++
 *add* [-f _format_] -d _data_
-	Set one or more cluster defaults in metadata-service
+	Add one or more cluster defaults to metadata-service.
 
 	In the first and third forms of the command, data is read from standard
 	input.
@@ -313,6 +313,39 @@ Subcommands for this command are as follows:
 		- _json_ (default)
 		- _json-pretty_
 		- _yaml_
+
+	Examples:
+
+	```
+	# Add cluster defaults using JSON
+	ochami metadata defaults add -d '{
+	  "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+	  "cluster_name": "demo"
+	}'
+
+	# Add multiple cluster defaults using JSON array
+	ochami metadata defaults add -d '[
+	  {
+	    "base_url": "https://demo1.openchami.cluster:8443/cloud-init",
+	    "cluster_name": "demo1"
+	  },
+	  {
+	    "base_url": "https://demo2.openchami.cluster:8443/cloud-init",
+	    "cluster_name": "demo2"
+	  }
+	]'
+
+	# Add multiple cluster defaults using YAML array
+	ochami metadata defaults add -f yaml -d - <<'EOF'
+	- base_url: "https://demo1.openchami.cluster:8443/cloud-init"
+	  cluster_name: "demo1"
+	- base_url: "https://demo2.openchami.cluster:8443/cloud-init"
+	  cluster_name: "demo2"
+	EOF
+
+	# Add cluster defaults from file
+	ochami metadata defaults add -d @defaults.json
+	```
 
 *delete* [--no-confirm] _uid_...
 	Delete one or more cluster defaults identified by _uid_. Unless

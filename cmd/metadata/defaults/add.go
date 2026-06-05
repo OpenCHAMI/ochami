@@ -20,8 +20,8 @@ func newCmdMetadataDefaultsAdd() *cobra.Command {
 	var metadataDefaultsAddCmd = &cobra.Command{
 		Use:   "add",
 		Args:  cobra.NoArgs,
-		Short: "Add a new cluster defaults to metadata-service",
-		Long: `Add a new cluster defaults to metadata-service.
+		Short: "Add one or more cluster defaults to metadata-service",
+		Long: `Add one or more cluster defaults to metadata-service.
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Add cluster defaults using payload data
@@ -53,13 +53,23 @@ See ochami-metadata(1) for more details.`,
        }
      ]'
 
+  # Add multiple cluster defaults using YAML array
+  ochami metadata defaults add -f yaml <<'EOF'
+  - base_url: "https://demo1.openchami.cluster:8443/cloud-init"
+    cluster_name: "demo1"
+  - base_url: "https://demo2.openchami.cluster:8443/cloud-init"
+    cluster_name: "demo2"
+  EOF
+
   # Add cluster defaults using input payload file
   ochami metadata defaults add -d @payload.json
   ochami metadata defaults add -d @payload.yaml -f yaml
 
-  # Add BMCs using data from stdin
+  # Add cluster defaults using data from stdin
   echo '<json_data>' | ochami metadata defaults add -d @-
-  echo '<yaml_data>' | ochami metadata defaults add -d @- -f yaml`,
+  echo '<json_data>' | ochami metadata defaults add
+  echo '<yaml_data>' | ochami metadata defaults add -f yaml -d @-
+  echo '<yaml_data>' | ochami metadata defaults add -f yaml`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create client to use for requests
 			metadataServiceClient := metadata_service_lib.GetClient(cmd)

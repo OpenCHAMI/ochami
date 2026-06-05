@@ -63,12 +63,12 @@ See ochami-metadata(1) for more details.`,
 
   # Patch using payload file
   ochami metadata defaults patch clusterdefaults-d614b918 -d @payload.json
-  ochami metadata defaults patch clusterdefaults-d614b918 -f yaml -d @payload.yaml
+  ochami metadata defaults patch clusterdefaults-d614b918 -d @payload.yaml -f yaml
 
   # Patch using stdin
   echo '<json_data>' | ochami metadata defaults patch clusterdefaults-d614b918 -d @-
   echo '<json_data>' | ochami metadata defaults patch clusterdefaults-d614b918
-  echo '<yaml_data>' | ochami metadata defaults patch clusterdefaults-d614b918 -d @- -f yaml
+  echo '<yaml_data>' | ochami metadata defaults patch clusterdefaults-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata defaults patch clusterdefaults-d614b918 -f yaml`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create client to use for requests
