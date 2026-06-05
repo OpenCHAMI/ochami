@@ -156,14 +156,14 @@ Subcommands for this command are as follows:
 *add* [-f _format_] -d _data_
 	Add one or more BMC specifications to boot-service.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a POST request to boot-service's BMC endpoint.
 
@@ -293,14 +293,14 @@ Subcommands for this command are as follows:
 	Set the specification of a BMC identified by _uid_. The entire
 	specification for the BMC is replaced with the specification that is passed.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a PUT request to boot-service's BMC endpoint.
 
@@ -333,14 +333,14 @@ Subcommands for this command are as follows:
 	configuration already exists for the specified components, this command will
 	fail.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a POST request to boot-service's /bootconfiguration
 	endpoint.
@@ -474,14 +474,14 @@ Subcommands for this command are as follows:
 	entire specification for the boot configuration gets replaced with the
 	specification that is passed.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a PUT request to boot-service's /bootconfiguration/_uid_
 	endpoint.
@@ -513,14 +513,14 @@ Subcommands for this command are as follows:
 *add* [-f _format_] -d _data_
 	Add one or more nodes to boot-service.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a POST request to boot-service's node endpoint.
 
@@ -651,14 +651,14 @@ Subcommands for this command are as follows:
 	specification for the node is replaced with the specification that is
 	passed.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a PUT request to boot-service's node endpoint.
 
