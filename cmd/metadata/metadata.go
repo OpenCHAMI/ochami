@@ -14,6 +14,9 @@ import (
 
 	// Subcommands
 	defaults_cmd "github.com/OpenCHAMI/ochami/cmd/metadata/defaults"
+	group_cmd "github.com/OpenCHAMI/ochami/cmd/metadata/group"
+	instance_cmd "github.com/OpenCHAMI/ochami/cmd/metadata/instance"
+	peer_cmd "github.com/OpenCHAMI/ochami/cmd/metadata/peer"
 	service_cmd "github.com/OpenCHAMI/ochami/cmd/metadata/service"
 )
 
@@ -45,6 +48,9 @@ See ochami-metadata(1) for more details.`,
 	// Add subcommands
 	metadataCmd.AddCommand(
 		defaults_cmd.NewCmd(),
+		group_cmd.NewCmd(),
+		instance_cmd.NewCmd(),
+		peer_cmd.NewCmd(),
 		service_cmd.NewCmd(),
 	)
 
