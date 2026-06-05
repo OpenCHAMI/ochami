@@ -6,10 +6,16 @@ ochami-boot - Communicate with the Boot Service
 
 # SYNOPSIS
 
-ochami boot bmc (add | delete | get | list | patch | set) [OPTIONS]++
-ochami boot config (add | delete | get | list | patch | set) [OPTIONS]++
-ochami boot node (add | delete | get | list | patch | set) [OPTIONS]++
-ochami boot service status [OPTIONS]
+*ochami boot* [_global-options_] _command_ [_command-options_] [_arguments_]
+
+*ochami boot* (*bmc* | *config* | *node*) *add* [-f _format_] [-d (_data_ | @_path_ | @-)]++
+*ochami boot* (*bmc* | *config* | *node*) *delete* [--no-confirm] _uid_...++
+*ochami boot* (*bmc* | *config* | *node*) *get* [-F _format_] _uid_++
+*ochami boot* (*bmc* | *config* | *node*) *list* [-F _format_]++
+*ochami boot* (*bmc* | *config* | *node*) *patch* [-f _format_] [-p _patch_method_] [-d (_data_ | @_path_ | @-)] _uid_++
+*ochami boot* (*bmc* | *config* | *node*) *patch* (--add _key_=_val_ | --remove _key_=_val_ | --set _key_=_val_ | --unset _key_)... _uid_++
+*ochami boot* (*bmc* | *config* | *node*) *set* [-f _format_] [-d (_data_ | @_path_ | @-)] _uid_++
+*ochami boot service status* [-F _format_]
 
 # DATA STRUCTURE
 
@@ -117,6 +123,26 @@ JSON form below:
 	cluster configuration options.
 
 # COMMANDS
+
+The *bmc*, *config*, and *node* commands share a common set of subcommands for
+creating, deleting, reading, listing, patching, and replacing boot-service
+resources. The *service* command provides operations for boot-service itself.
+
+[[ *Resource*
+:< *Subcommands*
+:< *Description*
+|  *bmc*
+:  *add*, *delete*, *get*, *list*, *patch*, *set*
+:  Manage BMC specifications
+|  *config*
+:  *add*, *delete*, *get*, *list*, *patch*, *set*
+:  Manage boot configurations
+|  *node*
+:  *add*, *delete*, *get*, *list*, *patch*, *set*
+:  Manage node specifications
+|  *service*
+:  *status*
+:  Check boot-service status
 
 ## bmc
 
