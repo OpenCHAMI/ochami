@@ -41,6 +41,32 @@ func (msc *MetadataServiceClient) AddDefaults(token string, defaults []metadata_
 	return
 }
 
+// DeleteDefaults is a wrapper that calls the metadata-service client's
+// DeleteClusterDefaults() function, passing it context and a list of cluster
+// defaults UIDs to delete. The output is a slice of cluster defaults UIDs that
+// got deleted, a slice of errors containing any errors deleting cluster
+// defaults, and an error that is populated if an error in the function itself
+// occurred.
+func (msc *MetadataServiceClient) DeleteDefaults(token string, uids []string) (defaultsDeleted []string, errors []error, funcErr error) {
+	// TODO: metadata-service client functions don't support tokens yet.
+	_ = token
+
+	// TODO: Make concurrent
+	for _, defaultsUid := range uids {
+		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+		defer cancel()
+
+		if err := msc.Client.DeleteClusterDefaults(ctx, defaultsUid); err != nil {
+			newErr := fmt.Errorf("failed to delete cluster defaults %s: %w", defaultsUid, err)
+			errors = append(errors, newErr)
+		} else {
+			defaultsDeleted = append(defaultsDeleted, defaultsUid)
+		}
+	}
+
+	return
+}
+
 // ListDefaults is a wrapper that calls the metadata-service client's
 // GetClusterDefaultss() function, passing it context. The output is a []byte
 // containing the cluster defaults formatted as outFormat.
