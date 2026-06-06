@@ -107,8 +107,8 @@ JSON form below:
 
 *--uri* _uri_
 	Specify either the absolute base URI for the service (e.g.
-	_https://foobar.openchami.cluster:8443/boot_) or a relative base path for
-	the service (e.g. _/boot_). If an absolute URI is specified, this
+	_https://foobar.openchami.cluster:8443/boot-service_) or a relative base path
+	for the service (e.g. _/boot-service_). If an absolute URI is specified, this
 	completely overrides any value set with the *--cluster-uri* flag or
 	*cluster.uri* in the config file for the cluster. If using an absolute URI,
 	it should contain the desired service's base path. If a relative path is
