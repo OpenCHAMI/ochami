@@ -286,10 +286,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] < _file_++
-*set* [-f _format_] -d @_file_++
-*set* [-f _format_] -d @- < _file_++
-*set* [-f _format_] -d _data_
+*set* [-f _format_] _uid_ < _file_++
+*set* [-f _format_] -d @_file_ _uid_++
+*set* [-f _format_] -d @- _uid_ < _file_++
+*set* [-f _format_] -d _data_ _uid_
 	Set the specification of a BMC identified by _uid_. The entire
 	specification for the BMC is replaced with the specification that is passed.
 
@@ -466,10 +466,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] < _file_++
-*set* [-f _format_] -d @_file_++
-*set* [-f _format_] -d @- < _file_++
-*set* [-f _format_] -d _data_
+*set* [-f _format_] _uid_ < _file_++
+*set* [-f _format_] -d @_file_ _uid_++
+*set* [-f _format_] -d @- _uid_ < _file_++
+*set* [-f _format_] -d _data_ _uid_
 	Set the specification of a boot configuration identified by _uid_. The
 	entire specification for the boot configuration gets replaced with the
 	specification that is passed.
@@ -643,10 +643,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] < _file_++
-*set* [-f _format_] -d @_file_++
-*set* [-f _format_] -d @- < _file_++
-*set* [-f _format_] -d _data_
+*set* [-f _format_] _uid_ < _file_++
+*set* [-f _format_] -d @_file_ _uid_++
+*set* [-f _format_] -d @- _uid_ < _file_++
+*set* [-f _format_] -d _data_ _uid_
 	Set the specification of a node identified by _uid_. The entire
 	specification for the node is replaced with the specification that is
 	passed.
