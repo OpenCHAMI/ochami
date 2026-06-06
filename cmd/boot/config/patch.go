@@ -42,7 +42,7 @@ the manual, key-value patch method using dot notation (e.g. key.subkey=value)
 is used.
 
 Otherwise, stdin and/or --data can be used to pass in raw patch data, using
---patch-format to specify the patch format (see examples below).
+--patch-method to specify the patch format (see examples below).
 
 --format-input can only be used with stdin/--data. It can be used to tell
 ochami to use a different format (e.g. YAML) for the data input for either of
@@ -80,8 +80,8 @@ See ochami-boot(1) for more details.`,
 
 			var patchData map[string]interface{}
 			if cmd.Flag("set").Changed || cmd.Flag("unset").Changed || cmd.Flag("add").Changed || cmd.Flag("remove").Changed {
-				if cmd.Flag("patch-format").Changed && formatPatch != client.PatchMethodKeyVal {
-					log.Logger.Warn().Msg("overriding --patch-format since --set/--unset/--add/--remove was passed")
+				if cmd.Flag("patch-method").Changed && formatPatch != client.PatchMethodKeyVal {
+					log.Logger.Warn().Msg("overriding --patch-method since --set/--unset/--add/--remove was passed")
 				}
 
 				pd, err := client.NewKeyValPatch(setList, unsetList, addList, removeList)
