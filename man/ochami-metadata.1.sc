@@ -387,10 +387,10 @@ Subcommands for this command are as follows:
 		- _json-pretty_
 		- _yaml_
 
-*set* [-f _format_] < _file_++
-*set* [-f _format_] -d @_file_++
-*set* [-f _format_] -d @- < _file_++
-*set* [-f _format_] -d _data_
+*set* [-f _format_] _uid_ < _file_++
+*set* [-f _format_] -d @_file_ _uid_++
+*set* [-f _format_] -d @- _uid_ < _file_++
+*set* [-f _format_] -d _data_ _uid_
 	Set the specification of a cluster defaults identified by _uid_. The entire
 	specification for the cluster defaults is replaced with the specification
 	that is passed.
