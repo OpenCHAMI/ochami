@@ -696,6 +696,63 @@ func TestConfigClusterConfig_GetServiceBaseURI(t *testing.T) {
 	}
 }
 
+func TestConfigClusterConfig_BootServiceBaseURIAndMerge(t *testing.T) {
+	t.Run("default boot-service path with cluster", func(t *testing.T) {
+		ccc := ConfigClusterConfig{URI: "https://cluster.local/api"}
+		got, err := ccc.GetServiceBaseURI(ServiceBoot)
+		if err != nil {
+			t.Fatalf("GetServiceBaseURI(ServiceBoot) unexpected error = %v", err)
+		}
+		want := "https://cluster.local/api" + DefaultBasePathBootService
+		if got != want {
+			t.Fatalf("GetServiceBaseURI(ServiceBoot) = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("absolute boot-service override", func(t *testing.T) {
+		ccc := ConfigClusterConfig{BootService: ConfigClusterBootService{URI: "https://boot.example.com/boot-service"}}
+		got, err := ccc.GetServiceBaseURI(ServiceBoot)
+		if err != nil {
+			t.Fatalf("GetServiceBaseURI(ServiceBoot) unexpected error = %v", err)
+		}
+		want := "https://boot.example.com/boot-service"
+		if got != want {
+			t.Fatalf("GetServiceBaseURI(ServiceBoot) = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("relative boot-service override with cluster", func(t *testing.T) {
+		ccc := ConfigClusterConfig{URI: "https://cluster.local/api", BootService: ConfigClusterBootService{URI: "/custom-boot"}}
+		got, err := ccc.GetServiceBaseURI(ServiceBoot)
+		if err != nil {
+			t.Fatalf("GetServiceBaseURI(ServiceBoot) unexpected error = %v", err)
+		}
+		want := "https://cluster.local/api/custom-boot"
+		if got != want {
+			t.Fatalf("GetServiceBaseURI(ServiceBoot) = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("merge boot-service URI", func(t *testing.T) {
+		old := ConfigClusterConfig{URI: "https://cluster.local", BootService: ConfigClusterBootService{URI: "/old-boot"}}
+		newCfg := ConfigClusterConfig{BootService: ConfigClusterBootService{URI: "/new-boot"}}
+		got := old.MergeURIConfig(newCfg)
+		if got.BootService.URI != "/new-boot" {
+			t.Fatalf("BootService.URI = %q, want /new-boot", got.BootService.URI)
+		}
+	})
+
+	t.Run("boot-service api version unmarshals", func(t *testing.T) {
+		var c ConfigClusterConfig
+		if err := yaml.Unmarshal([]byte("boot-service:\n  api-version: v1beta2\n"), &c); err != nil {
+			t.Fatalf("yaml.Unmarshal unexpected error = %v", err)
+		}
+		if c.BootService.APIVersion != "v1beta2" {
+			t.Fatalf("BootService.APIVersion = %q, want v1beta2", c.BootService.APIVersion)
+		}
+	})
+}
+
 func TestRemoveFromSlice(t *testing.T) {
 	type args struct {
 		slice []interface{}
