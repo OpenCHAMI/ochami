@@ -5,11 +5,19 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
+
+// JSONPatchOperation is a single operation in an RFC 6902 JSON Patch document.
+type JSONPatchOperation struct {
+	Op    string      `json:"op" yaml:"op"`
+	Path  string      `json:"path" yaml:"path"`
+	Value interface{} `json:"value,omitempty" yaml:"value,omitempty"`
+}
 
 // PatchMethod represents the supported patch type
 type PatchMethod string
@@ -52,8 +60,10 @@ func (pm PatchMethod) Type() string {
 	return "PatchMethod"
 }
 
-// NewKeyValPatch takes slices of items to set/unset/add/remove and returns a
-// map that can be marshaled and used as PatchMethodKeyVal data.
+// NewKeyValPatch takes slices of items to set/unset and returns a map that can
+// be marshaled and used as PatchMethodKeyVal/PatchMethodRFC7386 data. addList
+// and removeList are accepted for backward compatibility but are ignored here;
+// use NewKeyValPatchData to produce RFC 6902 add/remove operations.
 func NewKeyValPatch(setList, unsetList, addList, removeList []string) (map[string]interface{}, error) {
 	patch := make(map[string]interface{})
 
@@ -71,27 +81,80 @@ func NewKeyValPatch(setList, unsetList, addList, removeList []string) (map[strin
 		format.SetNestedField(patch, unsetKey, nil)
 	}
 
-	// Populate keys to add with their values
+	_ = addList
+	_ = removeList
+
+	return patch, nil
+}
+
+// NewKeyValPatchData takes set/unset/add/remove arguments and returns patch
+// data plus the patch method to use. If add/remove operations are present, it
+// returns an RFC 6902 JSON Patch document. Otherwise it returns an RFC 7386 JSON
+// Merge Patch document using keyval dot notation.
+func NewKeyValPatchData(setList, unsetList, addList, removeList []string) (PatchMethod, interface{}, error) {
+	if len(addList) == 0 && len(removeList) == 0 {
+		patch, err := NewKeyValPatch(setList, unsetList, nil, nil)
+		return PatchMethodKeyVal, patch, err
+	}
+
+	patch := []JSONPatchOperation{}
+	for _, setPair := range setList {
+		parts := strings.SplitN(setPair, "=", 2)
+		if len(parts) != 2 {
+			return "", nil, fmt.Errorf("invalid format %q for set list (expected key=value or key.subkey=value)", setPair)
+		}
+		patch = append(patch, JSONPatchOperation{Op: "add", Path: DotPathToJSONPointer(parts[0]), Value: parsePatchValue(parts[1])})
+	}
+	for _, unsetKey := range unsetList {
+		patch = append(patch, JSONPatchOperation{Op: "remove", Path: DotPathToJSONPointer(unsetKey)})
+	}
 	for _, addPair := range addList {
 		parts := strings.SplitN(addPair, "=", 2)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid format %q for add list (expected key=value or key.subkey=value)", addPair)
+			return "", nil, fmt.Errorf("invalid format %q for add list (expected key=value or key.subkey=value)", addPair)
 		}
-		// For arrays, use JSON Merge Patch append syntax, if possible,
-		// otherwise, convert to JSON Patch
-		format.SetNestedField(patch, parts[0], parts[1])
+		patch = append(patch, JSONPatchOperation{Op: "add", Path: DotPathToJSONPointer(parts[0]) + "/-", Value: parsePatchValue(parts[1])})
 	}
-
-	// Populate keys to remove with their values
 	for _, removePair := range removeList {
 		parts := strings.SplitN(removePair, "=", 2)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid format %q for remove list (expected key=value or key.subkey=value)", removePair)
+			return "", nil, fmt.Errorf("invalid format %q for remove list (expected key=index or key.subkey=index)", removePair)
 		}
-		// Remove operations are complex and might need JSON Patch; for now,
-		// handle simple cases
-		format.SetNestedField(patch, parts[0], parts[1])
+		if parts[1] == "-" || strings.TrimSpace(parts[1]) == "" {
+			return "", nil, fmt.Errorf("invalid index %q for remove list item %q", parts[1], removePair)
+		}
+		patch = append(patch, JSONPatchOperation{Op: "remove", Path: DotPathToJSONPointer(parts[0]) + "/" + escapeJSONPointerSegment(parts[1])})
 	}
 
-	return patch, nil
+	return PatchMethodRFC6902, patch, nil
+}
+
+// DotPathToJSONPointer converts dot notation (e.g. a.b) to an RFC 6901 JSON
+// Pointer (e.g. /a/b).
+func DotPathToJSONPointer(path string) string {
+	raw := strings.Split(path, ".")
+	parts := make([]string, 0, len(raw))
+	for _, p := range raw {
+		if p != "" {
+			parts = append(parts, escapeJSONPointerSegment(p))
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "/" + strings.Join(parts, "/")
+}
+
+func escapeJSONPointerSegment(s string) string {
+	s = strings.ReplaceAll(s, "~", "~0")
+	s = strings.ReplaceAll(s, "/", "~1")
+	return s
+}
+
+func parsePatchValue(value string) interface{} {
+	var jsonValue interface{}
+	if err := json.Unmarshal([]byte(value), &jsonValue); err == nil {
+		return jsonValue
+	}
+	return value
 }
