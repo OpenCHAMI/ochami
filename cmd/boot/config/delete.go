@@ -33,6 +33,26 @@ See ochami-boot(1) for more details.`,
   # Don't confirm deletion
   ochami boot config delete --no-confirm boo-ebf2a27a`,
 		Run: func(cmd *cobra.Command, args []string) {
+			// Ask before attempting deletion unless --no-confirm was passed
+			noConfirm, err := cmd.Flags().GetBool("no-confirm")
+			if err != nil {
+				log.Logger.Error().Err(err).Msg("failed to get --no-confirm")
+				os.Exit(1)
+			}
+			if !noConfirm {
+				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+				if err != nil {
+					log.Logger.Error().Err(err).Msg("failed to fetch user input")
+					os.Exit(1)
+				} else if !respDelete {
+					log.Logger.Info().Msg("user aborted boot config deletion")
+					os.Exit(0)
+				} else {
+					log.Logger.Debug().Msg("user answered affirmatively to delete boot config(s)")
+				}
+			}
+
 			// Create client to use for requests
 			bootServiceClient := boot_service_lib.GetClient(cmd)
 

@@ -30,7 +30,7 @@ import (
 type ServiceName string
 
 const (
-	ServiceBoot      ServiceName = ""
+	ServiceBoot      ServiceName = "boot-service"
 	ServiceBSS       ServiceName = "bss"
 	ServiceCloudInit ServiceName = "cloud-init"
 	ServicePCS       ServiceName = "pcs"
@@ -38,7 +38,7 @@ const (
 )
 
 const (
-	DefaultBasePathBootService = "/boot"
+	DefaultBasePathBootService = "/boot-service"
 	DefaultBasePathBSS         = "/boot/v1"
 	DefaultBasePathCloudInit   = "/cloud-init"
 	DefaultBasePathPCS         = "/"
@@ -278,6 +278,11 @@ func (ccc *ConfigClusterConfig) MergeURIConfig(c ConfigClusterConfig) ConfigClus
 		newCCC.BSS = ConfigClusterBSS{URI: c.BSS.URI}
 	} else {
 		newCCC.BSS.URI = compare(ccc.BSS.URI, c.BSS.URI)
+	}
+	if ccc.BootService == (ConfigClusterBootService{}) {
+		newCCC.BootService = ConfigClusterBootService{URI: c.BootService.URI}
+	} else {
+		newCCC.BootService.URI = compare(ccc.BootService.URI, c.BootService.URI)
 	}
 	if ccc.CloudInit == (ConfigClusterCloudInit{}) {
 		newCCC.CloudInit = ConfigClusterCloudInit{URI: c.CloudInit.URI}

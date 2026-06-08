@@ -6,10 +6,16 @@ ochami-boot - Communicate with the Boot Service
 
 # SYNOPSIS
 
-ochami boot bmc (add | delete | get | list | patch | set) [OPTIONS]++
-ochami boot config (add | delete | get | list | patch | set) [OPTIONS]++
-ochami boot node (add | delete | get | list | patch | set) [OPTIONS]++
-ochami boot service status [OPTIONS]
+*ochami boot* [_global-options_] _command_ [_command-options_] [_arguments_]
+
+*ochami boot* (*bmc* | *config* | *node*) *add* [-f _format_] [-d (_data_ | @_path_ | @-)]++
+*ochami boot* (*bmc* | *config* | *node*) *delete* [--no-confirm] _uid_...++
+*ochami boot* (*bmc* | *config* | *node*) *get* [-F _format_] _uid_++
+*ochami boot* (*bmc* | *config* | *node*) *list* [-F _format_]++
+*ochami boot* (*bmc* | *config* | *node*) *patch* [-f _format_] [-p _patch_method_] [-d (_data_ | @_path_ | @-)] _uid_++
+*ochami boot* (*bmc* | *config* | *node*) *patch* (--add _key_=_val_ | --remove _key_=_val_ | --set _key_=_val_ | --unset _key_)... _uid_++
+*ochami boot* (*bmc* | *config* | *node*) *set* [-f _format_] [-d (_data_ | @_path_ | @-)] _uid_++
+*ochami boot service status* [-F _format_]
 
 # DATA STRUCTURE
 
@@ -101,8 +107,8 @@ JSON form below:
 
 *--uri* _uri_
 	Specify either the absolute base URI for the service (e.g.
-	_https://foobar.openchami.cluster:8443/boot_) or a relative base path for
-	the service (e.g. _/boot_). If an absolute URI is specified, this
+	_https://foobar.openchami.cluster:8443/boot-service_) or a relative base path
+	for the service (e.g. _/boot-service_). If an absolute URI is specified, this
 	completely overrides any value set with the *--cluster-uri* flag or
 	*cluster.uri* in the config file for the cluster. If using an absolute URI,
 	it should contain the desired service's base path. If a relative path is
@@ -111,12 +117,32 @@ JSON form below:
 	base URI (set with the *--cluster-uri* flag or the *cluster.uri* cluster
 	config option), which is required to be set if a relative path is used here.
 
-	The boot service has no base path by default.
+	The boot service has a base path of */boot-service* by default.
 
 	See *ochami*(1) for *--cluster-uri* and *ochami-config*(5) for details on
 	cluster configuration options.
 
 # COMMANDS
+
+The *bmc*, *config*, and *node* commands share a common set of subcommands for
+creating, deleting, reading, listing, patching, and replacing boot-service
+resources. The *service* command provides operations for boot-service itself.
+
+[[ *Resource*
+:< *Subcommands*
+:< *Description*
+|  *bmc*
+:  *add*, *delete*, *get*, *list*, *patch*, *set*
+:  Manage BMC specifications
+|  *config*
+:  *add*, *delete*, *get*, *list*, *patch*, *set*
+:  Manage boot configurations
+|  *node*
+:  *add*, *delete*, *get*, *list*, *patch*, *set*
+:  Manage node specifications
+|  *service*
+:  *status*
+:  Check boot-service status
 
 ## bmc
 
@@ -124,19 +150,20 @@ Manage BMCs stored in boot-service.
 
 Subcommands for this command are as follows:
 
-*add* -d _data_ [-f _format_]++
-*add* -d @_file_ [-f _format_]++
-*add* -d @- [-f _format_] < _file_
+*add* [-f _format_] < _file_++
+*add* [-f _format_] -d @_file_++
+*add* [-f _format_] -d @- < _file_++
+*add* [-f _format_] -d _data_
 	Add one or more BMC specifications to boot-service.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a POST request to boot-service's BMC endpoint.
 
@@ -196,8 +223,9 @@ Subcommands for this command are as follows:
 		- _yaml_
 
 *patch* ([--add _key_=_val_]... | [--remove _key_=_val_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
-*patch* [ -p _patch_method_] -d @_file_ [-f _format_] _uid_++
-*patch* [ -p _patch_method_] -d @- [-f _format_] _uid_ < _file_
+*patch* [ -f _format_] [ -p _patch_method_] -d @_file_ _uid_++
+*patch* [ -f _format_] [ -p _patch_method_] -d @- _uid_ < _file_++
+*patch* [ -f _format_] [ -p _patch_method_] _uid_ < _file_
 	Using various patch methods, patch the specification for an existing BMC
 	identified by _uid_.
 
@@ -211,8 +239,8 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
-	In the second and third forms of the command, patch data is supplied along
-	with an optional *--patch-method* flag to specify the patch method.
+	In the second through fourth forms of the command, patch data is supplied
+	along with an optional *--patch-method* flag to specify the patch method.
 
 	This command sends a PATCH request to boot-service's BMC endpoint.
 
@@ -230,8 +258,8 @@ Subcommands for this command are as follows:
 		to change it.
 
 	*-f, --format-input* _format_
-		Format of raw data being used by *-d* as the payload. Supported formats
-		are:
+		Format of raw data being used by stdin/*-d* as the payload. Supported
+		formats are:
 
 		- _json_ (default)
 		- _yaml_
@@ -258,20 +286,21 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* -d _data_ [-f _format_] _uid_++
-*set* -d @_file_ [-f _format_] _uid_++
-*set* -d @- [-f _format_] _uid_ < _file_
+*set* [-f _format_] _uid_ < _file_++
+*set* [-f _format_] -d @_file_ _uid_++
+*set* [-f _format_] -d @- _uid_ < _file_++
+*set* [-f _format_] -d _data_ _uid_
 	Set the specification of a BMC identified by _uid_. The entire
 	specification for the BMC is replaced with the specification that is passed.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a PUT request to boot-service's BMC endpoint.
 
@@ -296,21 +325,22 @@ Manage boot configurations stored in the boot service.
 
 Subcommands for this command are as follows:
 
-*add* -d _data_ [-f _format_]++
-*add* -d @_file_ [-f _format_]++
-*add* -d @- [-f _format_] < _file_
+*add* [-f _format_] < _file_++
+*add* [-f _format_] -d @_file_++
+*add* [-f _format_] -d @- < _file_++
+*add* [-f _format_] -d _data_
 	Add new boot configuration to be able to be used by nodes. If boot
 	configuration already exists for the specified components, this command will
 	fail.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a POST request to boot-service's /bootconfiguration
 	endpoint.
@@ -372,8 +402,9 @@ Subcommands for this command are as follows:
 		- _yaml_
 
 *patch* ([--add _key_=_val_]... | [--remove _key_=_val_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
-*patch* [ -p _patch_method_] -d @_file_ [-f _format_] _uid_++
-*patch* [ -p _patch_method_] -d @- [-f _format_] _uid_ < _file_
+*patch* [ -f _format_] [ -p _patch_method_] -d @_file_ _uid_++
+*patch* [ -f _format_] [ -p _patch_method_] -d @- _uid_ < _file_++
+*patch* [ -f _format_] [ -p _patch_method_] _uid_ < _file_
 	Using various patch methods, patch specification for an existing boot
 	configuration identified by _uid_.
 
@@ -387,8 +418,8 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
-	In the second and third forms of the command, patch data is supplied along
-	with an optional *--patch-method* flag to specify the patch method.
+	In the second through fourth forms of the command, patch data is supplied
+	along with an optional *--patch-method* flag to specify the patch method.
 
 	This command sends a PATCH request to boot-service's
 	/bootconfiguration/_uid_ endpoint.
@@ -407,8 +438,8 @@ Subcommands for this command are as follows:
 		to change it.
 
 	*-f, --format-input* _format_
-		Format of raw data being used by *-d* as the payload. Supported formats
-		are:
+		Format of raw data being used by stdin/*-d* as the payload. Supported
+		formats are:
 
 		- _json_ (default)
 		- _yaml_
@@ -435,21 +466,22 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* -d _data_ [-f _format_] _uid_++
-*set* -d @_file_ [-f _format_] _uid_++
-*set* -d @- [-f _format_] _uid_ < _file_
+*set* [-f _format_] _uid_ < _file_++
+*set* [-f _format_] -d @_file_ _uid_++
+*set* [-f _format_] -d @- _uid_ < _file_++
+*set* [-f _format_] -d _data_ _uid_
 	Set the specification of a boot configuration identified by _uid_. The
 	entire specification for the boot configuration gets replaced with the
 	specification that is passed.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a PUT request to boot-service's /bootconfiguration/_uid_
 	endpoint.
@@ -475,19 +507,20 @@ Manage nodes stored in boot-service.
 
 Subcommands for this command are as follows:
 
-*add* -d _data_ [-f _format_]++
-*add* -d @_file_ [-f _format_]++
-*add* -d @- [-f _format_] < _file_
+*add* [-f _format_] < _file_++
+*add* [-f _format_] -d @_file_++
+*add* [-f _format_] -d @- < _file_++
+*add* [-f _format_] -d _data_
 	Add one or more nodes to boot-service.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a POST request to boot-service's node endpoint.
 
@@ -547,8 +580,9 @@ Subcommands for this command are as follows:
 		- _yaml_
 
 *patch* ([--add _key_=_val_]... | [--remove _key_=_val_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
-*patch* [ -p _patch_method_] -d @_file_ [-f _format_] _uid_++
-*patch* [ -p _patch_method_] -d @- [-f _format_] _uid_ < _file_
+*patch* [ -f _format_] [ -p _patch_method_] -d @_file_ _uid_++
+*patch* [ -f _format_] [ -p _patch_method_] -d @- _uid_ < _file_++
+*patch* [ -f _format_] [ -p _patch_method_] _uid_ < _file_
 	Using various patch methods, patch the specification for an existing node
 	identified by _uid_.
 
@@ -562,8 +596,8 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
-	In the second and third forms of the command, patch data is supplied along
-	with an optional *--patch-method* flag to specify the patch method.
+	In the second through fourth forms of the command, patch data is supplied
+	along with an optional *--patch-method* flag to specify the patch method.
 
 	This command sends a PATCH request to boot-service's node endpoint.
 
@@ -581,8 +615,8 @@ Subcommands for this command are as follows:
 		to change it.
 
 	*-f, --format-input* _format_
-		Format of raw data being used by *-d* as the payload. Supported formats
-		are:
+		Format of raw data being used by stdin/*-d* as the payload. Supported
+		formats are:
 
 		- _json_ (default)
 		- _yaml_
@@ -609,21 +643,22 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* -d _data_ [-f _format_] _uid_++
-*set* -d @_file_ [-f _format_] _uid_++
-*set* -d @- [-f _format_] _uid_ < _file_
+*set* [-f _format_] _uid_ < _file_++
+*set* [-f _format_] -d @_file_ _uid_++
+*set* [-f _format_] -d @- _uid_ < _file_++
+*set* [-f _format_] -d _data_ _uid_
 	Set the specification of a node identified by _uid_. The entire
 	specification for the node is replaced with the specification that is
 	passed.
 
-	In the first form of the command, raw data is passed as an argument to be
-	the payload.
+	In the first and third forms of the command, data is read from standard
+	input.
 
 	In the second form of the command, a file containing the payload data is
 	passed.
 
-	In the third form of the command, the payload data is read from standard
-	input.
+	In the fourth form of the command, the payload is passed raw on the command
+	line.
 
 	This command sends a PUT request to boot-service's node endpoint.
 

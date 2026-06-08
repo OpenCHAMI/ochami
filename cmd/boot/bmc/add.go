@@ -20,44 +20,44 @@ func newCmdBootBmcAdd() *cobra.Command {
 	var bootBmcAddCmd = &cobra.Command{
 		Use:   "add",
 		Args:  cobra.NoArgs,
-		Short: "Add a new BMC to boot-service",
-		Long: `Add a new BMC to boot-service.
+		Short: "Add one or more BMCs to boot-service",
+		Long: `Add one or more BMCs to boot-service.
 
 See ochami-boot(1) for more details.`,
 		Example: `  # Add BMC using payload data
   ochami boot bmc add -d \
     '{
-      "xname": "x1000c0s0b0",
-      "description": "This node's BMC",
-      "interface": {
-        "type": "management",
-        "mac": "de:ca:fc:0f:fe:e1",
-        "ip": "172.16.0.254"
-      }
-    }'
+       "xname": "x1000c0s0b0",
+       "description": "This node's BMC",
+       "interface": {
+         "type": "management",
+         "mac": "de:ca:fc:0f:fe:e1",
+         "ip": "172.16.0.254"
+       }
+     }'
 
   # Add multiple BMCs using payload data
   ochami boot bmc add -d \
     '[
-      {
-        "xname": "x1000c0s0b0",
-        "description": "Node 1's BMC",
-        "interface": {
-          "type": "management",
-          "mac": "de:ca:fc:0f:fe:e1",
-          "ip": "172.16.0.1"
-        }
-      },
-      {
-        "xname": "x1000c0s0b1",
-        "description": "Node 2's BMC",
-        "interface": {
-          "type": "management",
-          "mac": "de:ca:fc:0f:fe:e2",
-          "ip": "172.16.0.2"
-        }
-      }
-    ]'
+       {
+         "xname": "x1000c0s0b0",
+         "description": "Node 1's BMC",
+         "interface": {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e1",
+           "ip": "172.16.0.1"
+         }
+       },
+       {
+         "xname": "x1000c0s0b1",
+         "description": "Node 2's BMC",
+         "interface": {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e2",
+           "ip": "172.16.0.2"
+         }
+       }
+     ]'
 
   # Add BMCs using input payload file
   ochami boot bmc add -d @payload.json
@@ -65,7 +65,9 @@ See ochami-boot(1) for more details.`,
 
   # Add BMCs using data from stdin
   echo '<json_data>' | ochami boot bmc add -d @-
-  echo '<yaml_data>' | ochami boot bmc add -d @- -f yaml`,
+  echo '<json_data>' | ochami boot bmc add
+  echo '<yaml_data>' | ochami boot bmc add -d @- -f yaml
+  echo '<yaml_data>' | ochami boot bmc add -f yaml`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create client to use for requests
 			bootServiceClient := boot_service_lib.GetClient(cmd)
@@ -75,7 +77,11 @@ See ochami-boot(1) for more details.`,
 
 			// Read node data
 			bmcs := []boot_service_client.CreateBMCRequest{}
-			cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+			if cmd.Flag("data").Changed {
+				cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+			} else {
+				cli.HandlePayloadStdinSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+			}
 
 			// Send off requests
 			bmcsCreated, errs, err := bootServiceClient.AddBMCs(cli.Token, bmcs)
@@ -105,8 +111,6 @@ See ochami-boot(1) for more details.`,
 	// Create flags
 	bootBmcAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	bootBmcAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
-
-	bootBmcAddCmd.MarkFlagsOneRequired("data")
 
 	bootBmcAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 

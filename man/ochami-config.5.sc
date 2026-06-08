@@ -187,7 +187,7 @@ clusters:
     - cluster:
         boot-service:
           api-version: v1beta2
-          uri: https://localhost:27776/boot
+          uri: https://localhost:27776/boot-service
         bss:
           uri: https://localhost:27778/boot/v1
         cloud-init:
