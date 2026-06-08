@@ -20,8 +20,8 @@ func newCmdBootBmcAdd() *cobra.Command {
 	var bootBmcAddCmd = &cobra.Command{
 		Use:   "add",
 		Args:  cobra.NoArgs,
-		Short: "Add a new BMC to boot-service",
-		Long: `Add a new BMC to boot-service.
+		Short: "Add one or more BMCs to boot-service",
+		Long: `Add one or more BMCs to boot-service.
 
 See ochami-boot(1) for more details.`,
 		Example: `  # Add BMC using payload data
