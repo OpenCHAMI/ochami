@@ -115,7 +115,7 @@ func (bsc *BootServiceClient) ListNodes(token string, outFormat format.DataForma
 // function. It accepts data that represents a patch formatted as patchFormat
 // and sends it as JSON to the boot-service via a PATCH request for the node
 // identified by uid.
-func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.Node, error) {
+func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.Node, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 

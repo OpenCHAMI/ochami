@@ -116,7 +116,7 @@ func (bsc *BootServiceClient) ListBootConfigs(token string, outFormat format.Dat
 // PatchBootConfiguration() function. It accepts data that represents a patch
 // formatted as patchFormat and sends it as JSON to the boot-service via a PATCH
 // request for the boot configuration identified by uid.
-func (bsc *BootServiceClient) PatchBootConfig(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.BootConfiguration, error) {
+func (bsc *BootServiceClient) PatchBootConfig(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.BootConfiguration, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 

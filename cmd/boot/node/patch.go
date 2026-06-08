@@ -78,17 +78,19 @@ See ochami-boot(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			var patchData map[string]interface{}
+			var patchData interface{}
+			patchMethod := formatPatch
 			if cmd.Flag("set").Changed || cmd.Flag("unset").Changed || cmd.Flag("add").Changed || cmd.Flag("remove").Changed {
-				if cmd.Flag("patch-method").Changed && formatPatch != client.PatchMethodKeyVal {
-					log.Logger.Warn().Msg("overriding --patch-method since --set/--unset/--add/--remove was passed")
-				}
-
-				pd, err := client.NewKeyValPatch(setList, unsetList, addList, removeList)
+				oldFormatPatch := patchMethod
+				newPatchMethod, pd, err := client.NewKeyValPatchData(setList, unsetList, addList, removeList)
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("error creating key-value patch data")
 					cli.LogHelpError(cmd)
 					os.Exit(1)
+				}
+				patchMethod = newPatchMethod
+				if cmd.Flag("patch-method").Changed && oldFormatPatch != patchMethod {
+					log.Logger.Warn().Msg("overriding --patch-method since --set/--unset/--add/--remove was passed")
 				}
 				patchData = pd
 			} else {
@@ -99,7 +101,7 @@ See ochami-boot(1) for more details.`,
 				}
 			}
 
-			nodePatched, err := bootServiceClient.PatchNode(cli.Token, formatPatch, args[0], patchData)
+			nodePatched, err := bootServiceClient.PatchNode(cli.Token, patchMethod, args[0], patchData)
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to patch node")
 				cli.LogHelpError(cmd)
@@ -114,7 +116,7 @@ See ochami-boot(1) for more details.`,
 	bootNodePatchCmd.Flags().StringArrayVar(&setList, "set", nil, "set field value using dot notation (field=value)")
 	bootNodePatchCmd.Flags().StringArrayVar(&unsetList, "unset", nil, "unset field using dot notation")
 	bootNodePatchCmd.Flags().StringArrayVar(&addList, "add", nil, "add value to array field (field=value)")
-	bootNodePatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field (field=value)")
+	bootNodePatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field by index (field=index)")
 	bootNodePatchCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	bootNodePatchCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data for JSON patch formats (json,json-pretty,yaml)")
 	bootNodePatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7386,keyval)")

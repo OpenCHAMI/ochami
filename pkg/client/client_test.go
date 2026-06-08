@@ -419,3 +419,22 @@ func TestReadPayloadSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestReadPayloadInterfaceRFC6902Array(t *testing.T) {
+	var got interface{}
+	err := ReadPayload(`[{"op":"replace","path":"/hostname","value":"ex01"}]`, format.DataFormatJson, &got)
+	if err != nil {
+		t.Fatalf("ReadPayload returned error: %v", err)
+	}
+
+	want := []interface{}{
+		map[string]interface{}{
+			"op":    "replace",
+			"path":  "/hostname",
+			"value": "ex01",
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %#v, want %#v", got, want)
+	}
+}

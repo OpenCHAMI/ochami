@@ -115,7 +115,7 @@ func (bsc *BootServiceClient) ListBMCs(token string, outFormat format.DataFormat
 // function. It accepts data that represents a patch formatted as patchFormat
 // and sends it as JSON to the boot-service via a PATCH request for the BMC
 // identified by uid.
-func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.BMC, error) {
+func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.BMC, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
