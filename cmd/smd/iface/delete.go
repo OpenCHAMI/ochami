@@ -68,14 +68,13 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
-
-			// Handle token for this command
-			cli.HandleToken(cmd)
-
 			// Ask before attempting deletion unless --no-confirm was passed
-			if !cmd.Flag("no-confirm").Changed {
+			noConfirm, err := cmd.Flags().GetBool("no-confirm")
+			if err != nil {
+				log.Logger.Error().Err(err).Msg("failed to get --no-confirm")
+				os.Exit(1)
+			}
+			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				var respDelete bool
 				var err error
@@ -94,6 +93,12 @@ See ochami-smd(1) for more details.`,
 					log.Logger.Debug().Msg("User answered affirmatively to delete ethernet interfaces")
 				}
 			}
+
+			// Create client to use for requests
+			smdClient := smd_lib.GetClient(cmd)
+
+			// Handle token for this command
+			cli.HandleToken(cmd)
 
 			// Create list of ethernet interface IDs to delete
 			var eiSlice []smd.EthernetInterface
