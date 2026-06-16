@@ -161,12 +161,35 @@ lint:
 	$(GOLANGCI_LINT) run
 
 .PHONY: test
-test: unit-test ## Run all tests
+test: unit-test integration-test ## Run all tests
 
 .PHONY: unit-test
 unit-test: ## Run unit tests only
 	$(call require-command-shell,$(GO),go)
 	$(GO) test -cover -v ./...
+
+.PHONY: integration-test
+integration-test: integration-test-config integration-test-uri integration-test-services integration-test-legacy ## Run all integration tests
+
+.PHONY: integration-test-config
+integration-test-config: ## Run config CLI integration tests
+	$(call require-command-shell,$(GO),go)
+	$(GO) test -tags=integration -cover -v ./test/integration/config/...
+
+.PHONY: integration-test-uri
+integration-test-uri: ## Run URI routing integration tests
+	$(call require-command-shell,$(GO),go)
+	$(GO) test -tags=integration -cover -v ./test/integration/uri/...
+
+.PHONY: integration-test-services
+integration-test-services: ## Run current service integration tests (boot-service, metadata-service, SMD)
+	$(call require-command-shell,$(GO),go)
+	$(GO) test -tags=integration -cover -v ./test/integration/services/...
+
+.PHONY: integration-test-legacy
+integration-test-legacy: ## Run legacy service integration tests (BSS, cloud-init)
+	$(call require-command-shell,$(GO),go)
+	$(GO) test -tags=integration -cover -v ./test/integration/legacy/...
 
 .PHONY: clean
 clean: ## Clean Go build artifacts
