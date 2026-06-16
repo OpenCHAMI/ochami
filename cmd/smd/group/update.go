@@ -113,19 +113,31 @@ See ochami-smd(1) for more details.`,
 			// Send 'em off
 			_, errs, err := smdClient.PatchGroups(groups, cli.Token)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to patch group in SMD")
+				log.Logger.Error().Err(err).
+					Int("group_count", len(groups)).
+					Msg("failed to patch group(s) in SMD")
+				log.Logger.Info().Msg("Common causes:")
+				log.Logger.Info().Msg("  - SMD base URI misconfiguration (should include /hsm/v2)")
+				log.Logger.Info().Msg("  - Invalid payload format")
+				log.Logger.Info().Msg("  - Authentication/authorization failure (check token)")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
 			// Since smdClient.PatchGroups does the edition iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
+			for i, err := range errs {
 				if err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("SMD group request yielded unsuccessful HTTP response")
+						log.Logger.Error().Err(err).
+							Str("group", groups[i].Label).
+							Msg("SMD group update request yielded unsuccessful HTTP response")
+						log.Logger.Info().Msg("  - Group may not exist")
+						log.Logger.Info().Msg("  - Invalid field values")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to update group(s) to SMD")
+						log.Logger.Error().Err(err).
+							Str("group", groups[i].Label).
+							Msg("failed to update group in SMD")
 					}
 					errorsOccurred = true
 				}
@@ -135,6 +147,11 @@ See ochami-smd(1) for more details.`,
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
+
+			// Success
+			log.Logger.Info().
+				Int("group_count", len(groups)).
+				Msg("Successfully updated group(s)")
 		},
 	}
 

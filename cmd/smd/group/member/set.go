@@ -41,16 +41,34 @@ See ochami-smd(1) for more details.`,
 			cli.HandleToken(cmd)
 
 			// Send off request
-			_, err := smdClient.PutGroupMembers(cli.Token, args[0], args[1:]...)
+			henv, err := smdClient.PutGroupMembers(cli.Token, args[0], args[1:]...)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msgf("SMD group member request for group %s yielded unsuccessful HTTP response", args[0])
+					log.Logger.Error().Err(err).
+						Str("group", args[0]).
+						Int("member_count", len(args)-1).
+						Str("status", henv.Status).
+						Msg("SMD group member set request failed with HTTP error")
+					log.Logger.Info().Msg("Common causes:")
+					log.Logger.Info().Msg("  - Group does not exist (create it first with 'ochami smd group add')")
+					log.Logger.Info().Msg("  - Invalid component xnames")
+					log.Logger.Info().Msg("  - Authentication/authorization failure (check token)")
+					log.Logger.Info().Msg("  - SMD base URI misconfiguration (should include /hsm/v2)")
 				} else {
-					log.Logger.Error().Err(err).Msgf("failed to set group membership for group %s in SMD", args[0])
+					log.Logger.Error().Err(err).
+						Str("group", args[0]).
+						Int("member_count", len(args)-1).
+						Msg("failed to set group membership in SMD")
 				}
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
+
+			// Success - log confirmation
+			log.Logger.Info().
+				Str("group", args[0]).
+				Int("member_count", len(args)-1).
+				Msg("Successfully set group membership")
 		},
 	}
 

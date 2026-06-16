@@ -128,7 +128,7 @@ type Group struct {
 // GroupMembers represents the payload structure for SMD group membership for
 // PUT requests. It consists of only the group label and list of group IDs.
 type GroupMembers struct {
-	Label string   `json:"label" yaml:"label"`
+	Group string   `json:"group" yaml:"group"`
 	IDs   []string `json:"ids" yaml:"ids"`
 }
 
@@ -851,7 +851,7 @@ func (sc *SMDClient) PutGroupMembers(token, group string, members ...string) (cl
 
 	// Send request and return response
 	g := GroupMembers{
-		Label: group,
+		Group: group,
 		IDs:   members,
 	}
 	if body, err = json.Marshal(g); err != nil {
