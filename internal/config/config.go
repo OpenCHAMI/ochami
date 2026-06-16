@@ -587,6 +587,15 @@ func LoadGlobalConfigFromFile(path string) error {
 
 	// Set results as global for later reference/modification
 	GlobalKoanf = k
+	if cfg.Log.Format == "" {
+		cfg.Log.Format = DefaultConfig.Log.Format
+	}
+	if cfg.Log.Level == "" {
+		cfg.Log.Level = DefaultConfig.Log.Level
+	}
+	if cfg.Timeout == 0 {
+		cfg.Timeout = DefaultConfig.Timeout
+	}
 	GlobalConfig = cfg
 
 	// No error occurred

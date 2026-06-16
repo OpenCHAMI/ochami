@@ -263,11 +263,13 @@ func TestConfigClusterConfig_UnmarshalYAML(t *testing.T) {
 
 func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 	type fields struct {
-		URI       string
-		BSS       ConfigClusterBSS
-		CloudInit ConfigClusterCloudInit
-		PCS       ConfigClusterPCS
-		SMD       ConfigClusterSMD
+		URI             string
+		BootService     ConfigClusterBootService
+		BSS             ConfigClusterBSS
+		CloudInit       ConfigClusterCloudInit
+		MetadataService ConfigClusterMetadataService
+		PCS             ConfigClusterPCS
+		SMD             ConfigClusterSMD
 	}
 	type args struct {
 		c ConfigClusterConfig
@@ -282,10 +284,16 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			name: "empty old and empty new",
 			fields: fields{
 				URI: "",
+				BootService: ConfigClusterBootService{
+					URI: "",
+				},
 				BSS: ConfigClusterBSS{
 					URI: "",
 				},
 				CloudInit: ConfigClusterCloudInit{
+					URI: "",
+				},
+				MetadataService: ConfigClusterMetadataService{
 					URI: "",
 				},
 				PCS: ConfigClusterPCS{
@@ -298,10 +306,16 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			args: args{
 				c: ConfigClusterConfig{
 					URI: "",
+					BootService: ConfigClusterBootService{
+						URI: "",
+					},
 					BSS: ConfigClusterBSS{
 						URI: "",
 					},
 					CloudInit: ConfigClusterCloudInit{
+						URI: "",
+					},
+					MetadataService: ConfigClusterMetadataService{
 						URI: "",
 					},
 					PCS: ConfigClusterPCS{
@@ -314,10 +328,16 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			},
 			want: ConfigClusterConfig{
 				URI: "",
+				BootService: ConfigClusterBootService{
+					URI: "",
+				},
 				BSS: ConfigClusterBSS{
 					URI: "",
 				},
 				CloudInit: ConfigClusterCloudInit{
+					URI: "",
+				},
+				MetadataService: ConfigClusterMetadataService{
 					URI: "",
 				},
 				PCS: ConfigClusterPCS{
@@ -332,10 +352,16 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			name: "empty old and new all fields",
 			fields: fields{
 				URI: "",
+				BootService: ConfigClusterBootService{
+					URI: "",
+				},
 				BSS: ConfigClusterBSS{
 					URI: "",
 				},
 				CloudInit: ConfigClusterCloudInit{
+					URI: "",
+				},
+				MetadataService: ConfigClusterMetadataService{
 					URI: "",
 				},
 				PCS: ConfigClusterPCS{
@@ -348,11 +374,17 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			args: args{
 				c: ConfigClusterConfig{
 					URI: "newUri",
+					BootService: ConfigClusterBootService{
+						URI: "newBoot",
+					},
 					BSS: ConfigClusterBSS{
 						URI: "newBss",
 					},
 					CloudInit: ConfigClusterCloudInit{
 						URI: "newCi",
+					},
+					MetadataService: ConfigClusterMetadataService{
+						URI: "newMeta",
 					},
 					PCS: ConfigClusterPCS{
 						URI: "newPcs",
@@ -364,11 +396,17 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			},
 			want: ConfigClusterConfig{
 				URI: "newUri",
+				BootService: ConfigClusterBootService{
+					URI: "newBoot",
+				},
 				BSS: ConfigClusterBSS{
 					URI: "newBss",
 				},
 				CloudInit: ConfigClusterCloudInit{
 					URI: "newCi",
+				},
+				MetadataService: ConfigClusterMetadataService{
+					URI: "newMeta",
 				},
 				PCS: ConfigClusterPCS{
 					URI: "newPcs",
@@ -382,11 +420,17 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			name: "old all fields and empty new",
 			fields: fields{
 				URI: "oldUri",
+				BootService: ConfigClusterBootService{
+					URI: "oldBoot",
+				},
 				BSS: ConfigClusterBSS{
 					URI: "oldBss",
 				},
 				CloudInit: ConfigClusterCloudInit{
 					URI: "oldCi",
+				},
+				MetadataService: ConfigClusterMetadataService{
+					URI: "oldMeta",
 				},
 				PCS: ConfigClusterPCS{
 					URI: "oldPcs",
@@ -398,10 +442,16 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			args: args{
 				c: ConfigClusterConfig{
 					URI: "",
+					BootService: ConfigClusterBootService{
+						URI: "",
+					},
 					BSS: ConfigClusterBSS{
 						URI: "",
 					},
 					CloudInit: ConfigClusterCloudInit{
+						URI: "",
+					},
+					MetadataService: ConfigClusterMetadataService{
 						URI: "",
 					},
 					PCS: ConfigClusterPCS{
@@ -414,11 +464,17 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			},
 			want: ConfigClusterConfig{
 				URI: "oldUri",
+				BootService: ConfigClusterBootService{
+					URI: "oldBoot",
+				},
 				BSS: ConfigClusterBSS{
 					URI: "oldBss",
 				},
 				CloudInit: ConfigClusterCloudInit{
 					URI: "oldCi",
+				},
+				MetadataService: ConfigClusterMetadataService{
+					URI: "oldMeta",
 				},
 				PCS: ConfigClusterPCS{
 					URI: "oldPcs",
@@ -432,11 +488,17 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			name: "partial override",
 			fields: fields{
 				URI: "oldUri",
+				BootService: ConfigClusterBootService{
+					URI: "oldBoot",
+				},
 				BSS: ConfigClusterBSS{
 					URI: "oldBss",
 				},
 				CloudInit: ConfigClusterCloudInit{
 					URI: "oldCi",
+				},
+				MetadataService: ConfigClusterMetadataService{
+					URI: "oldMeta",
 				},
 				PCS: ConfigClusterPCS{
 					URI: "oldPcs",
@@ -448,11 +510,17 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			args: args{
 				c: ConfigClusterConfig{
 					URI: "newUri",
+					BootService: ConfigClusterBootService{
+						URI: "",
+					},
 					BSS: ConfigClusterBSS{
 						URI: "",
 					},
 					CloudInit: ConfigClusterCloudInit{
 						URI: "newCi",
+					},
+					MetadataService: ConfigClusterMetadataService{
+						URI: "newMeta",
 					},
 					PCS: ConfigClusterPCS{
 						URI: "",
@@ -464,14 +532,91 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 			},
 			want: ConfigClusterConfig{
 				URI: "newUri",
+				BootService: ConfigClusterBootService{
+					URI: "oldBoot",
+				},
 				BSS: ConfigClusterBSS{
 					URI: "oldBss",
 				},
 				CloudInit: ConfigClusterCloudInit{
 					URI: "newCi",
 				},
+				MetadataService: ConfigClusterMetadataService{
+					URI: "newMeta",
+				},
 				PCS: ConfigClusterPCS{
 					URI: "oldPcs",
+				},
+				SMD: ConfigClusterSMD{
+					URI: "newSmd",
+				},
+			},
+		},
+		{
+			name: "all services override",
+			fields: fields{
+				URI: "oldUri",
+				BootService: ConfigClusterBootService{
+					URI:        "oldBoot",
+					APIVersion: "v1",
+				},
+				BSS: ConfigClusterBSS{
+					URI: "oldBss",
+				},
+				CloudInit: ConfigClusterCloudInit{
+					URI: "oldCi",
+				},
+				MetadataService: ConfigClusterMetadataService{
+					URI: "oldMeta",
+				},
+				PCS: ConfigClusterPCS{
+					URI: "oldPcs",
+				},
+				SMD: ConfigClusterSMD{
+					URI: "oldSmd",
+				},
+			},
+			args: args{
+				c: ConfigClusterConfig{
+					URI: "newUri",
+					BootService: ConfigClusterBootService{
+						URI:        "newBoot",
+						APIVersion: "v2",
+					},
+					BSS: ConfigClusterBSS{
+						URI: "newBss",
+					},
+					CloudInit: ConfigClusterCloudInit{
+						URI: "newCi",
+					},
+					MetadataService: ConfigClusterMetadataService{
+						URI: "newMeta",
+					},
+					PCS: ConfigClusterPCS{
+						URI: "newPcs",
+					},
+					SMD: ConfigClusterSMD{
+						URI: "newSmd",
+					},
+				},
+			},
+			want: ConfigClusterConfig{
+				URI: "newUri",
+				BootService: ConfigClusterBootService{
+					URI: "newBoot",
+					// Note: APIVersion is not merged by MergeURIConfig
+				},
+				BSS: ConfigClusterBSS{
+					URI: "newBss",
+				},
+				CloudInit: ConfigClusterCloudInit{
+					URI: "newCi",
+				},
+				MetadataService: ConfigClusterMetadataService{
+					URI: "newMeta",
+				},
+				PCS: ConfigClusterPCS{
+					URI: "newPcs",
 				},
 				SMD: ConfigClusterSMD{
 					URI: "newSmd",
@@ -482,11 +627,13 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ccc := &ConfigClusterConfig{
-				URI:       tt.fields.URI,
-				BSS:       tt.fields.BSS,
-				CloudInit: tt.fields.CloudInit,
-				PCS:       tt.fields.PCS,
-				SMD:       tt.fields.SMD,
+				URI:             tt.fields.URI,
+				BootService:     tt.fields.BootService,
+				BSS:             tt.fields.BSS,
+				CloudInit:       tt.fields.CloudInit,
+				MetadataService: tt.fields.MetadataService,
+				PCS:             tt.fields.PCS,
+				SMD:             tt.fields.SMD,
 			}
 			if got := ccc.MergeURIConfig(tt.args.c); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ConfigClusterConfig.MergeURIConfig() = %v, want %v", got, tt.want)

@@ -14,6 +14,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/OpenCHAMI/ochami/internal/config"
+	"github.com/spf13/cobra"
 )
 
 func TestIOStream_AskToCreate(t *testing.T) {
@@ -209,6 +212,309 @@ func Test_CreateIfNotExists(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := CreateIfNotExists(tt.args.path); (err != nil) != tt.wantErr {
 				t.Errorf("CreateIfNotExists() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestGetBaseURI(t *testing.T) {
+	// Save original global config and restore after tests
+	origConfig := config.GlobalConfig
+	defer func() { config.GlobalConfig = origConfig }()
+
+	tests := []struct {
+		name        string
+		serviceName config.ServiceName
+		setupConfig func()
+		setupCmd    func() *cobra.Command
+		want        string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:        "no config, no flags returns error",
+			serviceName: config.ServiceSMD,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				return cmd
+			},
+			wantErr:     true,
+			errContains: "could not get",
+		},
+		{
+			name:        "default cluster with service URI",
+			serviceName: config.ServiceSMD,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{
+					DefaultCluster: "test-cluster",
+					Clusters: []config.ConfigCluster{
+						{
+							Name: "test-cluster",
+							Cluster: config.ConfigClusterConfig{
+								URI: "https://example.com",
+								SMD: config.ConfigClusterSMD{
+									URI: "",
+								},
+							},
+						},
+					},
+				}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				return cmd
+			},
+			want:    "https://example.com/hsm/v2",
+			wantErr: false,
+		},
+		{
+			name:        "default cluster not found",
+			serviceName: config.ServiceSMD,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{
+					DefaultCluster: "missing-cluster",
+					Clusters:       []config.ConfigCluster{},
+				}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				return cmd
+			},
+			wantErr:     true,
+			errContains: "default cluster missing-cluster not found",
+		},
+		{
+			name:        "--cluster flag does NOT override default cluster (default takes precedence)",
+			serviceName: config.ServiceBSS,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{
+					DefaultCluster: "default-cluster",
+					Clusters: []config.ConfigCluster{
+						{
+							Name: "default-cluster",
+							Cluster: config.ConfigClusterConfig{
+								URI: "https://default.com",
+							},
+						},
+						{
+							Name: "override-cluster",
+							Cluster: config.ConfigClusterConfig{
+								URI: "https://override.com",
+							},
+						},
+					},
+				}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				_ = cmd.Flags().Set("cluster", "override-cluster")
+				return cmd
+			},
+			want:    "https://default.com/boot/v1",
+			wantErr: false,
+		},
+		{
+			name:        "--cluster flag with nonexistent cluster",
+			serviceName: config.ServiceSMD,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{
+					Clusters: []config.ConfigCluster{
+						{
+							Name: "exists",
+							Cluster: config.ConfigClusterConfig{
+								URI: "https://exists.com",
+							},
+						},
+					},
+				}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				_ = cmd.Flags().Set("cluster", "nonexistent")
+				return cmd
+			},
+			wantErr:     true,
+			errContains: "cluster nonexistent not found",
+		},
+		{
+			name:        "--cluster-uri flag overrides config",
+			serviceName: config.ServiceSMD,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{
+					DefaultCluster: "test-cluster",
+					Clusters: []config.ConfigCluster{
+						{
+							Name: "test-cluster",
+							Cluster: config.ConfigClusterConfig{
+								URI: "https://config.com",
+							},
+						},
+					},
+				}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				_ = cmd.Flags().Set("cluster-uri", "https://flag.com")
+				return cmd
+			},
+			want:    "https://flag.com/hsm/v2",
+			wantErr: false,
+		},
+		{
+			name:        "service --uri flag overrides service config",
+			serviceName: config.ServiceBoot,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{
+					DefaultCluster: "test-cluster",
+					Clusters: []config.ConfigCluster{
+						{
+							Name: "test-cluster",
+							Cluster: config.ConfigClusterConfig{
+								URI: "https://cluster.com",
+								BootService: config.ConfigClusterBootService{
+									URI: "https://boot-config.com",
+								},
+							},
+						},
+					},
+				}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				_ = cmd.Flags().Set("uri", "https://boot-flag.com")
+				return cmd
+			},
+			want:    "https://boot-flag.com",
+			wantErr: false,
+		},
+		{
+			name:        "boot-service uses default path",
+			serviceName: config.ServiceBoot,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{
+					DefaultCluster: "test-cluster",
+					Clusters: []config.ConfigCluster{
+						{
+							Name: "test-cluster",
+							Cluster: config.ConfigClusterConfig{
+								URI: "https://example.com",
+							},
+						},
+					},
+				}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				return cmd
+			},
+			want:    "https://example.com/boot-service",
+			wantErr: false,
+		},
+		{
+			name:        "metadata-service uses default path",
+			serviceName: config.ServiceMetadata,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{
+					DefaultCluster: "test-cluster",
+					Clusters: []config.ConfigCluster{
+						{
+							Name: "test-cluster",
+							Cluster: config.ConfigClusterConfig{
+								URI: "https://example.com",
+							},
+						},
+					},
+				}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				return cmd
+			},
+			want:    "https://example.com/metadata-service",
+			wantErr: false,
+		},
+		{
+			name:        "absolute service URI without cluster",
+			serviceName: config.ServiceCloudInit,
+			setupConfig: func() {
+				config.GlobalConfig = config.Config{
+					Clusters: []config.ConfigCluster{
+						{
+							Name: "test",
+							Cluster: config.ConfigClusterConfig{
+								CloudInit: config.ConfigClusterCloudInit{
+									URI: "https://standalone.com/ci",
+								},
+							},
+						},
+					},
+				}
+			},
+			setupCmd: func() *cobra.Command {
+				cmd := &cobra.Command{}
+				cmd.Flags().String("cluster", "", "cluster name")
+				cmd.Flags().String("cluster-uri", "", "cluster URI")
+				cmd.Flags().String("uri", "", "service URI")
+				_ = cmd.Flags().Set("cluster", "test")
+				return cmd
+			},
+			want:    "https://standalone.com/ci",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupConfig()
+			cmd := tt.setupCmd()
+
+			got, err := GetBaseURI(cmd, tt.serviceName)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("GetBaseURI() error = nil, wantErr = true")
+					return
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("GetBaseURI() error = %q, want to contain %q", err.Error(), tt.errContains)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("GetBaseURI() unexpected error = %v", err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("GetBaseURI() = %q, want %q", got, tt.want)
 			}
 		})
 	}
