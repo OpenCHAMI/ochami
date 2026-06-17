@@ -7,7 +7,7 @@
 # STAGE 1: Build
 #
 
-FROM golang:1.26.3 AS builder
+FROM golang:1.26.4 AS builder
 ARG CGO_ENABLED=0
 WORKDIR /ochami
 
