@@ -64,7 +64,7 @@ See ochami-smd(1) for more details.`,
 				os.Exit(1)
 			}
 
-			// Success - log confirmation
+			// Success, log confirmation
 			log.Logger.Info().
 				Str("group", args[0]).
 				Int("member_count", len(args)-1).

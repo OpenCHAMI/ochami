@@ -148,7 +148,7 @@ See ochami-smd(1) for more details.`,
 				os.Exit(1)
 			}
 
-			// Success
+			// Success, log confirmation
 			log.Logger.Info().
 				Int("group_count", len(groups)).
 				Msg("Successfully updated group(s)")
