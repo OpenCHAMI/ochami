@@ -57,15 +57,32 @@ func TestSMDRequests(t *testing.T) {
 
 func TestBootServiceRequests(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     []string
-		wantPath string
-		body     string
+		name        string
+		args        []string
+		apiVersion  string
+		wantPath    string
+		wantHeaders map[string]string
+		body        string
 	}{
 		{name: "service status", args: []string{"boot", "service", "status"}, wantPath: "/boot-service/health", body: `{"status":"ok"}`},
 		{name: "node list", args: []string{"boot", "node", "list"}, wantPath: "/boot-service/nodes", body: `[]`},
 		{name: "config list", args: []string{"boot", "config", "list"}, wantPath: "/boot-service/bootconfigurations", body: `[]`},
 		{name: "bmc list", args: []string{"boot", "bmc", "list"}, wantPath: "/boot-service/bmcs", body: `[]`},
+		{
+			name:        "service status with config API version",
+			args:        []string{"boot", "service", "status"},
+			apiVersion:  "v1beta2",
+			wantPath:    "/boot-service/health",
+			wantHeaders: map[string]string{"Accept": "application/json;version=v1beta2"},
+			body:        `{"status":"ok"}`,
+		},
+		{
+			name:        "service status with flag API version",
+			args:        []string{"boot", "--api-version", "v1beta3", "service", "status"},
+			wantPath:    "/boot-service/health",
+			wantHeaders: map[string]string{"Accept": "application/json;version=v1beta3"},
+			body:        `{"status":"ok"}`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -76,30 +93,50 @@ func TestBootServiceRequests(t *testing.T) {
 			defer server.Close()
 
 			configPath := harness.TempConfigFile(t, harness.ClusterConfig(fmt.Sprintf(`boot-service:
-  uri: %s/boot-service
-`, server.URL)))
+  uri: %s/boot-service%s
+`, server.URL, apiVersionYAML(tc.apiVersion))))
 
 			args := append([]string{"--config", configPath}, tc.args...)
 			result := harness.RunCLI(t, args...)
 			harness.AssertExitCode(t, result, 0)
 			harness.AssertRequestCount(t, server, 1)
 			harness.AssertLastRequest(t, server, http.MethodGet, tc.wantPath)
+			for key, want := range tc.wantHeaders {
+				harness.AssertLastRequestHeader(t, server, key, want)
+			}
 		})
 	}
 }
 
 func TestMetadataServiceRequests(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     []string
-		wantPath string
-		body     string
+		name        string
+		args        []string
+		apiVersion  string
+		wantPath    string
+		wantHeaders map[string]string
+		body        string
 	}{
 		{name: "service status", args: []string{"metadata", "service", "status"}, wantPath: "/metadata-service/health", body: `{"status":"ok"}`},
 		{name: "group list", args: []string{"metadata", "group", "list"}, wantPath: "/metadata-service/groups", body: `[]`},
 		{name: "instance list", args: []string{"metadata", "instance", "list"}, wantPath: "/metadata-service/instanceinfos", body: `[]`},
 		{name: "defaults list", args: []string{"metadata", "defaults", "list"}, wantPath: "/metadata-service/clusterdefaultss", body: `[]`},
 		{name: "peer list", args: []string{"metadata", "peer", "list"}, wantPath: "/metadata-service/wireguardpeers", body: `[]`},
+		{
+			name:        "service status with config API version",
+			args:        []string{"metadata", "service", "status"},
+			apiVersion:  "v1beta2",
+			wantPath:    "/metadata-service/health",
+			wantHeaders: map[string]string{"Accept": "application/json;version=v1beta2"},
+			body:        `{"status":"ok"}`,
+		},
+		{
+			name:        "service status with flag API version",
+			args:        []string{"metadata", "--api-version", "v1beta3", "service", "status"},
+			wantPath:    "/metadata-service/health",
+			wantHeaders: map[string]string{"Accept": "application/json;version=v1beta3"},
+			body:        `{"status":"ok"}`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -110,16 +147,26 @@ func TestMetadataServiceRequests(t *testing.T) {
 			defer server.Close()
 
 			configPath := harness.TempConfigFile(t, harness.ClusterConfig(fmt.Sprintf(`metadata-service:
-  uri: %s/metadata-service
-`, server.URL)))
+  uri: %s/metadata-service%s
+`, server.URL, apiVersionYAML(tc.apiVersion))))
 
 			args := append([]string{"--config", configPath}, tc.args...)
 			result := harness.RunCLI(t, args...)
 			harness.AssertExitCode(t, result, 0)
 			harness.AssertRequestCount(t, server, 1)
 			harness.AssertLastRequest(t, server, http.MethodGet, tc.wantPath)
+			for key, want := range tc.wantHeaders {
+				harness.AssertLastRequestHeader(t, server, key, want)
+			}
 		})
 	}
+}
+
+func apiVersionYAML(apiVersion string) string {
+	if apiVersion == "" {
+		return ""
+	}
+	return fmt.Sprintf("\n  api-version: %s", apiVersion)
 }
 
 func jsonResponse(body string) harness.ServiceResponse {
