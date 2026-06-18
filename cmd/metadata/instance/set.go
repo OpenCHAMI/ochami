@@ -65,7 +65,15 @@ See ochami-metadata(1) for more details.`,
 				os.Exit(1)
 			}
 
-			log.Logger.Debug().Msgf("Instance info set: %+v", instanceSet)
+			// Check that a modified item was returned
+			if instanceSet == nil {
+				log.Logger.Error().Msg("instance info set returned no resource")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
+			// Print UIDs of modified items
+			log.Logger.Info().Msgf("Instance infos set: %+v", []string{instanceSet.Metadata.UID})
 		},
 	}
 

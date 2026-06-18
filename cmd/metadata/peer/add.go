@@ -124,7 +124,15 @@ See ochami-metadata(1) for more details.`,
 					errorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("WireGuard peers created: %+v", peersCreated)
+
+			// Print UIDs of created items
+			var uids []string
+			for _, peer := range peersCreated {
+				uids = append(uids, peer.Metadata.UID)
+			}
+			log.Logger.Info().Msgf("WireGuard peers created: %+v", uids)
+
+			// Warn if any request errors occurred
 			if errorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("WireGuard peer addition completed with errors")

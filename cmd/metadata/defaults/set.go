@@ -67,7 +67,15 @@ See ochami-metadata(1) for more details.`,
 				os.Exit(1)
 			}
 
-			log.Logger.Debug().Msgf("cluster defaults set: %+v", defaultsSet)
+			// Check that a modified item was returned
+			if defaultsSet == nil {
+				log.Logger.Error().Msg("cluster defaults set returned no resource")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
+			// Print UIDs of modified items
+			log.Logger.Info().Msgf("Cluster defaults set: %+v", []string{defaultsSet.Metadata.UID})
 		},
 	}
 

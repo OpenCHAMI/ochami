@@ -69,7 +69,11 @@ See ochami-metadata(1) for more details.`,
 					errorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("Groups deleted: %+v", groupsDeleted)
+
+			// Print UIDs of deleted items
+			log.Logger.Info().Msgf("Groups deleted: %+v", groupsDeleted)
+
+			// Warn if any request errors occurred
 			if errorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("Group deletion completed with errors")

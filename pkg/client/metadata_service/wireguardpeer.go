@@ -16,11 +16,11 @@ import (
 )
 
 // AddWireGuardPeers is a wrapper that calls the metadata-service client's
-// CreateWireGuardPeer() function, passing it context. The output is a slice
-// of the WireGuardPeers it created, each element of which corresponds to an
-// error in an error slice, followed by an error that is populated if an error
-// occurred in the function itself.
-func (msc *MetadataServiceClient) AddWireGuardPeers(token string, peers []metadata_service_client.CreateWireGuardPeerRequest) (peersAdded []*api.WireGuardPeer, errors []error, funcErr error) {
+// CreateWireGuardPeer() function, passing it context. It returns a slice of
+// successfully created WireGuardPeer resources, a slice of per-request errors,
+// and an error that is populated if an error occurred in the function itself. A
+// nil resource returned without an error is reported as a per-request error.
+func (msc *MetadataServiceClient) AddWireGuardPeers(token string, peers []metadata_service_client.CreateWireGuardPeerRequest) (peersAdded []api.WireGuardPeer, errors []error, funcErr error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
 
@@ -33,10 +33,11 @@ func (msc *MetadataServiceClient) AddWireGuardPeers(token string, peers []metada
 		if err != nil {
 			newErr := fmt.Errorf("failed to add WireGuard peer %+v: %w", p, err)
 			errors = append(errors, newErr)
-			peersAdded = append(peersAdded, nil)
+		} else if item != nil {
+			peersAdded = append(peersAdded, *item)
 		} else {
-			peersAdded = append(peersAdded, item)
-			errors = append(errors, nil)
+			newErr := fmt.Errorf("WireGuard peer creation did not err, but was not created for: %+v", p)
+			errors = append(errors, newErr)
 		}
 	}
 
@@ -44,11 +45,10 @@ func (msc *MetadataServiceClient) AddWireGuardPeers(token string, peers []metada
 }
 
 // DeleteWireGuardPeers is a wrapper that calls the metadata-service client's
-// DeleteWireGuardPeer() function, passing it context and a list of WireGuard peer
-// UIDs to delete. The output is a slice of WireGuard peer UIDs that
-// got deleted, a slice of errors containing any errors deleting peers,
-// and an error that is populated if an error in the function itself
-// occurred.
+// DeleteWireGuardPeer() function, passing it context and a list of
+// WireGuardPeer UIDs to delete. It returns a slice of successfully deleted
+// WireGuardPeer UIDs, a slice of per-request errors, and an error that is
+// populated if an error occurred in the function itself.
 func (msc *MetadataServiceClient) DeleteWireGuardPeers(token string, uids []string) (peersDeleted []string, errors []error, funcErr error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
@@ -119,7 +119,8 @@ func (msc *MetadataServiceClient) ListWireGuardPeers(token string, outFormat for
 // PatchWireGuardPeer is a wrapper that calls the metadata-service client's
 // PatchWireGuardPeer() function. It accepts data that represents a patch
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
-// PATCH request for the WireGuard peer identified by uid.
+// PATCH request for the WireGuardPeer identified by uid. It returns the modified
+// WireGuardPeer resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.WireGuardPeer, error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
@@ -153,9 +154,8 @@ func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat c
 }
 
 // SetWireGuardPeer is a wrapper that calls the metadata-service client's
-// UpdateWireGuardPeer() function, passing it context. The output is a pointer
-// to the WireGuard peer details that got updated, along with an error if one
-// occurred.
+// UpdateWireGuardPeer() function, passing it context. It returns the modified
+// WireGuardPeer resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) SetWireGuardPeer(token string, uid string, peer metadata_service_client.UpdateWireGuardPeerRequest) (*api.WireGuardPeer, error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token

@@ -75,7 +75,15 @@ See ochami-metadata(1) for more details.`,
 				os.Exit(1)
 			}
 
-			log.Logger.Debug().Msgf("WireGuard peer set: %+v", peerSet)
+			// Check that a modified item was returned
+			if peerSet == nil {
+				log.Logger.Error().Msg("WireGuard peer set returned no resource")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
+			// Print UIDs of modified items
+			log.Logger.Info().Msgf("WireGuard peers set: %+v", []string{peerSet.Metadata.UID})
 		},
 	}
 

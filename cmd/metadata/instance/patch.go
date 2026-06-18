@@ -104,7 +104,15 @@ See ochami-metadata(1) for more details.`,
 				os.Exit(1)
 			}
 
-			log.Logger.Debug().Msgf("Instance info patched: %+v", instancePatched)
+			// Check that a modified item was returned
+			if instancePatched == nil {
+				log.Logger.Error().Msg("instance info patch returned no resource")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
+			// Print UIDs of modified items
+			log.Logger.Info().Msgf("Instance infos patched: %+v", []string{instancePatched.Metadata.UID})
 		},
 	}
 

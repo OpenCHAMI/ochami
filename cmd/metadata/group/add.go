@@ -130,7 +130,15 @@ See ochami-metadata(1) for more details.`,
 					errorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("Groups created: %+v", groupsCreated)
+
+			// Print UIDs of created items
+			var uids []string
+			for _, group := range groupsCreated {
+				uids = append(uids, group.Metadata.UID)
+			}
+			log.Logger.Info().Msgf("Groups created: %+v", uids)
+
+			// Warn if any request errors occurred
 			if errorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("Group addition completed with errors")

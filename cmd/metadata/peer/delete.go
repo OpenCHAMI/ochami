@@ -69,7 +69,11 @@ See ochami-metadata(1) for more details.`,
 					errorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("WireGuard peers deleted: %+v", peersDeleted)
+
+			// Print UIDs of deleted items
+			log.Logger.Info().Msgf("WireGuard peers deleted: %+v", peersDeleted)
+
+			// Warn if any request errors occurred
 			if errorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("WireGuard peer deletion completed with errors")

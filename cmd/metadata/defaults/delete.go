@@ -70,7 +70,11 @@ See ochami-metadata(1) for more details.`,
 					errorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("cluster defaults deleted: %+v", defaultsDeleted)
+
+			// Print UIDs of deleted items
+			log.Logger.Info().Msgf("Cluster defaults deleted: %+v", defaultsDeleted)
+
+			// Warn if any request errors occurred
 			if errorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("cluster defaults deletion completed with errors")

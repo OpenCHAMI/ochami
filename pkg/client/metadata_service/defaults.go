@@ -16,11 +16,11 @@ import (
 )
 
 // AddDefaults is a wrapper that calls the metadata-service client's
-// CreateClusterDefaults() function, passing it context. The output is a slice
-// of the ClusterDefaults it created, each element of which corresponds to an
-// error in an error slice, followed by an error that is populatd if an error
-// occurred in the function itself.
-func (msc *MetadataServiceClient) AddDefaults(token string, defaults []metadata_service_client.CreateClusterDefaultsRequest) (defaultsAdded []*api.ClusterDefaults, errors []error, funcErr error) {
+// CreateClusterDefaults() function, passing it context. It returns a slice of
+// successfully created ClusterDefaults resources, a slice of per-request errors,
+// and an error that is populated if an error occurred in the function itself. A
+// nil resource returned without an error is reported as a per-request error.
+func (msc *MetadataServiceClient) AddDefaults(token string, defaults []metadata_service_client.CreateClusterDefaultsRequest) (defaultsAdded []api.ClusterDefaults, errors []error, funcErr error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
 
@@ -33,9 +33,12 @@ func (msc *MetadataServiceClient) AddDefaults(token string, defaults []metadata_
 		if err != nil {
 			newErr := fmt.Errorf("failed to add cluster defaults %+v: %w", d, err)
 			errors = append(errors, newErr)
-			defaultsAdded = append(defaultsAdded, nil)
+		} else if item != nil {
+			defaultsAdded = append(defaultsAdded, *item)
+		} else {
+			newErr := fmt.Errorf("cluster defaults creation did not err, but was not created for: %+v", d)
+			errors = append(errors, newErr)
 		}
-		defaultsAdded = append(defaultsAdded, item)
 	}
 
 	return
@@ -43,10 +46,9 @@ func (msc *MetadataServiceClient) AddDefaults(token string, defaults []metadata_
 
 // DeleteDefaults is a wrapper that calls the metadata-service client's
 // DeleteClusterDefaults() function, passing it context and a list of cluster
-// defaults UIDs to delete. The output is a slice of cluster defaults UIDs that
-// got deleted, a slice of errors containing any errors deleting cluster
-// defaults, and an error that is populated if an error in the function itself
-// occurred.
+// defaults UIDs to delete. It returns a slice of successfully deleted cluster
+// defaults UIDs, a slice of per-request errors, and an error that is populated
+// if an error occurred in the function itself.
 func (msc *MetadataServiceClient) DeleteDefaults(token string, uids []string) (defaultsDeleted []string, errors []error, funcErr error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
@@ -117,7 +119,8 @@ func (msc *MetadataServiceClient) ListDefaults(token string, outFormat format.Da
 // PatchDefaults is a wrapper that calls the metadata-service client's
 // PatchClusterDefaults() function. It accepts data that represents a patch
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
-// PATCH request for the cluster defaults identified by uid.
+// PATCH request for the cluster defaults identified by uid. It returns the
+// modified ClusterDefaults resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) PatchDefaults(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.ClusterDefaults, error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
@@ -151,9 +154,8 @@ func (msc *MetadataServiceClient) PatchDefaults(token string, patchFormat client
 }
 
 // SetDefaults is a wrapper that calls the metadata-service client's
-// UpdateClusterDefaults() function, passing it context. The output is a pointer
-// to the cluster defaults details that got updated, along with an error if one
-// occurred.
+// UpdateClusterDefaults() function, passing it context. It returns the modified
+// ClusterDefaults resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) SetDefaults(token string, uid string, defaults metadata_service_client.UpdateClusterDefaultsRequest) (*api.ClusterDefaults, error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token

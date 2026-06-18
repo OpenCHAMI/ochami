@@ -109,7 +109,15 @@ See ochami-metadata(1) for more details.`,
 					errorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("Instance infos created: %+v", instancesCreated)
+
+			// Print UIDs of created items
+			var uids []string
+			for _, instance := range instancesCreated {
+				uids = append(uids, instance.Metadata.UID)
+			}
+			log.Logger.Info().Msgf("Instance infos created: %+v", uids)
+
+			// Warn if any request errors occurred
 			if errorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("Instance info addition completed with errors")

@@ -69,7 +69,11 @@ See ochami-metadata(1) for more details.`,
 					errorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("Instance infos deleted: %+v", instancesDeleted)
+
+			// Print UIDs of deleted items
+			log.Logger.Info().Msgf("Instance infos deleted: %+v", instancesDeleted)
+
+			// Warn if any request errors occurred
 			if errorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("Instance info deletion completed with errors")

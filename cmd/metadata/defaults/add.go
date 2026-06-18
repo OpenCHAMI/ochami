@@ -122,7 +122,15 @@ See ochami-metadata(1) for more details.`,
 					errorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("Cluster defaults created: %+v", defaultsCreated)
+
+			// Print UIDs of created items
+			var uids []string
+			for _, defaults := range defaultsCreated {
+				uids = append(uids, defaults.Metadata.UID)
+			}
+			log.Logger.Info().Msgf("Cluster defaults created: %+v", uids)
+
+			// Warn if any request errors occurred
 			if errorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("Cluster defaults addition completed with errors")

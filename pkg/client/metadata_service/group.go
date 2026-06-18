@@ -16,11 +16,11 @@ import (
 )
 
 // AddGroups is a wrapper that calls the metadata-service client's
-// CreateGroup() function, passing it context. The output is a slice
-// of the Groups it created, each element of which corresponds to an
-// error in an error slice, followed by an error that is populated if an error
-// occurred in the function itself.
-func (msc *MetadataServiceClient) AddGroups(token string, groups []metadata_service_client.CreateGroupRequest) (groupsAdded []*api.Group, errors []error, funcErr error) {
+// CreateGroup() function, passing it context. It returns a slice of
+// successfully created Group resources, a slice of per-request errors, and an
+// error that is populated if an error occurred in the function itself. A nil
+// resource returned without an error is reported as a per-request error.
+func (msc *MetadataServiceClient) AddGroups(token string, groups []metadata_service_client.CreateGroupRequest) (groupsAdded []api.Group, errors []error, funcErr error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
 
@@ -33,10 +33,11 @@ func (msc *MetadataServiceClient) AddGroups(token string, groups []metadata_serv
 		if err != nil {
 			newErr := fmt.Errorf("failed to add group %+v: %w", g, err)
 			errors = append(errors, newErr)
-			groupsAdded = append(groupsAdded, nil)
+		} else if item != nil {
+			groupsAdded = append(groupsAdded, *item)
 		} else {
-			groupsAdded = append(groupsAdded, item)
-			errors = append(errors, nil)
+			newErr := fmt.Errorf("group creation did not err, but was not created for: %+v", g)
+			errors = append(errors, newErr)
 		}
 	}
 
@@ -44,11 +45,10 @@ func (msc *MetadataServiceClient) AddGroups(token string, groups []metadata_serv
 }
 
 // DeleteGroups is a wrapper that calls the metadata-service client's
-// DeleteGroup() function, passing it context and a list of group
-// UIDs to delete. The output is a slice of group UIDs that
-// got deleted, a slice of errors containing any errors deleting groups,
-// and an error that is populated if an error in the function itself
-// occurred.
+// DeleteGroup() function, passing it context and a list of Group UIDs to
+// delete. It returns a slice of successfully deleted Group UIDs, a slice of
+// per-request errors, and an error that is populated if an error occurred in the
+// function itself.
 func (msc *MetadataServiceClient) DeleteGroups(token string, uids []string) (groupsDeleted []string, errors []error, funcErr error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
@@ -119,7 +119,8 @@ func (msc *MetadataServiceClient) ListGroups(token string, outFormat format.Data
 // PatchGroup is a wrapper that calls the metadata-service client's
 // PatchGroup() function. It accepts data that represents a patch
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
-// PATCH request for the group identified by uid.
+// PATCH request for the Group identified by uid. It returns the modified Group
+// resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.Group, error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
@@ -153,9 +154,8 @@ func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.Pa
 }
 
 // SetGroup is a wrapper that calls the metadata-service client's
-// UpdateGroup() function, passing it context. The output is a pointer
-// to the group details that got updated, along with an error if one
-// occurred.
+// UpdateGroup() function, passing it context. It returns the modified Group
+// resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) SetGroup(token string, uid string, group metadata_service_client.UpdateGroupRequest) (*api.Group, error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token

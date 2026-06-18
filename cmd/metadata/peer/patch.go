@@ -104,7 +104,15 @@ See ochami-metadata(1) for more details.`,
 				os.Exit(1)
 			}
 
-			log.Logger.Debug().Msgf("WireGuard peer patched: %+v", peerPatched)
+			// Check that a modified item was returned
+			if peerPatched == nil {
+				log.Logger.Error().Msg("WireGuard peer patch returned no resource")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
+			// Print UIDs of modified items
+			log.Logger.Info().Msgf("WireGuard peers patched: %+v", []string{peerPatched.Metadata.UID})
 		},
 	}
 

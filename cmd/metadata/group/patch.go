@@ -104,7 +104,15 @@ See ochami-metadata(1) for more details.`,
 				os.Exit(1)
 			}
 
-			log.Logger.Debug().Msgf("Group patched: %+v", groupPatched)
+			// Check that a modified item was returned
+			if groupPatched == nil {
+				log.Logger.Error().Msg("group patch returned no resource")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
+			// Print UIDs of modified items
+			log.Logger.Info().Msgf("Groups patched: %+v", []string{groupPatched.Metadata.UID})
 		},
 	}
 

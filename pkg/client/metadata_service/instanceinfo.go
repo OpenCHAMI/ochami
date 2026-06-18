@@ -16,11 +16,11 @@ import (
 )
 
 // AddInstanceInfos is a wrapper that calls the metadata-service client's
-// CreateInstanceInfo() function, passing it context. The output is a slice
-// of the InstanceInfos it created, each element of which corresponds to an
-// error in an error slice, followed by an error that is populated if an error
-// occurred in the function itself.
-func (msc *MetadataServiceClient) AddInstanceInfos(token string, instances []metadata_service_client.CreateInstanceInfoRequest) (instancesAdded []*api.InstanceInfo, errors []error, funcErr error) {
+// CreateInstanceInfo() function, passing it context. It returns a slice of
+// successfully created InstanceInfo resources, a slice of per-request errors,
+// and an error that is populated if an error occurred in the function itself. A
+// nil resource returned without an error is reported as a per-request error.
+func (msc *MetadataServiceClient) AddInstanceInfos(token string, instances []metadata_service_client.CreateInstanceInfoRequest) (instancesAdded []api.InstanceInfo, errors []error, funcErr error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
 
@@ -33,10 +33,11 @@ func (msc *MetadataServiceClient) AddInstanceInfos(token string, instances []met
 		if err != nil {
 			newErr := fmt.Errorf("failed to add instance info %+v: %w", i, err)
 			errors = append(errors, newErr)
-			instancesAdded = append(instancesAdded, nil)
+		} else if item != nil {
+			instancesAdded = append(instancesAdded, *item)
 		} else {
-			instancesAdded = append(instancesAdded, item)
-			errors = append(errors, nil)
+			newErr := fmt.Errorf("instance info creation did not err, but was not created for: %+v", i)
+			errors = append(errors, newErr)
 		}
 	}
 
@@ -44,11 +45,10 @@ func (msc *MetadataServiceClient) AddInstanceInfos(token string, instances []met
 }
 
 // DeleteInstanceInfos is a wrapper that calls the metadata-service client's
-// DeleteInstanceInfo() function, passing it context and a list of instance info
-// UIDs to delete. The output is a slice of instance info UIDs that
-// got deleted, a slice of errors containing any errors deleting instance infos,
-// and an error that is populated if an error in the function itself
-// occurred.
+// DeleteInstanceInfo() function, passing it context and a list of InstanceInfo
+// UIDs to delete. It returns a slice of successfully deleted InstanceInfo UIDs,
+// a slice of per-request errors, and an error that is populated if an error
+// occurred in the function itself.
 func (msc *MetadataServiceClient) DeleteInstanceInfos(token string, uids []string) (instancesDeleted []string, errors []error, funcErr error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
@@ -119,7 +119,8 @@ func (msc *MetadataServiceClient) ListInstanceInfos(token string, outFormat form
 // PatchInstanceInfo is a wrapper that calls the metadata-service client's
 // PatchInstanceInfo() function. It accepts data that represents a patch
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
-// PATCH request for the instance info identified by uid.
+// PATCH request for the InstanceInfo identified by uid. It returns the modified
+// InstanceInfo resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.InstanceInfo, error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token
@@ -153,9 +154,8 @@ func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat cl
 }
 
 // SetInstanceInfo is a wrapper that calls the metadata-service client's
-// UpdateInstanceInfo() function, passing it context. The output is a pointer
-// to the instance info details that got updated, along with an error if one
-// occurred.
+// UpdateInstanceInfo() function, passing it context. It returns the modified
+// InstanceInfo resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) SetInstanceInfo(token string, uid string, instance metadata_service_client.UpdateInstanceInfoRequest) (*api.InstanceInfo, error) {
 	// TODO: metadata-service client functions don't support tokens yet.
 	_ = token

@@ -65,7 +65,15 @@ See ochami-metadata(1) for more details.`,
 				os.Exit(1)
 			}
 
-			log.Logger.Debug().Msgf("Group set: %+v", groupSet)
+			// Check that a modified item was returned
+			if groupSet == nil {
+				log.Logger.Error().Msg("group set returned no resource")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
+			// Print UIDs of modified items
+			log.Logger.Info().Msgf("Groups set: %+v", []string{groupSet.Metadata.UID})
 		},
 	}
 

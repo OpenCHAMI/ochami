@@ -105,7 +105,15 @@ See ochami-metadata(1) for more details.`,
 				os.Exit(1)
 			}
 
-			log.Logger.Debug().Msgf("cluster defaults patched: %+v", defaultsPatched)
+			// Check that a modified item was returned
+			if defaultsPatched == nil {
+				log.Logger.Error().Msg("cluster defaults patch returned no resource")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
+			// Print UIDs of modified items
+			log.Logger.Info().Msgf("Cluster defaults patched: %+v", []string{defaultsPatched.Metadata.UID})
 		},
 	}
 
