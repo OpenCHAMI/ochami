@@ -26,44 +26,68 @@ func newCmdMetadataGroupAdd() *cobra.Command {
 See ochami-metadata(1) for more details.`,
 		Example: `  # Add group with inline multi-line template (YAML via stdin)
   ochami metadata group add -f yaml <<'EOF'
-  template: |
-    #cloud-config
-    package_update: true
-    packages:
-      - nfs-common
-      - chrony
-  metaData:
-    role: compute
+  metadata:
+    name: compute-group
+  spec:
+    template: |
+      #cloud-config
+      package_update: true
+      packages:
+        - nfs-common
+        - chrony
+    metaData:
+      role: compute
   EOF
 
   # Add group using JSON (single line template)
   ochami metadata group add -d \
     '{
-       "template":"#cloud-config\npackages:\n  - vim\n",
-       "metaData":{"role":"storage"}
+       "metadata": {
+         "name": "storage-group"
+       },
+       "spec": {
+         "template":"#cloud-config\npackages:\n  - vim\n",
+         "metaData":{"role":"storage"}
+       }
      }'
 
-  # Add multiple groups using JSON array
+  # Add multiple groups using JSON array of resource envelopes
   ochami metadata group add -d \
     '[
        {
-         "template":"#cloud-config\npackages:\n  - nfs-common\n"
+         "metadata": {
+           "name": "nfs-client-group"
+         },
+         "spec": {
+           "template":"#cloud-config\npackages:\n  - nfs-common\n"
+         }
        },
        {
-         "template":"#cloud-config\npackages:\n  - nfs-server\n"
+         "metadata": {
+           "name": "nfs-server-group"
+         },
+         "spec": {
+           "template":"#cloud-config\npackages:\n  - nfs-server\n"
+         }
        }
      ]'
 
-  # Add multiple groups using YAML array
+  # Add multiple groups using YAML array of resource envelopes
   ochami metadata group add -f yaml <<'EOF'
-  - template: |
-      #cloud-config
-      packages:
-        - nfs-common
-  - template: |
-      #cloud-config
-      packages:
-        - nfs-server
+  - metadata:
+      name: nfs-client-group
+    spec:
+      template: |
+        #cloud-config
+        packages:
+          - nfs-common
+  - metadata:
+      name: nfs-server-group
+    spec:
+      template: |
+        #cloud-config
+        packages:
+          - nfs-server
   EOF
 
   # Add multiple groups from file

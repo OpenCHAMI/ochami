@@ -27,27 +27,48 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Add instance info using JSON
   ochami metadata instance add -d \
     '{
-       "instance_id": "x1000c0s0b0n0",
-       "hostname": "nid001000.demo.cluster",
-       "local_hostname": "nid001000",
-       "public_keys": ["ssh-ed25519 AAAAC3Nza... admin@demo"]
+       "metadata": {
+         "name": "x1000c0s0b0n0-instance"
+       },
+       "spec": {
+         "instance_id": "x1000c0s0b0n0",
+         "hostname": "nid001000.demo.cluster",
+         "local_hostname": "nid001000",
+         "public_keys": ["ssh-ed25519 AAAAC3Nza... admin@demo"]
+       }
      }'
 
-  # Add multiple instance infos using JSON array
+  # Add multiple instance infos using JSON array of resource envelopes
   ochami metadata instance add -d \
     '[
        {
-         "instance_id": "x1000c0s0b0n0"
+         "metadata": {
+           "name": "x1000c0s0b0n0-instance"
+         },
+         "spec": {
+           "instance_id": "x1000c0s0b0n0"
+         }
        },
        {
-         "instance_id": "x1000c0s0b0n1"
+         "metadata": {
+           "name": "x1000c0s0b0n1-instance"
+         },
+         "spec": {
+           "instance_id": "x1000c0s0b0n1"
+         }
        }
      ]'
 
-  # Add multiple instance infos using YAML array
+  # Add multiple instance infos using YAML array of resource envelopes
   ochami metadata instance add -f yaml <<'EOF'
-  - instance_id: "x1000c0s0b0n0"
-  - instance_id: "x1000c0s0b0n1"
+  - metadata:
+      name: x1000c0s0b0n0-instance
+    spec:
+      instance_id: "x1000c0s0b0n0"
+  - metadata:
+      name: x1000c0s0b0n1-instance
+    spec:
+      instance_id: "x1000c0s0b0n1"
   EOF
 
   # Add multiple instances from file

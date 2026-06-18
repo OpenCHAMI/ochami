@@ -27,37 +27,61 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Add WireGuard peer using JSON
   ochami metadata peer add -d \
     '{
-       "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-       "allowed_ip": "10.42.1.1/32",
-       "description": "Peer for nid001000"
+       "metadata": {
+         "name": "peer-nid001000"
+       },
+       "spec": {
+         "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+         "allowed_ip": "10.42.1.1/32",
+         "description": "Peer for nid001000"
+       }
      }'
 
   # Add peer from YAML
   ochami metadata peer add -f yaml <<'EOF'
-  public_key: xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=
-  allowed_ip: 10.42.1.1/32
-  description: Compute node peer
+  metadata:
+    name: peer-nid001000
+  spec:
+    public_key: xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=
+    allowed_ip: 10.42.1.1/32
+    description: Compute node peer
   EOF
 
-  # Add multiple WireGuard peers using JSON array
+  # Add multiple WireGuard peers using JSON array of resource envelopes
   ochami metadata peer add -d \
     '[
        {
-         "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-         "allowed_ip": "10.42.1.1/32"
+         "metadata": {
+           "name": "peer-nid001000"
+         },
+         "spec": {
+           "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+           "allowed_ip": "10.42.1.1/32"
+         }
        },
        {
-         "public_key": "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh=",
-         "allowed_ip": "10.42.1.2/32"
+         "metadata": {
+           "name": "peer-nid001001"
+         },
+         "spec": {
+           "public_key": "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh=",
+           "allowed_ip": "10.42.1.2/32"
+         }
        }
      ]'
 
-  # Add multiple WireGuard peers using YAML array
+  # Add multiple WireGuard peers using YAML array of resource envelopes
   ochami metadata peer add -f yaml <<'EOF'
-  - public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
-    allowed_ip: "10.42.1.1/32"
-  - public_key: "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh="
-    allowed_ip: "10.42.1.2/32"
+  - metadata:
+      name: peer-nid001000
+    spec:
+      public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
+      allowed_ip: "10.42.1.1/32"
+  - metadata:
+      name: peer-nid001001
+    spec:
+      public_key: "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh="
+      allowed_ip: "10.42.1.2/32"
   EOF
 
   # Add multiple peers from file

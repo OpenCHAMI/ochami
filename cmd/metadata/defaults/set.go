@@ -27,11 +27,16 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Set cluster defaults details using payload data
   ochami metadata defaults set clusterdefaults-d614b918 -d \
     '{
-       "base_url": "https://demo.openchami.cluster:8443/cloud-init",
-       "cluster_name": "demo",
-       "description": "Demo cluster defaults",
-       "short_name": "nid",
-       "nid_length": 4
+       "metadata": {
+         "name": "demo-cluster-defaults"
+       },
+       "spec": {
+         "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+         "cluster_name": "demo",
+         "description": "Demo cluster defaults",
+         "short_name": "nid",
+         "nid_length": 4
+       }
      }'
 
   # Set cluster defaults details using input payload file

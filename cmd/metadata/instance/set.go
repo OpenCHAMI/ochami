@@ -27,9 +27,14 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Set instance info details using payload data
   ochami metadata instance set instanceinfo-d614b918 -d \
     '{
-       "instance_id": "x1000c0s0b0n0",
-       "hostname": "nid001000.demo.cluster",
-       "local_hostname": "nid001000"
+       "metadata": {
+         "name": "x1000c0s0b0n0-instance"
+       },
+       "spec": {
+         "instance_id": "x1000c0s0b0n0",
+         "hostname": "nid001000.demo.cluster",
+         "local_hostname": "nid001000"
+       }
      }'
 
   # Set instance info details using file

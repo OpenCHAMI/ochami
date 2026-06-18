@@ -319,28 +319,49 @@ Subcommands for this command are as follows:
 	```
 	# Add cluster defaults using JSON
 	ochami metadata defaults add -d '{
-	  "base_url": "https://demo.openchami.cluster:8443/cloud-init",
-	  "cluster_name": "demo"
+	  "metadata": {
+	    "name": "demo-cluster-defaults"
+	  },
+	  "spec": {
+	    "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+	    "cluster_name": "demo"
+	  }
 	}'
 
-	# Add multiple cluster defaults using JSON array
+	# Add multiple cluster defaults using JSON array of resource envelopes
 	ochami metadata defaults add -d '[
 	  {
-	    "base_url": "https://demo1.openchami.cluster:8443/cloud-init",
-	    "cluster_name": "demo1"
+	    "metadata": {
+	      "name": "demo1-cluster-defaults"
+	    },
+	    "spec": {
+	      "base_url": "https://demo1.openchami.cluster:8443/cloud-init",
+	      "cluster_name": "demo1"
+	    }
 	  },
 	  {
-	    "base_url": "https://demo2.openchami.cluster:8443/cloud-init",
-	    "cluster_name": "demo2"
+	    "metadata": {
+	      "name": "demo2-cluster-defaults"
+	    },
+	    "spec": {
+	      "base_url": "https://demo2.openchami.cluster:8443/cloud-init",
+	      "cluster_name": "demo2"
+	    }
 	  }
 	]'
 
-	# Add multiple cluster defaults using YAML array
+	# Add multiple cluster defaults using YAML array of resource envelopes
 	ochami metadata defaults add -f yaml -d - <<'EOF'
-	- base_url: "https://demo1.openchami.cluster:8443/cloud-init"
-	  cluster_name: "demo1"
-	- base_url: "https://demo2.openchami.cluster:8443/cloud-init"
-	  cluster_name: "demo2"
+	- metadata:
+	    name: demo1-cluster-defaults
+	  spec:
+	    base_url: "https://demo1.openchami.cluster:8443/cloud-init"
+	    cluster_name: "demo1"
+	- metadata:
+	    name: demo2-cluster-defaults
+	  spec:
+	    base_url: "https://demo2.openchami.cluster:8443/cloud-init"
+	    cluster_name: "demo2"
 	EOF
 
 	# Add cluster defaults from file
@@ -470,42 +491,66 @@ Subcommands for this command are as follows:
 
 	# Add group with inline multi-line template (YAML via stdin)
 	ochami metadata group add -f yaml -d - <<'EOF'
-	template: |
-	  #cloud-config
-	  package_update: true
-	  packages:
-	    - nfs-common
-	    - chrony
-	metaData:
-	  role: compute
+	metadata:
+	  name: compute-group
+	spec:
+	  template: |
+	    #cloud-config
+	    package_update: true
+	    packages:
+	      - nfs-common
+	      - chrony
+	  metaData:
+	    role: compute
 	EOF
 
 	# Add group using JSON
 	ochami metadata group add -d '{
-	  "template":"#cloud-config\npackages:\n  - vim\n",
-	  "metaData":{"role":"storage"}
+	  "metadata": {
+	    "name": "storage-group"
+	  },
+	  "spec": {
+	    "template":"#cloud-config\npackages:\n  - vim\n",
+	    "metaData":{"role":"storage"}
+	  }
 	}'
 
-	# Add multiple groups using JSON array
+	# Add multiple groups using JSON array of resource envelopes
 	ochami metadata group add -d '[
 	  {
-	    "template":"#cloud-config\npackages:\n  - nfs-common\n"
+	    "metadata": {
+	      "name": "nfs-client-group"
+	    },
+	    "spec": {
+	      "template":"#cloud-config\npackages:\n  - nfs-common\n"
+	    }
 	  },
 	  {
-	    "template":"#cloud-config\npackages:\n  - nfs-server\n"
+	    "metadata": {
+	      "name": "nfs-server-group"
+	    },
+	    "spec": {
+	      "template":"#cloud-config\npackages:\n  - nfs-server\n"
+	    }
 	  }
 	]'
 
-	# Add multiple groups using YAML array
+	# Add multiple groups using YAML array of resource envelopes
 	ochami metadata group add -f yaml -d - <<'EOF'
-	- template: |
-	    #cloud-config
-	    packages:
-	      - nfs-common
-	- template: |
-	    #cloud-config
-	    packages:
-	      - nfs-server
+	- metadata:
+	    name: nfs-client-group
+	  spec:
+	    template: |
+	      #cloud-config
+	      packages:
+	        - nfs-common
+	- metadata:
+	    name: nfs-server-group
+	  spec:
+	    template: |
+	      #cloud-config
+	      packages:
+	        - nfs-server
 	EOF
 
 	# Add multiple groups from file
@@ -709,8 +754,13 @@ Subcommands for this command are as follows:
 
 	# Set group details using JSON
 	ochami metadata group set group-d614b918 -d '{
-	  "template":"#cloud-config\npackages:\n  - vim\n",
-	  "metaData":{"role":"compute"}
+	  "metadata": {
+	    "name": "compute-group"
+	  },
+	  "spec": {
+	    "template":"#cloud-config\npackages:\n  - vim\n",
+	    "metaData":{"role":"compute"}
+	  }
 	}'
 	```
 
@@ -759,25 +809,46 @@ Subcommands for this command are as follows:
 	```
 	# Add instance info using JSON
 	ochami metadata instance add -d '{
-	  "instance_id": "x1000c0s0b0n0",
-	  "hostname": "nid001000.demo.cluster",
-	  "local_hostname": "nid001000"
+	  "metadata": {
+	    "name": "x1000c0s0b0n0-instance"
+	  },
+	  "spec": {
+	    "instance_id": "x1000c0s0b0n0",
+	    "hostname": "nid001000.demo.cluster",
+	    "local_hostname": "nid001000"
+	  }
 	}'
 
-	# Add multiple instance infos using JSON array
+	# Add multiple instance infos using JSON array of resource envelopes
 	ochami metadata instance add -d '[
 	  {
-	    "instance_id": "x1000c0s0b0n0"
+	    "metadata": {
+	      "name": "x1000c0s0b0n0-instance"
+	    },
+	    "spec": {
+	      "instance_id": "x1000c0s0b0n0"
+	    }
 	  },
 	  {
-	    "instance_id": "x1000c0s0b0n1"
+	    "metadata": {
+	      "name": "x1000c0s0b0n1-instance"
+	    },
+	    "spec": {
+	      "instance_id": "x1000c0s0b0n1"
+	    }
 	  }
 	]'
 
-	# Add multiple instance infos using YAML array
+	# Add multiple instance infos using YAML array of resource envelopes
 	ochami metadata instance add -f yaml -d - <<'EOF'
-	- instance_id: "x1000c0s0b0n0"
-	- instance_id: "x1000c0s0b0n1"
+	- metadata:
+	    name: x1000c0s0b0n0-instance
+	  spec:
+	    instance_id: "x1000c0s0b0n0"
+	- metadata:
+	    name: x1000c0s0b0n1-instance
+	  spec:
+	    instance_id: "x1000c0s0b0n1"
 	EOF
 
 	# Add instance from YAML file
@@ -985,8 +1056,13 @@ Subcommands for this command are as follows:
 
 	# Set instance info using JSON
 	ochami metadata instance set instanceinfo-d614b918 -d '{
-	  "instance_id": "x1000c0s0b0n0",
-	  "hostname": "nid001000.demo.cluster"
+	  "metadata": {
+	    "name": "x1000c0s0b0n0-instance"
+	  },
+	  "spec": {
+	    "instance_id": "x1000c0s0b0n0",
+	    "hostname": "nid001000.demo.cluster"
+	  }
 	}'
 	```
 
@@ -1035,36 +1111,60 @@ Subcommands for this command are as follows:
 	```
 	# Add WireGuard peer using JSON
 	ochami metadata peer add -d '{
-	  "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-	  "allowed_ip": "10.42.1.1/32",
-	  "description": "Peer for nid001000"
+	  "metadata": {
+	    "name": "peer-nid001000"
+	  },
+	  "spec": {
+	    "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+	    "allowed_ip": "10.42.1.1/32",
+	    "description": "Peer for nid001000"
+	  }
 	}'
 
 	# Add peer from YAML
 	ochami metadata peer add -f yaml -d - <<'EOF'
-	public_key: xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=
-	allowed_ip: 10.42.1.1/32
-	description: Compute node peer
+	metadata:
+	  name: peer-nid001000
+	spec:
+	  public_key: xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=
+	  allowed_ip: 10.42.1.1/32
+	  description: Compute node peer
 	EOF
 
-	# Add multiple WireGuard peers using JSON array
+	# Add multiple WireGuard peers using JSON array of resource envelopes
 	ochami metadata peer add -d '[
 	  {
-	    "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-	    "allowed_ip": "10.42.1.1/32"
+	    "metadata": {
+	      "name": "peer-nid001000"
+	    },
+	    "spec": {
+	      "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+	      "allowed_ip": "10.42.1.1/32"
+	    }
 	  },
 	  {
-	    "public_key": "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh=",
-	    "allowed_ip": "10.42.1.2/32"
+	    "metadata": {
+	      "name": "peer-nid001001"
+	    },
+	    "spec": {
+	      "public_key": "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh=",
+	      "allowed_ip": "10.42.1.2/32"
+	    }
 	  }
 	]'
 
-	# Add multiple WireGuard peers using YAML array
+	# Add multiple WireGuard peers using YAML array of resource envelopes
 	ochami metadata peer add -f yaml -d - <<'EOF'
-	- public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
-	  allowed_ip: "10.42.1.1/32"
-	- public_key: "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh="
-	  allowed_ip: "10.42.1.2/32"
+	- metadata:
+	    name: peer-nid001000
+	  spec:
+	    public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
+	    allowed_ip: "10.42.1.1/32"
+	- metadata:
+	    name: peer-nid001001
+	  spec:
+	    public_key: "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh="
+	    allowed_ip: "10.42.1.2/32"
 	EOF
 
 	# Add multiple peers from file
@@ -1269,8 +1369,13 @@ Subcommands for this command are as follows:
 
 	# Set WireGuard peer using JSON
 	ochami metadata peer set wireguardpeer-d614b918 -d '{
-	  "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-	  "allowed_ip": "10.42.1.1/32"
+	  "metadata": {
+	    "name": "peer-nid001000"
+	  },
+	  "spec": {
+	    "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+	    "allowed_ip": "10.42.1.1/32"
+	  }
 	}'
 	```
 

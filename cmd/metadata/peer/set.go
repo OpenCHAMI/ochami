@@ -27,16 +27,24 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Set WireGuard peer details using payload data
   ochami metadata peer set wireguardpeer-d614b918 -d \
     '{
-       "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-       "allowed_ip": "10.42.1.1/32",
-       "description": "Updated peer"
+       "metadata": {
+         "name": "peer-nid001000"
+       },
+       "spec": {
+         "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+         "allowed_ip": "10.42.1.1/32",
+         "description": "Updated peer"
+       }
      }'
 
   # Set WireGuard peer details using YAML payload data
   ochami metadata peer set wireguardpeer-d614b918 -f yaml <<'EOF'
-  public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
-  allowed_ip: "10.42.1.1/32"
-  description: "Updated peer"
+  metadata:
+    name: peer-nid001000
+  spec:
+    public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
+    allowed_ip: "10.42.1.1/32"
+    description: "Updated peer"
   EOF
 
   # Set WireGuard peer details using file

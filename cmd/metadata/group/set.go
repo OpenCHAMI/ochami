@@ -27,9 +27,14 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Set group details using payload data
   ochami metadata group set group-d614b918 -d \
     '{
-       "template":"#cloud-config\npackages:\n  - vim\n",
-       "metaData":{"role":"compute"},
-       "osVersion":"ubuntu-22.04"
+       "metadata": {
+         "name": "compute-group"
+       },
+       "spec": {
+         "template":"#cloud-config\npackages:\n  - vim\n",
+         "metaData":{"role":"compute"},
+         "osVersion":"ubuntu-22.04"
+       }
      }'
 
   # Set group details using file

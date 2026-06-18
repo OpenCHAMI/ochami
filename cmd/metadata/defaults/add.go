@@ -27,38 +27,59 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Add cluster defaults using payload data
   ochami metadata defaults add -d \
     '{
-      "base_url": "https://demo.openchami.cluster:8443/cloud-init",
-      "cluster_name": "demo",
-      "description": "Demo cluster defaults",
-      "short_name": "nid",
-      "nid_length": 4
+      "metadata": {
+        "name": "demo-cluster-defaults"
+      },
+      "spec": {
+        "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+        "cluster_name": "demo",
+        "description": "Demo cluster defaults",
+        "short_name": "nid",
+        "nid_length": 4
+      }
      }'
 
-  # Add multiple cluster defaults using payload data
+  # Add multiple cluster defaults using resource envelope payload data
   ochami metadata defaults add -d \
     '[
        {
-         "base_url": "https://demo1.openchami.cluster:8443/cloud-init",
-         "cluster_name": "demo1",
-         "description": "Demo 1 cluster defaults",
-         "short_name": "nid",
-         "nid_length": 4
+         "metadata": {
+           "name": "demo1-cluster-defaults"
+         },
+         "spec": {
+           "base_url": "https://demo1.openchami.cluster:8443/cloud-init",
+           "cluster_name": "demo1",
+           "description": "Demo 1 cluster defaults",
+           "short_name": "nid",
+           "nid_length": 4
+         }
        },
        {
-         "base_url": "https://demo2.openchami.cluster:8443/cloud-init",
-         "cluster_name": "demo2",
-         "description": "Demo 2 cluster defaults",
-         "short_name": "de",
-         "nid_length": 3
+         "metadata": {
+           "name": "demo2-cluster-defaults"
+         },
+         "spec": {
+           "base_url": "https://demo2.openchami.cluster:8443/cloud-init",
+           "cluster_name": "demo2",
+           "description": "Demo 2 cluster defaults",
+           "short_name": "de",
+           "nid_length": 3
+         }
        }
      ]'
 
-  # Add multiple cluster defaults using YAML array
+  # Add multiple cluster defaults using YAML array of resource envelopes
   ochami metadata defaults add -f yaml <<'EOF'
-  - base_url: "https://demo1.openchami.cluster:8443/cloud-init"
-    cluster_name: "demo1"
-  - base_url: "https://demo2.openchami.cluster:8443/cloud-init"
-    cluster_name: "demo2"
+  - metadata:
+      name: demo1-cluster-defaults
+    spec:
+      base_url: "https://demo1.openchami.cluster:8443/cloud-init"
+      cluster_name: "demo1"
+  - metadata:
+      name: demo2-cluster-defaults
+    spec:
+      base_url: "https://demo2.openchami.cluster:8443/cloud-init"
+      cluster_name: "demo2"
   EOF
 
   # Add cluster defaults using input payload file

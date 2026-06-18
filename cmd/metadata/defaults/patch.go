@@ -52,7 +52,7 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Patch using JSON patch (RFC 6902)
   ochami metadata defaults patch clusterdefaults-d614b918 --patch-method rfc6902 --data '[
     {"op":"replace","path":"/base_url","value":"https://demo.openchami.cluster:8443/metadata-service"},
-    {"op":"replace","path":"short_name","value":"de"}
+    {"op":"replace","path":"/short_name","value":"de"}
   ]'
 
   # Patch specific fields using JSON merge patch (RFC 7386) (simple merge)
