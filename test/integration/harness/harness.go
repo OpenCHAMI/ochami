@@ -272,6 +272,14 @@ func AssertRequest(t *testing.T, req *http.Request, method, path string) {
 	}
 }
 
+// AssertHeader checks the value of a recorded HTTP request header.
+func AssertHeader(t *testing.T, req *http.Request, key, want string) {
+	t.Helper()
+	if got := req.Header.Get(key); got != want {
+		t.Errorf("request header %q = %q, want %q", key, got, want)
+	}
+}
+
 // AssertLastRequest checks the method and path of the most recent request.
 func AssertLastRequest(t *testing.T, server *FakeHTTPServer, method, path string) {
 	t.Helper()
@@ -279,4 +287,13 @@ func AssertLastRequest(t *testing.T, server *FakeHTTPServer, method, path string
 		t.Fatal("no requests recorded")
 	}
 	AssertRequest(t, server.Requests[len(server.Requests)-1], method, path)
+}
+
+// AssertLastRequestHeader checks a header on the most recent request.
+func AssertLastRequestHeader(t *testing.T, server *FakeHTTPServer, key, want string) {
+	t.Helper()
+	if len(server.Requests) == 0 {
+		t.Fatal("no requests recorded")
+	}
+	AssertHeader(t, server.Requests[len(server.Requests)-1], key, want)
 }
