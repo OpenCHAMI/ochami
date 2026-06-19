@@ -194,7 +194,7 @@ See ochami-bss(1) for more details.`,
 	// Create flags
 	bootImageSetCmd.Flags().StringSliceP("xname", "x", []string{}, "one or more xnames whose boot parameters to set")
 	bootImageSetCmd.Flags().StringSliceP("mac", "m", []string{}, "one or more MAC addresses whose boot parameters to set")
-	bootImageSetCmd.Flags().StringP("param", "p", "root", "set the image parameter name")
+	bootImageSetCmd.Flags().StringP("param", "p", "root", "set the kernel parameter name that the image is passed with")
 	bootImageSetCmd.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to set")
 
 	bootImageSetCmd.MarkFlagsOneRequired("xname", "mac", "nid")
