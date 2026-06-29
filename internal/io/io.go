@@ -12,11 +12,25 @@ import (
 	"os"
 )
 
+// Buffer for ReadStdin()
+var stdin_buffer []byte = nil
+
 // ReadStdin reads all of standard input and returns the bytes. If an error
 // occurs during scanning, it is returned.
+// It also stores the read data so subsequent calls will return the same bytes
+// instead of attempting to reread stdin after EOF
 func ReadStdin() ([]byte, error) {
+	if stdin_buffer != nil {
+		// Returning this slice raw may be unforeseen consequences if a caller
+		// tries to modify it
+		return stdin_buffer, nil
+	}
 	ior := newIOReader(os.Stdin)
-	return ior.readIn()
+	ret, err := ior.readIn()
+	if err == nil {
+		stdin_buffer = ret
+	}
+	return ret, err
 }
 
 // ioReader stores an io.Reader to be read from using readIn. It's purpose is to
