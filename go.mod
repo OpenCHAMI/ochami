@@ -27,6 +27,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/synackd/go-kargs v0.0.1-beta.1
 	github.com/vbauerster/mpb/v8 v8.10.2
+	golang.org/x/term v0.44.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
