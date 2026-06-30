@@ -15,6 +15,7 @@ func TestInit(t *testing.T) {
 	type args struct {
 		ll string
 		lf string
+		lc string
 	}
 	tests := []struct {
 		name    string
@@ -26,6 +27,7 @@ func TestInit(t *testing.T) {
 			args: args{
 				ll: "warning",
 				lf: "basic",
+				lc: "auto",
 			},
 			wantErr: false,
 		},
@@ -34,6 +36,7 @@ func TestInit(t *testing.T) {
 			args: args{
 				ll: "unsupported",
 				lf: "basic",
+				lc: "auto",
 			},
 			wantErr: true,
 		},
@@ -42,6 +45,7 @@ func TestInit(t *testing.T) {
 			args: args{
 				ll: "warning",
 				lf: "unsupported",
+				lc: "auto",
 			},
 			wantErr: true,
 		},
@@ -50,13 +54,23 @@ func TestInit(t *testing.T) {
 			args: args{
 				ll: "unsupported",
 				lf: "unsupported",
+				lc: "auto",
+			},
+			wantErr: true,
+		},
+		{
+			name: "supported level and format, unsupported color",
+			args: args{
+				ll: "warning",
+				lf: "basic",
+				lc: "unsupported",
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := Init(tt.args.ll, tt.args.lf); (err != nil) != tt.wantErr {
+			if err := Init(tt.args.ll, tt.args.lf, tt.args.lc); (err != nil) != tt.wantErr {
 				t.Errorf("Init() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

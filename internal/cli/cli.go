@@ -186,7 +186,15 @@ func InitLogging(cmd *cobra.Command) error {
 		config.GlobalConfig.Log.Level = ll
 	}
 
-	if err := log.Init(config.GlobalConfig.Log.Level, config.GlobalConfig.Log.Format); err != nil {
+	if cmd.Flags().Changed("log-color") {
+		lc, err := cmd.Flags().GetString("log-color")
+		if err != nil {
+			return fmt.Errorf("failed to fetch flag log-color: %w", err)
+		}
+		config.GlobalConfig.Log.Color = lc
+	}
+
+	if err := log.Init(config.GlobalConfig.Log.Level, config.GlobalConfig.Log.Format, config.GlobalConfig.Log.Color); err != nil {
 		return fmt.Errorf("failed to Initialize logger: %w", err)
 	}
 
