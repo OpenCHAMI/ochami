@@ -55,6 +55,7 @@ var DefaultConfig = Config{
 	Log: ConfigLog{
 		Format: "rfc3339",
 		Level:  "warning",
+		Color:  "auto",
 	},
 	Timeout: 30 * time.Second,
 }
