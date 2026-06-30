@@ -80,7 +80,7 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 	rootCmd.PersistentFlags().StringVarP(&cli.ConfigFile, "config", "c", "", "path to configuration file to use")
 	rootCmd.PersistentFlags().StringP("log-format", "L", "", "log format (json,rfc3339,basic)")
 	rootCmd.PersistentFlags().StringP("log-level", "l", "", "set verbosity of logs (info,warning,debug)")
-	rootCmd.PersistentFlags().String("log-color", "auto", "set coloring of logs (auto,on,off)")
+	rootCmd.PersistentFlags().String("log-color", "", "set coloring of logs (auto,on,off)")
 	rootCmd.PersistentFlags().StringP("cluster", "C", "", "name of cluster whose config to use for this command")
 	rootCmd.PersistentFlags().StringP("cluster-uri", "u", "", "base URI for OpenCHAMI services, excluding service base path (overrides cluster.uri in config file)")
 	rootCmd.PersistentFlags().StringVar(&cli.CACertPath, "cacert", "", "path to root CA certificate in PEM format")
