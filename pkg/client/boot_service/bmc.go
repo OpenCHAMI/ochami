@@ -20,15 +20,12 @@ import (
 // each element of which corresponds to an error in an error slice, followed by
 // an error that is populatd if an error occurred in the function itself.
 func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.CreateBMCRequest) (bmcsAdded []*api.BMC, errors []error, funcErr error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, bmc := range bmcs {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 		defer cancel()
 
-		item, err := bsc.Client.CreateBMC(ctx, bmc)
+		item, err := bsc.Client.WithBearerToken(token).CreateBMC(ctx, bmc)
 		if err != nil {
 			newErr := fmt.Errorf("failed to add bmc %+v: %w", bmc, err)
 			errors = append(errors, newErr)
@@ -46,15 +43,12 @@ func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.C
 // errors deleting BMCs, and an error that is populated if an error in the
 // function itself occurred.
 func (bsc *BootServiceClient) DeleteBMCs(token string, uids []string) (bmcsDeleted []string, errors []error, funcErr error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, bmcUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 		defer cancel()
 
-		if err := bsc.Client.DeleteBMC(ctx, bmcUid); err != nil {
+		if err := bsc.Client.WithBearerToken(token).DeleteBMC(ctx, bmcUid); err != nil {
 			newErr := fmt.Errorf("failed to delete BMC %s: %w", bmcUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -69,13 +63,10 @@ func (bsc *BootServiceClient) DeleteBMCs(token string, uids []string) (bmcsDelet
 // passing it context and a UID. The output is a []byte containing the entity's
 // BMC information, formatted as outFormat.
 func (bsc *BootServiceClient) GetBMC(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	bcfg, err := bsc.Client.GetBMC(ctx, uid)
+	bcfg, err := bsc.Client.WithBearerToken(token).GetBMC(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("request to get BMC info for %s failed: %w", uid, err)
 	}
@@ -92,13 +83,10 @@ func (bsc *BootServiceClient) GetBMC(token string, outFormat format.DataFormat, 
 // function, passing it context. The output is a []byte containing a list of
 // BMC formatted as outFormat.
 func (bsc *BootServiceClient) ListBMCs(token string, outFormat format.DataFormat) ([]byte, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	nodes, err := bsc.Client.GetBMCs(ctx)
+	nodes, err := bsc.Client.WithBearerToken(token).GetBMCs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("request to list BMCs failed: %w", err)
 	}
@@ -116,9 +104,6 @@ func (bsc *BootServiceClient) ListBMCs(token string, outFormat format.DataFormat
 // and sends it as JSON to the boot-service via a PATCH request for the BMC
 // identified by uid.
 func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.BMC, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
@@ -139,7 +124,7 @@ func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMet
 		return nil, fmt.Errorf("unknown patch format: %s", patchFormat)
 	}
 
-	item, err := bsc.Client.PatchBMC(ctx, uid, outData, contentType)
+	item, err := bsc.Client.WithBearerToken(token).PatchBMC(ctx, uid, outData, contentType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to patch BMC for %s: %w", uid, err)
 	}
@@ -151,13 +136,10 @@ func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMet
 // function, passing it context. The output is a pointer to the BMC details that
 // got updated, along with an error if one occurred.
 func (bsc *BootServiceClient) SetBMC(token string, uid string, bmc boot_service_client.UpdateBMCRequest) (*api.BMC, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	item, err := bsc.Client.UpdateBMC(ctx, uid, bmc)
+	item, err := bsc.Client.WithBearerToken(token).UpdateBMC(ctx, uid, bmc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set BMC %+v: %w", bmc, err)
 	}

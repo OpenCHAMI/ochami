@@ -21,15 +21,12 @@ import (
 // error that is populated if an error occurred in the function itself. A nil
 // resource returned without an error is reported as a per-request error.
 func (msc *MetadataServiceClient) AddGroups(token string, groups []metadata_service_client.CreateGroupRequest) (groupsAdded []api.Group, errors []error, funcErr error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, g := range groups {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 		defer cancel()
 
-		item, err := msc.Client.CreateGroup(ctx, g)
+		item, err := msc.Client.WithBearerToken(token).CreateGroup(ctx, g)
 		if err != nil {
 			newErr := fmt.Errorf("failed to add group %+v: %w", g, err)
 			errors = append(errors, newErr)
@@ -50,15 +47,12 @@ func (msc *MetadataServiceClient) AddGroups(token string, groups []metadata_serv
 // per-request errors, and an error that is populated if an error occurred in the
 // function itself.
 func (msc *MetadataServiceClient) DeleteGroups(token string, uids []string) (groupsDeleted []string, errors []error, funcErr error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, groupUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 		defer cancel()
 
-		if err := msc.Client.DeleteGroup(ctx, groupUid); err != nil {
+		if err := msc.Client.WithBearerToken(token).DeleteGroup(ctx, groupUid); err != nil {
 			newErr := fmt.Errorf("failed to delete group %s: %w", groupUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -74,13 +68,10 @@ func (msc *MetadataServiceClient) DeleteGroups(token string, uids []string) (gro
 // []byte containing the entity's group information, formatted as
 // outFormat.
 func (msc *MetadataServiceClient) GetGroup(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	group, err := msc.Client.GetGroup(ctx, uid)
+	group, err := msc.Client.WithBearerToken(token).GetGroup(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("request to get group info for %s failed: %w", uid, err)
 	}
@@ -97,13 +88,10 @@ func (msc *MetadataServiceClient) GetGroup(token string, outFormat format.DataFo
 // GetGroups() function, passing it context. The output is a []byte
 // containing the groups formatted as outFormat.
 func (msc *MetadataServiceClient) ListGroups(token string, outFormat format.DataFormat) ([]byte, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	groups, err := msc.Client.GetGroups(ctx)
+	groups, err := msc.Client.WithBearerToken(token).GetGroups(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("request to list groups failed: %w", err)
 	}
@@ -122,9 +110,6 @@ func (msc *MetadataServiceClient) ListGroups(token string, outFormat format.Data
 // PATCH request for the Group identified by uid. It returns the modified Group
 // resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.Group, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
@@ -145,7 +130,7 @@ func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.Pa
 		return nil, fmt.Errorf("unknown patch format: %s", patchFormat)
 	}
 
-	item, err := msc.Client.PatchGroup(ctx, uid, outData, contentType)
+	item, err := msc.Client.WithBearerToken(token).PatchGroup(ctx, uid, outData, contentType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to patch group for %s: %w", uid, err)
 	}
@@ -157,13 +142,10 @@ func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.Pa
 // UpdateGroup() function, passing it context. It returns the modified Group
 // resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) SetGroup(token string, uid string, group metadata_service_client.UpdateGroupRequest) (*api.Group, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	item, err := msc.Client.UpdateGroup(ctx, uid, group)
+	item, err := msc.Client.WithBearerToken(token).UpdateGroup(ctx, uid, group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set group %+v: %w", group, err)
 	}

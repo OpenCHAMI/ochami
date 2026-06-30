@@ -21,15 +21,12 @@ import (
 // an error in an error slice, followed by an error that is populatd if an error
 // occurred in the function itself.
 func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_service_client.CreateBootConfigurationRequest) (cfgsAdded []*api.BootConfiguration, errors []error, funcErr error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, bootCfg := range bootCfgs {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 		defer cancel()
 
-		item, err := bsc.Client.CreateBootConfiguration(ctx, bootCfg)
+		item, err := bsc.Client.WithBearerToken(token).CreateBootConfiguration(ctx, bootCfg)
 		if err != nil {
 			newErr := fmt.Errorf("failed to add boot configuration %+v: %w", bootCfg, err)
 			errors = append(errors, newErr)
@@ -47,15 +44,12 @@ func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_servi
 // deleted, a slice of errors containing any errors deleting nodes, and an error
 // that is populated if an error in the function itself occurred.
 func (bsc *BootServiceClient) DeleteBootConfigs(token string, uids []string) (bcfgsDeleted []string, errors []error, funcErr error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, bcfgUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 		defer cancel()
 
-		if err := bsc.Client.DeleteBootConfiguration(ctx, bcfgUid); err != nil {
+		if err := bsc.Client.WithBearerToken(token).DeleteBootConfiguration(ctx, bcfgUid); err != nil {
 			newErr := fmt.Errorf("failed to delete boot config %s: %w", bcfgUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -70,13 +64,10 @@ func (bsc *BootServiceClient) DeleteBootConfigs(token string, uids []string) (bc
 // GetBootConfiguration() function, passing it context and a UID. The output is
 // a []byte containing the entity's boot configuration, formatted as outFormat.
 func (bsc *BootServiceClient) GetBootConfig(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	bcfg, err := bsc.Client.GetBootConfiguration(ctx, uid)
+	bcfg, err := bsc.Client.WithBearerToken(token).GetBootConfiguration(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("request to get boot configuration for %s failed: %w", uid, err)
 	}
@@ -93,13 +84,10 @@ func (bsc *BootServiceClient) GetBootConfig(token string, outFormat format.DataF
 // GetBootConfigurations() function, passing it context. The output is a []byte
 // containing a list of boot configurations formatted as outFormat.
 func (bsc *BootServiceClient) ListBootConfigs(token string, outFormat format.DataFormat) ([]byte, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	bcfgs, err := bsc.Client.GetBootConfigurations(ctx)
+	bcfgs, err := bsc.Client.WithBearerToken(token).GetBootConfigurations(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("request to list boot configurations failed: %w", err)
 	}
@@ -140,7 +128,7 @@ func (bsc *BootServiceClient) PatchBootConfig(token string, patchFormat client.P
 		return nil, fmt.Errorf("unknown patch format: %s", patchFormat)
 	}
 
-	item, err := bsc.Client.PatchBootConfiguration(ctx, uid, outData, contentType)
+	item, err := bsc.Client.WithBearerToken(token).PatchBootConfiguration(ctx, uid, outData, contentType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to patch boot configuration for %s: %w", uid, err)
 	}
@@ -153,13 +141,10 @@ func (bsc *BootServiceClient) PatchBootConfig(token string, patchFormat client.P
 // pointer to the boot configuration that got updated, along with an error if
 // one occurred.
 func (bsc *BootServiceClient) SetBootConfig(token string, uid string, bootCfg boot_service_client.UpdateBootConfigurationRequest) (*api.BootConfiguration, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	item, err := bsc.Client.UpdateBootConfiguration(ctx, uid, bootCfg)
+	item, err := bsc.Client.WithBearerToken(token).UpdateBootConfiguration(ctx, uid, bootCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set boot configuration %+v: %w", bootCfg, err)
 	}

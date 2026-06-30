@@ -20,15 +20,12 @@ import (
 // each element of which corresponds to an error in an error slice, followed by
 // an error that is populatd if an error occurred in the function itself.
 func (bsc *BootServiceClient) AddNodes(token string, nodes []boot_service_client.CreateNodeRequest) (nodesAdded []*api.Node, errors []error, funcErr error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, node := range nodes {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 		defer cancel()
 
-		item, err := bsc.Client.CreateNode(ctx, node)
+		item, err := bsc.Client.WithBearerToken(token).CreateNode(ctx, node)
 		if err != nil {
 			newErr := fmt.Errorf("failed to add node %+v: %w", node, err)
 			errors = append(errors, newErr)
@@ -46,15 +43,12 @@ func (bsc *BootServiceClient) AddNodes(token string, nodes []boot_service_client
 // errors deleting nodes, and an error that is populated if an error in the
 // function itself occurred.
 func (bsc *BootServiceClient) DeleteNodes(token string, uids []string) (nodesDeleted []string, errors []error, funcErr error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, nodeUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 		defer cancel()
 
-		if err := bsc.Client.DeleteNode(ctx, nodeUid); err != nil {
+		if err := bsc.Client.WithBearerToken(token).DeleteNode(ctx, nodeUid); err != nil {
 			newErr := fmt.Errorf("failed to delete node %s: %w", nodeUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -69,13 +63,10 @@ func (bsc *BootServiceClient) DeleteNodes(token string, uids []string) (nodesDel
 // passing it context and a UID. The output is a []byte containing the entity's
 // node information, formatted as outFormat.
 func (bsc *BootServiceClient) GetNode(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	bcfg, err := bsc.Client.GetNode(ctx, uid)
+	bcfg, err := bsc.Client.WithBearerToken(token).GetNode(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("request to get node info for %s failed: %w", uid, err)
 	}
@@ -92,13 +83,10 @@ func (bsc *BootServiceClient) GetNode(token string, outFormat format.DataFormat,
 // function, passing it context. The output is a []byte containing a list of
 // nodes formatted as outFormat.
 func (bsc *BootServiceClient) ListNodes(token string, outFormat format.DataFormat) ([]byte, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	nodes, err := bsc.Client.GetNodes(ctx)
+	nodes, err := bsc.Client.WithBearerToken(token).GetNodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("request to list nodes failed: %w", err)
 	}
@@ -139,7 +127,7 @@ func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMe
 		return nil, fmt.Errorf("unknown patch format: %s", patchFormat)
 	}
 
-	item, err := bsc.Client.PatchNode(ctx, uid, outData, contentType)
+	item, err := bsc.Client.WithBearerToken(token).PatchNode(ctx, uid, outData, contentType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to patch node for %s: %w", uid, err)
 	}
@@ -151,13 +139,10 @@ func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMe
 // function, passing it context. The output is a pointer to the node
 // details that got updated, along with an error if one occurred.
 func (bsc *BootServiceClient) SetNode(token string, uid string, node boot_service_client.UpdateNodeRequest) (*api.Node, error) {
-	// TODO: boot-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	item, err := bsc.Client.UpdateNode(ctx, uid, node)
+	item, err := bsc.Client.WithBearerToken(token).UpdateNode(ctx, uid, node)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set node %+v: %w", node, err)
 	}
