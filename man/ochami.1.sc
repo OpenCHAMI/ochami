@@ -139,6 +139,16 @@ _foobar_.
 	- _warning_
 	- _debug_
 
+*--log-color* _color_
+	Enable/disable logging color. *auto* detects whether or not stderr is a
+	terminal and enables color accordingly. Defaults to _auto_.
+
+	Supported:
+
+	- _auto_
+	- _on_
+	- _off_
+
 *--no-token*
 	Disable reading of and checking for access token and do not include any
 	token in the request headers. This overrides the value of *enable-auth* set
