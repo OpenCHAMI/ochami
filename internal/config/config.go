@@ -157,6 +157,7 @@ func (c Config) GetCluster(name string) (ConfigCluster, error) {
 type ConfigLog struct {
 	Format string `yaml:"format,omitempty"`
 	Level  string `yaml:"level,omitempty"`
+	Color  string `yaml:"color,omitempty"`
 }
 
 // ConfigCluster is a "wrapper" around an individual cluster configuration. It
