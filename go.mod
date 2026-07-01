@@ -14,6 +14,7 @@ require (
 	github.com/OpenCHAMI/smd/v2 v2.18.0
 	github.com/elliotchance/pie/v2 v2.9.1
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/knadh/koanf/parsers/yaml v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.0
 	github.com/knadh/koanf/providers/rawbytes v1.0.0
@@ -27,6 +28,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/synackd/go-kargs v0.0.1-beta.1
 	github.com/vbauerster/mpb/v8 v8.10.2
+	golang.org/x/term v0.44.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

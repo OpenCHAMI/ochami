@@ -268,6 +268,7 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 		CloudInit ConfigClusterCloudInit
 		PCS       ConfigClusterPCS
 		SMD       ConfigClusterSMD
+		RCS       ConfigClusterRCS
 	}
 	type args struct {
 		c ConfigClusterConfig
@@ -294,6 +295,9 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 				SMD: ConfigClusterSMD{
 					URI: "",
 				},
+				RCS: ConfigClusterRCS{
+					URI: "",
+				},
 			},
 			args: args{
 				c: ConfigClusterConfig{
@@ -324,6 +328,9 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 					URI: "",
 				},
 				SMD: ConfigClusterSMD{
+					URI: "",
+				},
+				RCS: ConfigClusterRCS{
 					URI: "",
 				},
 			},
@@ -344,6 +351,9 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 				SMD: ConfigClusterSMD{
 					URI: "",
 				},
+				RCS: ConfigClusterRCS{
+					URI: "",
+				},
 			},
 			args: args{
 				c: ConfigClusterConfig{
@@ -360,6 +370,9 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 					SMD: ConfigClusterSMD{
 						URI: "newSmd",
 					},
+					RCS: ConfigClusterRCS{
+						URI: "newRcs",
+					},
 				},
 			},
 			want: ConfigClusterConfig{
@@ -375,6 +388,9 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 				},
 				SMD: ConfigClusterSMD{
 					URI: "newSmd",
+				},
+				RCS: ConfigClusterRCS{
+					URI: "newRcs",
 				},
 			},
 		},
@@ -394,6 +410,9 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 				SMD: ConfigClusterSMD{
 					URI: "oldSmd",
 				},
+				RCS: ConfigClusterRCS{
+					URI: "oldRcs",
+				},
 			},
 			args: args{
 				c: ConfigClusterConfig{
@@ -408,6 +427,9 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 						URI: "",
 					},
 					SMD: ConfigClusterSMD{
+						URI: "",
+					},
+					RCS: ConfigClusterRCS{
 						URI: "",
 					},
 				},
@@ -425,6 +447,9 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 				},
 				SMD: ConfigClusterSMD{
 					URI: "oldSmd",
+				},
+				RCS: ConfigClusterRCS{
+					URI: "oldRcs",
 				},
 			},
 		},
@@ -487,6 +512,7 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 				CloudInit: tt.fields.CloudInit,
 				PCS:       tt.fields.PCS,
 				SMD:       tt.fields.SMD,
+				RCS:       tt.fields.RCS,
 			}
 			if got := ccc.MergeURIConfig(tt.args.c); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ConfigClusterConfig.MergeURIConfig() = %v, want %v", got, tt.want)
@@ -502,6 +528,7 @@ func TestConfigClusterConfig_GetServiceBaseURI(t *testing.T) {
 		CloudInit ConfigClusterCloudInit
 		PCS       ConfigClusterPCS
 		SMD       ConfigClusterSMD
+		RCS       ConfigClusterRCS
 	}
 	type args struct {
 		svcName ServiceName
@@ -529,6 +556,9 @@ func TestConfigClusterConfig_GetServiceBaseURI(t *testing.T) {
 				SMD: ConfigClusterSMD{
 					URI: "",
 				},
+				RCS: ConfigClusterRCS{
+					URI: "",
+				},
 			},
 			args: args{
 				svcName: ServiceBSS,
@@ -552,6 +582,9 @@ func TestConfigClusterConfig_GetServiceBaseURI(t *testing.T) {
 				SMD: ConfigClusterSMD{
 					URI: "",
 				},
+				RCS: ConfigClusterRCS{
+					URI: "",
+				},
 			},
 			args: args{
 				svcName: ServiceBSS,
@@ -573,6 +606,9 @@ func TestConfigClusterConfig_GetServiceBaseURI(t *testing.T) {
 					URI: "",
 				},
 				SMD: ConfigClusterSMD{
+					URI: "",
+				},
+				RCS: ConfigClusterRCS{
 					URI: "",
 				},
 			},
@@ -683,6 +719,7 @@ func TestConfigClusterConfig_GetServiceBaseURI(t *testing.T) {
 				CloudInit: tt.fields.CloudInit,
 				PCS:       tt.fields.PCS,
 				SMD:       tt.fields.SMD,
+				RCS:       tt.fields.RCS,
 			}
 			got, err := ccc.GetServiceBaseURI(tt.args.svcName)
 			if (err != nil) != tt.wantErr {

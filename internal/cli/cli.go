@@ -310,6 +310,10 @@ func GetBaseURISMD(cmd *cobra.Command) (string, error) {
 	return GetBaseURI(cmd, config.ServiceSMD)
 }
 
+func GetBaseURIRCS(cmd *cobra.Command) (string, error) {
+	return GetBaseURI(cmd, config.ServiceRCS)
+}
+
 func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, error) {
 	// Precedence of getting base URI for requests (higher numbers override
 	// all preceding numbers):
@@ -379,6 +383,8 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 				ccc.PCS.URI = cmd.Flag("uri").Value.String()
 			case config.ServiceSMD:
 				ccc.SMD.URI = cmd.Flag("uri").Value.String()
+			case config.ServiceRCS:
+				ccc.RCS.URI = cmd.Flag("uri").Value.String()
 			default:
 				return "", fmt.Errorf("unknown service %q specified when generating base URI", serviceName)
 			}
