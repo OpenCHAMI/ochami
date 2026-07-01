@@ -6,6 +6,7 @@
 package static
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -117,17 +118,32 @@ See ochami-discover(1) for more details.`,
 
 			// Read data from file or stdin into map to determine which
 			// discovery method to use.
-			useDeprecatedFormat := discoverStaticDeprecatedFormat(cmd)
+			discoveryData := make(map[string]([]map[string]any))
+			if cmd.Flag("data").Changed {
+				cli.HandlePayload(cmd, &discoveryData)
+			} else {
+				cli.HandlePayloadStdin(cmd, &discoveryData)
+			}
+			useDeprecatedFormat := discoverStaticDeprecatedFormat(cmd, discoveryData)
+			var rawData []byte
 			if useDeprecatedFormat {
 				log.Logger.Warn().Msg("using deprecated discovery format which will be removed in a future version")
 
-				// Read data from file or stdin
-				nodes := discover.NodeListDeprecated{}
-				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &nodes)
-				} else {
-					cli.HandlePayloadStdin(cmd, &nodes)
+				// Convert discovery data to struct
+				rawData, err := json.Marshal(discoveryData)
+				if err != nil {
+					log.Logger.Error().Err(err).Msg("unable to marshal discovery data to json")
+					// cli.LogHelpError(cmd)
+					os.Exit(1)
 				}
+				nodes := discover.NodeListDeprecated{}
+				err = json.Unmarshal(rawData, &nodes)
+				if err != nil {
+					log.Logger.Error().Err(err).Msg("unable to unmarshal discovery data from json")
+					// cli.LogHelpError(cmd)
+					os.Exit(1)
+				}
+
 				log.Logger.Debug().Msgf("read %d nodes", len(nodes.Nodes))
 				log.Logger.Debug().Msgf("nodes: %s", nodes)
 
@@ -144,7 +160,6 @@ See ochami-discover(1) for more details.`,
 
 				// Put together payload for different endpoints
 				log.Logger.Debug().Msg("generating redfish structures to send to SMD")
-				var err error
 				comps, rfes, ifaces, err = discover.DiscoveryInfoV2Deprecated(smdBaseURI, nodes)
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to construct structures to send to SMD")
@@ -153,13 +168,21 @@ See ochami-discover(1) for more details.`,
 				}
 				log.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
 			} else {
-				// Read data from file or stdin
-				items := discover.DiscoveryItems{}
-				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &items)
-				} else {
-					cli.HandlePayloadStdin(cmd, &items)
+				// Convert discovery data to struct
+				rawData, err = json.Marshal(discoveryData)
+				if err != nil {
+					log.Logger.Error().Err(err).Msg("unable to marshal discovery items to json")
+					// cli.LogHelpError(cmd)
+					os.Exit(1)
 				}
+				items := discover.DiscoveryItems{}
+				err = json.Unmarshal(rawData, &items)
+				if err != nil {
+					log.Logger.Error().Err(err).Msg("unable to unmarshal discovery items from json")
+					// cli.LogHelpError(cmd)
+					os.Exit(1)
+				}
+
 				log.Logger.Debug().Msgf("read %d bmcs", len(items.BMCs))
 				log.Logger.Debug().Msgf("bmcs: %s", items.BMCs)
 				log.Logger.Debug().Msgf("read %d nodes", len(items.Nodes))
@@ -582,13 +605,7 @@ See ochami-discover(1) for more details.`,
 	return staticCmd
 }
 
-func discoverStaticDeprecatedFormat(cmd *cobra.Command) bool {
-	discoveryData := make(map[string]([]map[string]any))
-	if cmd.Flag("data").Changed {
-		cli.HandlePayload(cmd, &discoveryData)
-	} else {
-		cli.HandlePayloadStdin(cmd, &discoveryData)
-	}
+func discoverStaticDeprecatedFormat(cmd *cobra.Command, discoveryData map[string]([]map[string]any)) bool {
 	deprecatedFormat := false
 	for _, node := range discoveryData["nodes"] {
 		if _, bmcIpFound := node["bmc_ip"]; bmcIpFound {
