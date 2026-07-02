@@ -133,14 +133,12 @@ See ochami-discover(1) for more details.`,
 				rawData, err := json.Marshal(discoveryData)
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to marshal discovery data to json")
-					// cli.LogHelpError(cmd)
 					os.Exit(1)
 				}
 				nodes := discover.NodeListDeprecated{}
 				err = json.Unmarshal(rawData, &nodes)
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to unmarshal discovery data from json")
-					// cli.LogHelpError(cmd)
 					os.Exit(1)
 				}
 
@@ -172,14 +170,12 @@ See ochami-discover(1) for more details.`,
 				rawData, err = json.Marshal(discoveryData)
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to marshal discovery items to json")
-					// cli.LogHelpError(cmd)
 					os.Exit(1)
 				}
 				items := discover.DiscoveryItems{}
 				err = json.Unmarshal(rawData, &items)
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("unable to unmarshal discovery items from json")
-					// cli.LogHelpError(cmd)
 					os.Exit(1)
 				}
 
