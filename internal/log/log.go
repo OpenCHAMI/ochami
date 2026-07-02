@@ -46,7 +46,7 @@ func Init(ll, lf, lc string) error {
 
 	cw := zerolog.ConsoleWriter{Out: os.Stderr}
 
-	if lc == "auto" {
+	if lc == "auto" || lc == "" {
 		cw.NoColor = !term.IsTerminal(int(os.Stderr.Fd()))
 	} else if lc == "on" {
 		cw.NoColor = false
