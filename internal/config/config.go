@@ -119,7 +119,7 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 						Line:     n.Content[i].Line,
 					}
 				}
-				// If key was found and is not empty, set our sentinal
+				// If key was found and is not empty, set our sentinel
 				hasTimeout = true
 				break
 			}
