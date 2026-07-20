@@ -531,6 +531,13 @@ func LoadGlobalConfigMerged() error {
 			}
 		} else {
 			log.EarlyLogger.BasicLogf("merging in config from %s", cfgLoaded.File)
+
+			serializedConfig, err := GetConfigString(cfgLoaded.Cfg, "", "yaml")
+			if err != nil {
+				return fmt.Errorf("failed to serialize config: %w", err)
+			}
+			log.EarlyLogger.BasicLogf("Config data: %s", serializedConfig)
+
 			if err := MergeConfigIntoParser(ko, cfgLoaded.Cfg); err != nil {
 				return fmt.Errorf("failed to merge config: %w", err)
 			}
