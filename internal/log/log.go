@@ -46,13 +46,14 @@ func Init(ll, lf, lc string) error {
 
 	cw := zerolog.ConsoleWriter{Out: os.Stderr}
 
-	if lc == "auto" || lc == "" {
+	switch lc {
+	case "", "auto":
 		cw.NoColor = !term.IsTerminal(int(os.Stderr.Fd()))
-	} else if lc == "on" {
+	case "on":
 		cw.NoColor = false
-	} else if lc == "off" {
+	case "off":
 		cw.NoColor = true
-	} else {
+	default:
 		return fmt.Errorf("invalid log-color: %s", lc)
 	}
 
