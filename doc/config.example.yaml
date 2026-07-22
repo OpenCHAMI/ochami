@@ -20,6 +20,13 @@ log:
   # basic   - Specifies log level but no timestamp data
   format: json
 
+  # Color output. Specify whether or not to color output. Available values are:
+  #
+  # on   - Logs are colored unconditionally
+  # off  - Logs are uncolored unconditionally
+  # auto - Logs are colored if stderr is a terminal (default)
+  color: auto
+
 # Specify the name of the cluster to use by default. If this is not specified,
 # --cluster must be used on the command line to specify the name of the cluster
 # to use when communicating with OpenCHAMI services.

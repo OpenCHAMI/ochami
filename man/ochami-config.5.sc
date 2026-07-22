@@ -63,6 +63,17 @@ These configuration options are global configuration options.
 		- _warning_
 		- _debug_
 
+	*color:* _color_
+		Enable/disable logging color. *auto* detects whether or not stderr is a
+		terminal and enables color accordingly.
+
+		Default: *auto*
+		Supported:
+
+		- _auto_
+		- _on_
+		- _off_
+
 *timeout:* _duration_
 	The timeout to use for HTTP requests. This is a duration string as accepted
 	by Go's duration parser (e.g. _30s_, _5m_, _1m30s_).

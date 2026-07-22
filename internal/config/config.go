@@ -57,6 +57,7 @@ var DefaultConfig = Config{
 	Log: ConfigLog{
 		Format: "rfc3339",
 		Level:  "warning",
+		Color:  "auto",
 	},
 	Timeout: 30 * time.Second,
 }
@@ -120,7 +121,7 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 						Line:     n.Content[i].Line,
 					}
 				}
-				// If key was found and is not empty, set our sentinal
+				// If key was found and is not empty, set our sentinel
 				hasTimeout = true
 				break
 			}
@@ -159,6 +160,7 @@ func (c Config) GetCluster(name string) (ConfigCluster, error) {
 type ConfigLog struct {
 	Format string `yaml:"format,omitempty"`
 	Level  string `yaml:"level,omitempty"`
+	Color  string `yaml:"color,omitempty"`
 }
 
 // ConfigCluster is a "wrapper" around an individual cluster configuration. It

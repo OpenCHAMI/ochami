@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/term"
 
 	"github.com/OpenCHAMI/ochami/internal/version"
 )
@@ -30,7 +31,7 @@ var (
 
 // Init() initializes the global logging object so it can be used for logging by
 // any package that imports this internal log package.
-func Init(ll, lf string) error {
+func Init(ll, lf, lc string) error {
 	var loggerLevel zerolog.Level
 	switch ll {
 	case "warning":
@@ -44,6 +45,18 @@ func Init(ll, lf string) error {
 	}
 
 	cw := zerolog.ConsoleWriter{Out: os.Stderr}
+
+	switch lc {
+	case "", "auto":
+		cw.NoColor = !term.IsTerminal(int(os.Stderr.Fd()))
+	case "on":
+		cw.NoColor = false
+	case "off":
+		cw.NoColor = true
+	default:
+		return fmt.Errorf("invalid log-color: %s", lc)
+	}
+
 	switch lf {
 	case "rfc3339":
 		cw.TimeFormat = time.RFC3339
