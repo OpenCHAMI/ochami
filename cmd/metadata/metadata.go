@@ -28,7 +28,7 @@ func NewCmd() *cobra.Command {
 			"md",
 		},
 		Args:  cobra.NoArgs,
-		Short: "Communicate with the metadatat service",
+		Short: "Communicate with the metadata service",
 		Long: `Communicate with the metadata service.
 
 See ochami-metadata(1) for more details.`,
