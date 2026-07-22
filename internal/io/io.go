@@ -14,6 +14,8 @@ import (
 
 // ReadStdin reads all of standard input and returns the bytes. If an error
 // occurs during scanning, it is returned.
+// It also stores the read data so subsequent calls will return the same bytes
+// instead of attempting to reread stdin after EOF
 func ReadStdin() ([]byte, error) {
 	ior := newIOReader(os.Stdin)
 	return ior.readIn()
