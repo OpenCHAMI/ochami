@@ -21,15 +21,12 @@ import (
 // and an error that is populated if an error occurred in the function itself. A
 // nil resource returned without an error is reported as a per-request error.
 func (msc *MetadataServiceClient) AddInstanceInfos(token string, instances []metadata_service_client.CreateInstanceInfoRequest) (instancesAdded []api.InstanceInfo, errors []error, funcErr error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, i := range instances {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 		defer cancel()
 
-		item, err := msc.Client.CreateInstanceInfo(ctx, i)
+		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfo(ctx, i)
 		if err != nil {
 			newErr := fmt.Errorf("failed to add instance info %+v: %w", i, err)
 			errors = append(errors, newErr)
@@ -50,15 +47,12 @@ func (msc *MetadataServiceClient) AddInstanceInfos(token string, instances []met
 // a slice of per-request errors, and an error that is populated if an error
 // occurred in the function itself.
 func (msc *MetadataServiceClient) DeleteInstanceInfos(token string, uids []string) (instancesDeleted []string, errors []error, funcErr error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, instanceUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 		defer cancel()
 
-		if err := msc.Client.DeleteInstanceInfo(ctx, instanceUid); err != nil {
+		if err := msc.Client.WithBearerToken(token).DeleteInstanceInfo(ctx, instanceUid); err != nil {
 			newErr := fmt.Errorf("failed to delete instance info %s: %w", instanceUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -74,13 +68,10 @@ func (msc *MetadataServiceClient) DeleteInstanceInfos(token string, uids []strin
 // []byte containing the entity's instance info, formatted as
 // outFormat.
 func (msc *MetadataServiceClient) GetInstanceInfo(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	instance, err := msc.Client.GetInstanceInfo(ctx, uid)
+	instance, err := msc.Client.WithBearerToken(token).GetInstanceInfo(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("request to get instance info for %s failed: %w", uid, err)
 	}
@@ -97,13 +88,10 @@ func (msc *MetadataServiceClient) GetInstanceInfo(token string, outFormat format
 // GetInstanceInfos() function, passing it context. The output is a []byte
 // containing the instance infos formatted as outFormat.
 func (msc *MetadataServiceClient) ListInstanceInfos(token string, outFormat format.DataFormat) ([]byte, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	instances, err := msc.Client.GetInstanceInfos(ctx)
+	instances, err := msc.Client.WithBearerToken(token).GetInstanceInfos(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("request to list instance infos failed: %w", err)
 	}
@@ -122,9 +110,6 @@ func (msc *MetadataServiceClient) ListInstanceInfos(token string, outFormat form
 // PATCH request for the InstanceInfo identified by uid. It returns the modified
 // InstanceInfo resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.InstanceInfo, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
@@ -145,7 +130,7 @@ func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat cl
 		return nil, fmt.Errorf("unknown patch format: %s", patchFormat)
 	}
 
-	item, err := msc.Client.PatchInstanceInfo(ctx, uid, outData, contentType)
+	item, err := msc.Client.WithBearerToken(token).PatchInstanceInfo(ctx, uid, outData, contentType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to patch instance info for %s: %w", uid, err)
 	}
@@ -157,13 +142,10 @@ func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat cl
 // UpdateInstanceInfo() function, passing it context. It returns the modified
 // InstanceInfo resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) SetInstanceInfo(token string, uid string, instance metadata_service_client.UpdateInstanceInfoRequest) (*api.InstanceInfo, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	item, err := msc.Client.UpdateInstanceInfo(ctx, uid, instance)
+	item, err := msc.Client.WithBearerToken(token).UpdateInstanceInfo(ctx, uid, instance)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set instance info %+v: %w", instance, err)
 	}

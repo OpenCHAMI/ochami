@@ -21,15 +21,12 @@ import (
 // and an error that is populated if an error occurred in the function itself. A
 // nil resource returned without an error is reported as a per-request error.
 func (msc *MetadataServiceClient) AddWireGuardPeers(token string, peers []metadata_service_client.CreateWireGuardPeerRequest) (peersAdded []api.WireGuardPeer, errors []error, funcErr error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, p := range peers {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 		defer cancel()
 
-		item, err := msc.Client.CreateWireGuardPeer(ctx, p)
+		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeer(ctx, p)
 		if err != nil {
 			newErr := fmt.Errorf("failed to add WireGuard peer %+v: %w", p, err)
 			errors = append(errors, newErr)
@@ -50,15 +47,12 @@ func (msc *MetadataServiceClient) AddWireGuardPeers(token string, peers []metada
 // WireGuardPeer UIDs, a slice of per-request errors, and an error that is
 // populated if an error occurred in the function itself.
 func (msc *MetadataServiceClient) DeleteWireGuardPeers(token string, uids []string) (peersDeleted []string, errors []error, funcErr error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	// TODO: Make concurrent
 	for _, peerUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 		defer cancel()
 
-		if err := msc.Client.DeleteWireGuardPeer(ctx, peerUid); err != nil {
+		if err := msc.Client.WithBearerToken(token).DeleteWireGuardPeer(ctx, peerUid); err != nil {
 			newErr := fmt.Errorf("failed to delete WireGuard peer %s: %w", peerUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -74,13 +68,10 @@ func (msc *MetadataServiceClient) DeleteWireGuardPeers(token string, uids []stri
 // []byte containing the entity's WireGuard peer information, formatted as
 // outFormat.
 func (msc *MetadataServiceClient) GetWireGuardPeer(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	peer, err := msc.Client.GetWireGuardPeer(ctx, uid)
+	peer, err := msc.Client.WithBearerToken(token).GetWireGuardPeer(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("request to get WireGuard peer info for %s failed: %w", uid, err)
 	}
@@ -97,13 +88,10 @@ func (msc *MetadataServiceClient) GetWireGuardPeer(token string, outFormat forma
 // GetWireGuardPeers() function, passing it context. The output is a []byte
 // containing the WireGuard peers formatted as outFormat.
 func (msc *MetadataServiceClient) ListWireGuardPeers(token string, outFormat format.DataFormat) ([]byte, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	peers, err := msc.Client.GetWireGuardPeers(ctx)
+	peers, err := msc.Client.WithBearerToken(token).GetWireGuardPeers(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("request to list WireGuard peers failed: %w", err)
 	}
@@ -122,9 +110,6 @@ func (msc *MetadataServiceClient) ListWireGuardPeers(token string, outFormat for
 // PATCH request for the WireGuardPeer identified by uid. It returns the modified
 // WireGuardPeer resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.WireGuardPeer, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
@@ -145,7 +130,7 @@ func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat c
 		return nil, fmt.Errorf("unknown patch format: %s", patchFormat)
 	}
 
-	item, err := msc.Client.PatchWireGuardPeer(ctx, uid, outData, contentType)
+	item, err := msc.Client.WithBearerToken(token).PatchWireGuardPeer(ctx, uid, outData, contentType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to patch WireGuard peer for %s: %w", uid, err)
 	}
@@ -157,13 +142,10 @@ func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat c
 // UpdateWireGuardPeer() function, passing it context. It returns the modified
 // WireGuardPeer resource returned by metadata-service and any error.
 func (msc *MetadataServiceClient) SetWireGuardPeer(token string, uid string, peer metadata_service_client.UpdateWireGuardPeerRequest) (*api.WireGuardPeer, error) {
-	// TODO: metadata-service client functions don't support tokens yet.
-	_ = token
-
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	item, err := msc.Client.UpdateWireGuardPeer(ctx, uid, peer)
+	item, err := msc.Client.WithBearerToken(token).UpdateWireGuardPeer(ctx, uid, peer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set WireGuard peer %+v: %w", peer, err)
 	}

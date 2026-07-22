@@ -10,7 +10,7 @@ go 1.26.4
 require (
 	github.com/OpenCHAMI/bss v1.32.1
 	github.com/OpenCHAMI/cloud-init v1.2.3
-	github.com/OpenCHAMI/metadata-service v0.1.1
+	github.com/OpenCHAMI/metadata-service v0.1.2
 	github.com/OpenCHAMI/smd/v2 v2.18.0
 	github.com/elliotchance/pie/v2 v2.9.1
 	github.com/google/uuid v1.6.0
@@ -22,7 +22,7 @@ require (
 	github.com/knadh/koanf/v2 v2.2.2
 	github.com/lestrrat-go/jwx v1.2.31
 	github.com/nikolalohinski/gonja/v2 v2.4.0
-	github.com/openchami/boot-service v0.1.7
+	github.com/openchami/boot-service v0.2.0
 	github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.10.2
