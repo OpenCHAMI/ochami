@@ -411,7 +411,7 @@ Subcommands for this command are as follows:
 		- _yaml_
 
 *get* [-F _format_] [--nid _nid_] [--xname _xname_]
-	Get all components or one identified by xname or node ID.
+	Get all components or one identified by xname or node ID. Note: `list` is an available alias for this command.
 
 	If no filter flags are passed, all components are returned. Otherwise, the
 	component specified by the passed filter flag(s) is returned.
@@ -534,7 +534,7 @@ Subcommands for this command are as follows:
 		Do not ask the user to confirm deletion.
 
 *get* [-F _format_] [--fqdn _fqdn_,...] [-i _ip_,...] [-m _mac_,...] [--type _type_,...] [--uuid _uuid_,...] [-x _xname_,...]
-	Get all Redfish endpoints or filter by various attributes.
+	Get all Redfish endpoints or filter by various attributes. Note: `list` is an available alias for this command.
 
 	If no filter flags are passed, all Redfish endpoints are returned.
 	Otherwise, only the endpoint(s) matching the specified filter criteria are

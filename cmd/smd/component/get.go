@@ -22,9 +22,10 @@ import (
 func newCmdComponentGet() *cobra.Command {
 	// componentGetCmd represents the "smd component get" command
 	var componentGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get all components or component identified by an xname or node ID",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get all components or component identified by an xname or node ID",
 		Long: `Get all components or component by an xname or node ID.
 
 See ochami-smd(1) for more details.`,
