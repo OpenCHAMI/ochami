@@ -23,9 +23,10 @@ import (
 func newCmdGroupGet() *cobra.Command {
 	// groupGetCmd represents the "smd group get" command
 	var groupGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get all groups or group(s) identified by name and/or tag",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get all groups or group(s) identified by name and/or tag",
 		Long: `Get all groups or group(s) identified by name and/or tag.
 
 See ochami-smd(1) for more details.`,

@@ -114,9 +114,10 @@ func getGroupData(cmd *cobra.Command, args []string) (groupSlice []cistore.Group
 func newCmdGroupGet() *cobra.Command {
 	// groupGetCmd represents the "cloud-init group get" command
 	var groupGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get group data for all or a subset of cloud-init groups",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get group data for all or a subset of cloud-init groups",
 		Long: `Get group data for all or a subset of cloud-init groups.
 
 See ochami-cloud-init(1) for more details.`,

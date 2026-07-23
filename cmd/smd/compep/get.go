@@ -23,8 +23,9 @@ import (
 func newCmdCompepGet() *cobra.Command {
 	// compepGetCmd represents the "smd compep get" command
 	var compepGetCmd = &cobra.Command{
-		Use:   "get [<xname>...]",
-		Short: "Get all component endpoints or a subset, identified by xname",
+		Use:     "get [<xname>...]",
+		Aliases: []string{"list"},
+		Short:   "Get all component endpoints or a subset, identified by xname",
 		Long: `Get all component endpoints or a subset, identified by xname.
 
 See ochami-smd(1) for more details.`,

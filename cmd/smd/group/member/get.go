@@ -22,9 +22,10 @@ import (
 func newCmdGroupMemberGet() *cobra.Command {
 	// groupMemberGetCmd represents the "smd group member get" command
 	var groupMemberGetCmd = &cobra.Command{
-		Use:   "get <group_label>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Get members of a group",
+		Use:     "get <group_label>",
+		Aliases: []string{"list"},
+		Args:    cobra.ExactArgs(1),
+		Short:   "Get members of a group",
 		Long: `Get members of a group.
 
 See ochami-smd(1) for more details.`,

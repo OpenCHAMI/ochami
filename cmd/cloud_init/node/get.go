@@ -26,9 +26,10 @@ import (
 func newCmdNodeGet() *cobra.Command {
 	// nodeGetCmd represents the "cloud-init group get" command
 	var nodeGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get data for specific node(s)",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get data for specific node(s)",
 		Long: `Get data for specific node(s).
 
 See ochami-cloud-init(1) for more details.`,

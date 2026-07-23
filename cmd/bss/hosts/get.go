@@ -23,9 +23,10 @@ import (
 func newCmdHostsGet() *cobra.Command {
 	// hostsGetCmd represents the "bss hosts get" command
 	var hostsGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get information on hosts known to BSS",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get information on hosts known to BSS",
 		Long: `Get information on hosts known to BSS.
 
 See ochami-bss(1) for more details.`,

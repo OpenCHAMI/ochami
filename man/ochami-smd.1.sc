@@ -285,6 +285,8 @@ Subcommands for this command are as follows:
 		- _yaml_
 
 *get* [-F _format_] [_xname_]...
+	Aliases: *list*
+
 	Get all or a subset of component endpoints.
 
 	If no arguments are passed, all component endpoints are returned. Otherwise,
@@ -411,6 +413,8 @@ Subcommands for this command are as follows:
 		- _yaml_
 
 *get* [-F _format_] [--nid _nid_] [--xname _xname_]
+	Aliases: *list*
+
 	Get all components or one identified by xname or node ID.
 
 	If no filter flags are passed, all components are returned. Otherwise, the
@@ -433,8 +437,57 @@ Subcommands for this command are as follows:
 
 	*-x, --xname* _xname_,...
 		One or more xnames to filter results by. For multiple xnames, either
-		this flag can be specified multiple times or this flag can be specified
 		once and multiple xnames, separated by commas.
+
+## iface
+
+Manage Ethernet interfaces.
+
+*get* [-F _format_] [--by-ip] [--comp-id _xname_,...] [-i _id_] [--ip _ip_,...] [-m _mac_,...] [--net _network_,...] [--newer-than _timestamp_] [--older-than _timestamp_] [--type _type_,...]
+	Aliases: *list*
+
+	Get all Ethernet interfaces or a subset based on filter options.
+
+	This command sends a GET request to SMD's /Inventory/EthernetInterfaces
+	endpoint.
+
+	This command accepts the following options:
+
+	*--by-ip*
+		Get all IP addresses for the Ethernet interface specified by *--id*.
+
+	*--comp-id* _xname_,...
+		Filter Ethernet interfaces by one or more component IDs.
+
+	*-F, --format-output* _format_
+		Output response data in specified _format_. Supported values are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+	*-i, --id* _id_
+		Get an Ethernet interface by its ID.
+
+	*--ip* _ip_,...
+		Filter Ethernet interfaces by one or more IP addresses.
+
+	*-m, --mac* _mac_,...
+		Filter Ethernet interfaces by one or more MAC addresses.
+
+	*--net* _network_,...
+		Filter Ethernet interfaces by IP address on one or more networks.
+
+	*--newer-than* _timestamp_
+		Filter Ethernet interfaces by update time newer than the specified
+		RFC3339-formatted timestamp.
+
+	*--older-than* _timestamp_
+		Filter Ethernet interfaces by update time older than the specified
+		RFC3339-formatted timestamp.
+
+	*--type* _type_,...
+		Filter Ethernet interfaces by one or more types.
 
 ## rfe
 
@@ -534,6 +587,8 @@ Subcommands for this command are as follows:
 		Do not ask the user to confirm deletion.
 
 *get* [-F _format_] [--fqdn _fqdn_,...] [-i _ip_,...] [-m _mac_,...] [--type _type_,...] [--uuid _uuid_,...] [-x _xname_,...]
+	Aliases: *list*
+
 	Get all Redfish endpoints or filter by various attributes.
 
 	If no filter flags are passed, all Redfish endpoints are returned.
@@ -677,6 +732,8 @@ Subcommands for this command are as follows:
 		- _yaml_
 
 *get* [-F _format_] [--name _name_,...] [--tag _tag_,...]
+	Aliases: *list*
+
 	Get group information for all groups in SMD or for a subset, specified by
 	filters.
 
@@ -864,6 +921,8 @@ Subcommands for this command are as follows:
 	under SMD's /groups endpoint.
 
 *get* [-F _format_] _group_name_
+	Aliases: *list*
+
 	Get members of an SMD group.
 
 	This command sends a GET request to the members subendpoint under SMD's

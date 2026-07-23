@@ -22,9 +22,10 @@ import (
 func newCmdDefaultsGet() *cobra.Command {
 	// defaultsGetCmd represents the "cloud-init defaults get" command
 	var defaultsGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get cloud-init default meta-data for a cluster",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get cloud-init default meta-data for a cluster",
 		Long: `Get cloud-init default meta-data for a cluster.
 
 See ochami-cloud-init(1) for more details.`,
