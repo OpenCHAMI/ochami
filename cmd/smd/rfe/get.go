@@ -23,9 +23,10 @@ import (
 func newCmdRfeGet() *cobra.Command {
 	// rfeGetCmd represents the "smd rfe get" command
 	var rfeGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get all redfish endpoints or some based on filter(s)",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get all redfish endpoints or some based on filter(s)",
 		Long: `Get all redfish endpoints or some based on filter(s). If no options are passed,
 all redfish endpoints are returned. Optionally, options can be passed to limit the redfish
 endpoints returned.
