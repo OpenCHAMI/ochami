@@ -5,6 +5,10 @@
 
 version: 2
 
+env:
+  # Needed for github.com/lestrrat-go/jwx v4
+  - GOEXPERIMENT=jsonv2
+
 before:
   hooks:
     - go mod tidy

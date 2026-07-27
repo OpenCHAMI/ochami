@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/spf13/cobra"
 
 	"github.com/OpenCHAMI/ochami/internal/config"
@@ -245,39 +245,38 @@ func CreateIfNotExists(path string) error {
 // CheckToken takes a pointer to a Cobra command and checks to see if --token
 // was set. If not, an error is printed and the program exits.
 func CheckToken(cmd *cobra.Command) {
-	// TODO: Check token validity/expiration
 	if Token == "" {
 		log.Logger.Error().Msg("no token set")
 		os.Exit(1)
 	}
 
-	// Try to parse token
-	t, err := jwt.ParseString(Token, jwt.WithValidate(false))
+	// Parse and validate token (jwt.Parse validates nbf, iat, exp automatically
+	// in v4). WithVerify(false) is used because the signature is not verified
+	// here. Only the token's time-based claims (exp, nbf, iat) are checked.
+	// Signature verification would be done by the services themselves.
+	t, err := jwt.Parse([]byte(Token), jwt.WithVerify(false))
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("failed to parse token")
+		// Provide specific error messages based on error type
+		if errors.Is(err, jwt.TokenExpiredError{}) {
+			log.Logger.Error().Msg("token is expired")
+		} else if errors.Is(err, jwt.TokenNotYetValidError{}) {
+			log.Logger.Error().Msg("token is not yet valid (nbf in future)")
+		} else if errors.Is(err, jwt.InvalidIssuerError{}) {
+			log.Logger.Error().Msg("token has invalid issuer")
+		} else if errors.Is(err, jwt.InvalidAudienceError{}) {
+			log.Logger.Error().Msg("token has invalid audience")
+		} else {
+			log.Logger.Error().Err(err).Msg("failed to parse token")
+		}
 		os.Exit(1)
 	}
 
-	// Check expiration
+	// Manual expiration check for "expiring soon" warning. jwt.Parse() already
+	// validated exp/nbf/iat, so this is just for the warning.
 	now := time.Now()
-	exp := t.Expiration()
-	if exp.Compare(now) < 0 {
-		log.Logger.Error().Msgf("token is expired (expired %s ago at %s)",
-			now.Sub(exp), exp.Local().Format(time.RFC1123))
-		os.Exit(1)
-	} else if exp.Sub(now).Minutes() <= 15 {
+	exp, ok := t.Expiration()
+	if ok && exp.Sub(now).Minutes() <= 15 && exp.After(now) {
 		log.Logger.Warn().Msgf("%s until token expires", exp.Sub(now))
-	}
-
-	// Validate not before (nbf), issued at (iat), and expiration (exp) fields
-	err = jwt.Validate(t,
-		jwt.WithValidator(jwt.IsNbfValid()),
-		jwt.WithValidator(jwt.IsIssuedAtValid()),
-		jwt.WithValidator(jwt.IsExpirationValid()),
-	)
-	if err != nil {
-		log.Logger.Error().Err(err).Msg("token is invalid")
-		os.Exit(1)
 	}
 }
 
