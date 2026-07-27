@@ -584,6 +584,12 @@ func LoadGlobalConfigMerged() error {
 
 	log.EarlyLogger.BasicLog("config files, if any, have been merged")
 
+	if finalConfig, err := GetConfigString(GlobalConfig, "", "yaml"); err != nil {
+		log.EarlyLogger.BasicLogf("warning: failed to marshal config as YAML: %v", err)
+	} else {
+		log.EarlyLogger.BasicLogf("final merged config:\n%s", finalConfig)
+	}
+
 	return nil
 }
 
