@@ -86,6 +86,7 @@ jobs:
           version: '~> v2'
           args: release --clean --skip announce,validate,aur${{ env.SKIP_CONTAINER_PUBLISH == 'true' && ',publish' || '' }}
         id: goreleaser
+
   build-make-binaries:
     runs-on: ubuntu-latest
     steps:
@@ -93,18 +94,22 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y make git
+
       - name: Set up latest stable Go
         uses: actions/setup-go@v6
         with:
           go-version: stable
+
       - name: Checkout repo
         uses: actions/checkout@v7
         with:
           fetch-tags: 1
           fetch-depth: 0
+
       - name: Build manual pages
         run: |
           make
+
   build-make-container-multistage:
     runs-on: ubuntu-latest
     steps:
@@ -112,30 +117,37 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y make git
+
       - name: Checkout repo
         uses: actions/checkout@v7
         with:
           fetch-tags: 1
           fetch-depth: 0
+
       - name: Build container from source using multi-stage build
         run: |
           make container
+
   docs-make:
     runs-on: ubuntu-latest
     steps:
+
       - name: Install build dependencies
         run: |
           sudo apt update
           sudo apt install -y make git scdoc
+
       - name: Set up latest stable Go
         uses: actions/setup-go@v6
         with:
           go-version: stable
+
       - name: Checkout repo
         uses: actions/checkout@v7
         with:
           fetch-tags: 1
           fetch-depth: 0
+
       - name: Build manual pages
         run: |
           make man
