@@ -5,30 +5,30 @@
 
 module github.com/OpenCHAMI/ochami
 
-go 1.26.4
+go 1.26.5
 
 require (
-	github.com/OpenCHAMI/bss v1.32.1
-	github.com/OpenCHAMI/cloud-init v1.2.3
-	github.com/OpenCHAMI/metadata-service v0.1.2
-	github.com/OpenCHAMI/smd/v2 v2.18.0
+	github.com/OpenCHAMI/bss v1.32.2
+	github.com/OpenCHAMI/cloud-init v1.4.5
+	github.com/OpenCHAMI/metadata-service v0.2.0
+	github.com/OpenCHAMI/smd/v2 v2.20.4
 	github.com/elliotchance/pie/v2 v2.9.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/knadh/koanf/parsers/yaml v1.1.0
-	github.com/knadh/koanf/providers/file v1.2.0
+	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/providers/rawbytes v1.0.0
 	github.com/knadh/koanf/providers/structs v1.0.0
-	github.com/knadh/koanf/v2 v2.2.2
+	github.com/knadh/koanf/v2 v2.3.5
 	github.com/lestrrat-go/jwx v1.2.31
-	github.com/nikolalohinski/gonja/v2 v2.4.0
-	github.com/openchami/boot-service v0.2.0
+	github.com/nikolalohinski/gonja/v2 v2.9.0
+	github.com/openchami/boot-service v0.3.0
 	github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4
-	github.com/rs/zerolog v1.34.0
+	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.10.2
 	github.com/synackd/go-kargs v0.0.1-beta.1
-	github.com/vbauerster/mpb/v8 v8.10.2
-	golang.org/x/term v0.44.0
+	github.com/vbauerster/mpb/v8 v8.13.0
+	golang.org/x/term v0.45.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -43,6 +43,7 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
@@ -73,14 +74,14 @@ require (
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/mattn/go-runewidth v0.0.24 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/openchami/fabrica v0.4.8 // indirect
+	github.com/openchami/fabrica v0.4.9 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
@@ -91,7 +92,7 @@ require (
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 )
