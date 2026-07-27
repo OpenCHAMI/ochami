@@ -561,7 +561,7 @@ func LoadGlobalConfigMerged() error {
 			if err != nil {
 				return fmt.Errorf("failed to serialize config: %w", err)
 			}
-			log.EarlyLogger.BasicLogf("Config data: %s", serializedConfig)
+			log.EarlyLogger.BasicLogf("Config data: \n%s", serializedConfig)
 
 			if err := MergeConfigIntoParser(ko, cfgLoaded.Cfg); err != nil {
 				return fmt.Errorf("failed to merge config: %w", err)
