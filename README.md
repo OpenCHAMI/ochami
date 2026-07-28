@@ -152,24 +152,12 @@ null
 
 ## Building
 
-### Requirements
-
-- Go 1.26.5 or later
-- **GOEXPERIMENT=jsonv2** environment variable (required by jwx v4 dependency)
-
-All build commands require setting `GOEXPERIMENT=jsonv2`:
-
-```bash
-export GOEXPERIMENT=jsonv2
-```
-
 ### Goreleaser
 
 Goreleaser is the way ochami gets built for releases, and is the officially
 supported build method for troubleshooting.
 
 ```bash
-export GOEXPERIMENT=jsonv2
 export GOVERSION=$(go env GOVERSION)
 export BUILD_HOST=$(hostname)
 export BUILD_USER=$(whoami)
@@ -195,7 +183,6 @@ Linker flags are used to embed build metadata into the binary. Building can
 simply be done via:
 
 ```bash
-export GOEXPERIMENT=jsonv2
 make
 ```
 

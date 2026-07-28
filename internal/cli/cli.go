@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v4/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/spf13/cobra"
 
 	"github.com/OpenCHAMI/ochami/internal/config"
@@ -251,19 +251,19 @@ func CheckToken(cmd *cobra.Command) {
 	}
 
 	// Parse and validate token (jwt.Parse validates nbf, iat, exp automatically
-	// in v4). WithVerify(false) is used because the signature is not verified
+	// in v3). WithVerify(false) is used because the signature is not verified
 	// here. Only the token's time-based claims (exp, nbf, iat) are checked.
 	// Signature verification would be done by the services themselves.
 	t, err := jwt.Parse([]byte(Token), jwt.WithVerify(false))
 	if err != nil {
 		// Provide specific error messages based on error type
-		if errors.Is(err, jwt.TokenExpiredError{}) {
+		if errors.Is(err, jwt.TokenExpiredError()) {
 			log.Logger.Error().Msg("token is expired")
-		} else if errors.Is(err, jwt.TokenNotYetValidError{}) {
+		} else if errors.Is(err, jwt.TokenNotYetValidError()) {
 			log.Logger.Error().Msg("token is not yet valid (nbf in future)")
-		} else if errors.Is(err, jwt.InvalidIssuerError{}) {
+		} else if errors.Is(err, jwt.InvalidIssuerError()) {
 			log.Logger.Error().Msg("token has invalid issuer")
-		} else if errors.Is(err, jwt.InvalidAudienceError{}) {
+		} else if errors.Is(err, jwt.InvalidAudienceError()) {
 			log.Logger.Error().Msg("token has invalid audience")
 		} else {
 			log.Logger.Error().Err(err).Msg("failed to parse token")

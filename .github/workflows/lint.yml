@@ -25,10 +25,6 @@ jobs:
         with:
           go-version: 1.26.5
 
-        # Needed for github.com/lestrrat-go/jwx v4
-      - name: Set GOEXPERIMENT for jsonv2
-        run: echo "GOEXPERIMENT=jsonv2" >> $GITHUB_ENV
-
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:

@@ -166,7 +166,7 @@ test: unit-test ## Run all tests
 .PHONY: unit-test
 unit-test: ## Run unit tests only
 	$(call require-command-shell,$(GO),go)
-	GOEXPERIMENT=jsonv2 $(GO) test -cover -v ./...
+	$(GO) test -cover -v ./...
 
 .PHONY: clean
 clean: ## Clean Go build artifacts
@@ -244,4 +244,4 @@ uninstall-man: ## Uninstall manual pages
 
 $(NAME): *.go $(CMD) $(INTERNAL) $(PKG)
 	$(call require-command-shell,$(GO),go)
-	GOEXPERIMENT=jsonv2 $(GO) build -v -ldflags="$(LDFLAGS)"
+	$(GO) build -v -ldflags="$(LDFLAGS)"

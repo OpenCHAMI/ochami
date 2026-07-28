@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v4/jwa"
-	"github.com/lestrrat-go/jwx/v4/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/spf13/cobra"
 )
 
@@ -309,7 +309,7 @@ func TestCheckToken_ExpiredToken(t *testing.T) {
 	if err == nil {
 		t.Error("Expected token to be expired but parsing succeeded")
 	}
-	if !errors.Is(err, jwt.TokenExpiredError{}) {
+	if !errors.Is(err, jwt.TokenExpiredError()) {
 		t.Errorf("Expected TokenExpiredError, got: %v", err)
 	}
 
@@ -335,7 +335,7 @@ func TestCheckToken_NotYetValid(t *testing.T) {
 	if err == nil {
 		t.Error("Expected token to not be valid yet but parsing succeeded")
 	}
-	if !errors.Is(err, jwt.TokenNotYetValidError{}) {
+	if !errors.Is(err, jwt.TokenNotYetValidError()) {
 		t.Errorf("Expected TokenNotYetValidError, got: %v", err)
 	}
 
