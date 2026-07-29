@@ -15,6 +15,7 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/OpenCHAMI/ochami/pkg/client/metadata_service"
 )
 
 func newCmdMetadataInstanceAdd() *cobra.Command {
@@ -29,49 +30,33 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Add instance info using JSON
   ochami metadata instance add -d \
     '{
-       "metadata": {
-         "name": "x1000c0s0b0n0-instance"
-       },
-       "spec": {
-         "instance_id": "x1000c0s0b0n0",
-         "hostname": "nid001000.demo.cluster",
-         "local_hostname": "nid001000",
-         "public_keys": ["ssh-ed25519 AAAAC3Nza... admin@demo"]
-       }
+       "name": "x1000c0s0b0n0-instance",
+       "instance_id": "x1000c0s0b0n0",
+       "hostname": "nid001000.demo.cluster",
+       "local_hostname": "nid001000",
+       "public_keys": ["ssh-ed25519 AAAAC3Nza... admin@demo"]
      }'
 
-  # Add multiple instance infos using JSON array of resource envelopes
+  # Add multiple instance infos using JSON array of specs
   ochami metadata instance add -d \
     '[
        {
-         "metadata": {
-           "name": "x1000c0s0b0n0-instance"
-         },
-         "spec": {
-           "instance_id": "x1000c0s0b0n0"
-         }
+         "name": "x1000c0s0b0n0-instance",
+         "instance_id": "x1000c0s0b0n0"
        },
        {
-         "metadata": {
-           "name": "x1000c0s0b0n1-instance"
-         },
-         "spec": {
-           "instance_id": "x1000c0s0b0n1"
-         }
+         "name": "x1000c0s0b0n1-instance",
+         "instance_id": "x1000c0s0b0n1"
        }
      ]'
 
-  # Add multiple instance infos using YAML array of resource envelopes
+  # Add multiple instance infos using YAML array of specs
   ochami metadata instance add -f yaml <<'EOF'
-  - metadata:
-      name: x1000c0s0b0n0-instance
-    spec:
-      instance_id: "x1000c0s0b0n0"
-  - metadata:
-      name: x1000c0s0b0n1-instance
-    spec:
-      instance_id: "x1000c0s0b0n1"
-  EOF
+   - name: x1000c0s0b0n0-instance
+     instance_id: "x1000c0s0b0n0"
+   - name: x1000c0s0b0n1-instance
+     instance_id: "x1000c0s0b0n1"
+   EOF
 
   # Add instance info preserving labels/annotations (envelope API)
   ochami metadata instance add -e -d \
@@ -101,36 +86,56 @@ See ochami-metadata(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read instance data
-			instances := []metadata_service_client.CreateInstanceInfoRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayloadSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances)
-			} else {
-				cli.HandlePayloadStdinSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			envelope, _ := cmd.Flags().GetBool("envelope")
 			var instancesCreated []api.InstanceInfo
-			var errs []error
-			var err error
+			var reqErrs []error
+			var reqErr error
 			if envelope {
-				instancesCreated, errs, err = metadataServiceClient.AddInstanceInfos(cli.Token, instances)
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read instance data
+				instances := []metadata_service_client.CreateInstanceInfoRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances)
+				} else {
+					cli.HandlePayloadStdinSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances)
+				}
+
+				// Send off requests
+				instancesCreated, reqErrs, reqErr = metadataServiceClient.AddInstanceInfos(cli.Token, instances)
 			} else {
-				instancesCreated, errs, err = metadataServiceClient.AddInstanceInfosSimple(cli.Token, instances)
+				// Use simple API (spec)
+
+				// Read instance data
+				instances := []metadata_service.InstanceInfoSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[metadata_service.InstanceInfoSpec](cmd, &instances)
+				} else {
+					cli.HandlePayloadStdinSlice[metadata_service.InstanceInfoSpec](cmd, &instances)
+				}
+
+				// Send off requests
+				instancesCreated, reqErrs, reqErr = metadataServiceClient.AddInstanceInfoSpecs(cli.Token, instances)
 			}
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to add instance infos")
+
+			// Handle any non-request error
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to add instance infos")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
 
 			// Deal with per-request errors
-			var errorsOccurred = false
-			for _, err := range errs {
+			var reqErrorsOccurred = false
+			for _, err := range reqErrs {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to add instance info")
-					errorsOccurred = true
+					reqErrorsOccurred = true
 				}
 			}
 
@@ -142,7 +147,7 @@ See ochami-metadata(1) for more details.`,
 			log.Logger.Info().Msgf("Instance infos created: %+v", uids)
 
 			// Warn if any request errors occurred
-			if errorsOccurred {
+			if reqErrorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("Instance info addition completed with errors")
 				os.Exit(1)

@@ -29,25 +29,31 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Set WireGuard peer details using payload data
   ochami metadata peer set wireguardpeer-d614b918 -d \
     '{
-       "metadata": {
-         "name": "peer-nid001000"
-       },
-       "spec": {
-         "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-         "allowed_ip": "10.42.1.1/32",
-         "description": "Updated peer"
-       }
+       "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+       "allowed_ip": "10.42.1.1/32",
+       "description": "Updated peer"
      }'
 
   # Set WireGuard peer details using YAML payload data
   ochami metadata peer set wireguardpeer-d614b918 -f yaml <<'EOF'
-  metadata:
-    name: peer-nid001000
-  spec:
-    public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
-    allowed_ip: "10.42.1.1/32"
-    description: "Updated peer"
-  EOF
+   public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
+   allowed_ip: "10.42.1.1/32"
+   description: "Updated peer"
+   EOF
+
+  # Set WireGuard peer details preserving labels/annotations (envelope API)
+  ochami metadata peer set wireguardpeer-d614b918 -e -d \
+    '{
+       "metadata": {
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+         "allowed_ip": "10.42.1.1/32"
+       }
+     }'
 
   # Set WireGuard peer details using file
   ochami metadata peer set wireguardpeer-d614b918 -d @peer.json
@@ -65,25 +71,43 @@ See ochami-metadata(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read peer data
-			peer := metadata_service_client.UpdateWireGuardPeerRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &peer)
-			} else {
-				cli.HandlePayloadStdin(cmd, &peer)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			envelope, _ := cmd.Flags().GetBool("envelope")
 			var peerSet *api.WireGuardPeer
-			var err error
+			var reqErr error
 			if envelope {
-				peerSet, err = metadataServiceClient.SetWireGuardPeer(cli.Token, args[0], peer)
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read peer data
+				peer := metadata_service_client.UpdateWireGuardPeerRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &peer)
+				} else {
+					cli.HandlePayloadStdin(cmd, &peer)
+				}
+
+				// Send off request
+				peerSet, reqErr = metadataServiceClient.SetWireGuardPeer(cli.Token, args[0], peer)
 			} else {
-				peerSet, err = metadataServiceClient.SetWireGuardPeerSimple(cli.Token, args[0], peer)
+				// Use simple API (spec)
+
+				// Read peer data
+				spec := api.WireGuardPeerSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &spec)
+				} else {
+					cli.HandlePayloadStdin(cmd, &spec)
+				}
+
+				// Send off request
+				peerSet, reqErr = metadataServiceClient.SetWireGuardPeerSpec(cli.Token, args[0], spec)
 			}
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to set WireGuard peer")
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to set WireGuard peer")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}

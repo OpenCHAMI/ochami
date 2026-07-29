@@ -15,6 +15,7 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/OpenCHAMI/ochami/pkg/client/boot_service"
 )
 
 func newCmdBootBmcAdd() *cobra.Command {
@@ -29,17 +30,13 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add BMC using payload data
   ochami boot bmc add -d \
     '{
-       "metadata": {
-         "name": "x1000c0s0b0"
-       },
-       "spec": {
-         "xname": "x1000c0s0b0",
-         "description": "This node's BMC",
-         "interface": {
-           "type": "management",
-           "mac": "de:ca:fc:0f:fe:e1",
-           "ip": "172.16.0.254"
-         }
+       "name": "bmc01",
+       "xname": "x1000c0s0b0",
+       "description": "This node's BMC",
+       "interface": {
+         "type": "management",
+         "mac": "de:ca:fc:0f:fe:e1",
+         "ip": "172.16.0.254"
        }
      }'
 
@@ -47,31 +44,23 @@ See ochami-boot(1) for more details.`,
   ochami boot bmc add -d \
     '[
        {
-         "metadata": {
-           "name": "x1000c0s0b0"
-         },
-         "spec": {
-           "xname": "x1000c0s0b0",
-           "description": "Node 1's BMC",
-           "interface": {
-             "type": "management",
-             "mac": "de:ca:fc:0f:fe:e1",
-             "ip": "172.16.0.1"
-           }
+         "name": "bmc01",
+         "xname": "x1000c0s0b0",
+         "description": "Node 1's BMC",
+         "interface": {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e1",
+           "ip": "172.16.0.1"
          }
        },
        {
-         "metadata": {
-           "name": "x1000c0s0b1"
-         },
-         "spec": {
-           "xname": "x1000c0s0b1",
-           "description": "Node 2's BMC",
-           "interface": {
-             "type": "management",
-             "mac": "de:ca:fc:0f:fe:e2",
-             "ip": "172.16.0.2"
-           }
+         "name": "bmc02",
+         "xname": "x1000c0s0b1",
+         "description": "Node 2's BMC",
+         "interface": {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e2",
+           "ip": "172.16.0.2"
          }
        }
      ]'
@@ -106,40 +95,60 @@ See ochami-boot(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read node data
-			bmcs := []boot_service_client.CreateBMCRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
-			} else {
-				cli.HandlePayloadStdinSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			envelope, _ := cmd.Flags().GetBool("envelope")
 			var bmcsCreated []*api.BMC
-			var errs []error
-			var err error
+			var reqErrs []error
+			var reqErr error
 			if envelope {
-				bmcsCreated, errs, err = bootServiceClient.AddBMCs(cli.Token, bmcs)
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read node data
+				bmcs := []boot_service_client.CreateBMCRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+				} else {
+					cli.HandlePayloadStdinSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+				}
+
+				// Send off requests
+				bmcsCreated, reqErrs, reqErr = bootServiceClient.AddBMCs(cli.Token, bmcs)
 			} else {
-				bmcsCreated, errs, err = bootServiceClient.AddBMCsSimple(cli.Token, bmcs)
+				// Use simple API (spec)
+
+				// Read node data
+				bmcs := []boot_service.BMCSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[boot_service.BMCSpec](cmd, &bmcs)
+				} else {
+					cli.HandlePayloadStdinSlice[boot_service.BMCSpec](cmd, &bmcs)
+				}
+
+				// Send off requests
+				bmcsCreated, reqErrs, reqErr = bootServiceClient.AddBMCSpecs(cli.Token, bmcs)
 			}
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to add BMCs")
+
+			// Handle any non-request error
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to add BMCs")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
 
 			// Deal with per-request errors
-			var errorsOccurred = false
-			for _, err := range errs {
+			var reqErrorsOccurred = false
+			for _, err := range reqErrs {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to add BMC")
-					errorsOccurred = true
+					reqErrorsOccurred = true
 				}
 			}
 			log.Logger.Debug().Msgf("BMCs created: %+v", bmcsCreated)
-			if errorsOccurred {
+			if reqErrorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("BMC addition completed with errors")
 				os.Exit(1)

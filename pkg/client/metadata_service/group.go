@@ -11,10 +11,20 @@ import (
 	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
+
+// GroupSpec is a wrapper around the metadata-service's GroupSpec and is used
+// specifically for the simple API. For adding groups, a "name" field is
+// required but is only provided in the "metadata" structure, which is outside
+// of the spec and is only available in the advanced API. To get around this,
+// the upstream spec is wrapped with a "name" field so bulk specs can be added
+// with names specified for each without having to provide them as arguments.
+type GroupSpec struct {
+	Name string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.GroupSpec
+}
 
 // AddGroups is a wrapper that calls the metadata-service client's
 // CreateGroup() function, passing it context. It returns a slice of
@@ -154,21 +164,18 @@ func (msc *MetadataServiceClient) SetGroup(token string, uid string, group metad
 	return item, nil
 }
 
-// AddGroupsSimple is like AddGroups but calls the metadata-service client's
+// AddGroupSpecs is like AddGroups but calls the metadata-service client's
 // simple CreateGroupSimple() function, which only sends the resource name and
-// spec. Any labels or annotations present in the request are discarded and a
-// warning is logged advising the user to pass --envelope to preserve them.
-func (msc *MetadataServiceClient) AddGroupsSimple(token string, groups []metadata_service_client.CreateGroupRequest) (groupsAdded []api.Group, errors []error, funcErr error) {
+// spec.
+func (msc *MetadataServiceClient) AddGroupSpecs(token string, groups []GroupSpec) (groupsAdded []api.Group, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, g := range groups {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 		defer cancel()
 
-		cli.WarnDiscardedEnvelope(g.Metadata.Name, g.Labels, g.Annotations)
-
-		item, err := msc.Client.WithBearerToken(token).CreateGroupSimple(ctx, g.Metadata.Name, g.Spec)
+		item, err := msc.Client.WithBearerToken(token).CreateGroupSimple(ctx, g.Name, g.GroupSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add group %+v: %w", g, err)
+			newErr := fmt.Errorf("failed to add group %q (%+v): %w", g.Name, g.GroupSpec, err)
 			errors = append(errors, newErr)
 		} else if item != nil {
 			groupsAdded = append(groupsAdded, *item)
@@ -181,19 +188,15 @@ func (msc *MetadataServiceClient) AddGroupsSimple(token string, groups []metadat
 	return
 }
 
-// SetGroupSimple is like SetGroup but calls the metadata-service client's
-// simple UpdateGroupSimple() function, which only sends the resource spec. Any
-// labels or annotations present in the request are discarded and a warning is
-// logged advising the user to pass --envelope to preserve them.
-func (msc *MetadataServiceClient) SetGroupSimple(token string, uid string, group metadata_service_client.UpdateGroupRequest) (*api.Group, error) {
+// SetGroupSpec is like SetGroup but calls the metadata-service client's simple
+// UpdateGroupSimple() function, which only sends the resource spec.
+func (msc *MetadataServiceClient) SetGroupSpec(token string, uid string, spec api.GroupSpec) (*api.Group, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	cli.WarnDiscardedEnvelope(group.Metadata.Name, group.Labels, group.Annotations)
-
-	item, err := msc.Client.WithBearerToken(token).UpdateGroupSimple(ctx, uid, group.Spec)
+	item, err := msc.Client.WithBearerToken(token).UpdateGroupSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set group %+v: %w", group, err)
+		return nil, fmt.Errorf("failed to set group %+v: %w", spec, err)
 	}
 
 	return item, nil

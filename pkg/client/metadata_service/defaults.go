@@ -11,10 +11,21 @@ import (
 	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
+
+// ClusterDefaultsSpec is a wrapper around the metadata-service's
+// ClusterDefaultsSpec and is used specifically for the simple API. For adding
+// cluster defaults, a "name" field is required but is only provided in the
+// "metadata" structure, which is outside of the spec and is only available in
+// the advanced API. To get around this, the upstream spec is wrapped with a
+// "name" field so bulk specs can be added with names specified for each without
+// having to provide them as arguments.
+type ClusterDefaultsSpec struct {
+	Name string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.ClusterDefaultsSpec
+}
 
 // AddDefaults is a wrapper that calls the metadata-service client's
 // CreateClusterDefaults() function, passing it context. It returns a slice of
@@ -154,22 +165,18 @@ func (msc *MetadataServiceClient) SetDefaults(token string, uid string, defaults
 	return item, nil
 }
 
-// AddDefaultsSimple is like AddDefaults but calls the metadata-service client's
+// AddDefaultsSpecs is like AddDefaults but calls the metadata-service client's
 // simple CreateClusterDefaultsSimple() function, which only sends the resource
-// name and spec. Any labels or annotations present in the request are discarded
-// and a warning is logged advising the user to pass --envelope to preserve
-// them.
-func (msc *MetadataServiceClient) AddDefaultsSimple(token string, defaults []metadata_service_client.CreateClusterDefaultsRequest) (defaultsAdded []api.ClusterDefaults, errors []error, funcErr error) {
+// name and spec.
+func (msc *MetadataServiceClient) AddDefaultsSpecs(token string, defaults []ClusterDefaultsSpec) (defaultsAdded []api.ClusterDefaults, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, d := range defaults {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 		defer cancel()
 
-		cli.WarnDiscardedEnvelope(d.Metadata.Name, d.Labels, d.Annotations)
-
-		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaultsSimple(ctx, d.Metadata.Name, d.Spec)
+		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaultsSimple(ctx, d.Name, d.ClusterDefaultsSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add cluster defaults %+v: %w", d, err)
+			newErr := fmt.Errorf("failed to add cluster defaults %q (%+v): %w", d.Name, d.ClusterDefaultsSpec, err)
 			errors = append(errors, newErr)
 		} else if item != nil {
 			defaultsAdded = append(defaultsAdded, *item)
@@ -182,19 +189,16 @@ func (msc *MetadataServiceClient) AddDefaultsSimple(token string, defaults []met
 	return
 }
 
-// SetDefaultsSimple is like SetDefaults but calls the metadata-service client's
+// SetDefaultsSpec is like SetDefaults but calls the metadata-service client's
 // simple UpdateClusterDefaultsSimple() function, which only sends the resource
-// spec. Any labels or annotations present in the request are discarded and a
-// warning is logged advising the user to pass --envelope to preserve them.
-func (msc *MetadataServiceClient) SetDefaultsSimple(token string, uid string, defaults metadata_service_client.UpdateClusterDefaultsRequest) (*api.ClusterDefaults, error) {
+// spec.
+func (msc *MetadataServiceClient) SetDefaultsSpec(token string, uid string, spec api.ClusterDefaultsSpec) (*api.ClusterDefaults, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	cli.WarnDiscardedEnvelope(defaults.Metadata.Name, defaults.Labels, defaults.Annotations)
-
-	item, err := msc.Client.WithBearerToken(token).UpdateClusterDefaultsSimple(ctx, uid, defaults.Spec)
+	item, err := msc.Client.WithBearerToken(token).UpdateClusterDefaultsSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set cluster defaults %+v: %w", defaults, err)
+		return nil, fmt.Errorf("failed to set cluster defaults %+v: %w", spec, err)
 	}
 
 	return item, nil

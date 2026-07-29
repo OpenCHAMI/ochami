@@ -15,6 +15,7 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/OpenCHAMI/ochami/pkg/client/boot_service"
 )
 
 func newCmdBootNodeAdd() *cobra.Command {
@@ -29,15 +30,34 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add node using payload data
   ochami boot node add -d \
     '{
-       "metadata": {
-         "name": "x1000c0s0b0n0"
-       },
-       "spec": {
+       "name": "node01",
+       "xname": "x1000c0s0b0n0",
+       "nid": 42,
+       "bootMac": "de:ca:fc:0f:fe:e1",
+       "role": "example-role",
+       "subRole": "example-subrole",
+       "hostname": "ex01.example.org",
+       "interfaces": [
+         {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e1",
+           "ip": "172.16.0.1"
+         }
+       ],
+       "groups": [
+         "group1",
+         "group2"
+       ]
+     }'
+
+  # Add multiple nodes using payload data
+  ochami boot node add -d \
+    '[
+       {
+         "name": "node01",
          "xname": "x1000c0s0b0n0",
          "nid": 42,
          "bootMac": "de:ca:fc:0f:fe:e1",
-         "role": "example-role",
-         "subRole": "example-subrole",
          "hostname": "ex01.example.org",
          "interfaces": [
            {
@@ -45,52 +65,21 @@ See ochami-boot(1) for more details.`,
              "mac": "de:ca:fc:0f:fe:e1",
              "ip": "172.16.0.1"
            }
-         ],
-         "groups": [
-           "group1",
-           "group2"
          ]
-       }
-     }'
-
-  # Add multiple nodes using payload data
-  ochami boot node add -d \
-    '[
-       {
-         "metadata": {
-           "name": "x1000c0s0b0n0"
-         },
-         "spec": {
-           "xname": "x1000c0s0b0n0",
-           "nid": 42,
-           "bootMac": "de:ca:fc:0f:fe:e1",
-           "hostname": "ex01.example.org",
-           "interfaces": [
-             {
-               "type": "management",
-               "mac": "de:ca:fc:0f:fe:e1",
-               "ip": "172.16.0.1"
-             }
-           ]
-         }
        },
        {
-         "metadata": {
-           "name": "x1000c0s0b0n1"
-         },
-         "spec": {
-           "xname": "x1000c0s0b0n1",
-           "nid": 43,
-           "bootMac": "de:ca:fc:0f:fe:e2",
-           "hostname": "ex02.example.org",
-           "interfaces": [
-             {
-               "type": "management",
-               "mac": "de:ca:fc:0f:fe:e2",
-               "ip": "172.16.0.2"
-             }
-           ]
-         }
+         "name": "node02",
+         "xname": "x1000c0s0b0n1",
+         "nid": 43,
+         "bootMac": "de:ca:fc:0f:fe:e2",
+         "hostname": "ex02.example.org",
+         "interfaces": [
+           {
+             "type": "management",
+             "mac": "de:ca:fc:0f:fe:e2",
+             "ip": "172.16.0.2"
+           }
+         ]
        }
      ]'
 
@@ -125,40 +114,60 @@ See ochami-boot(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read node data
-			nodes := []boot_service_client.CreateNodeRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayloadSlice[boot_service_client.CreateNodeRequest](cmd, &nodes)
-			} else {
-				cli.HandlePayloadStdinSlice[boot_service_client.CreateNodeRequest](cmd, &nodes)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			envelope, _ := cmd.Flags().GetBool("envelope")
 			var nodesCreated []*api.Node
-			var errs []error
-			var err error
+			var reqErrs []error
+			var reqErr error
 			if envelope {
-				nodesCreated, errs, err = bootServiceClient.AddNodes(cli.Token, nodes)
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read node data
+				nodes := []boot_service_client.CreateNodeRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[boot_service_client.CreateNodeRequest](cmd, &nodes)
+				} else {
+					cli.HandlePayloadStdinSlice[boot_service_client.CreateNodeRequest](cmd, &nodes)
+				}
+
+				// Send off requests
+				nodesCreated, reqErrs, reqErr = bootServiceClient.AddNodes(cli.Token, nodes)
 			} else {
-				nodesCreated, errs, err = bootServiceClient.AddNodesSimple(cli.Token, nodes)
+				// Use simple API (spec)
+
+				// Read node data
+				nodes := []boot_service.NodeSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[boot_service.NodeSpec](cmd, &nodes)
+				} else {
+					cli.HandlePayloadStdinSlice[boot_service.NodeSpec](cmd, &nodes)
+				}
+
+				// Send off requests
+				nodesCreated, reqErrs, reqErr = bootServiceClient.AddNodeSpecs(cli.Token, nodes)
 			}
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to add nodes")
+
+			// Handle any non-request error
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to add nodes")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
 
 			// Deal with per-request errors
-			var errorsOccurred = false
-			for _, err := range errs {
+			var reqErrorsOccurred = false
+			for _, err := range reqErrs {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to add node")
-					errorsOccurred = true
+					reqErrorsOccurred = true
 				}
 			}
 			log.Logger.Debug().Msgf("nodes created: %+v", nodesCreated)
-			if errorsOccurred {
+			if reqErrorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("node addition completed with errors")
 				os.Exit(1)

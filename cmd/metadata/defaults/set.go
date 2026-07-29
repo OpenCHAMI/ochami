@@ -29,15 +29,24 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Set cluster defaults details using payload data
   ochami metadata defaults set clusterdefaults-d614b918 -d \
     '{
+       "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+       "cluster_name": "demo",
+       "description": "Demo cluster defaults",
+       "short_name": "nid",
+       "nid_length": 4
+     }'
+
+  # Set cluster defaults details preserving labels/annotations (envelope API)
+  ochami metadata defaults set clusterdefaults-d614b918 -e -d \
+    '{
        "metadata": {
-         "name": "demo-cluster-defaults"
+         "labels": {
+           "env": "prod"
+         }
        },
        "spec": {
          "base_url": "https://demo.openchami.cluster:8443/cloud-init",
-         "cluster_name": "demo",
-         "description": "Demo cluster defaults",
-         "short_name": "nid",
-         "nid_length": 4
+         "cluster_name": "demo"
        }
      }'
 
@@ -57,25 +66,43 @@ See ochami-metadata(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read cluster defaults data
-			defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &defaults)
-			} else {
-				cli.HandlePayloadStdin(cmd, &defaults)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			envelope, _ := cmd.Flags().GetBool("envelope")
 			var defaultsSet *api.ClusterDefaults
-			var err error
+			var reqErr error
 			if envelope {
-				defaultsSet, err = metadataServiceClient.SetDefaults(cli.Token, args[0], defaults)
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read cluster defaults data
+				defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &defaults)
+				} else {
+					cli.HandlePayloadStdin(cmd, &defaults)
+				}
+
+				// Send off request
+				defaultsSet, reqErr = metadataServiceClient.SetDefaults(cli.Token, args[0], defaults)
 			} else {
-				defaultsSet, err = metadataServiceClient.SetDefaultsSimple(cli.Token, args[0], defaults)
+				// Use simple API (spec)
+
+				// Read cluster defaults data
+				spec := api.ClusterDefaultsSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &spec)
+				} else {
+					cli.HandlePayloadStdin(cmd, &spec)
+				}
+
+				// Send off request
+				defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cli.Token, args[0], spec)
 			}
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to set cluster defaults")
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to set cluster defaults")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}

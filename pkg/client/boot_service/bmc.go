@@ -11,10 +11,20 @@ import (
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
+
+// BMCSpec is a wrapper around the boot-service's BMCSpec and is used
+// specifically for the simple API. For adding BMCs, a "name" field is required
+// but is only provided in the "metadata" structure, which is outside of the
+// spec and is only available in the advanced API. To get around this, the
+// upstream spec is wrapped with a "name" field so bulk specs can be added with
+// names specified for each without having to provide them as arguments.
+type BMCSpec struct {
+	Name string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.BMCSpec
+}
 
 // AddBMCs is a wrapper that calls the boot-service client's CreateBMC()
 // function, passing it context. The output is a slice of the BMCs it created,
@@ -148,21 +158,17 @@ func (bsc *BootServiceClient) SetBMC(token string, uid string, bmc boot_service_
 	return item, nil
 }
 
-// AddBMCsSimple is like AddBMCs but calls the boot-service client's simple
-// CreateBMCSimple() function, which only sends the resource name and spec. Any
-// labels or annotations present in the request are discarded and a warning is
-// logged advising the user to pass --envelope to preserve them.
-func (bsc *BootServiceClient) AddBMCsSimple(token string, bmcs []boot_service_client.CreateBMCRequest) (bmcsAdded []*api.BMC, errors []error, funcErr error) {
+// AddBMCSpecs is like AddBMCs but calls the boot-service client's simple
+// CreateBMCSimple() function, which only sends the resource name and spec.
+func (bsc *BootServiceClient) AddBMCSpecs(token string, bmcs []BMCSpec) (bmcsAdded []*api.BMC, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, bmc := range bmcs {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 		defer cancel()
 
-		cli.WarnDiscardedEnvelope(bmc.Metadata.Name, bmc.Labels, bmc.Annotations)
-
-		item, err := bsc.Client.WithBearerToken(token).CreateBMCSimple(ctx, bmc.Metadata.Name, bmc.Spec)
+		item, err := bsc.Client.WithBearerToken(token).CreateBMCSimple(ctx, bmc.Name, bmc.BMCSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add bmc %+v: %w", bmc, err)
+			newErr := fmt.Errorf("failed to add bmc %q (%+v): %w", bmc.Name, bmc.BMCSpec, err)
 			errors = append(errors, newErr)
 			bmcsAdded = append(bmcsAdded, nil)
 		}
@@ -172,19 +178,15 @@ func (bsc *BootServiceClient) AddBMCsSimple(token string, bmcs []boot_service_cl
 	return
 }
 
-// SetBMCSimple is like SetBMC but calls the boot-service client's simple
-// UpdateBMCSimple() function, which only sends the resource spec. Any labels or
-// annotations present in the request are discarded and a warning is logged
-// advising the user to pass --envelope to preserve them.
-func (bsc *BootServiceClient) SetBMCSimple(token string, uid string, bmc boot_service_client.UpdateBMCRequest) (*api.BMC, error) {
+// SetBMCSpec is like SetBMC but calls the boot-service client's simple
+// UpdateBMCSimple() function, which only sends the resource spec.
+func (bsc *BootServiceClient) SetBMCSpec(token string, uid string, spec api.BMCSpec) (*api.BMC, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	cli.WarnDiscardedEnvelope(bmc.Metadata.Name, bmc.Labels, bmc.Annotations)
-
-	item, err := bsc.Client.WithBearerToken(token).UpdateBMCSimple(ctx, uid, bmc.Spec)
+	item, err := bsc.Client.WithBearerToken(token).UpdateBMCSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set BMC %+v: %w", bmc, err)
+		return nil, fmt.Errorf("failed to set BMC %+v: %w", spec, err)
 	}
 
 	return item, nil

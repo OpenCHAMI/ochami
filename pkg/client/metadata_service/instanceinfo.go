@@ -11,10 +11,21 @@ import (
 	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
+
+// InstanceInfoSpec is a wrapper around the metadata-service's InstanceInfoSpec
+// and is used specifically for the simple API. For adding instance info, a
+// "name" field is required but is only provided in the "metadata" structure,
+// which is outside of the spec and is only available in the advanced API. To get
+// around this, the upstream spec is wrapped with a "name" field so bulk specs
+// can be added with names specified for each without having to provide them as
+// arguments.
+type InstanceInfoSpec struct {
+	Name string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.InstanceInfoSpec
+}
 
 // AddInstanceInfos is a wrapper that calls the metadata-service client's
 // CreateInstanceInfo() function, passing it context. It returns a slice of
@@ -154,22 +165,18 @@ func (msc *MetadataServiceClient) SetInstanceInfo(token string, uid string, inst
 	return item, nil
 }
 
-// AddInstanceInfosSimple is like AddInstanceInfos but calls the
-// metadata-service client's simple CreateInstanceInfoSimple() function, which
-// only sends the resource name and spec. Any labels or annotations present in
-// the request are discarded and a warning is logged advising the user to pass
-// --envelope to preserve them.
-func (msc *MetadataServiceClient) AddInstanceInfosSimple(token string, instances []metadata_service_client.CreateInstanceInfoRequest) (instancesAdded []api.InstanceInfo, errors []error, funcErr error) {
+// AddInstanceInfoSpecs is like AddInstanceInfos but calls the metadata-service
+// client's simple CreateInstanceInfoSimple() function, which only sends the
+// resource name and spec.
+func (msc *MetadataServiceClient) AddInstanceInfoSpecs(token string, instances []InstanceInfoSpec) (instancesAdded []api.InstanceInfo, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, i := range instances {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 		defer cancel()
 
-		cli.WarnDiscardedEnvelope(i.Metadata.Name, i.Labels, i.Annotations)
-
-		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfoSimple(ctx, i.Metadata.Name, i.Spec)
+		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfoSimple(ctx, i.Name, i.InstanceInfoSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add instance info %+v: %w", i, err)
+			newErr := fmt.Errorf("failed to add instance info %q (%+v): %w", i.Name, i.InstanceInfoSpec, err)
 			errors = append(errors, newErr)
 		} else if item != nil {
 			instancesAdded = append(instancesAdded, *item)
@@ -182,20 +189,16 @@ func (msc *MetadataServiceClient) AddInstanceInfosSimple(token string, instances
 	return
 }
 
-// SetInstanceInfoSimple is like SetInstanceInfo but calls the metadata-service
+// SetInstanceInfoSpec is like SetInstanceInfo but calls the metadata-service
 // client's simple UpdateInstanceInfoSimple() function, which only sends the
-// resource spec. Any labels or annotations present in the request are discarded
-// and a warning is logged advising the user to pass --envelope to preserve
-// them.
-func (msc *MetadataServiceClient) SetInstanceInfoSimple(token string, uid string, instance metadata_service_client.UpdateInstanceInfoRequest) (*api.InstanceInfo, error) {
+// resource spec.
+func (msc *MetadataServiceClient) SetInstanceInfoSpec(token string, uid string, spec api.InstanceInfoSpec) (*api.InstanceInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
-	cli.WarnDiscardedEnvelope(instance.Metadata.Name, instance.Labels, instance.Annotations)
-
-	item, err := msc.Client.WithBearerToken(token).UpdateInstanceInfoSimple(ctx, uid, instance.Spec)
+	item, err := msc.Client.WithBearerToken(token).UpdateInstanceInfoSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set instance info %+v: %w", instance, err)
+		return nil, fmt.Errorf("failed to set instance info %+v: %w", spec, err)
 	}
 
 	return item, nil

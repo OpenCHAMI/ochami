@@ -29,7 +29,7 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) (*MetadataServiceClie
 	return c, srv
 }
 
-func TestAddGroupsSimple_OmitsLabels(t *testing.T) {
+func TestAddGroupSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -41,21 +41,20 @@ func TestAddGroupsSimple_OmitsLabels(t *testing.T) {
 	})
 	defer srv.Close()
 
-	groups := []metadata_service_client.CreateGroupRequest{
+	groups := []GroupSpec{
 		{
-			Metadata: fabrica.Metadata{Name: "compute-group", Labels: map[string]string{"role": "compute"}},
-			Spec:     api.GroupSpec{},
-			Labels:   map[string]string{"role": "compute"},
+			Name:      "compute-group",
+			GroupSpec: api.GroupSpec{},
 		},
 	}
 
-	_, errs, err := c.AddGroupsSimple("", groups)
+	_, errs, err := c.AddGroupSpecs("", groups)
 	if err != nil {
-		t.Fatalf("AddGroupsSimple func error: %v", err)
+		t.Fatalf("AddGroupSpecs func error: %v", err)
 	}
 	for _, e := range errs {
 		if e != nil {
-			t.Fatalf("AddGroupsSimple per-request error: %v", e)
+			t.Fatalf("AddGroupSpecs per-request error: %v", e)
 		}
 	}
 
@@ -102,7 +101,7 @@ func TestAddGroups_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
-func TestSetGroupSimple_UsesUIDEndpoint(t *testing.T) {
+func TestSetGroupSpec_UsesUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -112,11 +111,11 @@ func TestSetGroupSimple_UsesUIDEndpoint(t *testing.T) {
 	})
 	defer srv.Close()
 
-	req := metadata_service_client.UpdateGroupRequest{Spec: api.GroupSpec{}}
+	spec := api.GroupSpec{}
 
-	_, err := c.SetGroupSimple("", "grp-abc", req)
+	_, err := c.SetGroupSpec("", "grp-abc", spec)
 	if err != nil {
-		t.Fatalf("SetGroupSimple error: %v", err)
+		t.Fatalf("SetGroupSpec error: %v", err)
 	}
 	if gotMethod != http.MethodPut {
 		t.Errorf("method = %q, want PUT", gotMethod)

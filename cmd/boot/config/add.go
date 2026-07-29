@@ -15,6 +15,7 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/OpenCHAMI/ochami/pkg/client/boot_service"
 )
 
 func newCmdBootConfigAdd() *cobra.Command {
@@ -29,59 +30,47 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add boot configuration using payload data
   ochami boot config add -d \
     '{
-       "metadata": {
-         "name": "compute-boot"
-       },
-       "spec": {
-         "hosts": [
-           "item1",
-           "item2"
-         ],
-         "macs": [
-           "de:ca:fc:0f:fe:e1",
-           "de:ca:fc:0f:fe:e2"
-         ],
-         "nids": [
-           1,
-           2
-         ],
-         "groups": [
-           "group1",
-           "group2"
-         ],
-         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
-         "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
-         "params": "console=tty0,115200n8 console=ttyS0,115200n8",
-         "priority": 42
-       }
+       "name": "compute-boot",
+       "hosts": [
+         "item1",
+         "item2"
+       ],
+       "macs": [
+         "de:ca:fc:0f:fe:e1",
+         "de:ca:fc:0f:fe:e2"
+       ],
+       "nids": [
+         1,
+         2
+       ],
+       "groups": [
+         "group1",
+         "group2"
+       ],
+       "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
+       "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
+       "params": "console=tty0,115200n8 console=ttyS0,115200n8",
+       "priority": 42
      }'
 
   # Add multiple boot configurations using payload data
   ochami boot config add -d \
     '[
        {
-         "metadata": {
-           "name": "boot-by-host"
-         },
-         "spec": {
-           "hosts": ["host1"],
-           "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
-           "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
-           "params": "console=tty0,115200n8 console=ttyS0,115200n8",
-           "priority": 42
-         }
+         "name": "boot-by-host",
+         "hosts": ["host1"],
+         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
+         "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
+         "params": "console=tty0,115200n8 console=ttyS0,115200n8",
+         "priority": 42
        },
        {
-         "metadata": {
-           "name": "boot-by-mac"
-         },
-         "spec": {
-           "macs": ["de:ca:fc:0f:fe:ee"],
-           "kernel": "http://s3.openchami.cluster/kernels/vmlinuz2",
-           "initrd": "http://s3.openchami.cluster/initrds/initramfs2.img",
-           "params": "ip=dhcp",
-           "priority": 43
-         }
+         "name": "boot-by-mac",
+         "macs": ["de:ca:fc:0f:fe:ee"],
+         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz2",
+         "initrd": "http://s3.openchami.cluster/initrds/initramfs2.img",
+         "params": "ip=dhcp",
+         "priority": 43
        }
      ]'
 
@@ -116,40 +105,60 @@ See ochami-boot(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read boot configuration data
-			bcs := []boot_service_client.CreateBootConfigurationRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayloadSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs)
-			} else {
-				cli.HandlePayloadStdinSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			envelope, _ := cmd.Flags().GetBool("envelope")
 			var cfgsCreated []*api.BootConfiguration
-			var errs []error
-			var err error
+			var reqErrs []error
+			var reqErr error
 			if envelope {
-				cfgsCreated, errs, err = bootServiceClient.AddBootConfigs(cli.Token, bcs)
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read boot configuration data
+				bcs := []boot_service_client.CreateBootConfigurationRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs)
+				} else {
+					cli.HandlePayloadStdinSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs)
+				}
+
+				// Send off requests
+				cfgsCreated, reqErrs, reqErr = bootServiceClient.AddBootConfigs(cli.Token, bcs)
 			} else {
-				cfgsCreated, errs, err = bootServiceClient.AddBootConfigsSimple(cli.Token, bcs)
+				// Use simple API (spec)
+
+				// Read boot configuration data
+				bcs := []boot_service.BootConfigSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[boot_service.BootConfigSpec](cmd, &bcs)
+				} else {
+					cli.HandlePayloadStdinSlice[boot_service.BootConfigSpec](cmd, &bcs)
+				}
+
+				// Send off requests
+				cfgsCreated, reqErrs, reqErr = bootServiceClient.AddBootConfigSpecs(cli.Token, bcs)
 			}
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to add boot configurations")
+
+			// Handle any non-request error
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to add boot configurations")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
 
 			// Deal with per-request errors
-			var errorsOccurred = false
-			for _, err := range errs {
+			var reqErrorsOccurred = false
+			for _, err := range reqErrs {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to add boot configuration")
-					errorsOccurred = true
+					reqErrorsOccurred = true
 				}
 			}
 			log.Logger.Debug().Msgf("boot configs created: %+v", cfgsCreated)
-			if errorsOccurred {
+			if reqErrorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("boot configuration addition completed with errors")
 				os.Exit(1)

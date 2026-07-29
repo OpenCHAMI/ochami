@@ -6,32 +6,15 @@ package boot_service
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
-	"time"
 
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/openchami/fabrica/pkg/fabrica"
-	"github.com/rs/zerolog"
 )
 
-// newTestClient spins up an httptest server with the given handler and returns
-// a BootServiceClient pointed at it.
-func newTestClient(t *testing.T, handler http.HandlerFunc) (*BootServiceClient, *httptest.Server) {
-	t.Helper()
-	srv := httptest.NewServer(handler)
-	c, err := NewClient(srv.URL, false, 5*time.Second, "", zerolog.New(io.Discard))
-	if err != nil {
-		srv.Close()
-		t.Fatalf("failed to create client: %v", err)
-	}
-	return c, srv
-}
-
-func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
+func TestAddBootConfigSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -39,32 +22,32 @@ func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 		gotMethod = r.Method
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{})
+		_ = json.NewEncoder(w).Encode(api.BootConfiguration{})
 	})
 	defer srv.Close()
 
-	nodes := []NodeSpec{
+	cfgs := []BootConfigSpec{
 		{
-			Name:     "x1000c0s0b0n0",
-			NodeSpec: api.NodeSpec{XName: "x1000c0s0b0n0", NID: 42},
+			Name:                  "compute-boot",
+			BootConfigurationSpec: api.BootConfigurationSpec{Hosts: []string{"host1"}},
 		},
 	}
 
-	_, errs, err := c.AddNodeSpecs("", nodes)
+	_, errs, err := c.AddBootConfigSpecs("", cfgs)
 	if err != nil {
-		t.Fatalf("AddNodeSpecs returned func error: %v", err)
+		t.Fatalf("AddBootConfigSpecs returned func error: %v", err)
 	}
 	for _, e := range errs {
 		if e != nil {
-			t.Fatalf("AddNodeSpecs per-request error: %v", e)
+			t.Fatalf("AddBootConfigSpecs per-request error: %v", e)
 		}
 	}
 
 	if gotMethod != http.MethodPost {
 		t.Errorf("method = %q, want POST", gotMethod)
 	}
-	if gotPath != "/nodes" {
-		t.Errorf("path = %q, want /nodes", gotPath)
+	if gotPath != "/bootconfigurations" {
+		t.Errorf("path = %q, want /bootconfigurations", gotPath)
 	}
 	// Simple API still sends an envelope built from name + spec, but must NOT
 	// carry labels/annotations supplied on the request.
@@ -72,31 +55,31 @@ func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 		t.Errorf("simple request unexpectedly included labels: %+v", gotBody["labels"])
 	}
 	meta, _ := gotBody["metadata"].(map[string]interface{})
-	if meta == nil || meta["name"] != "x1000c0s0b0n0" {
-		t.Errorf("metadata.name = %+v, want x1000c0s0b0n0", meta)
+	if meta == nil || meta["name"] != "compute-boot" {
+		t.Errorf("metadata.name = %+v, want compute-boot", meta)
 	}
 }
 
-func TestAddNodes_EnvelopeIncludesLabels(t *testing.T) {
+func TestAddBootConfigs_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{})
+		_ = json.NewEncoder(w).Encode(api.BootConfiguration{})
 	})
 	defer srv.Close()
 
-	nodes := []boot_service_client.CreateNodeRequest{
+	cfgs := []boot_service_client.CreateBootConfigurationRequest{
 		{
-			Metadata: fabrica.Metadata{Name: "x1000c0s0b0n0", Labels: map[string]string{"env": "prod"}},
-			Spec:     api.NodeSpec{XName: "x1000c0s0b0n0"},
+			Metadata: fabrica.Metadata{Name: "compute-boot", Labels: map[string]string{"env": "prod"}},
+			Spec:     api.BootConfigurationSpec{Hosts: []string{"host1"}},
 			Labels:   map[string]string{"env": "prod"},
 		},
 	}
 
-	_, _, err := c.AddNodes("", nodes)
+	_, _, err := c.AddBootConfigs("", cfgs)
 	if err != nil {
-		t.Fatalf("AddNodes returned func error: %v", err)
+		t.Fatalf("AddBootConfigs returned func error: %v", err)
 	}
 
 	labels, ok := gotBody["labels"].(map[string]interface{})
@@ -105,7 +88,7 @@ func TestAddNodes_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
-func TestSetNodeSpec_SendsSpecToUIDEndpoint(t *testing.T) {
+func TestSetBootConfigSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -113,22 +96,22 @@ func TestSetNodeSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 		gotMethod = r.Method
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{})
+		_ = json.NewEncoder(w).Encode(api.BootConfiguration{})
 	})
 	defer srv.Close()
 
-	spec := api.NodeSpec{XName: "x1000c0s0b0n0", NID: 7}
+	spec := api.BootConfigurationSpec{Hosts: []string{"host1"}}
 
-	_, err := c.SetNodeSpec("", "nod-abc123", spec)
+	_, err := c.SetBootConfigSpec("", "boo-abc123", spec)
 	if err != nil {
-		t.Fatalf("SetNodeSpec returned error: %v", err)
+		t.Fatalf("SetBootConfigSpec returned error: %v", err)
 	}
 
 	if gotMethod != http.MethodPut {
 		t.Errorf("method = %q, want PUT", gotMethod)
 	}
-	if gotPath != "/nodes/nod-abc123" {
-		t.Errorf("path = %q, want /nodes/nod-abc123", gotPath)
+	if gotPath != "/bootconfigurations/boo-abc123" {
+		t.Errorf("path = %q, want /bootconfigurations/boo-abc123", gotPath)
 	}
 	if _, ok := gotBody["labels"]; ok {
 		t.Errorf("simple set unexpectedly included labels: %+v", gotBody["labels"])

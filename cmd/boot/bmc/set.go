@@ -29,14 +29,12 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Set BMC details using payload data
   ochami boot bmc set bmc-773d99bf -d \
     '{
-       "spec": {
-         "xname": "x1000c0s0b0",
-         "description": "This node's BMC",
-         "interface": {
-           "type": "management",
-           "mac": "de:ca:fc:0f:fe:e1",
-           "ip": "172.16.0.254"
-         }
+       "xname": "x1000c0s0b0",
+       "description": "This node's BMC",
+       "interface": {
+         "type": "management",
+         "mac": "de:ca:fc:0f:fe:e1",
+         "ip": "172.16.0.254"
        }
      }'
 
@@ -69,25 +67,43 @@ See ochami-boot(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read BMC data
-			bmc := boot_service_client.UpdateBMCRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &bmc)
-			} else {
-				cli.HandlePayloadStdin(cmd, &bmc)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			envelope, _ := cmd.Flags().GetBool("envelope")
 			var bmcSet *api.BMC
-			var err error
+			var reqErr error
 			if envelope {
-				bmcSet, err = bootServiceClient.SetBMC(cli.Token, args[0], bmc)
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read BMC data
+				bmc := boot_service_client.UpdateBMCRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &bmc)
+				} else {
+					cli.HandlePayloadStdin(cmd, &bmc)
+				}
+
+				// Send off request
+				bmcSet, reqErr = bootServiceClient.SetBMC(cli.Token, args[0], bmc)
 			} else {
-				bmcSet, err = bootServiceClient.SetBMCSimple(cli.Token, args[0], bmc)
+				// Use simple API (spec)
+
+				// Read BMC data
+				spec := api.BMCSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &spec)
+				} else {
+					cli.HandlePayloadStdin(cmd, &spec)
+				}
+
+				// Send off request
+				bmcSet, reqErr = bootServiceClient.SetBMCSpec(cli.Token, args[0], spec)
 			}
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to set bmc")
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to set bmc")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}

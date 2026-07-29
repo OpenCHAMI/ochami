@@ -11,10 +11,20 @@ import (
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
+
+// NodeSpec is a wrapper around the boot-service's NodeSpec and is used
+// specifically for the simple API. For adding Nodes, a "name" field is required
+// but is only provided in the "metadata" structure, which is outside of the
+// spec and is only available in the advanced API. To get around this, the
+// upstream spec is wrapped with a "name" field so bulk specs can be added with
+// names specified for each without having to provide them as arguments.
+type NodeSpec struct {
+	Name string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.NodeSpec
+}
 
 // AddNodes is a wrapper that calls the boot-service client's CreateNode()
 // function, passing it context. The output is a slice of the nodes it created,
@@ -151,21 +161,17 @@ func (bsc *BootServiceClient) SetNode(token string, uid string, node boot_servic
 	return item, nil
 }
 
-// AddNodesSimple is like AddNodes but calls the boot-service client's simple
+// AddNodeSpecs is like AddNodes but calls the boot-service client's simple
 // CreateNodeSimple() function, which only sends the resource name and spec.
-// Any labels or annotations present in the request are discarded and a warning
-// is logged advising the user to pass --envelope to preserve them.
-func (bsc *BootServiceClient) AddNodesSimple(token string, nodes []boot_service_client.CreateNodeRequest) (nodesAdded []*api.Node, errors []error, funcErr error) {
+func (bsc *BootServiceClient) AddNodeSpecs(token string, nodes []NodeSpec) (nodesAdded []*api.Node, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, node := range nodes {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 		defer cancel()
 
-		cli.WarnDiscardedEnvelope(node.Metadata.Name, node.Labels, node.Annotations)
-
-		item, err := bsc.Client.WithBearerToken(token).CreateNodeSimple(ctx, node.Metadata.Name, node.Spec)
+		item, err := bsc.Client.WithBearerToken(token).CreateNodeSimple(ctx, node.Name, node.NodeSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add node %+v: %w", node, err)
+			newErr := fmt.Errorf("failed to add node %q (%+v): %w", node.Name, node.NodeSpec, err)
 			errors = append(errors, newErr)
 			nodesAdded = append(nodesAdded, nil)
 		}
@@ -175,19 +181,15 @@ func (bsc *BootServiceClient) AddNodesSimple(token string, nodes []boot_service_
 	return
 }
 
-// SetNodeSimple is like SetNode but calls the boot-service client's simple
-// UpdateNodeSimple() function, which only sends the resource spec. Any labels
-// or annotations present in the request are discarded and a warning is logged
-// advising the user to pass --envelope to preserve them.
-func (bsc *BootServiceClient) SetNodeSimple(token string, uid string, node boot_service_client.UpdateNodeRequest) (*api.Node, error) {
+// SetNodeSpec is like SetNode but calls the boot-service client's simple
+// UpdateNodeSimple() function, which only sends the resource spec.
+func (bsc *BootServiceClient) SetNodeSpec(token string, uid string, spec api.NodeSpec) (*api.Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
 	defer cancel()
 
-	cli.WarnDiscardedEnvelope(node.Metadata.Name, node.Labels, node.Annotations)
-
-	item, err := bsc.Client.WithBearerToken(token).UpdateNodeSimple(ctx, uid, node.Spec)
+	item, err := bsc.Client.WithBearerToken(token).UpdateNodeSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set node %+v: %w", node, err)
+		return nil, fmt.Errorf("failed to set node %+v: %w", spec, err)
 	}
 
 	return item, nil

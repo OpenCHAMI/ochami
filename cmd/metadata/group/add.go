@@ -15,6 +15,7 @@ import (
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/OpenCHAMI/ochami/pkg/client/metadata_service"
 )
 
 func newCmdMetadataGroupAdd() *cobra.Command {
@@ -28,69 +29,51 @@ func newCmdMetadataGroupAdd() *cobra.Command {
 See ochami-metadata(1) for more details.`,
 		Example: `  # Add group with inline multi-line template (YAML via stdin)
   ochami metadata group add -f yaml <<'EOF'
-  metadata:
-    name: compute-group
-  spec:
-    template: |
-      #cloud-config
-      package_update: true
-      packages:
-        - nfs-common
-        - chrony
-    metaData:
-      role: compute
-  EOF
+   name: compute-group
+   template: |
+     #cloud-config
+     package_update: true
+     packages:
+       - nfs-common
+       - chrony
+   metaData:
+     role: compute
+   EOF
 
   # Add group using JSON (single line template)
   ochami metadata group add -d \
     '{
-       "metadata": {
-         "name": "storage-group"
-       },
-       "spec": {
-         "template":"#cloud-config\npackages:\n  - vim\n",
-         "metaData":{"role":"storage"}
-       }
+       "name": "storage-group",
+       "template":"#cloud-config\npackages:\n  - vim\n",
+       "metaData":{"role":"storage"}
      }'
 
-  # Add multiple groups using JSON array of resource envelopes
+  # Add multiple groups using JSON array of specs
   ochami metadata group add -d \
     '[
        {
-         "metadata": {
-           "name": "nfs-client-group"
-         },
-         "spec": {
-           "template":"#cloud-config\npackages:\n  - nfs-common\n"
-         }
+         "name": "nfs-client-group",
+         "template":"#cloud-config\npackages:\n  - nfs-common\n"
        },
        {
-         "metadata": {
-           "name": "nfs-server-group"
-         },
-         "spec": {
-           "template":"#cloud-config\npackages:\n  - nfs-server\n"
-         }
+         "name": "nfs-server-group",
+         "template":"#cloud-config\npackages:\n  - nfs-server\n"
        }
      ]'
 
-  # Add multiple groups using YAML array of resource envelopes
+  # Add multiple groups using YAML array of specs
   ochami metadata group add -f yaml <<'EOF'
-  - metadata:
-      name: nfs-client-group
-    spec:
-      template: |
-        #cloud-config
-        packages:
-          - nfs-common
-  - metadata:
-      name: nfs-server-group
-    spec:
-      template: |
-        #cloud-config
-        packages:
-          - nfs-server
-  EOF
+   - name: nfs-client-group
+     template: |
+       #cloud-config
+       packages:
+         - nfs-common
+   - name: nfs-server-group
+     template: |
+       #cloud-config
+       packages:
+         - nfs-server
+   EOF
 
   # Add group preserving labels/annotations (envelope API)
   ochami metadata group add -e -d \
@@ -122,36 +105,56 @@ See ochami-metadata(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read group data
-			groups := []metadata_service_client.CreateGroupRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayloadSlice[metadata_service_client.CreateGroupRequest](cmd, &groups)
-			} else {
-				cli.HandlePayloadStdinSlice[metadata_service_client.CreateGroupRequest](cmd, &groups)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			envelope, _ := cmd.Flags().GetBool("envelope")
 			var groupsCreated []api.Group
-			var errs []error
-			var err error
+			var reqErrs []error
+			var reqErr error
 			if envelope {
-				groupsCreated, errs, err = metadataServiceClient.AddGroups(cli.Token, groups)
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read group data
+				groups := []metadata_service_client.CreateGroupRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[metadata_service_client.CreateGroupRequest](cmd, &groups)
+				} else {
+					cli.HandlePayloadStdinSlice[metadata_service_client.CreateGroupRequest](cmd, &groups)
+				}
+
+				// Send off requests
+				groupsCreated, reqErrs, reqErr = metadataServiceClient.AddGroups(cli.Token, groups)
 			} else {
-				groupsCreated, errs, err = metadataServiceClient.AddGroupsSimple(cli.Token, groups)
+				// Use simple API (spec)
+
+				// Read group data
+				groups := []metadata_service.GroupSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[metadata_service.GroupSpec](cmd, &groups)
+				} else {
+					cli.HandlePayloadStdinSlice[metadata_service.GroupSpec](cmd, &groups)
+				}
+
+				// Send off requests
+				groupsCreated, reqErrs, reqErr = metadataServiceClient.AddGroupSpecs(cli.Token, groups)
 			}
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to add groups")
+
+			// Handle any non-request error
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to add groups")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
 
 			// Deal with per-request errors
-			var errorsOccurred = false
-			for _, err := range errs {
+			var reqErrorsOccurred = false
+			for _, err := range reqErrs {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to add group")
-					errorsOccurred = true
+					reqErrorsOccurred = true
 				}
 			}
 
@@ -163,7 +166,7 @@ See ochami-metadata(1) for more details.`,
 			log.Logger.Info().Msgf("Groups created: %+v", uids)
 
 			// Warn if any request errors occurred
-			if errorsOccurred {
+			if reqErrorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("Group addition completed with errors")
 				os.Exit(1)

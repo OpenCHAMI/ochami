@@ -17,7 +17,74 @@ ochami-metadata - Communicate with the Metadata Service
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *set* [-e] [-f _format_] [-d (_data_ | @_path_)] _uid_++
 *ochami metadata service status* [-F _format_]
 
-# DATA STRUCTURE
+# SIMPLE VERSUS ADVANCED API
+
+The user can either specify just the specification of a resource when
+creating/modifying it or specify additional annotations, labels, and metadata as
+outlined below.
+
+## SIMPLE API
+
+For commands that add or edit data (*add*, *set*), the default way to pass the
+data is via the specification ("spec") of the data itself with a mandatory
+*name* field (see *DATA SPECIFICATIONS* for data type specifications). This is the
+*simple API*.
+
+When using the simple API, the *name* field is _required_ to be specified in the
+spec. This will set the name in the metadata of the resource, which means the
+specified name will appear in *metadata.name* when listing the resource.
+
+For example, a resource spec when creating/modifying a resource would look
+something like:
+
+```
+{
+  "name": "my-resource",
+  // other spec data
+}
+```
+
+When listing that same resource, it will look like:
+
+```
+{
+  "metadata": {
+    "name": "my-resource",
+	...
+  },
+  ...
+  "spec": {
+	  // other spec data
+  }
+}
+```
+
+## ADVANCED API
+
+For finer-grain control, the *--envelope*/*-e* flag can be used to enable the
+*advanced* API, which allows specifying additional metadata, labels, and
+annotations. A JSON example of using this API would be:
+
+```
+{
+  "annotations": {...},
+  "labels": {...},
+  "metadata": {...},
+  "spec": {...}         // <- where spec goes
+}
+```
+
+This can be thought of as the "raw" data structure since the simple API
+abstracts creating this structure while the advanced API exposes it directly.
+Either way, this data structure is what is sent over the wire.
+
+# DATA SPECIFICATIONS
+
+The following are the specifications for the various metadata-service resources
+accepted and returned by *ochami*.
+
+Note that the *name* field is omitted from the data specifications below since
+that is technically metadata (see *SIMPLE VERSUS ADVANCED API*).
 
 ## CLUSTER DEFAULTS
 
@@ -27,41 +94,18 @@ that can be applied across all nodes in the cluster.
 
 ```
 {
-  "apiVersion": "cloud-init.openchami.io/v1",
-  "kind": "ClusterDefaults",
-  "metadata": {
-    "name": "demo-cluster-defaults",
-    "uid": "clusterdefaults-demo-01hzy7h9xq6b8m2p4v1n3r5t7w",
-    "labels": {
-      "cluster": "demo",
-      "environment": "production"
-    },
-    "annotations": {
-      "contact.email": "hpc-ops@example.com",
-      "deployment.notes": "Default metadata for the demo OpenCHAMI cluster"
-    },
-    "createdAt": "2026-01-15T18:30:00Z",
-    "updatedAt": "2026-01-15T19:45:00Z"
-  },
-  "spec": {
-    "description": "Cluster-wide defaults for the demo OpenCHAMI environment",
-    "base_url": "https://demo.openchami.cluster:8443/cloud-init",
-    "cloud_provider": "on-prem",
-    "region": "us-west-dc1",
-    "availability_zone": "rack-row-a",
-    "cluster_name": "demo",
-    "short_name": "nid",
-    "nid_length": 4,
-    "public_keys": [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLtQNuzGcMDatF+YVMMkuxbX2c5v2OxWftBhEVfFb+U hpc-admin@demo-login",
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB4vVRvkzmGE5PyWX2fuzJEgEfET4PRLHXCnD1uFZ8ZL automation@demo-login"
-    ]
-  },
-  "status": {
-    "phase": "Ready",
-    "message": "Cluster defaults are active",
-    "ready": true
-  }
+  "description": "Cluster-wide defaults for the demo OpenCHAMI environment",
+  "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+  "cloud_provider": "on-prem",
+  "region": "us-west-dc1",
+  "availability_zone": "rack-row-a",
+  "cluster_name": "demo",
+  "short_name": "nid",
+  "nid_length": 4,
+  "public_keys": [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLtQNuzGcMDatF+YVMMkuxbX2c5v2OxWftBhEVfFb+U hpc-admin@demo-login",
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB4vVRvkzmGE5PyWX2fuzJEgEfET4PRLHXCnD1uFZ8ZL automation@demo-login"
+  ]
 }
 ```
 
@@ -95,33 +139,13 @@ multi-line strings without escaping.
 
 ```
 {
-  "apiVersion": "cloud-init.openchami.io/v1",
-  "kind": "Group",
-  "metadata": {
-    "name": "compute-group-1",
-    "uid": "group-01hzy7h9xq6b8m2p4v1n3r5t7w",
-    "labels": {
-      "role": "compute",
-      "cluster": "demo"
-    },
-    "createdAt": "2026-01-15T18:30:00Z",
-    "updatedAt": "2026-01-15T19:45:00Z"
+  "description": "Compute node group configuration",
+  "template": "#cloud-config\\n##template: jinja2\\npackage_update: true\\npackages:\\n  - nfs-common\\n  - chrony\\nruncmd:\\n  - echo \"Configured {{ cluster_name }}\"\\n",
+  "metaData": {
+    "role": "compute",
+    "ntp_server": "10.1.1.100"
   },
-  "spec": {
-    "description": "Compute node group configuration",
-    "template": "#cloud-config\\n##template: jinja2\\npackage_update: true\\npackages:\\n  - nfs-common\\n  - chrony\\nruncmd:\\n  - echo \"Configured {{ cluster_name }}\"\\n",
-    "metaData": {
-      "role": "compute",
-      "ntp_server": "10.1.1.100"
-    },
-    "osVersion": "ubuntu-22.04"
-  },
-  "status": {
-    "valid": true,
-    "lastApplied": "2026-01-15T19:45:00Z",
-    "currentTemplateVersion": "v-a1b2c3d4",
-    "requiredVariables": ["cluster_name"]
-  }
+  "osVersion": "ubuntu-22.04"
 }
 ```
 
@@ -142,30 +166,15 @@ JSON form below:
 
 ```
 {
-  "apiVersion": "cloud-init.openchami.io/v1",
-  "kind": "InstanceInfo",
-  "metadata": {
-    "name": "x1000c0s0b0n0-instance",
-    "uid": "instanceinfo-01hzy7h9xq6b8m2p4v1n3r5t7w",
-    "createdAt": "2026-01-15T18:30:00Z",
-    "updatedAt": "2026-01-15T19:45:00Z"
-  },
-  "spec": {
-    "description": "Compute node instance information",
-    "instance_id": "x1000c0s0b0n0",
-    "local_hostname": "nid001000",
-    "hostname": "nid001000.demo.cluster",
-    "cloud_init_base_url": "https://demo.openchami.cluster:8443/cloud-init",
-    "public_keys": [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLtQNuzGcMDatF+YVMMkuxbX2c5v2OxWftBhEVfFb+U admin@demo"
-    ],
-    "default_profile": "compute"
-  },
-  "status": {
-    "phase": "Ready",
-    "message": "Instance info is active",
-    "ready": true
-  }
+  "description": "Compute node instance information",
+  "instance_id": "x1000c0s0b0n0",
+  "local_hostname": "nid001000",
+  "hostname": "nid001000.demo.cluster",
+  "cloud_init_base_url": "https://demo.openchami.cluster:8443/cloud-init",
+  "public_keys": [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLtQNuzGcMDatF+YVMMkuxbX2c5v2OxWftBhEVfFb+U admin@demo"
+  ],
+  "default_profile": "compute"
 }
 ```
 
@@ -189,24 +198,9 @@ detailed in JSON form below:
 
 ```
 {
-  "apiVersion": "cloud-init.openchami.io/v1",
-  "kind": "WireGuardPeer",
-  "metadata": {
-    "name": "peer-nid001000",
-    "uid": "wireguardpeer-01hzy7h9xq6b8m2p4v1n3r5t7w",
-    "createdAt": "2026-01-15T18:30:00Z",
-    "updatedAt": "2026-01-15T19:45:00Z"
-  },
-  "spec": {
-    "description": "WireGuard peer for nid001000",
-    "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-    "allowed_ip": "10.42.1.1/32"
-  },
-  "status": {
-    "phase": "Ready",
-    "message": "Peer is configured",
-    "ready": true
-  }
+  "description": "WireGuard peer for nid001000",
+  "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+  "allowed_ip": "10.42.1.1/32"
 }
 ```
 
@@ -256,12 +250,12 @@ metadata-service resources. The *service* command provides operations for
 metadata-service itself.
 
 By default, the *add* and *set* subcommands use the metadata-service _simple_
-API, which sends only the resource name (from _metadata.name_) and spec. Any
-_labels_ or _annotations_ present in the payload are discarded and a warning is
-logged. To use the _envelope_ (advanced) API, which preserves metadata, labels,
-and annotations, pass the *-e, --envelope* flag. This flag is available on the
-*add* and *set* subcommands of the *defaults*, *group*, *instance*, and *peer*
-commands.
+API, which sends only the resource spec (with a required _name_ field for
+*add*). Any _labels_ or _annotations_ must instead be supplied via the
+_envelope_ (advanced) API, which is enabled by passing the *-e*/*--envelope*
+flag and preserves metadata, labels, and annotations. See *SIMPLE VERSUS
+ADVANCED API* for details. This flag is available on the *add* and *set*
+subcommands of the *defaults*, *group*, *instance*, and *peer* commands.
 
 [[ *Resource*
 :< *Subcommands*
@@ -310,8 +304,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -510,8 +505,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -554,8 +550,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -823,8 +820,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -885,8 +883,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -1135,8 +1134,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -1197,8 +1197,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -1458,8 +1459,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data

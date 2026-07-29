@@ -17,7 +17,74 @@ ochami-boot - Communicate with the Boot Service
 *ochami boot* (*bmc* | *config* | *node*) *set* [-e] [-f _format_] [-d (_data_ | @_path_ | @-)] _uid_++
 *ochami boot service status* [-F _format_]
 
-# DATA STRUCTURE
+# SIMPLE VERSUS ADVANCED API
+
+The user can either specify just the specification of a resource when
+creating/modifying it or specify additional annotations, labels, and metadata as
+outlined below.
+
+## SIMPLE API
+
+For commands that add or edit data (*add*, *set*), the default way to pass the
+data is via the specification ("spec") of the data itself with a mandatory
+*name* field (see *DATA SPECIFICATIONS* for data type specifications). This is the
+*simple API*.
+
+When using the simple API, the *name* field is _required_ to be specified in the
+spec. This will set the name in the metadata of the resource, which means the
+specified name will appear in *metadata.name* when listing the resource.
+
+For example, a resource spec when creating/modifying a resource would look
+something like:
+
+```
+{
+  "name": "my-resource",
+  // other spec data
+}
+```
+
+When listing that same resource, it will look like:
+
+```
+{
+  "metadata": {
+    "name": "my-resource",
+	...
+  },
+  ...
+  "spec": {
+	  // other spec data
+  }
+}
+```
+
+## ADVANCED API
+
+For finer-grain control, the *--envelope*/*-e* flag can be used to enable the
+*advanced* API, which allows specifying additional metadata, labels, and
+annotations. A JSON example of using this API would be:
+
+```
+{
+  "annotations": {...},
+  "labels": {...},
+  "metadata": {...},
+  "spec": {...}         // <- where spec goes
+}
+```
+
+This can be thought of as the "raw" data structure since the simple API
+abstracts creating this structure while the advanced API exposes it directly.
+Either way, this data structure is what is sent over the wire.
+
+# DATA SPECIFICATIONS
+
+The following are the specifications for the various boot-service resources
+accepted and returned by *ochami*.
+
+Note that the *name* field is omitted from the data specifications below since
+that is technically metadata (see *SIMPLE VERSUS ADVANCED API*).
 
 ## BOOT CONFIGURATION
 
@@ -129,11 +196,12 @@ creating, deleting, reading, listing, patching, and replacing boot-service
 resources. The *service* command provides operations for boot-service itself.
 
 By default, the *add* and *set* subcommands use the boot-service _simple_ API,
-which sends only the resource name (from _metadata.name_) and spec. Any
-_labels_ or _annotations_ present in the payload are discarded and a warning is
-logged. To use the _envelope_ (advanced) API, which preserves metadata, labels,
-and annotations, pass the *-e, --envelope* flag. This flag is available on the
-*add* and *set* subcommands of the *bmc*, *config*, and *node* commands.
+which sends only the resource spec (with a required _name_ field for *add*). Any
+_labels_ or _annotations_ must instead be supplied via the _envelope_ (advanced)
+API, which is enabled by passing the *-e*/*--envelope* flag and preserves
+metadata, labels, and annotations. See *SIMPLE VERSUS ADVANCED API* for details.
+This flag is available on the *add* and *set* subcommands of the *bmc*,
+*config*, and *node* commands.
 
 [[ *Resource*
 :< *Subcommands*
@@ -178,8 +246,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -321,8 +390,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -367,8 +437,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -514,8 +585,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -557,8 +629,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -701,8 +774,9 @@ Subcommands for this command are as follows:
 
 	*-e, --envelope*
 		Use the envelope (advanced) API, preserving metadata, labels, and
-		annotations, instead of the simple API. Without this flag, labels and
-		annotations in the payload are discarded.
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data

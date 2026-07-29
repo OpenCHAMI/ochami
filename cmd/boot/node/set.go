@@ -29,25 +29,23 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Set node details using payload data
   ochami boot node set nod-bc76f7f2 -d \
     '{
-       "spec": {
-         "xname": "x1000c0s0b0n0",
-         "nid": 42,
-         "bootMac": "de:ca:fc:0f:fe:e1",
-         "role": "example-role",
-         "subRole": "example-subrole",
-         "hostname": "ex01.example.org",
-         "interfaces": [
-           {
-             "type": "management",
-             "mac": "de:ca:fc:0f:fe:e1",
-             "ip": "172.16.0.1"
-           }
-         ],
-         "groups": [
-           "group1",
-           "group2"
-         ]
-       }
+       "xname": "x1000c0s0b0n0",
+       "nid": 42,
+       "bootMac": "de:ca:fc:0f:fe:e1",
+       "role": "example-role",
+       "subRole": "example-subrole",
+       "hostname": "ex01.example.org",
+       "interfaces": [
+         {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e1",
+           "ip": "172.16.0.1"
+         }
+       ],
+       "groups": [
+         "group1",
+         "group2"
+       ]
      }'
 
   # Set node details preserving labels/annotations (envelope API)
@@ -64,11 +62,11 @@ See ochami-boot(1) for more details.`,
        }
      }'
 
-  # Set boot configuration using input payload file
+  # Set node details using input payload file
   ochami boot node set -d @payload.json nod-bc76f7f2
   ochami boot node set -d @payload.yaml -f yaml nod-bc76f7f2
 
-  # Set boot configuration using data from stdin
+  # Set node details using data from stdin
   echo '<json_data>' | ochami boot node set -d @- nod-bc76f7f2
   echo '<json_data>' | ochami boot node set nod-bc76f7f2
   echo '<yaml_data>' | ochami boot node set -d @- -f yaml nod-bc76f7f2
@@ -80,25 +78,43 @@ See ochami-boot(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read node data
-			node := boot_service_client.UpdateNodeRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &node)
-			} else {
-				cli.HandlePayloadStdin(cmd, &node)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			envelope, _ := cmd.Flags().GetBool("envelope")
 			var nodeSet *api.Node
-			var err error
+			var reqErr error
 			if envelope {
-				nodeSet, err = bootServiceClient.SetNode(cli.Token, args[0], node)
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read node data
+				node := boot_service_client.UpdateNodeRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &node)
+				} else {
+					cli.HandlePayloadStdin(cmd, &node)
+				}
+
+				// Send off request
+				nodeSet, reqErr = bootServiceClient.SetNode(cli.Token, args[0], node)
 			} else {
-				nodeSet, err = bootServiceClient.SetNodeSimple(cli.Token, args[0], node)
+				// Use simple API (spec)
+
+				// Read node data
+				spec := api.NodeSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &spec)
+				} else {
+					cli.HandlePayloadStdin(cmd, &spec)
+				}
+
+				// Send off request
+				nodeSet, reqErr = bootServiceClient.SetNodeSpec(cli.Token, args[0], spec)
 			}
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to set node")
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to set node")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
