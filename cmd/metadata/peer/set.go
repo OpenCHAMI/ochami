@@ -65,7 +65,11 @@ See ochami-metadata(1) for more details.`,
 
 			// Read peer data
 			peer := metadata_service_client.UpdateWireGuardPeerRequest{}
-			cli.HandlePayload(cmd, &peer)
+			if cmd.Flag("data").Changed {
+				cli.HandlePayload(cmd, &peer)
+			} else {
+				cli.HandlePayloadStdin(cmd, &peer)
+			}
 
 			// Send off requests
 			peerSet, err := metadataServiceClient.SetWireGuardPeer(cli.Token, args[0], peer)

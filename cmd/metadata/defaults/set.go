@@ -57,7 +57,11 @@ See ochami-metadata(1) for more details.`,
 
 			// Read cluster defaults data
 			defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
-			cli.HandlePayload(cmd, &defaults)
+			if cmd.Flag("data").Changed {
+				cli.HandlePayload(cmd, &defaults)
+			} else {
+				cli.HandlePayloadStdin(cmd, &defaults)
+			}
 
 			// Send off requests
 			defaultsSet, err := metadataServiceClient.SetDefaults(cli.Token, args[0], defaults)

@@ -55,7 +55,11 @@ See ochami-metadata(1) for more details.`,
 
 			// Read instance data
 			instance := metadata_service_client.UpdateInstanceInfoRequest{}
-			cli.HandlePayload(cmd, &instance)
+			if cmd.Flag("data").Changed {
+				cli.HandlePayload(cmd, &instance)
+			} else {
+				cli.HandlePayloadStdin(cmd, &instance)
+			}
 
 			// Send off requests
 			instanceSet, err := metadataServiceClient.SetInstanceInfo(cli.Token, args[0], instance)

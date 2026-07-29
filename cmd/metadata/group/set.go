@@ -55,7 +55,11 @@ See ochami-metadata(1) for more details.`,
 
 			// Read group data
 			group := metadata_service_client.UpdateGroupRequest{}
-			cli.HandlePayload(cmd, &group)
+			if cmd.Flag("data").Changed {
+				cli.HandlePayload(cmd, &group)
+			} else {
+				cli.HandlePayloadStdin(cmd, &group)
+			}
 
 			// Send off requests
 			groupSet, err := metadataServiceClient.SetGroup(cli.Token, args[0], group)
