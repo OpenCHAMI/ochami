@@ -11,6 +11,7 @@ import (
 	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 
+	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
@@ -146,6 +147,53 @@ func (msc *MetadataServiceClient) SetWireGuardPeer(token string, uid string, pee
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateWireGuardPeer(ctx, uid, peer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set WireGuard peer %+v: %w", peer, err)
+	}
+
+	return item, nil
+}
+
+// AddWireGuardPeersSimple is like AddWireGuardPeers but calls the
+// metadata-service client's simple CreateWireGuardPeerSimple() function, which
+// only sends the resource name and spec. Any labels or annotations present in
+// the request are discarded and a warning is logged advising the user to pass
+// --envelope to preserve them.
+func (msc *MetadataServiceClient) AddWireGuardPeersSimple(token string, peers []metadata_service_client.CreateWireGuardPeerRequest) (peersAdded []api.WireGuardPeer, errors []error, funcErr error) {
+	// TODO: Make concurrent
+	for _, p := range peers {
+		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+		defer cancel()
+
+		cli.WarnDiscardedEnvelope(p.Metadata.Name, p.Labels, p.Annotations)
+
+		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeerSimple(ctx, p.Metadata.Name, p.Spec)
+		if err != nil {
+			newErr := fmt.Errorf("failed to add WireGuard peer %+v: %w", p, err)
+			errors = append(errors, newErr)
+		} else if item != nil {
+			peersAdded = append(peersAdded, *item)
+		} else {
+			newErr := fmt.Errorf("WireGuard peer creation did not err, but was not created for: %+v", p)
+			errors = append(errors, newErr)
+		}
+	}
+
+	return
+}
+
+// SetWireGuardPeerSimple is like SetWireGuardPeer but calls the metadata-service
+// client's simple UpdateWireGuardPeerSimple() function, which only sends the
+// resource spec. Any labels or annotations present in the request are discarded
+// and a warning is logged advising the user to pass --envelope to preserve
+// them.
+func (msc *MetadataServiceClient) SetWireGuardPeerSimple(token string, uid string, peer metadata_service_client.UpdateWireGuardPeerRequest) (*api.WireGuardPeer, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+	defer cancel()
+
+	cli.WarnDiscardedEnvelope(peer.Metadata.Name, peer.Labels, peer.Annotations)
+
+	item, err := msc.Client.WithBearerToken(token).UpdateWireGuardPeerSimple(ctx, uid, peer.Spec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set WireGuard peer %+v: %w", peer, err)
 	}

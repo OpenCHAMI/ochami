@@ -29,6 +29,9 @@ See ochami-boot(1) for more details.`,
 		},
 	}
 
+	// Create flags
+	bootBmcCmd.PersistentFlags().BoolP("envelope", "e", false, "use the envelope (advanced) API, preserving metadata/labels/annotations, instead of the simple API")
+
 	// Add subcommands
 	bootBmcCmd.AddCommand(
 		newCmdBootBmcAdd(),

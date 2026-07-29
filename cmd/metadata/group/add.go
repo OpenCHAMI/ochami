@@ -10,6 +10,8 @@ import (
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -90,6 +92,20 @@ See ochami-metadata(1) for more details.`,
           - nfs-server
   EOF
 
+  # Add group preserving labels/annotations (envelope API)
+  ochami metadata group add -e -d \
+    '{
+       "metadata": {
+         "name": "storage-group",
+         "labels": {
+           "role": "storage"
+         }
+       },
+       "spec": {
+         "template":"#cloud-config\npackages:\n  - vim\n"
+       }
+     }'
+
   # Add multiple groups from file
   ochami metadata group add -d @groups.json
   ochami metadata group add -d @groups.yaml -f yaml
@@ -115,7 +131,15 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			groupsCreated, errs, err := metadataServiceClient.AddGroups(cli.Token, groups)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var groupsCreated []api.Group
+			var errs []error
+			var err error
+			if envelope {
+				groupsCreated, errs, err = metadataServiceClient.AddGroups(cli.Token, groups)
+			} else {
+				groupsCreated, errs, err = metadataServiceClient.AddGroupsSimple(cli.Token, groups)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to add groups")
 				cli.LogHelpError(cmd)

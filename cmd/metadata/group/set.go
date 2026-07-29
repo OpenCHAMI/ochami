@@ -10,6 +10,8 @@ import (
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -62,7 +64,14 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			groupSet, err := metadataServiceClient.SetGroup(cli.Token, args[0], group)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var groupSet *api.Group
+			var err error
+			if envelope {
+				groupSet, err = metadataServiceClient.SetGroup(cli.Token, args[0], group)
+			} else {
+				groupSet, err = metadataServiceClient.SetGroupSimple(cli.Token, args[0], group)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to set group")
 				cli.LogHelpError(cmd)

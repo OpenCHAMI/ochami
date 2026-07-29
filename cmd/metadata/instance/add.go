@@ -10,6 +10,8 @@ import (
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -71,6 +73,20 @@ See ochami-metadata(1) for more details.`,
       instance_id: "x1000c0s0b0n1"
   EOF
 
+  # Add instance info preserving labels/annotations (envelope API)
+  ochami metadata instance add -e -d \
+    '{
+       "metadata": {
+         "name": "x1000c0s0b0n0-instance",
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "instance_id": "x1000c0s0b0n0"
+       }
+     }'
+
   # Add multiple instances from file
   ochami metadata instance add -d @instances.json
   ochami metadata instance add -d @instance.yaml -f yaml
@@ -94,7 +110,15 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			instancesCreated, errs, err := metadataServiceClient.AddInstanceInfos(cli.Token, instances)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var instancesCreated []api.InstanceInfo
+			var errs []error
+			var err error
+			if envelope {
+				instancesCreated, errs, err = metadataServiceClient.AddInstanceInfos(cli.Token, instances)
+			} else {
+				instancesCreated, errs, err = metadataServiceClient.AddInstanceInfosSimple(cli.Token, instances)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to add instance infos")
 				cli.LogHelpError(cmd)

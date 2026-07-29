@@ -8,13 +8,13 @@ ochami-boot - Communicate with the Boot Service
 
 *ochami boot* [_global-options_] _command_ [_command-options_] [_arguments_]
 
-*ochami boot* (*bmc* | *config* | *node*) *add* [-f _format_] [-d (_data_ | @_path_ | @-)]++
+*ochami boot* (*bmc* | *config* | *node*) *add* [-e] [-f _format_] [-d (_data_ | @_path_ | @-)]++
 *ochami boot* (*bmc* | *config* | *node*) *delete* [--no-confirm] _uid_...++
 *ochami boot* (*bmc* | *config* | *node*) *get* [-F _format_] _uid_++
 *ochami boot* (*bmc* | *config* | *node*) *list* [-F _format_]++
 *ochami boot* (*bmc* | *config* | *node*) *patch* [-f _format_] [-p _patch_method_] [-d (_data_ | @_path_ | @-)] _uid_++
 *ochami boot* (*bmc* | *config* | *node*) *patch* (--add _key_=_val_ | --remove _key_=_index_ | --set _key_=_val_ | --unset _key_)... _uid_++
-*ochami boot* (*bmc* | *config* | *node*) *set* [-f _format_] [-d (_data_ | @_path_ | @-)] _uid_++
+*ochami boot* (*bmc* | *config* | *node*) *set* [-e] [-f _format_] [-d (_data_ | @_path_ | @-)] _uid_++
 *ochami boot service status* [-F _format_]
 
 # DATA STRUCTURE
@@ -128,6 +128,13 @@ The *bmc*, *config*, and *node* commands share a common set of subcommands for
 creating, deleting, reading, listing, patching, and replacing boot-service
 resources. The *service* command provides operations for boot-service itself.
 
+By default, the *add* and *set* subcommands use the boot-service _simple_ API,
+which sends only the resource name (from _metadata.name_) and spec. Any
+_labels_ or _annotations_ present in the payload are discarded and a warning is
+logged. To use the _envelope_ (advanced) API, which preserves metadata, labels,
+and annotations, pass the *-e, --envelope* flag. This flag is available on the
+*add* and *set* subcommands of the *bmc*, *config*, and *node* commands.
+
 [[ *Resource*
 :< *Subcommands*
 :< *Description*
@@ -150,10 +157,10 @@ Manage BMCs stored in boot-service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add one or more BMC specifications to boot-service.
 
 	In the first and third forms of the command, data is read from standard
@@ -168,6 +175,11 @@ Subcommands for this command are as follows:
 	This command sends a POST request to boot-service's BMC endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -287,10 +299,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of a BMC identified by _uid_. The entire
 	specification for the BMC is replaced with the specification that is passed.
 
@@ -306,6 +318,11 @@ Subcommands for this command are as follows:
 	This command sends a PUT request to boot-service's BMC endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -326,10 +343,10 @@ Manage boot configurations stored in the boot service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add new boot configuration to be able to be used by nodes. If boot
 	configuration already exists for the specified components, this command will
 	fail.
@@ -347,6 +364,11 @@ Subcommands for this command are as follows:
 	endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -468,10 +490,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of a boot configuration identified by _uid_. The
 	entire specification for the boot configuration gets replaced with the
 	specification that is passed.
@@ -489,6 +511,11 @@ Subcommands for this command are as follows:
 	endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -509,10 +536,10 @@ Manage nodes stored in boot-service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add one or more nodes to boot-service.
 
 	In the first and third forms of the command, data is read from standard
@@ -527,6 +554,11 @@ Subcommands for this command are as follows:
 	This command sends a POST request to boot-service's node endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -646,10 +678,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of a node identified by _uid_. The entire
 	specification for the node is replaced with the specification that is
 	passed.
@@ -666,6 +698,11 @@ Subcommands for this command are as follows:
 	This command sends a PUT request to boot-service's node endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data

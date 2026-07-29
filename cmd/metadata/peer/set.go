@@ -10,6 +10,8 @@ import (
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -72,7 +74,14 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			peerSet, err := metadataServiceClient.SetWireGuardPeer(cli.Token, args[0], peer)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var peerSet *api.WireGuardPeer
+			var err error
+			if envelope {
+				peerSet, err = metadataServiceClient.SetWireGuardPeer(cli.Token, args[0], peer)
+			} else {
+				peerSet, err = metadataServiceClient.SetWireGuardPeerSimple(cli.Token, args[0], peer)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to set WireGuard peer")
 				cli.LogHelpError(cmd)

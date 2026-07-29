@@ -8,13 +8,13 @@ ochami-metadata - Communicate with the Metadata Service
 
 *ochami metadata* [_global-options_] _command_ [_command-options_] [_arguments_]
 
-*ochami metadata* (*defaults* | *group* | *instance* | *peer*) *add* [-f _format_] [-d (_data_ | @_path_)]++
+*ochami metadata* (*defaults* | *group* | *instance* | *peer*) *add* [-e] [-f _format_] [-d (_data_ | @_path_)]++
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *delete* [--no-confirm] _uid_...++
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *get* [-F _format_] _uid_++
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *list* [-F _format_]++
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *patch* [-f _format_] [-p _patch_method_] [-d (_data_ | @_path_ | @-)] _uid_++
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *patch* (--add _key_=_val_ | --remove _key_=_val_ | --set _key_=_val_ | --unset _key_)... _uid_++
-*ochami metadata* (*defaults* | *group* | *instance* | *peer*) *set* [-f _format_] [-d (_data_ | @_path_)] _uid_++
+*ochami metadata* (*defaults* | *group* | *instance* | *peer*) *set* [-e] [-f _format_] [-d (_data_ | @_path_)] _uid_++
 *ochami metadata service status* [-F _format_]
 
 # DATA STRUCTURE
@@ -255,6 +255,14 @@ subcommands for creating, deleting, reading, listing, patching, and replacing
 metadata-service resources. The *service* command provides operations for
 metadata-service itself.
 
+By default, the *add* and *set* subcommands use the metadata-service _simple_
+API, which sends only the resource name (from _metadata.name_) and spec. Any
+_labels_ or _annotations_ present in the payload are discarded and a warning is
+logged. To use the _envelope_ (advanced) API, which preserves metadata, labels,
+and annotations, pass the *-e, --envelope* flag. This flag is available on the
+*add* and *set* subcommands of the *defaults*, *group*, *instance*, and *peer*
+commands.
+
 [[ *Resource*
 :< *Subcommands*
 :< *Description*
@@ -280,10 +288,10 @@ Manage cluster defaults in the metadata service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add one or more cluster defaults to metadata-service.
 
 	In the first and third forms of the command, data is read from standard
@@ -299,6 +307,11 @@ Subcommands for this command are as follows:
 	defaults endpoint.
 
 	This command accepts the following flags:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -473,10 +486,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of a cluster defaults identified by _uid_. The entire
 	specification for the cluster defaults is replaced with the specification
 	that is passed.
@@ -494,6 +507,11 @@ Subcommands for this command are as follows:
 	endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -514,10 +532,10 @@ Manage cloud-init group templates in the metadata service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add one or more groups to metadata-service.
 
 	In the first and third forms of the command, data is read from standard
@@ -533,6 +551,11 @@ Subcommands for this command are as follows:
 	endpoint.
 
 	This command accepts the following flags:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -777,10 +800,10 @@ Subcommands for this command are as follows:
 	ochami metadata group patch group-d614b918 -d @payload.json
 	```
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of a group identified by _uid_. The entire
 	specification for the group is replaced with the specification that is
 	passed.
@@ -797,6 +820,11 @@ Subcommands for this command are as follows:
 	This command sends a PUT request to metadata-service's group endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -835,10 +863,10 @@ Manage instance information in the metadata service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add one or more instance infos to metadata-service.
 
 	In the first and third forms of the command, data is read from standard
@@ -854,6 +882,11 @@ Subcommands for this command are as follows:
 	info endpoint.
 
 	This command accepts the following flags:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -1079,10 +1112,10 @@ Subcommands for this command are as follows:
 	ochami metadata instance patch instanceinfo-d614b918 -d @payload.yaml -f yaml
 	```
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of an instance info identified by _uid_. The entire
 	specification for the instance info is replaced with the specification that
 	is passed.
@@ -1099,6 +1132,11 @@ Subcommands for this command are as follows:
 	This command sends a PUT request to metadata-service's instance info endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -1137,10 +1175,10 @@ Manage WireGuard peer configurations in the metadata service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add one or more WireGuard peers to metadata-service.
 
 	In the first and third forms of the command, data is read from standard
@@ -1156,6 +1194,11 @@ Subcommands for this command are as follows:
 	peer endpoint.
 
 	This command accepts the following flags:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -1392,10 +1435,10 @@ Subcommands for this command are as follows:
 	ochami metadata peer patch wireguardpeer-d614b918 -d @payload.json
 	```
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of a WireGuard peer identified by _uid_. The entire
 	specification for the WireGuard peer is replaced with the specification that
 	is passed.
@@ -1412,6 +1455,11 @@ Subcommands for this command are as follows:
 	This command sends a PUT request to metadata-service's WireGuard peer endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this flag, labels and
+		annotations in the payload are discarded.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data

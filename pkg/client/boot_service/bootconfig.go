@@ -11,6 +11,7 @@ import (
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 
+	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
@@ -145,6 +146,50 @@ func (bsc *BootServiceClient) SetBootConfig(token string, uid string, bootCfg bo
 	defer cancel()
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateBootConfiguration(ctx, uid, bootCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set boot configuration %+v: %w", bootCfg, err)
+	}
+
+	return item, nil
+}
+
+// AddBootConfigsSimple is like AddBootConfigs but calls the boot-service
+// client's simple CreateBootConfigurationSimple() function, which only sends
+// the resource name and spec. Any labels or annotations present in the request
+// are discarded and a warning is logged advising the user to pass --envelope to
+// preserve them.
+func (bsc *BootServiceClient) AddBootConfigsSimple(token string, bootCfgs []boot_service_client.CreateBootConfigurationRequest) (cfgsAdded []*api.BootConfiguration, errors []error, funcErr error) {
+	// TODO: Make concurrent
+	for _, bootCfg := range bootCfgs {
+		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+		defer cancel()
+
+		cli.WarnDiscardedEnvelope(bootCfg.Metadata.Name, bootCfg.Labels, bootCfg.Annotations)
+
+		item, err := bsc.Client.WithBearerToken(token).CreateBootConfigurationSimple(ctx, bootCfg.Metadata.Name, bootCfg.Spec)
+		if err != nil {
+			newErr := fmt.Errorf("failed to add boot configuration %+v: %w", bootCfg, err)
+			errors = append(errors, newErr)
+			cfgsAdded = append(cfgsAdded, nil)
+		}
+		cfgsAdded = append(cfgsAdded, item)
+	}
+
+	return
+}
+
+// SetBootConfigSimple is like SetBootConfig but calls the boot-service client's
+// simple UpdateBootConfigurationSimple() function, which only sends the
+// resource spec. Any labels or annotations present in the request are discarded
+// and a warning is logged advising the user to pass --envelope to preserve
+// them.
+func (bsc *BootServiceClient) SetBootConfigSimple(token string, uid string, bootCfg boot_service_client.UpdateBootConfigurationRequest) (*api.BootConfiguration, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+	defer cancel()
+
+	cli.WarnDiscardedEnvelope(bootCfg.Metadata.Name, bootCfg.Labels, bootCfg.Annotations)
+
+	item, err := bsc.Client.WithBearerToken(token).UpdateBootConfigurationSimple(ctx, uid, bootCfg.Spec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set boot configuration %+v: %w", bootCfg, err)
 	}

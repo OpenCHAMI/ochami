@@ -10,6 +10,8 @@ import (
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -27,46 +29,76 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add boot configuration using payload data
   ochami boot config add -d \
     '{
-       "hosts": [
-         "item1",
-         "item2"
-       ],
-       "macs": [
-         "de:ca:fc:0f:fe:e1",
-         "de:ca:fc:0f:fe:e2"
-       ],
-       "nids": [
-         1,
-         2
-       ],
-       "groups": [
-         "group1",
-         "group2"
-       ],
-       "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
-       "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
-       "params": "console=tty0,115200n8 console=ttyS0,115200n8",
-       "priority": 42
+       "metadata": {
+         "name": "compute-boot"
+       },
+       "spec": {
+         "hosts": [
+           "item1",
+           "item2"
+         ],
+         "macs": [
+           "de:ca:fc:0f:fe:e1",
+           "de:ca:fc:0f:fe:e2"
+         ],
+         "nids": [
+           1,
+           2
+         ],
+         "groups": [
+           "group1",
+           "group2"
+         ],
+         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
+         "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
+         "params": "console=tty0,115200n8 console=ttyS0,115200n8",
+         "priority": 42
+       }
      }'
 
   # Add multiple boot configurations using payload data
   ochami boot config add -d \
     '[
        {
-         "hosts": ["host1"],
-         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
-         "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
-         "params": "console=tty0,115200n8 console=ttyS0,115200n8",
-         "priority": 42
+         "metadata": {
+           "name": "boot-by-host"
+         },
+         "spec": {
+           "hosts": ["host1"],
+           "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
+           "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
+           "params": "console=tty0,115200n8 console=ttyS0,115200n8",
+           "priority": 42
+         }
        },
        {
-         "macs": ["de:ca:fc:0f:fe:ee"],
-         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz2",
-         "initrd": "http://s3.openchami.cluster/initrds/initramfs2.img",
-         "params": "ip=dhcp",
-         "priority": 43
+         "metadata": {
+           "name": "boot-by-mac"
+         },
+         "spec": {
+           "macs": ["de:ca:fc:0f:fe:ee"],
+           "kernel": "http://s3.openchami.cluster/kernels/vmlinuz2",
+           "initrd": "http://s3.openchami.cluster/initrds/initramfs2.img",
+           "params": "ip=dhcp",
+           "priority": 43
+         }
        }
      ]'
+
+  # Add boot configuration preserving labels/annotations (envelope API)
+  ochami boot config add -e -d \
+    '{
+       "metadata": {
+         "name": "compute-boot",
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "hosts": ["item1"],
+         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1"
+       }
+     }'
 
   # Add boot configuration using input payload file
   ochami boot config add -d @payload.json
@@ -93,7 +125,15 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Send off requests
-			cfgsCreated, errs, err := bootServiceClient.AddBootConfigs(cli.Token, bcs)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var cfgsCreated []*api.BootConfiguration
+			var errs []error
+			var err error
+			if envelope {
+				cfgsCreated, errs, err = bootServiceClient.AddBootConfigs(cli.Token, bcs)
+			} else {
+				cfgsCreated, errs, err = bootServiceClient.AddBootConfigsSimple(cli.Token, bcs)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to add boot configurations")
 				cli.LogHelpError(cmd)

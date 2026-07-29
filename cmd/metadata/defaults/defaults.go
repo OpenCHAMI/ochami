@@ -31,6 +31,9 @@ See ochami-metadata(1) for more details.`,
 		},
 	}
 
+	// Create flags
+	metadataDefaultsCmd.PersistentFlags().BoolP("envelope", "e", false, "use the envelope (advanced) API, preserving metadata/labels/annotations, instead of the simple API")
+
 	// Add subcommands
 	metadataDefaultsCmd.AddCommand(
 		newCmdMetadataDefaultsAdd(),

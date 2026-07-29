@@ -10,6 +10,8 @@ import (
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -27,26 +29,42 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Set boot configuration using payload data
   ochami boot config set boo-914afad2 -d \
     '{
-       "hosts": [
-         "item1",
-         "item2"
-       ],
-       "macs": [
-         "de:ca:fc:0f:fe:e1",
-         "de:ca:fc:0f:fe:e2"
-       ],
-       "nids": [
-         1,
-         2
-       ],
-       "groups": [
-         "group1",
-         "group2"
-       ],
-       "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
-       "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
-       "params": "console=tty0,115200n8 console=ttyS0,115200n8",
-       "priority": 42
+       "spec": {
+         "hosts": [
+           "item1",
+           "item2"
+         ],
+         "macs": [
+           "de:ca:fc:0f:fe:e1",
+           "de:ca:fc:0f:fe:e2"
+         ],
+         "nids": [
+           1,
+           2
+         ],
+         "groups": [
+           "group1",
+           "group2"
+         ],
+         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1",
+         "initrd": "http://s3.openchami.cluster/initrds/initramfs1.img",
+         "params": "console=tty0,115200n8 console=ttyS0,115200n8",
+         "priority": 42
+       }
+     }'
+
+  # Set boot configuration preserving labels/annotations (envelope API)
+  ochami boot config set boo-914afad2 -e -d \
+    '{
+       "metadata": {
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "hosts": ["item1"],
+         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1"
+       }
      }'
 
   # Set boot configuration using input payload file
@@ -74,7 +92,14 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Send off requests
-			cfgSet, err := bootServiceClient.SetBootConfig(cli.Token, args[0], bcs)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var cfgSet *api.BootConfiguration
+			var err error
+			if envelope {
+				cfgSet, err = bootServiceClient.SetBootConfig(cli.Token, args[0], bcs)
+			} else {
+				cfgSet, err = bootServiceClient.SetBootConfigSimple(cli.Token, args[0], bcs)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to set boot configuration")
 				cli.LogHelpError(cmd)

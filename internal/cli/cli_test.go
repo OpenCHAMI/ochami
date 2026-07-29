@@ -20,7 +20,10 @@ import (
 
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwt"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+
+	"github.com/OpenCHAMI/ochami/internal/log"
 )
 
 func TestIOStream_AskToCreate(t *testing.T) {
@@ -423,4 +426,58 @@ func TestSetToken_FromEnvironment(t *testing.T) {
 	// This test is skipped because SetToken calls os.Exit() on errors
 	// To properly test this, SetToken should be refactored to return errors
 	t.Skip("Skipping test that may call os.Exit() - SetToken needs refactoring for testability")
+}
+
+func TestWarnDiscardedEnvelope(t *testing.T) {
+	tests := []struct {
+		name        string
+		resource    string
+		labels      map[string]string
+		annotations map[string]string
+		wantWarn    bool
+	}{
+		{
+			name:     "no labels or annotations does not warn",
+			resource: "foo",
+			wantWarn: false,
+		},
+		{
+			name:     "labels present warns",
+			resource: "foo",
+			labels:   map[string]string{"env": "prod"},
+			wantWarn: true,
+		},
+		{
+			name:        "annotations present warns",
+			resource:    "foo",
+			annotations: map[string]string{"note": "x"},
+			wantWarn:    true,
+		},
+		{
+			name:     "unnamed resource with labels warns",
+			resource: "",
+			labels:   map[string]string{"env": "prod"},
+			wantWarn: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			orig := log.Logger
+			log.Logger = zerolog.New(&buf).Level(zerolog.WarnLevel)
+			defer func() { log.Logger = orig }()
+
+			WarnDiscardedEnvelope(tc.resource, tc.labels, tc.annotations)
+
+			got := buf.String()
+			if tc.wantWarn && !strings.Contains(got, "--envelope") {
+				t.Errorf("expected warning mentioning --envelope, got %q", got)
+			}
+			if !tc.wantWarn && got != "" {
+				t.Errorf("expected no warning, got %q", got)
+			}
+		})
+	}
 }

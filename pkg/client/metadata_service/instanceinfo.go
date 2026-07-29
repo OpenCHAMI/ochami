@@ -11,6 +11,7 @@ import (
 	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 
+	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
@@ -146,6 +147,53 @@ func (msc *MetadataServiceClient) SetInstanceInfo(token string, uid string, inst
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateInstanceInfo(ctx, uid, instance)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set instance info %+v: %w", instance, err)
+	}
+
+	return item, nil
+}
+
+// AddInstanceInfosSimple is like AddInstanceInfos but calls the
+// metadata-service client's simple CreateInstanceInfoSimple() function, which
+// only sends the resource name and spec. Any labels or annotations present in
+// the request are discarded and a warning is logged advising the user to pass
+// --envelope to preserve them.
+func (msc *MetadataServiceClient) AddInstanceInfosSimple(token string, instances []metadata_service_client.CreateInstanceInfoRequest) (instancesAdded []api.InstanceInfo, errors []error, funcErr error) {
+	// TODO: Make concurrent
+	for _, i := range instances {
+		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+		defer cancel()
+
+		cli.WarnDiscardedEnvelope(i.Metadata.Name, i.Labels, i.Annotations)
+
+		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfoSimple(ctx, i.Metadata.Name, i.Spec)
+		if err != nil {
+			newErr := fmt.Errorf("failed to add instance info %+v: %w", i, err)
+			errors = append(errors, newErr)
+		} else if item != nil {
+			instancesAdded = append(instancesAdded, *item)
+		} else {
+			newErr := fmt.Errorf("instance info creation did not err, but was not created for: %+v", i)
+			errors = append(errors, newErr)
+		}
+	}
+
+	return
+}
+
+// SetInstanceInfoSimple is like SetInstanceInfo but calls the metadata-service
+// client's simple UpdateInstanceInfoSimple() function, which only sends the
+// resource spec. Any labels or annotations present in the request are discarded
+// and a warning is logged advising the user to pass --envelope to preserve
+// them.
+func (msc *MetadataServiceClient) SetInstanceInfoSimple(token string, uid string, instance metadata_service_client.UpdateInstanceInfoRequest) (*api.InstanceInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+	defer cancel()
+
+	cli.WarnDiscardedEnvelope(instance.Metadata.Name, instance.Labels, instance.Annotations)
+
+	item, err := msc.Client.WithBearerToken(token).UpdateInstanceInfoSimple(ctx, uid, instance.Spec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set instance info %+v: %w", instance, err)
 	}

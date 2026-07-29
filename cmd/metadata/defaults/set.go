@@ -10,6 +10,8 @@ import (
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -64,7 +66,14 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			defaultsSet, err := metadataServiceClient.SetDefaults(cli.Token, args[0], defaults)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var defaultsSet *api.ClusterDefaults
+			var err error
+			if envelope {
+				defaultsSet, err = metadataServiceClient.SetDefaults(cli.Token, args[0], defaults)
+			} else {
+				defaultsSet, err = metadataServiceClient.SetDefaultsSimple(cli.Token, args[0], defaults)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to set cluster defaults")
 				cli.LogHelpError(cmd)

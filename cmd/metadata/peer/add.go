@@ -10,6 +10,8 @@ import (
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -84,6 +86,21 @@ See ochami-metadata(1) for more details.`,
       allowed_ip: "10.42.1.2/32"
   EOF
 
+  # Add WireGuard peer preserving labels/annotations (envelope API)
+  ochami metadata peer add -e -d \
+    '{
+       "metadata": {
+         "name": "peer-nid001000",
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+         "allowed_ip": "10.42.1.1/32"
+       }
+     }'
+
   # Add multiple peers from file
   ochami metadata peer add -d @peers.json
   ochami metadata peer add -d @peers.yaml -f yaml
@@ -109,7 +126,15 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			peersCreated, errs, err := metadataServiceClient.AddWireGuardPeers(cli.Token, peers)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var peersCreated []api.WireGuardPeer
+			var errs []error
+			var err error
+			if envelope {
+				peersCreated, errs, err = metadataServiceClient.AddWireGuardPeers(cli.Token, peers)
+			} else {
+				peersCreated, errs, err = metadataServiceClient.AddWireGuardPeersSimple(cli.Token, peers)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to add WireGuard peers")
 				cli.LogHelpError(cmd)

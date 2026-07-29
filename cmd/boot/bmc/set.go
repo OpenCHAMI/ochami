@@ -10,6 +10,8 @@ import (
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -27,12 +29,27 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Set BMC details using payload data
   ochami boot bmc set bmc-773d99bf -d \
     '{
-       "xname": "x1000c0s0b0",
-       "description": "This node's BMC",
-       "interface": {
-         "type": "management",
-         "mac": "de:ca:fc:0f:fe:e1",
-         "ip": "172.16.0.254"
+       "spec": {
+         "xname": "x1000c0s0b0",
+         "description": "This node's BMC",
+         "interface": {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e1",
+           "ip": "172.16.0.254"
+         }
+       }
+     }'
+
+  # Set BMC details preserving labels/annotations (envelope API)
+  ochami boot bmc set bmc-773d99bf -e -d \
+    '{
+       "metadata": {
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "xname": "x1000c0s0b0"
        }
      }'
 
@@ -61,7 +78,14 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Send off requests
-			bmcSet, err := bootServiceClient.SetBMC(cli.Token, args[0], bmc)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var bmcSet *api.BMC
+			var err error
+			if envelope {
+				bmcSet, err = bootServiceClient.SetBMC(cli.Token, args[0], bmc)
+			} else {
+				bmcSet, err = bootServiceClient.SetBMCSimple(cli.Token, args[0], bmc)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to set bmc")
 				cli.LogHelpError(cmd)

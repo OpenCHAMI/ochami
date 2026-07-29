@@ -10,6 +10,8 @@ import (
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -82,6 +84,21 @@ See ochami-metadata(1) for more details.`,
       cluster_name: "demo2"
   EOF
 
+  # Add cluster defaults preserving labels/annotations (envelope API)
+  ochami metadata defaults add -e -d \
+    '{
+      "metadata": {
+        "name": "demo-cluster-defaults",
+        "labels": {
+          "env": "prod"
+        }
+      },
+      "spec": {
+        "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+        "cluster_name": "demo"
+      }
+     }'
+
   # Add cluster defaults using input payload file
   ochami metadata defaults add -d @payload.json
   ochami metadata defaults add -d @payload.yaml -f yaml
@@ -107,7 +124,15 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			defaultsCreated, errs, err := metadataServiceClient.AddDefaults(cli.Token, defaults)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var defaultsCreated []api.ClusterDefaults
+			var errs []error
+			var err error
+			if envelope {
+				defaultsCreated, errs, err = metadataServiceClient.AddDefaults(cli.Token, defaults)
+			} else {
+				defaultsCreated, errs, err = metadataServiceClient.AddDefaultsSimple(cli.Token, defaults)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to add cluster defaults")
 				cli.LogHelpError(cmd)

@@ -659,6 +659,22 @@ func LogHelpWarn(cmd *cobra.Command) {
 	log.Logger.Warn().Msgf("see '%s --help' for long command help", cmd.CommandPath())
 }
 
+// WarnDiscardedEnvelope logs a warning when a request being sent via a simple
+// (non-envelope) API variant carries labels or annotations that will be
+// discarded. It advises the user to pass --envelope to preserve them. The name
+// is included in the message to identify the affected resource. If neither
+// labels nor annotations are set, no warning is logged.
+func WarnDiscardedEnvelope(name string, labels, annotations map[string]string) {
+	if len(labels) == 0 && len(annotations) == 0 {
+		return
+	}
+	id := name
+	if id == "" {
+		id = "<unnamed>"
+	}
+	log.Logger.Warn().Msgf("discarding labels/annotations for %q; pass --envelope to preserve them", id)
+}
+
 // CompletionFormatData is the cobra completion function for any flag that uses
 // the format.DataFormat type.
 func CompletionFormatData(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

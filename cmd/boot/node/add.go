@@ -10,6 +10,8 @@ import (
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -27,32 +29,15 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add node using payload data
   ochami boot node add -d \
     '{
-       "xname": "x1000c0s0b0n0",
-       "nid": 42,
-       "bootMac": "de:ca:fc:0f:fe:e1",
-       "role": "example-role",
-       "subRole": "example-subrole",
-       "hostname": "ex01.example.org",
-       "interfaces": [
-         {
-           "type": "management",
-           "mac": "de:ca:fc:0f:fe:e1",
-           "ip": "172.16.0.1"
-         }
-       ],
-       "groups": [
-         "group1",
-         "group2"
-       ]
-     }'
-
-  # Add multiple nodes using payload data
-  ochami boot node add -d \
-    '[
-       {
+       "metadata": {
+         "name": "x1000c0s0b0n0"
+       },
+       "spec": {
          "xname": "x1000c0s0b0n0",
          "nid": 42,
          "bootMac": "de:ca:fc:0f:fe:e1",
+         "role": "example-role",
+         "subRole": "example-subrole",
          "hostname": "ex01.example.org",
          "interfaces": [
            {
@@ -60,22 +45,69 @@ See ochami-boot(1) for more details.`,
              "mac": "de:ca:fc:0f:fe:e1",
              "ip": "172.16.0.1"
            }
-         ]
-       },
-       {
-         "xname": "x1000c0s0b0n1",
-         "nid": 43,
-         "bootMac": "de:ca:fc:0f:fe:e2",
-         "hostname": "ex02.example.org",
-         "interfaces": [
-           {
-             "type": "management",
-             "mac": "de:ca:fc:0f:fe:e2",
-             "ip": "172.16.0.2"
-           }
+         ],
+         "groups": [
+           "group1",
+           "group2"
          ]
        }
+     }'
+
+  # Add multiple nodes using payload data
+  ochami boot node add -d \
+    '[
+       {
+         "metadata": {
+           "name": "x1000c0s0b0n0"
+         },
+         "spec": {
+           "xname": "x1000c0s0b0n0",
+           "nid": 42,
+           "bootMac": "de:ca:fc:0f:fe:e1",
+           "hostname": "ex01.example.org",
+           "interfaces": [
+             {
+               "type": "management",
+               "mac": "de:ca:fc:0f:fe:e1",
+               "ip": "172.16.0.1"
+             }
+           ]
+         }
+       },
+       {
+         "metadata": {
+           "name": "x1000c0s0b0n1"
+         },
+         "spec": {
+           "xname": "x1000c0s0b0n1",
+           "nid": 43,
+           "bootMac": "de:ca:fc:0f:fe:e2",
+           "hostname": "ex02.example.org",
+           "interfaces": [
+             {
+               "type": "management",
+               "mac": "de:ca:fc:0f:fe:e2",
+               "ip": "172.16.0.2"
+             }
+           ]
+         }
+       }
      ]'
+
+  # Add node preserving labels/annotations (envelope API)
+  ochami boot node add -e -d \
+    '{
+       "metadata": {
+         "name": "x1000c0s0b0n0",
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "xname": "x1000c0s0b0n0",
+         "nid": 42
+       }
+     }'
 
   # Add nodes using input payload file
   ochami boot node add -d @payload.json
@@ -102,7 +134,15 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Send off requests
-			nodesCreated, errs, err := bootServiceClient.AddNodes(cli.Token, nodes)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var nodesCreated []*api.Node
+			var errs []error
+			var err error
+			if envelope {
+				nodesCreated, errs, err = bootServiceClient.AddNodes(cli.Token, nodes)
+			} else {
+				nodesCreated, errs, err = bootServiceClient.AddNodesSimple(cli.Token, nodes)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to add nodes")
 				cli.LogHelpError(cmd)

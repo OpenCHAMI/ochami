@@ -11,6 +11,7 @@ import (
 	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 
+	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
@@ -146,6 +147,51 @@ func (msc *MetadataServiceClient) SetGroup(token string, uid string, group metad
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateGroup(ctx, uid, group)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set group %+v: %w", group, err)
+	}
+
+	return item, nil
+}
+
+// AddGroupsSimple is like AddGroups but calls the metadata-service client's
+// simple CreateGroupSimple() function, which only sends the resource name and
+// spec. Any labels or annotations present in the request are discarded and a
+// warning is logged advising the user to pass --envelope to preserve them.
+func (msc *MetadataServiceClient) AddGroupsSimple(token string, groups []metadata_service_client.CreateGroupRequest) (groupsAdded []api.Group, errors []error, funcErr error) {
+	// TODO: Make concurrent
+	for _, g := range groups {
+		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+		defer cancel()
+
+		cli.WarnDiscardedEnvelope(g.Metadata.Name, g.Labels, g.Annotations)
+
+		item, err := msc.Client.WithBearerToken(token).CreateGroupSimple(ctx, g.Metadata.Name, g.Spec)
+		if err != nil {
+			newErr := fmt.Errorf("failed to add group %+v: %w", g, err)
+			errors = append(errors, newErr)
+		} else if item != nil {
+			groupsAdded = append(groupsAdded, *item)
+		} else {
+			newErr := fmt.Errorf("group creation did not err, but was not created for: %+v", g)
+			errors = append(errors, newErr)
+		}
+	}
+
+	return
+}
+
+// SetGroupSimple is like SetGroup but calls the metadata-service client's
+// simple UpdateGroupSimple() function, which only sends the resource spec. Any
+// labels or annotations present in the request are discarded and a warning is
+// logged advising the user to pass --envelope to preserve them.
+func (msc *MetadataServiceClient) SetGroupSimple(token string, uid string, group metadata_service_client.UpdateGroupRequest) (*api.Group, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+	defer cancel()
+
+	cli.WarnDiscardedEnvelope(group.Metadata.Name, group.Labels, group.Annotations)
+
+	item, err := msc.Client.WithBearerToken(token).UpdateGroupSimple(ctx, uid, group.Spec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set group %+v: %w", group, err)
 	}

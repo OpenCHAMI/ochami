@@ -10,6 +10,8 @@ import (
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -27,12 +29,17 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add BMC using payload data
   ochami boot bmc add -d \
     '{
-       "xname": "x1000c0s0b0",
-       "description": "This node's BMC",
-       "interface": {
-         "type": "management",
-         "mac": "de:ca:fc:0f:fe:e1",
-         "ip": "172.16.0.254"
+       "metadata": {
+         "name": "x1000c0s0b0"
+       },
+       "spec": {
+         "xname": "x1000c0s0b0",
+         "description": "This node's BMC",
+         "interface": {
+           "type": "management",
+           "mac": "de:ca:fc:0f:fe:e1",
+           "ip": "172.16.0.254"
+         }
        }
      }'
 
@@ -40,24 +47,48 @@ See ochami-boot(1) for more details.`,
   ochami boot bmc add -d \
     '[
        {
-         "xname": "x1000c0s0b0",
-         "description": "Node 1's BMC",
-         "interface": {
-           "type": "management",
-           "mac": "de:ca:fc:0f:fe:e1",
-           "ip": "172.16.0.1"
+         "metadata": {
+           "name": "x1000c0s0b0"
+         },
+         "spec": {
+           "xname": "x1000c0s0b0",
+           "description": "Node 1's BMC",
+           "interface": {
+             "type": "management",
+             "mac": "de:ca:fc:0f:fe:e1",
+             "ip": "172.16.0.1"
+           }
          }
        },
        {
-         "xname": "x1000c0s0b1",
-         "description": "Node 2's BMC",
-         "interface": {
-           "type": "management",
-           "mac": "de:ca:fc:0f:fe:e2",
-           "ip": "172.16.0.2"
+         "metadata": {
+           "name": "x1000c0s0b1"
+         },
+         "spec": {
+           "xname": "x1000c0s0b1",
+           "description": "Node 2's BMC",
+           "interface": {
+             "type": "management",
+             "mac": "de:ca:fc:0f:fe:e2",
+             "ip": "172.16.0.2"
+           }
          }
        }
      ]'
+
+  # Add BMC preserving labels/annotations (envelope API)
+  ochami boot bmc add -e -d \
+    '{
+       "metadata": {
+         "name": "x1000c0s0b0",
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "xname": "x1000c0s0b0"
+       }
+     }'
 
   # Add BMCs using input payload file
   ochami boot bmc add -d @payload.json
@@ -84,7 +115,15 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Send off requests
-			bmcsCreated, errs, err := bootServiceClient.AddBMCs(cli.Token, bmcs)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var bmcsCreated []*api.BMC
+			var errs []error
+			var err error
+			if envelope {
+				bmcsCreated, errs, err = bootServiceClient.AddBMCs(cli.Token, bmcs)
+			} else {
+				bmcsCreated, errs, err = bootServiceClient.AddBMCsSimple(cli.Token, bmcs)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to add BMCs")
 				cli.LogHelpError(cmd)

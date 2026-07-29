@@ -11,6 +11,7 @@ import (
 	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
 
+	"github.com/OpenCHAMI/ochami/internal/cli"
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"
 )
@@ -146,6 +147,52 @@ func (msc *MetadataServiceClient) SetDefaults(token string, uid string, defaults
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateClusterDefaults(ctx, uid, defaults)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set cluster defaults %+v: %w", defaults, err)
+	}
+
+	return item, nil
+}
+
+// AddDefaultsSimple is like AddDefaults but calls the metadata-service client's
+// simple CreateClusterDefaultsSimple() function, which only sends the resource
+// name and spec. Any labels or annotations present in the request are discarded
+// and a warning is logged advising the user to pass --envelope to preserve
+// them.
+func (msc *MetadataServiceClient) AddDefaultsSimple(token string, defaults []metadata_service_client.CreateClusterDefaultsRequest) (defaultsAdded []api.ClusterDefaults, errors []error, funcErr error) {
+	// TODO: Make concurrent
+	for _, d := range defaults {
+		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+		defer cancel()
+
+		cli.WarnDiscardedEnvelope(d.Metadata.Name, d.Labels, d.Annotations)
+
+		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaultsSimple(ctx, d.Metadata.Name, d.Spec)
+		if err != nil {
+			newErr := fmt.Errorf("failed to add cluster defaults %+v: %w", d, err)
+			errors = append(errors, newErr)
+		} else if item != nil {
+			defaultsAdded = append(defaultsAdded, *item)
+		} else {
+			newErr := fmt.Errorf("cluster defaults creation did not err, but was not created for: %+v", d)
+			errors = append(errors, newErr)
+		}
+	}
+
+	return
+}
+
+// SetDefaultsSimple is like SetDefaults but calls the metadata-service client's
+// simple UpdateClusterDefaultsSimple() function, which only sends the resource
+// spec. Any labels or annotations present in the request are discarded and a
+// warning is logged advising the user to pass --envelope to preserve them.
+func (msc *MetadataServiceClient) SetDefaultsSimple(token string, uid string, defaults metadata_service_client.UpdateClusterDefaultsRequest) (*api.ClusterDefaults, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+	defer cancel()
+
+	cli.WarnDiscardedEnvelope(defaults.Metadata.Name, defaults.Labels, defaults.Annotations)
+
+	item, err := msc.Client.WithBearerToken(token).UpdateClusterDefaultsSimple(ctx, uid, defaults.Spec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set cluster defaults %+v: %w", defaults, err)
 	}

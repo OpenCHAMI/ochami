@@ -10,6 +10,8 @@ import (
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
+
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
 	"github.com/OpenCHAMI/ochami/internal/log"
@@ -27,23 +29,39 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Set node details using payload data
   ochami boot node set nod-bc76f7f2 -d \
     '{
-       "xname": "x1000c0s0b0n0",
-       "nid": 42,
-       "bootMac": "de:ca:fc:0f:fe:e1",
-       "role": "example-role",
-       "subRole": "example-subrole",
-       "hostname": "ex01.example.org",
-       "interfaces": [
-         {
-           "type": "management",
-           "mac": "de:ca:fc:0f:fe:e1",
-           "ip": "172.16.0.1"
+       "spec": {
+         "xname": "x1000c0s0b0n0",
+         "nid": 42,
+         "bootMac": "de:ca:fc:0f:fe:e1",
+         "role": "example-role",
+         "subRole": "example-subrole",
+         "hostname": "ex01.example.org",
+         "interfaces": [
+           {
+             "type": "management",
+             "mac": "de:ca:fc:0f:fe:e1",
+             "ip": "172.16.0.1"
+           }
+         ],
+         "groups": [
+           "group1",
+           "group2"
+         ]
+       }
+     }'
+
+  # Set node details preserving labels/annotations (envelope API)
+  ochami boot node set nod-bc76f7f2 -e -d \
+    '{
+       "metadata": {
+         "labels": {
+           "env": "prod"
          }
-       ],
-       "groups": [
-         "group1",
-         "group2"
-       ]
+       },
+       "spec": {
+         "xname": "x1000c0s0b0n0",
+         "nid": 42
+       }
      }'
 
   # Set boot configuration using input payload file
@@ -71,7 +89,14 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Send off requests
-			nodeSet, err := bootServiceClient.SetNode(cli.Token, args[0], node)
+			envelope, _ := cmd.Flags().GetBool("envelope")
+			var nodeSet *api.Node
+			var err error
+			if envelope {
+				nodeSet, err = bootServiceClient.SetNode(cli.Token, args[0], node)
+			} else {
+				nodeSet, err = bootServiceClient.SetNodeSimple(cli.Token, args[0], node)
+			}
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("failed to set node")
 				cli.LogHelpError(cmd)
