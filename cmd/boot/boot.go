@@ -6,6 +6,7 @@ package boot
 
 import (
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -38,7 +39,8 @@ See ochami-boot(1) for more details.`,
 
 	// Create flags
 	bootCmd.PersistentFlags().String("api-version", "", "version of service API to use in request")
-	bootCmd.PersistentFlags().Duration("timeout", config.DefaultConfig.Timeout, "timeout duration when making requests")
+	to := config.DefaultConfigMap["timeout"].(time.Duration)
+	bootCmd.PersistentFlags().Duration("timeout", to, "timeout duration when making requests")
 	bootCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of boot service")
 
 	// Add subcommands
