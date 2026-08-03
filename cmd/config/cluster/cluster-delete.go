@@ -6,6 +6,7 @@
 package cluster
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -68,23 +69,32 @@ See ochami-config(5) for details on configuration options.`,
 			}
 
 			// Read in config from file
-			cfg, err := config.ReadConfig(fileToModify)
+			ko, err := config.ReadConfig(fileToModify)
 			if err != nil {
 				log.Logger.Error().Err(err).Msgf("failed to read config from %s", fileToModify)
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
 
+			var clusters []config.ConfigCluster
+			err = ko.Unmarshal("clusters", clusters)
+			if err != nil {
+				log.Logger.Error().Err(err).Msgf("failed to unmarshal loaded config from %s", fileToModify)
+				os.Exit(1)
+			}
+
 			// Fetch existing cluster list config
 			clusterName := args[0]
-			for idx, cluster := range cfg.Clusters {
+			for idx, cluster := range clusters {
 				if cluster.Name == clusterName {
-					cfg.Clusters = config.RemoveFromSlice(cfg.Clusters, idx)
+					clusters = config.RemoveFromSlice(clusters, idx)
+					ko.Delete(fmt.Sprintf("clusters.%d", idx))
 
 					// If cluster was default, remove default-cluster
-					if cfg.DefaultCluster != "" {
-						if cfg.DefaultCluster == clusterName {
-							cfg.DefaultCluster = ""
+					defaultCluster := ko.String("default-cluster")
+					if defaultCluster != "" {
+						if defaultCluster == clusterName {
+							ko.Set("default-cluster", "")
 							log.Logger.Info().Msgf("cluster %s removed as default-cluster from config file %s", clusterName, fileToModify)
 						}
 					}
@@ -92,7 +102,7 @@ See ochami-config(5) for details on configuration options.`,
 					// Write out config file
 					// WARNING: This will rewrite the whole config file so modifications like
 					// comments will get erased.
-					if err := config.WriteConfig(fileToModify, cfg); err != nil {
+					if err := config.WriteConfig(fileToModify, ko); err != nil {
 						log.Logger.Error().Err(err).Msgf("failed to write modified config to %s", fileToModify)
 						cli.LogHelpError(cmd)
 						os.Exit(1)
