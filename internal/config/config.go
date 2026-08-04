@@ -520,8 +520,12 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 
 	// Using -1 as a sentinel value to indicate creation is required
 	if cidx == -1 {
-		return fmt.Errorf("not implemented: cluster creation")
-		// TODO: create cluster if needed and overwrite cidx
+		cidx = len(clusters)
+		err = ko.Set(fmt.Sprintf("clusters.%d.name", cidx), cluster)
+		if err != nil {
+			return fmt.Errorf("unable to modify config value 'name' in cluster '%s': %w", cluster, err)
+		}
+		// return fmt.Errorf("not implemented: cluster creation")
 	}
 
 	err = ko.Set(fmt.Sprintf("clusters.%d.%s", cidx, path), value)
@@ -662,6 +666,9 @@ func GetConfigFromFile(path, key string) (any, error) {
 // value of key, using format to determine how to marshal the value.
 // Currently-supported formats are yaml, json, and json-pretty.
 func GetConfigString(ko *koanf.Koanf, key, format string) (string, error) {
+	if strings.HasPrefix(key, "clusters.") {
+		return "", fmt.Errorf("key cannot be a cluster")
+	}
 	// val, err := GetConfig(ko, key)
 	val := ko.Get(key)
 	if val == nil {
@@ -707,10 +714,13 @@ func GetConfigStringFromFile(path, key, format string) (string, error) {
 // the whole config is returned. This function _only_ retrieves config options
 // for a cluster. To get global config, use GetConfig.
 func GetConfigCluster(cluster ConfigCluster, key string) (interface{}, error) {
+	if key == "" {
+		return cluster, nil
+	}
 	// Load config into koanf so the key can be used to get config.
 	var val interface{}
 	ko := koanf.NewWithConf(kConfig)
-	if err := ko.Load(structs.Provider(cluster, "yaml"), nil); err != nil {
+	if err := ko.Load(structs.Provider(cluster, "koanf"), nil); err != nil {
 		return nil, fmt.Errorf("failed to load cluster config: %w", err)
 	}
 	val = ko.Get(key)

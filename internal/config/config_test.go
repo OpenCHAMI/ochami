@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/knadh/koanf/providers/confmap"
+	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
-	"gopkg.in/yaml.v3"
 )
 
 func TestConfig_GetCluster(t *testing.T) {
@@ -231,17 +231,22 @@ func TestConfigClusterConfig_UnmarshalYAML(t *testing.T) {
 			t.Parallel()
 
 			var got ConfigClusterConfig
-			err := yaml.Unmarshal([]byte(tc.yaml), &got)
+			ko := koanf.NewWithConf(kConfig)
+			err := ko.Load(rawbytes.Provider([]byte(tc.yaml)), configParser)
+			if err != nil {
+				t.Fatalf("error loading config fragment: %v", err)
+			}
+			err = ko.Unmarshal("", &got)
 
 			if tc.want.err {
 				if err == nil {
-					t.Fatalf("yaml.Unmarshal() error = nil, want error")
+					t.Fatalf("ko.Unmarshal() error = nil, want error")
 				}
 				// Error should be an ErrInvalidConfigVal
 				if tc.want.errType != nil {
 					var inv ErrInvalidConfigVal
 					if !errors.As(err, &inv) {
-						t.Fatalf("yaml.Unmarshal() error = %v, want type %T", err, tc.want.errType)
+						t.Fatalf("ko.Unmarshal() error = %v, want type %T", err, tc.want.errType)
 					}
 					// Optional: ensure error contains
 					// expected key
@@ -253,7 +258,7 @@ func TestConfigClusterConfig_UnmarshalYAML(t *testing.T) {
 			}
 
 			if err != nil {
-				t.Fatalf("yaml.Unmarshal() unexpected error = %v", err)
+				t.Fatalf("ko.Unmarshal() unexpected error = %v", err)
 			}
 
 			if got.EnableAuth != tc.want.enableAuth {
@@ -782,12 +787,12 @@ func TestConfigClusterConfig_BootServiceBaseURIAndMerge(t *testing.T) {
 	})
 
 	t.Run("boot-service api version unmarshals", func(t *testing.T) {
-		var c ConfigClusterConfig
-		if err := yaml.Unmarshal([]byte("boot-service:\n  api-version: v1beta2\n"), &c); err != nil {
-			t.Fatalf("yaml.Unmarshal unexpected error = %v", err)
+		ko := koanf.NewWithConf(kConfig)
+		if err := ko.Load(rawbytes.Provider([]byte("boot-service:\n  api-version: v1beta2\n")), configParser); err != nil {
+			t.Fatalf("ko.Load unexpected error = %v", err)
 		}
-		if c.BootService.APIVersion != "v1beta2" {
-			t.Fatalf("BootService.APIVersion = %q, want v1beta2", c.BootService.APIVersion)
+		if ko.String("boot-service.api-version") != "v1beta2" {
+			t.Fatalf("BootService.APIVersion = %q, want v1beta2", ko.String("boot-service.api-version"))
 		}
 	})
 }
@@ -911,10 +916,7 @@ func TestModifyConfig(t *testing.T) {
 	t.Run("modify nested log.level updates config", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
-		os.WriteFile(path, []byte(`
-log:
-	format: pretty
-	level: info`), 0o644)
+		os.WriteFile(path, []byte("log:\n  format: pretty\n  level: info"), 0o644)
 
 		if err := ModifyConfig(path, "log.level", "debug"); err != nil {
 			t.Fatalf("ModifyConfig(): unexpected error: %v", err)
@@ -962,8 +964,8 @@ func TestModifyConfigCluster(t *testing.T) {
 		os.WriteFile(path, []byte(`
 default-cluster: ""
 clusters:
-	- name: a
-	- name: b`), 0o644)
+    - name: a
+    - name: b`), 0o644)
 
 		err := ModifyConfigCluster(path, "a", "name", false, "b")
 		if err == nil {
@@ -1008,7 +1010,7 @@ clusters: null`), 0o644)
 		os.WriteFile(path, []byte(`
 default-cluster: c1
 clusters:
-	- name: c1`), 0o644)
+    - name: c1`), 0o644)
 
 		if err := ModifyConfigCluster(path, "c1", "name", false, "c2"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -1110,8 +1112,8 @@ clusters: []`), 0o644)
 
 		os.WriteFile(path, []byte(`
 log:
-	format: pretty
-	level: info`), 0o644)
+    format: pretty
+    level: info`), 0o644)
 
 		if err := DeleteConfig(path, "log.level"); err != nil {
 			t.Fatalf("DeleteConfig(): unexpected error: %v", err)
@@ -1148,17 +1150,24 @@ log:
 timeout: 30s
 default-cluster: x
 log:
-	format: f
-	level: l`), 0o644)
+    format: f
+    level: l`), 0o644)
 
 		if err := DeleteConfig(path, "does.not.exist"); err != nil {
 			t.Fatalf("DeleteConfig(): unexpected error deleting missing key: %v", err)
 		}
 
-		got, err := ReadConfig(path)
+		ko, err := ReadConfig(path)
 		if err != nil {
 			t.Fatalf("read back failed: %v", err)
 		}
+
+		var got Config
+		err = ko.Unmarshal("", &got)
+		if err != nil {
+			t.Fatalf("unmarshal failed: %v", err)
+		}
+
 		if !reflect.DeepEqual(got, initial) {
 			t.Errorf("config = %+v; want unchanged %+v", got, initial)
 		}
@@ -1186,9 +1195,9 @@ func TestDeleteConfigCluster(t *testing.T) {
 		path := filepath.Join(tmp, "cfg.yaml")
 		os.WriteFile(path, []byte(`
 clusters:
-	- name: c1
-	  cluster:
-		uri: u1`), 0o644)
+    - name: c1
+      cluster:
+        uri: u1`), 0o644)
 
 		err := DeleteConfigCluster(path, "c1", "name")
 		if err == nil {
@@ -1215,9 +1224,9 @@ clusters:
 		os.WriteFile(path, []byte(`
 clusters:
   - name: c1
-	cluster:
-	  	uri: u1
-		bss:
+    cluster:
+        uri: u1
+        bss:
 			uri: b1`), 0o644)
 
 		if err := DeleteConfigCluster(path, "c1", "cluster.uri"); err != nil {
@@ -1241,8 +1250,8 @@ clusters:
 clusters:
   - name: c2
     cluster:
-		uri: u2
-		bss:
+        uri: u2
+        bss:
 			uri: b2
 	`), 0o644)
 
@@ -1380,8 +1389,8 @@ func TestGetConfigFromFile(t *testing.T) {
 	data := []byte(`
 default-cluster: dc
 log:
-	format: json
-	level: debug
+    format: json
+    level: debug
 clusters:
   - name: c1`)
 
@@ -1510,7 +1519,7 @@ func TestGetConfigString(t *testing.T) {
 			t.Fatalf("GetConfigString(): unexpected error: %v", err)
 		}
 		// ConfigLog prints as "{json info}"
-		wanted := `{"format":"json","level":"info"}`
+		wanted := `{"color":"","format":"json","level":"info"}`
 		if s != wanted {
 			t.Errorf("got %q, want %q", s, wanted)
 		}
@@ -1559,8 +1568,8 @@ func TestGetConfigStringFromFile(t *testing.T) {
 	data := []byte(`
 default-cluster: dc
 log:
-	format: json
-	level: debug
+    format: json
+    level: debug
 clusters:
   - name: c1`)
 
@@ -1743,15 +1752,14 @@ func TestGetConfigClusterFromFile(t *testing.T) {
 clusters:
   - name: c1
     cluster:
-		uri: "http://example.com"
-		bss:
-			uri: "/bss"
-		cloud-init:
-			uri: "/ci"
+        uri: "http://example.com"
+        bss:
+            uri: "/bss"
+        cloud-init:
+            uri: "/ci"
   - name: c2
     cluster:
-		uri: "http://other"
-	`)
+        uri: "http://other"`)
 	tmp := t.TempDir()
 	cfgPath := filepath.Join(tmp, "cfg.yaml")
 	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
@@ -1999,14 +2007,14 @@ func TestWriteConfig(t *testing.T) {
 			t.Fatalf("WriteConfig(): error writing to new file: %v", err)
 		}
 
-		data, err := os.ReadFile(path)
+		ko, err := ReadConfig(path)
 		if err != nil {
 			t.Fatalf("cannot read written file: %v", err)
 		}
 
 		var got Config
-		if err := yaml.Unmarshal(data, &got); err != nil {
-			t.Fatalf("failed to unmarshal YAML: %v", err)
+		if err := ko.Unmarshal("", &got); err != nil {
+			t.Fatalf("failed to unmarshal koanf: %v", err)
 		}
 		if !reflect.DeepEqual(got, DefaultConfigMap) {
 			t.Errorf("WriteConfig(): unmarshaled config = %+v, want %+v", got, DefaultConfigMap)
