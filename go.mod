@@ -10,7 +10,6 @@ go 1.26.5
 require (
 	github.com/OpenCHAMI/bss v1.32.2
 	github.com/OpenCHAMI/cloud-init v1.4.5
-	github.com/OpenCHAMI/metadata-service v0.2.0
 	github.com/OpenCHAMI/smd/v2 v2.20.4
 	github.com/elliotchance/pie/v2 v2.9.1
 	github.com/google/uuid v1.6.0
@@ -24,6 +23,7 @@ require (
 	github.com/nikolalohinski/gonja/v2 v2.9.0
 	github.com/openchami/boot-service v0.3.0
 	github.com/openchami/fabrica v0.4.9
+	github.com/openchami/metadata-service v0.2.1
 	github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.10.2

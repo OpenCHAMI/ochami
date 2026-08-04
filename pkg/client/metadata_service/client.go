@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
+	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/rs/zerolog"
 
 	"github.com/OpenCHAMI/ochami/pkg/client"

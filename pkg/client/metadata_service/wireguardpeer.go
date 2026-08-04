@@ -8,8 +8,8 @@ import (
 	"context"
 	"fmt"
 
-	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
-	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
+	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
+	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 
 	"github.com/OpenCHAMI/ochami/pkg/client"
 	"github.com/OpenCHAMI/ochami/pkg/format"

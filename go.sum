@@ -14,8 +14,6 @@ github.com/OpenCHAMI/bss v1.32.2 h1:RUt3YQ7E2SKdKFbI+3smuaHKELDFuMH4kvpsL8mrLwk=
 github.com/OpenCHAMI/bss v1.32.2/go.mod h1:9yV2XAo08NTLqqhj3OAQU9ydok9PBs0IDBOv7YH4ySA=
 github.com/OpenCHAMI/cloud-init v1.4.5 h1:EXy2p9FeAiHOEA/YdkivG8OIE3ibydStD67sZoKzOBA=
 github.com/OpenCHAMI/cloud-init v1.4.5/go.mod h1:TTrNHX1EgDb7pqZgWnuvOFXP8DyBrVjtXqKx8zUCxig=
-github.com/OpenCHAMI/metadata-service v0.2.0 h1:qa6NQ5cjPv6n6upW2UVP1mnkzKZF4IxLJ1Q4o34X/BM=
-github.com/OpenCHAMI/metadata-service v0.2.0/go.mod h1:Ic0KWLDNquxll6GyEedMWZPFEXSaYKu5Tfz+vUYAODk=
 github.com/OpenCHAMI/smd/v2 v2.20.4 h1:vErSwjl/pWljITDtcW4Pxcr4pvtlGTIiBnXAOOwaf/w=
 github.com/OpenCHAMI/smd/v2 v2.20.4/go.mod h1:whW2AjXZcv2Zma1s+o61OdInc30/R35MG4q6aTEnUug=
 github.com/VividCortex/ewma v1.2.0 h1:f58SaIzcDXrSy3kWaHNvuJgJ3Nmz59Zji6XoJR/q1ow=
@@ -137,8 +135,6 @@ github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHP
 github.com/mattn/go-colorable v0.1.14/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
-github.com/mattn/go-runewidth v0.0.24 h1:cpokDiIn0MGnhdHwuWnJBITySJ20QyNGnY2kR/ay2DU=
-github.com/mattn/go-runewidth v0.0.24/go.mod h1:XBkDxAl56ILZc9knddidhrOlY5R/pDhgLpndooCuJAs=
 github.com/mattn/go-runewidth v0.0.27 h1:Feg/Oou5zI/wnpgDF6omIU0OokC9GxLC/WRknhVlIR0=
 github.com/mattn/go-runewidth v0.0.27/go.mod h1:3qAiGCV4Koz/yuveO58qUefmUTRm8r0IGEXZ9jeHp/8=
 github.com/mitchellh/copystructure v1.2.0 h1:vpKXTN4ewci03Vljg/q9QvCGUDttBOGBIa15WveJJGw=
@@ -164,6 +160,8 @@ github.com/openchami/boot-service v0.3.0 h1:+DoIXkLVpNmGCe5eDIZA4WYQ77iIpg7NDCZ/
 github.com/openchami/boot-service v0.3.0/go.mod h1:dKXKSPV580aWksUyMkOXIIdZ5CHmiXDPmBIWZmtobC4=
 github.com/openchami/fabrica v0.4.9 h1:OGKiID0tmA2lGpNTp0u0q5cjOMDaOhXhTO7DCWWp+jA=
 github.com/openchami/fabrica v0.4.9/go.mod h1:C96/BWI20XG81scQWCoKwSvJOP+5DmAjThbojlh1AJo=
+github.com/openchami/metadata-service v0.2.1 h1:l3/pc34Wj3go1AVDQ4iZIzZQqa3N5Z6AfJCj00Ly5BQ=
+github.com/openchami/metadata-service v0.2.1/go.mod h1:YkZHAuuJPi8G7h7/zSo+7sm4JEyphAY7NK/ssbiHBMw=
 github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4 h1:89rudSw0TeedlHbGr5L9WEW9lJ3yMEtY2EgxoC7EGso=
 github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4/go.mod h1:3dridLqXvAdO0ypPXuxnXRgaK2h/dItVKGseCgFQ13k=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
@@ -205,8 +203,6 @@ github.com/valyala/fastjson v1.6.10 h1:/yjJg8jaVQdYR3arGxPE2X5z89xrlhS0eGXdv+ADT
 github.com/valyala/fastjson v1.6.10/go.mod h1:e6FubmQouUNP73jtMLmcbxS6ydWIpOfhz34TSfO3JaE=
 github.com/vbauerster/cupwriter v0.0.4 h1:9sBPe0uXWLZuWQU5lqVbhyFlxX6c09asST/YfatFAys=
 github.com/vbauerster/cupwriter v0.0.4/go.mod h1:IFyzS6Xis5dnBH/rdAhrnuzg3c+KkUqEN6yE8lhJlDw=
-github.com/vbauerster/mpb/v8 v8.13.0 h1:uv5hrYmoVNy+3w4mjePgQXwmqUzLjhKX5p2+77CFfwo=
-github.com/vbauerster/mpb/v8 v8.13.0/go.mod h1:yY6DDD9c3idT01aDMzs98st5aotXIOXXUgPG3hAbAHk=
 github.com/vbauerster/mpb/v8 v8.14.0 h1:55SR80dptMfASxIG/oCEkBXgBhxeSu4GrVsjl16oKmA=
 github.com/vbauerster/mpb/v8 v8.14.0/go.mod h1:HgpQPKfcWe3kbuGGPmi+jatHreMase5C3Fp5dpdAy0Q=
 github.com/wk8/go-ordered-map/v2 v2.1.8 h1:5h/BUHu93oj4gIdvHHHGsScSTMijfx5PeYkE/fJgbpc=

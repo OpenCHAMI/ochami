@@ -7,10 +7,10 @@ package group
 import (
 	"os"
 
-	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
+	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
-	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
+	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/OpenCHAMI/ochami/internal/cli"
 	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
