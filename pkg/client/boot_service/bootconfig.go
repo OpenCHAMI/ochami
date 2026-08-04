@@ -23,8 +23,8 @@ import (
 // can be added with names specified for each without having to provide them as
 // arguments.
 type BootConfigSpec struct {
-	Name string `json:"name" yaml:"name"` // Mandatory for adding resource
-	api.BootConfigurationSpec
+	Name                      string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.BootConfigurationSpec `yaml:",inline"`
 }
 
 // AddBootConfigs is a wrapper that calls the boot-service client's

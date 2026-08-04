@@ -23,8 +23,8 @@ import (
 // can be added with names specified for each without having to provide them as
 // arguments.
 type InstanceInfoSpec struct {
-	Name string `json:"name" yaml:"name"` // Mandatory for adding resource
-	api.InstanceInfoSpec
+	Name                 string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.InstanceInfoSpec `yaml:",inline"`
 }
 
 // AddInstanceInfos is a wrapper that calls the metadata-service client's

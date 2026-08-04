@@ -23,8 +23,8 @@ import (
 // "name" field so bulk specs can be added with names specified for each without
 // having to provide them as arguments.
 type ClusterDefaultsSpec struct {
-	Name string `json:"name" yaml:"name"` // Mandatory for adding resource
-	api.ClusterDefaultsSpec
+	Name                    string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.ClusterDefaultsSpec `yaml:",inline"`
 }
 
 // AddDefaults is a wrapper that calls the metadata-service client's

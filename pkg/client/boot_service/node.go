@@ -22,8 +22,8 @@ import (
 // upstream spec is wrapped with a "name" field so bulk specs can be added with
 // names specified for each without having to provide them as arguments.
 type NodeSpec struct {
-	Name string `json:"name" yaml:"name"` // Mandatory for adding resource
-	api.NodeSpec
+	Name         string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.NodeSpec `yaml:",inline"`
 }
 
 // AddNodes is a wrapper that calls the boot-service client's CreateNode()
