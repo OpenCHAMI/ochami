@@ -21,7 +21,7 @@ require (
 	github.com/knadh/koanf/v2 v2.3.5
 	github.com/lestrrat-go/jwx/v3 v3.2.0
 	github.com/nikolalohinski/gonja/v2 v2.9.0
-	github.com/openchami/boot-service v0.3.0
+	github.com/openchami/boot-service v0.3.1
 	github.com/openchami/fabrica v0.4.9
 	github.com/openchami/metadata-service v0.2.1
 	github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4
