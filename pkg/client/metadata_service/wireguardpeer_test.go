@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/openchami/fabrica/pkg/fabrica"
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
-	"github.com/openchami/fabrica/pkg/fabrica"
 )
 
 func TestAddWireGuardPeerSpecs_OmitsLabels(t *testing.T) {
