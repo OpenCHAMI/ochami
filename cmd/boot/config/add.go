@@ -157,7 +157,11 @@ See ochami-boot(1) for more details.`,
 					reqErrorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("boot configs created: %+v", cfgsCreated)
+			var names []string
+			for _, cfg := range cfgsCreated {
+				names = append(names, cfg.Metadata.Name)
+			}
+			log.Logger.Debug().Msgf("boot configs created: %q", names)
 			if reqErrorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("boot configuration addition completed with errors")

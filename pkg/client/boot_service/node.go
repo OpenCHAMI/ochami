@@ -27,9 +27,10 @@ type NodeSpec struct {
 }
 
 // AddNodes is a wrapper that calls the boot-service client's CreateNode()
-// function, passing it context. The output is a slice of the nodes it created,
-// each element of which corresponds to an error in an error slice, followed by
-// an error that is populatd if an error occurred in the function itself.
+// function, passing it context. It returns a slice of successfully created
+// nodes, a slice of per-request errors, and an error that is populated if an
+// error occurred in the function itself. A nil resource returned without an
+// error is reported as a per-request error.
 func (bsc *BootServiceClient) AddNodes(token string, nodes []boot_service_client.CreateNodeRequest) (nodesAdded []*api.Node, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, node := range nodes {
@@ -40,9 +41,12 @@ func (bsc *BootServiceClient) AddNodes(token string, nodes []boot_service_client
 		if err != nil {
 			newErr := fmt.Errorf("failed to add node %+v: %w", node, err)
 			errors = append(errors, newErr)
-			nodesAdded = append(nodesAdded, nil)
+		} else if item != nil {
+			nodesAdded = append(nodesAdded, item)
+		} else {
+			newErr := fmt.Errorf("node creation did not err, but was not created for: %+v", node)
+			errors = append(errors, newErr)
 		}
-		nodesAdded = append(nodesAdded, item)
 	}
 
 	return
@@ -173,9 +177,12 @@ func (bsc *BootServiceClient) AddNodeSpecs(token string, nodes []NodeSpec) (node
 		if err != nil {
 			newErr := fmt.Errorf("failed to add node %q (%+v): %w", node.Name, node.NodeSpec, err)
 			errors = append(errors, newErr)
-			nodesAdded = append(nodesAdded, nil)
+		} else if item != nil {
+			nodesAdded = append(nodesAdded, item)
+		} else {
+			newErr := fmt.Errorf("node creation did not err, but was not created for: %+v", node)
+			errors = append(errors, newErr)
 		}
-		nodesAdded = append(nodesAdded, item)
 	}
 
 	return

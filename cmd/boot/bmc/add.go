@@ -147,7 +147,11 @@ See ochami-boot(1) for more details.`,
 					reqErrorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("BMCs created: %+v", bmcsCreated)
+			var names []string
+			for _, bmc := range bmcsCreated {
+				names = append(names, bmc.Metadata.Name)
+			}
+			log.Logger.Debug().Msgf("BMCs created: %q", names)
 			if reqErrorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("BMC addition completed with errors")

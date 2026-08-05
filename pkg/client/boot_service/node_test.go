@@ -105,6 +105,68 @@ func TestAddNodes_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+func TestAddNodeSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
+	requests := 0
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			http.Error(w, "creation failed", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
+	})
+	defer srv.Close()
+
+	created, errs, err := c.AddNodeSpecs("", []NodeSpec{
+		{Name: "failed node"},
+		{Name: "created node"},
+	})
+	if err != nil {
+		t.Fatalf("AddNodeSpecs returned func error: %v", err)
+	}
+	if len(errs) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(errs))
+	}
+	if len(created) != 1 {
+		t.Fatalf("got %d created nodes, want 1", len(created))
+	}
+	if created[0] == nil || created[0].Metadata.Name != "created node" {
+		t.Errorf("created nodes = %+v, want only created node", created)
+	}
+}
+
+func TestAddNodes_ReturnsOnlyCreatedResources(t *testing.T) {
+	requests := 0
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			http.Error(w, "creation failed", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
+	})
+	defer srv.Close()
+
+	created, errs, err := c.AddNodes("", []boot_service_client.CreateNodeRequest{
+		{Metadata: fabrica.Metadata{Name: "failed node"}},
+		{Metadata: fabrica.Metadata{Name: "created node"}},
+	})
+	if err != nil {
+		t.Fatalf("AddNodes returned func error: %v", err)
+	}
+	if len(errs) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(errs))
+	}
+	if len(created) != 1 {
+		t.Fatalf("got %d created nodes, want 1", len(created))
+	}
+	if created[0] == nil || created[0].Metadata.Name != "created node" {
+		t.Errorf("created nodes = %+v, want only created node", created)
+	}
+}
+
 func TestSetNodeSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}

@@ -88,6 +88,68 @@ func TestAddBMCs_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+func TestAddBMCSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
+	requests := 0
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			http.Error(w, "creation failed", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(api.BMC{Metadata: fabrica.Metadata{Name: "created BMC"}})
+	})
+	defer srv.Close()
+
+	created, errs, err := c.AddBMCSpecs("", []BMCSpec{
+		{Name: "failed BMC"},
+		{Name: "created BMC"},
+	})
+	if err != nil {
+		t.Fatalf("AddBMCSpecs returned func error: %v", err)
+	}
+	if len(errs) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(errs))
+	}
+	if len(created) != 1 {
+		t.Fatalf("got %d created BMCs, want 1", len(created))
+	}
+	if created[0] == nil || created[0].Metadata.Name != "created BMC" {
+		t.Errorf("created BMCs = %+v, want only created BMC", created)
+	}
+}
+
+func TestAddBMCs_ReturnsOnlyCreatedResources(t *testing.T) {
+	requests := 0
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			http.Error(w, "creation failed", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(api.BMC{Metadata: fabrica.Metadata{Name: "created BMC"}})
+	})
+	defer srv.Close()
+
+	created, errs, err := c.AddBMCs("", []boot_service_client.CreateBMCRequest{
+		{Metadata: fabrica.Metadata{Name: "failed BMC"}},
+		{Metadata: fabrica.Metadata{Name: "created BMC"}},
+	})
+	if err != nil {
+		t.Fatalf("AddBMCs returned func error: %v", err)
+	}
+	if len(errs) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(errs))
+	}
+	if len(created) != 1 {
+		t.Fatalf("got %d created BMCs, want 1", len(created))
+	}
+	if created[0] == nil || created[0].Metadata.Name != "created BMC" {
+		t.Errorf("created BMCs = %+v, want only created BMC", created)
+	}
+}
+
 func TestSetBMCSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}

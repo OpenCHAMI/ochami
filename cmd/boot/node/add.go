@@ -166,7 +166,11 @@ See ochami-boot(1) for more details.`,
 					reqErrorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("nodes created: %+v", nodesCreated)
+			var names []string
+			for _, node := range nodesCreated {
+				names = append(names, node.Metadata.Name)
+			}
+			log.Logger.Debug().Msgf("nodes created: %q", names)
 			if reqErrorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("node addition completed with errors")

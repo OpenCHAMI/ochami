@@ -153,12 +153,12 @@ See ochami-metadata(1) for more details.`,
 				}
 			}
 
-			// Print UIDs of created items
-			var uids []string
+			// Print names of created items
+			var names []string
 			for _, defaults := range defaultsCreated {
-				uids = append(uids, defaults.Metadata.UID)
+				names = append(names, defaults.Metadata.Name)
 			}
-			log.Logger.Info().Msgf("Cluster defaults created: %+v", uids)
+			log.Logger.Info().Msgf("Cluster defaults created: %q", names)
 
 			// Warn if any request errors occurred
 			if reqErrorsOccurred {

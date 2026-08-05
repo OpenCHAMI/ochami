@@ -153,12 +153,12 @@ See ochami-metadata(1) for more details.`,
 				}
 			}
 
-			// Print UIDs of created items
-			var uids []string
+			// Print names of created items
+			var names []string
 			for _, peer := range peersCreated {
-				uids = append(uids, peer.Metadata.UID)
+				names = append(names, peer.Metadata.Name)
 			}
-			log.Logger.Info().Msgf("WireGuard peers created: %+v", uids)
+			log.Logger.Info().Msgf("WireGuard peers created: %q", names)
 
 			// Warn if any request errors occurred
 			if reqErrorsOccurred {

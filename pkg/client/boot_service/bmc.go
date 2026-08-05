@@ -27,9 +27,10 @@ type BMCSpec struct {
 }
 
 // AddBMCs is a wrapper that calls the boot-service client's CreateBMC()
-// function, passing it context. The output is a slice of the BMCs it created,
-// each element of which corresponds to an error in an error slice, followed by
-// an error that is populatd if an error occurred in the function itself.
+// function, passing it context. It returns a slice of successfully created
+// BMCs, a slice of per-request errors, and an error that is populated if an
+// error occurred in the function itself. A nil resource returned without an
+// error is reported as a per-request error.
 func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.CreateBMCRequest) (bmcsAdded []*api.BMC, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, bmc := range bmcs {
@@ -40,9 +41,12 @@ func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.C
 		if err != nil {
 			newErr := fmt.Errorf("failed to add bmc %+v: %w", bmc, err)
 			errors = append(errors, newErr)
-			bmcsAdded = append(bmcsAdded, nil)
+		} else if item != nil {
+			bmcsAdded = append(bmcsAdded, item)
+		} else {
+			newErr := fmt.Errorf("BMC creation did not err, but was not created for: %+v", bmc)
+			errors = append(errors, newErr)
 		}
-		bmcsAdded = append(bmcsAdded, item)
 	}
 
 	return
@@ -170,9 +174,12 @@ func (bsc *BootServiceClient) AddBMCSpecs(token string, bmcs []BMCSpec) (bmcsAdd
 		if err != nil {
 			newErr := fmt.Errorf("failed to add bmc %q (%+v): %w", bmc.Name, bmc.BMCSpec, err)
 			errors = append(errors, newErr)
-			bmcsAdded = append(bmcsAdded, nil)
+		} else if item != nil {
+			bmcsAdded = append(bmcsAdded, item)
+		} else {
+			newErr := fmt.Errorf("BMC creation did not err, but was not created for: %+v", bmc)
+			errors = append(errors, newErr)
 		}
-		bmcsAdded = append(bmcsAdded, item)
 	}
 
 	return

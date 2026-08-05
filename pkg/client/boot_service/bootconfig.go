@@ -28,10 +28,10 @@ type BootConfigSpec struct {
 }
 
 // AddBootConfigs is a wrapper that calls the boot-service client's
-// CreateBootConfiguration() function, passing it context. The output is a slice
-// of the boot configurations it created, each element of which corresponds to
-// an error in an error slice, followed by an error that is populatd if an error
-// occurred in the function itself.
+// CreateBootConfiguration() function, passing it context. It returns a slice of
+// successfully created boot configurations, a slice of per-request errors, and
+// an error that is populated if an error occurred in the function itself. A nil
+// resource returned without an error is reported as a per-request error.
 func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_service_client.CreateBootConfigurationRequest) (cfgsAdded []*api.BootConfiguration, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, bootCfg := range bootCfgs {
@@ -42,9 +42,12 @@ func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_servi
 		if err != nil {
 			newErr := fmt.Errorf("failed to add boot configuration %+v: %w", bootCfg, err)
 			errors = append(errors, newErr)
-			cfgsAdded = append(cfgsAdded, nil)
+		} else if item != nil {
+			cfgsAdded = append(cfgsAdded, item)
+		} else {
+			newErr := fmt.Errorf("boot configuration creation did not err, but was not created for: %+v", bootCfg)
+			errors = append(errors, newErr)
 		}
-		cfgsAdded = append(cfgsAdded, item)
 	}
 
 	return
@@ -177,9 +180,12 @@ func (bsc *BootServiceClient) AddBootConfigSpecs(token string, bootCfgs []BootCo
 		if err != nil {
 			newErr := fmt.Errorf("failed to add boot configuration %q (%+v): %w", bootCfg.Name, bootCfg.BootConfigurationSpec, err)
 			errors = append(errors, newErr)
-			cfgsAdded = append(cfgsAdded, nil)
+		} else if item != nil {
+			cfgsAdded = append(cfgsAdded, item)
+		} else {
+			newErr := fmt.Errorf("boot configuration creation did not err, but was not created for: %+v", bootCfg)
+			errors = append(errors, newErr)
 		}
-		cfgsAdded = append(cfgsAdded, item)
 	}
 
 	return

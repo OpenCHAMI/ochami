@@ -139,12 +139,12 @@ See ochami-metadata(1) for more details.`,
 				}
 			}
 
-			// Print UIDs of created items
-			var uids []string
+			// Print names of created items
+			var names []string
 			for _, instance := range instancesCreated {
-				uids = append(uids, instance.Metadata.UID)
+				names = append(names, instance.Metadata.Name)
 			}
-			log.Logger.Info().Msgf("Instance infos created: %+v", uids)
+			log.Logger.Info().Msgf("Instance infos created: %q", names)
 
 			// Warn if any request errors occurred
 			if reqErrorsOccurred {

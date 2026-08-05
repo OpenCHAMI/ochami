@@ -88,6 +88,68 @@ func TestAddBootConfigs_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+func TestAddBootConfigSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
+	requests := 0
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			http.Error(w, "creation failed", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
+	})
+	defer srv.Close()
+
+	created, errs, err := c.AddBootConfigSpecs("", []BootConfigSpec{
+		{Name: "failed config"},
+		{Name: "created config"},
+	})
+	if err != nil {
+		t.Fatalf("AddBootConfigSpecs returned func error: %v", err)
+	}
+	if len(errs) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(errs))
+	}
+	if len(created) != 1 {
+		t.Fatalf("got %d created boot configurations, want 1", len(created))
+	}
+	if created[0] == nil || created[0].Metadata.Name != "created config" {
+		t.Errorf("created boot configurations = %+v, want only created config", created)
+	}
+}
+
+func TestAddBootConfigs_ReturnsOnlyCreatedResources(t *testing.T) {
+	requests := 0
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			http.Error(w, "creation failed", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
+	})
+	defer srv.Close()
+
+	created, errs, err := c.AddBootConfigs("", []boot_service_client.CreateBootConfigurationRequest{
+		{Metadata: fabrica.Metadata{Name: "failed config"}},
+		{Metadata: fabrica.Metadata{Name: "created config"}},
+	})
+	if err != nil {
+		t.Fatalf("AddBootConfigs returned func error: %v", err)
+	}
+	if len(errs) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(errs))
+	}
+	if len(created) != 1 {
+		t.Fatalf("got %d created boot configurations, want 1", len(created))
+	}
+	if created[0] == nil || created[0].Metadata.Name != "created config" {
+		t.Errorf("created boot configurations = %+v, want only created config", created)
+	}
+}
+
 func TestSetBootConfigSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}
