@@ -29,13 +29,14 @@ type BootServiceClient struct {
 // NewClient takes a baseURI, timeout duration, optional API version string, and
 // logger and returns a pointer to a new BootServiceClient.  If an error
 // occurred creating the embedded OchamiClient or the boot service client, it is
-// returned. If insecure is true, TLS certificates will not be verified. An API
-// version can also be specified (e.g. 'v1beta2'), though it can be left blank
-// to use the default.
-func NewClient(baseURI string, insecure bool, timeout time.Duration, apiVersion string, logger zerolog.Logger) (*BootServiceClient, error) {
+// returned. Behavior such as TLS verification and token redaction is configured
+// via functional options (e.g. client.WithInsecure, client.WithShowToken). An
+// API version can also be specified (e.g. 'v1beta2'), though it can be left
+// blank to use the default.
+func NewClient(baseURI string, timeout time.Duration, apiVersion string, logger zerolog.Logger, opts ...client.Option) (*BootServiceClient, error) {
 	// Create OchamiClient to ensure http client is configured via ochami CLI
 	// flags/config.
-	oc, err := client.NewOchamiClient(serviceNameBootService, baseURI, insecure)
+	oc, err := client.NewOchamiClient(serviceNameBootService, baseURI, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OchamiClient for %s: %w", serviceNameBootService, err)
 	}

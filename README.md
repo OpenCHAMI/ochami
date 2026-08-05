@@ -139,6 +139,11 @@ or `default-cluster` in the config file, the former taking precedence over the
 latter) in all capitals and with dashes (-) and spaces substituted with
 underscores (_).
 
+When debug logging is enabled (e.g. `--log-level debug`), any access token that
+would appear in the logs is truncated by default (e.g. `eyJhbG...`) so that the
+logs still indicate a token is present without revealing its full value. Pass
+`--show-token` to log the full, untruncated token instead.
+
 ### 5. Testing Authenticated Cluster Access
 
 Now, we should be able to contact the API on an endpoint that requires

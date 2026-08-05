@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func TestNewClient(t *testing.T) {
@@ -288,7 +290,7 @@ func TestNewClient(t *testing.T) {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
 			// Call NewClient
-			client, err := NewClient(tc.baseURI, tc.insecure, tc.timeout, tc.apiVersion, tc.logger)
+			mc, err := NewClient(tc.baseURI, tc.timeout, tc.apiVersion, tc.logger, client.WithInsecure(tc.insecure))
 
 			// Check error expectation
 			if (err != nil) != tc.wantErr {
@@ -305,40 +307,40 @@ func TestNewClient(t *testing.T) {
 			}
 
 			// Success case validations
-			if client == nil {
+			if mc == nil {
 				t.Fatal("NewClient() returned nil client without error")
 			}
 
 			// Verify OchamiClient is created and non-nil
-			if client.OchamiClient == nil {
+			if mc.OchamiClient == nil {
 				t.Error("OchamiClient is nil")
 			} else {
 				// Verify OchamiClient has expected fields
-				if client.OchamiClient.BaseURI == nil {
+				if mc.OchamiClient.BaseURI == nil {
 					t.Error("OchamiClient.BaseURI is nil")
 				}
-				if client.OchamiClient.ServiceName != serviceNameMetadataService {
-					t.Errorf("OchamiClient.ServiceName = %q, want %q", client.OchamiClient.ServiceName, serviceNameMetadataService)
+				if mc.OchamiClient.ServiceName != serviceNameMetadataService {
+					t.Errorf("OchamiClient.ServiceName = %q, want %q", mc.OchamiClient.ServiceName, serviceNameMetadataService)
 				}
-				if client.OchamiClient.Client == nil {
+				if mc.OchamiClient.Client == nil {
 					t.Error("OchamiClient.Client (http.Client) is nil")
 				}
 			}
 
 			// Verify metadata-service Client is created and non-nil
-			if client.Client == nil {
+			if mc.Client == nil {
 				t.Error("Client (metadata_service_client.Client) is nil")
 			}
 
 			// Verify Timeout matches input
-			if client.Timeout != tc.timeout {
-				t.Errorf("Timeout = %v, want %v", client.Timeout, tc.timeout)
+			if mc.Timeout != tc.timeout {
+				t.Errorf("Timeout = %v, want %v", mc.Timeout, tc.timeout)
 			}
 
 			// Additional validation for API version (if set)
 			// Note: We can't directly inspect if WithVersion was called,
 			// but we verify the client was created successfully with non-nil Client
-			if tc.apiVersion != "" && client.Client == nil {
+			if tc.apiVersion != "" && mc.Client == nil {
 				t.Error("API version was set but Client is nil")
 			}
 		})

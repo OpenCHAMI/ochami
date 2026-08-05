@@ -78,10 +78,11 @@ func DecodeCloudConfig(ccf cistore.CloudConfigFile) ([]byte, error) {
 }
 
 // NewClient takes a baseURI and returns a pointer to a new CloudInitClient. If
-// an error occurred creating the embedded OchamiClient, it is returned. If
-// insecure is true, TLS certificates will not be verified.
-func NewClient(baseURI string, insecure bool) (*CloudInitClient, error) {
-	oc, err := client.NewOchamiClient(serviceNameCloudInit, baseURI, insecure)
+// an error occurred creating the embedded OchamiClient, it is returned. Behavior
+// such as TLS verification and token redaction is configured via functional
+// options (e.g. client.WithInsecure, client.WithShowToken).
+func NewClient(baseURI string, opts ...client.Option) (*CloudInitClient, error) {
+	oc, err := client.NewOchamiClient(serviceNameCloudInit, baseURI, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OchamiClient for %s: %w", serviceNameCloudInit, err)
 	}

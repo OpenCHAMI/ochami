@@ -12,6 +12,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/config"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
@@ -33,7 +34,7 @@ func GetClient(cmd *cobra.Command) *boot_service.BootServiceClient {
 	}
 
 	// Create client to make request to boot-service
-	bootServiceClient, err := boot_service.NewClient(bootServiceBaseURI, cli.Insecure, cli.GetTimeout(cmd), apiVersion, log.Logger)
+	bootServiceClient, err := boot_service.NewClient(bootServiceBaseURI, cli.GetTimeout(cmd), apiVersion, log.Logger, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("error creating new boot-service client")
 		cli.LogHelpError(cmd)

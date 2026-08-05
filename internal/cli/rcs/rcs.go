@@ -11,6 +11,7 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/rcs"
 )
 
@@ -26,7 +27,7 @@ func GetClient(cmd *cobra.Command) *rcs.RCSClient {
 
 	insecure, _ := cmd.Flags().GetBool("insecure")
 
-	rcsClient, err := rcs.NewClient(rcsBaseURI, insecure)
+	rcsClient, err := rcs.NewClient(rcsBaseURI, client.WithInsecure(insecure), client.WithShowToken(cli.ShowToken(cmd)))
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("error creating new remote-console client")
 		cli.LogHelpError(cmd)

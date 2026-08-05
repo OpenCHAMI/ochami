@@ -34,7 +34,7 @@ func TestGetData(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	oc, err := NewOchamiClient("svc", ts.URL, false)
+	oc, err := NewOchamiClient("svc", ts.URL, WithInsecure(false))
 	if err != nil {
 		t.Fatalf("NewOchamiClient: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestPostData(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	oc, err := NewOchamiClient("svc", ts.URL, false)
+	oc, err := NewOchamiClient("svc", ts.URL, WithInsecure(false))
 	if err != nil {
 		t.Fatalf("NewOchamiClient: %v", err)
 	}

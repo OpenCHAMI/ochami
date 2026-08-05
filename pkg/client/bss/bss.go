@@ -33,10 +33,11 @@ type BSSClient struct {
 }
 
 // NewClient takes a baseURI and returns a pointer to a new BSSClient. If an
-// error occurred creating the embedded OchamiClient, it is returned. If
-// insecure is true, TLS certificates will not be verified.
-func NewClient(baseURI string, insecure bool) (*BSSClient, error) {
-	oc, err := client.NewOchamiClient(serviceNameBSS, baseURI, insecure)
+// error occurred creating the embedded OchamiClient, it is returned. Behavior
+// such as TLS verification and token redaction is configured via functional
+// options (e.g. client.WithInsecure, client.WithShowToken).
+func NewClient(baseURI string, opts ...client.Option) (*BSSClient, error) {
+	oc, err := client.NewOchamiClient(serviceNameBSS, baseURI, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OchamiClient for %s: %w", serviceNameBSS, err)
 	}

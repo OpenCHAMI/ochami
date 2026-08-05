@@ -220,6 +220,16 @@ func InitConfigAndLogging(cmd *cobra.Command, createCfg bool) {
 	}
 }
 
+// ShowToken reports whether the --show-token flag was passed for cmd, indicating
+// that full access tokens should be shown in debug logs instead of being
+// truncated. It returns false if the flag is not defined for the command.
+func ShowToken(cmd *cobra.Command) bool {
+	if f := cmd.Flag("show-token"); f != nil {
+		return f.Value.String() == "true"
+	}
+	return false
+}
+
 // CreateIfNotExists creates path (a file with optional leading directories) if
 // any of the path components do not exist, returning an error if one occurred
 // with the creation.
@@ -557,7 +567,7 @@ func SetToken(cmd *cobra.Command) {
 	)
 	if cmd.Flag("token").Changed {
 		Token = cmd.Flag("token").Value.String()
-		log.Logger.Debug().Msg("--token passed, setting token to its value: " + Token)
+		log.Logger.Debug().Msg("--token passed, setting token to its value: " + client.RedactToken(Token, ShowToken(cmd)))
 		return
 	}
 
@@ -580,7 +590,7 @@ func SetToken(cmd *cobra.Command) {
 	envVarToRead := strings.ToUpper(varPrefix) + "_ACCESS_TOKEN"
 	log.Logger.Debug().Msg("Reading token from environment variable: " + envVarToRead)
 	if t, tokenSet := os.LookupEnv(envVarToRead); tokenSet {
-		log.Logger.Debug().Msgf("Token found from environment variable: %s=%s", envVarToRead, t)
+		log.Logger.Debug().Msgf("Token found from environment variable: %s=%s", envVarToRead, client.RedactToken(t, ShowToken(cmd)))
 		Token = t
 		return
 	}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/cloud_init"
 )
 
@@ -78,7 +79,7 @@ func GetClient(cmd *cobra.Command) *cloud_init.CloudInitClient {
 	}
 
 	// Create client to make request to cloud-init
-	cloudInitClient, err := cloud_init.NewClient(cloudInitbaseURI, cli.Insecure)
+	cloudInitClient, err := cloud_init.NewClient(cloudInitbaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("error creating new cloud-init client")
 		cli.LogHelpError(cmd)

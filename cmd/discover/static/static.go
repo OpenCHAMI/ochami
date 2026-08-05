@@ -81,7 +81,7 @@ See ochami-discover(1) for more details.`,
 			cli.HandleToken(cmd)
 
 			// Create client to make request to SMD
-			smdClient, err := smd.NewClient(smdBaseURI, cli.Insecure)
+			smdClient, err := smd.NewClient(smdBaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
 			if err != nil {
 				log.Logger.Error().Err(err).Msg("error creating new SMD client")
 				cli.LogHelpError(cmd)

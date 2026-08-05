@@ -23,7 +23,7 @@ import (
 func newTestClient(t *testing.T, handler http.HandlerFunc) (*BootServiceClient, *httptest.Server) {
 	t.Helper()
 	srv := httptest.NewServer(handler)
-	c, err := NewClient(srv.URL, false, 5*time.Second, "", zerolog.New(io.Discard))
+	c, err := NewClient(srv.URL, 5*time.Second, "", zerolog.New(io.Discard))
 	if err != nil {
 		srv.Close()
 		t.Fatalf("failed to create client: %v", err)

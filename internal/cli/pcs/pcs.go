@@ -12,6 +12,7 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/pcs"
 )
 
@@ -27,7 +28,7 @@ func GetClient(cmd *cobra.Command) *pcs.PCSClient {
 	}
 
 	// Create client to make request to PCS
-	pcsClient, err := pcs.NewClient(pcsBaseURI, cli.Insecure)
+	pcsClient, err := pcs.NewClient(pcsBaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("error creating new PCS client")
 	}

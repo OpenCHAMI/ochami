@@ -133,10 +133,11 @@ type GroupMembers struct {
 }
 
 // NewClient takes a baseURI and returns a pointer to a new SMDClient. If an
-// error occurred creating the embedded OchamiClient, it is returned. If
-// insecure is true, TLS certificates will not be verified.
-func NewClient(baseURI string, insecure bool) (*SMDClient, error) {
-	oc, err := client.NewOchamiClient(serviceNameSMD, baseURI, insecure)
+// error occurred creating the embedded OchamiClient, it is returned. Behavior
+// such as TLS verification and token redaction is configured via functional
+// options (e.g. client.WithInsecure, client.WithShowToken).
+func NewClient(baseURI string, opts ...client.Option) (*SMDClient, error) {
+	oc, err := client.NewOchamiClient(serviceNameSMD, baseURI, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OchamiClient for %s: %w", serviceNameSMD, err)
 	}

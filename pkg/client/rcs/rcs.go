@@ -51,9 +51,11 @@ type RCSClient struct {
 	*client.OchamiClient
 }
 
-// NewClient creates a new RCSClient with the given base URI and TLS settings.
-func NewClient(baseURI string, insecure bool) (*RCSClient, error) {
-	oc, err := client.NewOchamiClient("Remote Console", baseURI, insecure)
+// NewClient creates a new RCSClient with the given base URI. Behavior such as
+// TLS verification and token redaction is configured via functional options
+// (e.g. client.WithInsecure, client.WithShowToken).
+func NewClient(baseURI string, opts ...client.Option) (*RCSClient, error) {
+	oc, err := client.NewOchamiClient("Remote Console", baseURI, opts...)
 	if err != nil {
 		return nil, err
 	}

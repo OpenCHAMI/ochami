@@ -38,6 +38,36 @@ type OchamiClient struct {
 	*http.Client
 	BaseURI     *url.URL // Base URL for OpenCHAMI services (e.g. https://foobar.openchami.cluster)
 	ServiceName string   // Name of service being contacted (e.g. BSS)
+
+	// ShowToken controls whether access tokens are shown in full in debug
+	// logs for requests made by this client. It defaults to false, meaning
+	// tokens are truncated (see RedactToken).
+	ShowToken bool
+
+	// insecure records whether TLS certificate verification should be
+	// skipped. It is set by the WithInsecure option and consumed when the
+	// underlying HTTP client is built.
+	insecure bool
+}
+
+// Option configures an OchamiClient. Options are applied by NewOchamiClient
+// after the client is created but before its underlying HTTP client is built.
+type Option func(*OchamiClient)
+
+// WithInsecure configures whether the client should skip TLS certificate
+// verification.
+func WithInsecure(insecure bool) Option {
+	return func(oc *OchamiClient) {
+		oc.insecure = insecure
+	}
+}
+
+// WithShowToken configures whether the client shows full access tokens in debug
+// logs (true) or truncates them (false, the default).
+func WithShowToken(show bool) Option {
+	return func(oc *OchamiClient) {
+		oc.ShowToken = show
+	}
 }
 
 // defaultClient creates an http.DefaultClient for its OchamiClient.
@@ -61,9 +91,10 @@ func (oc *OchamiClient) defaultClientInsecure() {
 // new OchamiClient. If an error occurs parsing baseURI, it is returned. baseURI
 // is the base URI of the OpenCHAMI service (e.g.
 // https://foobar.openchami.cluster/hsm/v2 for SMD) and serviceName is the
-// human-readable name of the service (e.g. SMD). If insecure is true, the
-// client will not verify TLS certificates.
-func NewOchamiClient(serviceName, baseURI string, insecure bool) (*OchamiClient, error) {
+// human-readable name of the service (e.g. SMD). Behavior such as TLS
+// verification and token redaction is configured via functional options (e.g.
+// WithInsecure, WithShowToken).
+func NewOchamiClient(serviceName, baseURI string, opts ...Option) (*OchamiClient, error) {
 	u, err := url.Parse(baseURI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse URI: %w", err)
@@ -72,7 +103,10 @@ func NewOchamiClient(serviceName, baseURI string, insecure bool) (*OchamiClient,
 		BaseURI:     u,
 		ServiceName: serviceName,
 	}
-	if insecure {
+	for _, opt := range opts {
+		opt(oc)
+	}
+	if oc.insecure {
 		oc.defaultClientInsecure()
 	} else {
 		oc.defaultClient()
@@ -269,7 +303,11 @@ func (oc *OchamiClient) MakeRequest(method, uri string, headers *HTTPHeaders, bo
 	if len(req.Header) > 0 {
 		log.Logger.Debug().Msg("Request headers:")
 		for k, v := range req.Header {
-			log.Logger.Debug().Msgf("  %s: %s", k, v)
+			if isAuthorizationHeader(k) {
+				log.Logger.Debug().Msgf("  %s: %s", k, redactAuthHeaderValues(v, oc.ShowToken))
+			} else {
+				log.Logger.Debug().Msgf("  %s: %s", k, v)
+			}
 		}
 	} else {
 		log.Logger.Debug().Msg("No headers in request")

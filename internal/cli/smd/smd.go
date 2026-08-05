@@ -12,6 +12,7 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
 )
 
@@ -27,7 +28,7 @@ func GetClient(cmd *cobra.Command) *smd.SMDClient {
 	}
 
 	// Create client to make request to SMD
-	smdClient, err := smd.NewClient(smdBaseURI, cli.Insecure)
+	smdClient, err := smd.NewClient(smdBaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("error creating new SMD client")
 		cli.LogHelpError(cmd)
