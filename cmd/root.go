@@ -87,6 +87,7 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 	rootCmd.PersistentFlags().StringVar(&cli.CACertPath, "cacert", "", "path to root CA certificate in PEM format")
 	rootCmd.PersistentFlags().StringVarP(&cli.Token, "token", "t", "", "access cli.Token to present for authentication")
 	rootCmd.PersistentFlags().Bool("no-token", false, "do not check for or use an access cli.Token")
+	rootCmd.PersistentFlags().Bool("show-token", false, "show full access token in debug logs instead of a truncated value")
 	rootCmd.PersistentFlags().BoolVarP(&cli.Insecure, "insecure", "k", false, "do not verify TLS certificates")
 	rootCmd.PersistentFlags().Bool("ignore-config", false, "do not use any config file")
 	rootCmd.PersistentFlags().BoolVarP(&log.EarlyLogger.EarlyVerbose, "verbose", "v", false, "be verbose before logging is initialized")
