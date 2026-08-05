@@ -158,11 +158,18 @@ See ochami-bss(1) for more details.`,
 				}
 			}
 
+			image_param_name, err := cmd.Flags().GetString("param")
+			if err != nil {
+				log.Logger.Error().Err(err).Msg("unable to get image param name")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
 			errorsOccurred := false
 			for bpIdx, bp := range bps {
 				// Edit parameters for nodes
 				k := kargs.NewKargs([]byte(bp.Params))
-				k.SetKarg("root", args[0])
+				k.SetKarg(image_param_name, args[0])
 				bps[bpIdx].Params = k.String()
 
 				// Send modified params back to BSS
@@ -187,6 +194,7 @@ See ochami-bss(1) for more details.`,
 	// Create flags
 	bootImageSetCmd.Flags().StringSliceP("xname", "x", []string{}, "one or more xnames whose boot parameters to set")
 	bootImageSetCmd.Flags().StringSliceP("mac", "m", []string{}, "one or more MAC addresses whose boot parameters to set")
+	bootImageSetCmd.Flags().StringP("param", "p", "root", "set the kernel parameter name that the image is passed with")
 	bootImageSetCmd.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to set")
 
 	bootImageSetCmd.MarkFlagsOneRequired("xname", "mac", "nid")
