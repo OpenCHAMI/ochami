@@ -269,7 +269,11 @@ func (oc *OchamiClient) MakeRequest(method, uri string, headers *HTTPHeaders, bo
 	if len(req.Header) > 0 {
 		log.Logger.Debug().Msg("Request headers:")
 		for k, v := range req.Header {
-			log.Logger.Debug().Msgf("  %s: %s", k, v)
+			if isAuthorizationHeader(k) {
+				log.Logger.Debug().Msgf("  %s: %s", k, redactAuthHeaderValues(v))
+			} else {
+				log.Logger.Debug().Msgf("  %s: %s", k, v)
+			}
 		}
 	} else {
 		log.Logger.Debug().Msg("No headers in request")

@@ -218,6 +218,13 @@ func InitConfigAndLogging(cmd *cobra.Command, createCfg bool) {
 		el.BasicLogf("see '%s --help' for long command help", cmd.CommandPath())
 		os.Exit(1)
 	}
+
+	// Propagate --show-token to the client package so that access tokens are
+	// truncated in debug logs unless the flag is passed. This must happen
+	// before any request logging or token handling occurs.
+	if f := cmd.Flag("show-token"); f != nil {
+		client.ShowToken = f.Value.String() == "true"
+	}
 }
 
 // CreateIfNotExists creates path (a file with optional leading directories) if
@@ -557,7 +564,7 @@ func SetToken(cmd *cobra.Command) {
 	)
 	if cmd.Flag("token").Changed {
 		Token = cmd.Flag("token").Value.String()
-		log.Logger.Debug().Msg("--token passed, setting token to its value: " + Token)
+		log.Logger.Debug().Msg("--token passed, setting token to its value: " + client.RedactToken(Token))
 		return
 	}
 
@@ -580,7 +587,7 @@ func SetToken(cmd *cobra.Command) {
 	envVarToRead := strings.ToUpper(varPrefix) + "_ACCESS_TOKEN"
 	log.Logger.Debug().Msg("Reading token from environment variable: " + envVarToRead)
 	if t, tokenSet := os.LookupEnv(envVarToRead); tokenSet {
-		log.Logger.Debug().Msgf("Token found from environment variable: %s=%s", envVarToRead, t)
+		log.Logger.Debug().Msgf("Token found from environment variable: %s=%s", envVarToRead, client.RedactToken(t))
 		Token = t
 		return
 	}

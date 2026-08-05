@@ -89,6 +89,10 @@ export FOOBAR_ACCESS_TOKEN=...
 Once these steps are completed, *ochami* should be ready to use with cluster
 _foobar_.
 
+When debug logging is enabled, any access token that would appear in the logs is
+truncated by default so that the logs still indicate a token is present without
+revealing its full value. Pass *--show-token* to log the full token instead.
+
 # GLOBAL OPTIONS
 
 *--cacert* _cacert_
@@ -158,6 +162,15 @@ _foobar_.
 
 	This flag is useful for testing access to API endpoints that don't have JWT
 	authentication enabled, e.g. in a test environment.
+
+*--show-token*
+	Show the full access token in debug logs. By default, when debug logging is
+	enabled (see *--log-level*), any access token that appears in the logs
+	(e.g. in the request *Authorization* header or when reading the token) is
+	truncated to its first few characters followed by an ellipsis so that the
+	logs still indicate that a token is present without revealing its full
+	value. Passing this flag causes the full, untruncated token to be shown in
+	the logs instead.
 
 *-t, --token* _token_
 	Access token to include in request headers for authentication to protected
