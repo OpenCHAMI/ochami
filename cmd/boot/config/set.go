@@ -12,9 +12,9 @@ import (
 
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/openchami/ochami/internal/cli"
+	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
+	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdBootConfigSet() *cobra.Command {

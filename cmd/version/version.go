@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/version"
+	"github.com/openchami/ochami/internal/version"
 )
 
 func NewCmd() *cobra.Command {

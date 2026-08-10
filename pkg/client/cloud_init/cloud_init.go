@@ -12,10 +12,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/OpenCHAMI/cloud-init/pkg/cistore"
+	"github.com/openchami/cloud-init/pkg/cistore"
 
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 // CIDataType is an enum that represents the types of cloud-init data: user,

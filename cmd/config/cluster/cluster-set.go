@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/config"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdClusterSet() *cobra.Command {

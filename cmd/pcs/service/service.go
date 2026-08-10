@@ -8,7 +8,7 @@ package service
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 )
 
 func NewCmd() *cobra.Command {

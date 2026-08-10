@@ -3,13 +3,11 @@
 //
 // SPDX-License-Identifier: MIT
 
-module github.com/OpenCHAMI/ochami
+module github.com/openchami/ochami
 
 go 1.26.5
 
 require (
-	github.com/OpenCHAMI/bss v1.32.2
-	github.com/OpenCHAMI/cloud-init v1.4.7
 	github.com/elliotchance/pie/v2 v2.9.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
@@ -21,6 +19,8 @@ require (
 	github.com/lestrrat-go/jwx/v3 v3.2.0
 	github.com/nikolalohinski/gonja/v2 v2.9.0
 	github.com/openchami/boot-service v0.3.1
+	github.com/openchami/bss v1.32.3
+	github.com/openchami/cloud-init v1.4.8
 	github.com/openchami/fabrica v0.4.9
 	github.com/openchami/metadata-service v0.2.1
 	github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4

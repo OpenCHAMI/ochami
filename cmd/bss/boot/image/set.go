@@ -11,16 +11,16 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/OpenCHAMI/bss/pkg/bssTypes"
+	"github.com/openchami/bss/pkg/bssTypes"
 	"github.com/spf13/cobra"
 	kargs "github.com/synackd/go-kargs"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/format"
 
-	bss_lib "github.com/OpenCHAMI/ochami/internal/cli/bss"
+	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
 
 func newCmdBootImageSet() *cobra.Command {

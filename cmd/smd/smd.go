@@ -10,16 +10,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 
 	// Subcommands
-	compep_cmd "github.com/OpenCHAMI/ochami/cmd/smd/compep"
-	component_cmd "github.com/OpenCHAMI/ochami/cmd/smd/component"
-	group_cmd "github.com/OpenCHAMI/ochami/cmd/smd/group"
-	iface_cmd "github.com/OpenCHAMI/ochami/cmd/smd/iface"
-	rfe_cmd "github.com/OpenCHAMI/ochami/cmd/smd/rfe"
-	service_cmd "github.com/OpenCHAMI/ochami/cmd/smd/service"
-	status_cmd "github.com/OpenCHAMI/ochami/cmd/smd/status" // DEPRECATED
+	compep_cmd "github.com/openchami/ochami/cmd/smd/compep"
+	component_cmd "github.com/openchami/ochami/cmd/smd/component"
+	group_cmd "github.com/openchami/ochami/cmd/smd/group"
+	iface_cmd "github.com/openchami/ochami/cmd/smd/iface"
+	rfe_cmd "github.com/openchami/ochami/cmd/smd/rfe"
+	service_cmd "github.com/openchami/ochami/cmd/smd/service"
+	status_cmd "github.com/openchami/ochami/cmd/smd/status" // DEPRECATED
 )
 
 func NewCmd() *cobra.Command {

@@ -14,7 +14,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 func TestGetData(t *testing.T) {

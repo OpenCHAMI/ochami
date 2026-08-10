@@ -11,8 +11,8 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 
-	"github.com/OpenCHAMI/ochami/pkg/client"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 // GroupSpec is a wrapper around the metadata-service's GroupSpec and is used

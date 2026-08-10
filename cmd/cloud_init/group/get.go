@@ -13,14 +13,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/cloud-init/pkg/cistore"
+	"github.com/openchami/cloud-init/pkg/cistore"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
-	"github.com/OpenCHAMI/ochami/pkg/client/cloud_init"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/client/cloud_init"
 
-	cloud_init_lib "github.com/OpenCHAMI/ochami/internal/cli/cloud_init"
+	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
 
 // getGroupData returns a slice of cloud-init group data for the

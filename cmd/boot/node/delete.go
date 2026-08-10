@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
+	"github.com/openchami/ochami/internal/log"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 )
 
 func newCmdBootNodeDelete() *cobra.Command {

@@ -10,22 +10,22 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/config"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/internal/version"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/internal/version"
 
 	// Subcommands
-	boot_cmd "github.com/OpenCHAMI/ochami/cmd/boot"
-	bss_cmd "github.com/OpenCHAMI/ochami/cmd/bss"
-	cloud_init_cmd "github.com/OpenCHAMI/ochami/cmd/cloud_init"
-	config_cmd "github.com/OpenCHAMI/ochami/cmd/config"
-	discover_cmd "github.com/OpenCHAMI/ochami/cmd/discover"
-	metadata_cmd "github.com/OpenCHAMI/ochami/cmd/metadata"
-	pcs_cmd "github.com/OpenCHAMI/ochami/cmd/pcs"
-	rcs_cmd "github.com/OpenCHAMI/ochami/cmd/rcs"
-	smd_cmd "github.com/OpenCHAMI/ochami/cmd/smd"
-	version_cmd "github.com/OpenCHAMI/ochami/cmd/version"
+	boot_cmd "github.com/openchami/ochami/cmd/boot"
+	bss_cmd "github.com/openchami/ochami/cmd/bss"
+	cloud_init_cmd "github.com/openchami/ochami/cmd/cloud_init"
+	config_cmd "github.com/openchami/ochami/cmd/config"
+	discover_cmd "github.com/openchami/ochami/cmd/discover"
+	metadata_cmd "github.com/openchami/ochami/cmd/metadata"
+	pcs_cmd "github.com/openchami/ochami/cmd/pcs"
+	rcs_cmd "github.com/openchami/ochami/cmd/rcs"
+	smd_cmd "github.com/openchami/ochami/cmd/smd"
+	version_cmd "github.com/openchami/ochami/cmd/version"
 )
 
 var (

@@ -12,10 +12,10 @@ import (
 
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client/metadata_service"
+	"github.com/openchami/ochami/internal/cli"
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
 func newCmdMetadataInstanceAdd() *cobra.Command {

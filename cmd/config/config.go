@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 
 	// Subcommands
-	cluster_cmd "github.com/OpenCHAMI/ochami/cmd/config/cluster"
+	cluster_cmd "github.com/openchami/ochami/cmd/config/cluster"
 )
 
 func NewCmd() *cobra.Command {

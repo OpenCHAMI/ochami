@@ -14,15 +14,15 @@ before:
 builds:
   - ldflags:
       - "-s"
-      - "-X=github.com/OpenCHAMI/ochami/internal/version.Version={{ .Version }} \
-         -X=github.com/OpenCHAMI/ochami/internal/version.Tag={{ .Tag }} \
-         -X=github.com/OpenCHAMI/ochami/internal/version.Branch={{ .Branch }} \
-         -X=github.com/OpenCHAMI/ochami/internal/version.Commit={{ .Commit }} \
-         -X=github.com/OpenCHAMI/ochami/internal/version.Date={{ .Date }} \
-         -X=github.com/OpenCHAMI/ochami/internal/version.GoVersion={{ .Env.GOVERSION }} \
-         -X=github.com/OpenCHAMI/ochami/internal/version.GitState={{ .GitTreeState }} \
-         -X=github.com/OpenCHAMI/ochami/internal/version.BuildHost={{ .Env.BUILD_HOST }} \
-         -X=github.com/OpenCHAMI/ochami/internal/version.BuildUser={{ .Env.BUILD_USER }}"
+      - "-X=github.com/openchami/ochami/internal/version.Version={{ .Version }} \
+         -X=github.com/openchami/ochami/internal/version.Tag={{ .Tag }} \
+         -X=github.com/openchami/ochami/internal/version.Branch={{ .Branch }} \
+         -X=github.com/openchami/ochami/internal/version.Commit={{ .Commit }} \
+         -X=github.com/openchami/ochami/internal/version.Date={{ .Date }} \
+         -X=github.com/openchami/ochami/internal/version.GoVersion={{ .Env.GOVERSION }} \
+         -X=github.com/openchami/ochami/internal/version.GitState={{ .GitTreeState }} \
+         -X=github.com/openchami/ochami/internal/version.BuildHost={{ .Env.BUILD_HOST }} \
+         -X=github.com/openchami/ochami/internal/version.BuildUser={{ .Env.BUILD_USER }}"
     goos:
       - linux
       - darwin
@@ -103,14 +103,14 @@ nfpms:
 
 aurs:
   - name: ochami-bin
-    homepage: https://github.com/OpenCHAMI/ochami
+    homepage: https://github.com/openchami/ochami
     description: "Command line interface for OpenCHAMI services"
     maintainers:
       - "Devon T. Bautista <devonb@lanl.gov>"
     license: "MIT"
     private_key: "{{ .Env.AUR_SSH_KEY }}"
     git_url: ssh://aur@aur.archlinux.org/ochami-bin.git
-    url_template: "https://github.com/OpenCHAMI/ochami/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    url_template: "https://github.com/openchami/ochami/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     backup:
       - etc/ochami/config.yaml
     conflicts:

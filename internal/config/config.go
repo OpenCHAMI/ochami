@@ -23,8 +23,8 @@ import (
 	"github.com/knadh/koanf/v2"
 	"gopkg.in/yaml.v3"
 
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 type ServiceName string

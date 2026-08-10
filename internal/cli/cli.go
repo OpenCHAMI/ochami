@@ -21,13 +21,13 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/config"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
-	"github.com/OpenCHAMI/ochami/pkg/discover"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/discover"
+	"github.com/openchami/ochami/pkg/format"
 
-	"github.com/OpenCHAMI/ochami/internal/version"
+	"github.com/openchami/ochami/internal/version"
 )
 
 var (

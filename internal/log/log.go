@@ -18,7 +18,7 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/term"
 
-	"github.com/OpenCHAMI/ochami/internal/version"
+	"github.com/openchami/ochami/internal/version"
 )
 
 var (

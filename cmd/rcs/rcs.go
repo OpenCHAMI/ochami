@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	console_cmd "github.com/OpenCHAMI/ochami/cmd/rcs/console"
-	service_cmd "github.com/OpenCHAMI/ochami/cmd/rcs/service"
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	console_cmd "github.com/openchami/ochami/cmd/rcs/console"
+	service_cmd "github.com/openchami/ochami/cmd/rcs/service"
+	"github.com/openchami/ochami/internal/cli"
 )
 
 func NewCmd() *cobra.Command {

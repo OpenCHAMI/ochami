@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
-	oio "github.com/OpenCHAMI/ochami/internal/io"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/internal/version"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	oio "github.com/openchami/ochami/internal/io"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/internal/version"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 var (

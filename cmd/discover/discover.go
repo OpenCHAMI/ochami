@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 
 	// Subcomands
-	static_cmd "github.com/OpenCHAMI/ochami/cmd/discover/static"
+	static_cmd "github.com/openchami/ochami/cmd/discover/static"
 )
 
 func NewCmd() *cobra.Command {

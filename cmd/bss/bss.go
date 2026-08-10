@@ -10,15 +10,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 
 	// Subcommands
-	boot_cmd "github.com/OpenCHAMI/ochami/cmd/bss/boot"
-	dumpstate_cmd "github.com/OpenCHAMI/ochami/cmd/bss/dumpstate"
-	history_cmd "github.com/OpenCHAMI/ochami/cmd/bss/history"
-	hosts_cmd "github.com/OpenCHAMI/ochami/cmd/bss/hosts"
-	service_cmd "github.com/OpenCHAMI/ochami/cmd/bss/service"
-	status_cmd "github.com/OpenCHAMI/ochami/cmd/bss/status" // DEPRECATED
+	boot_cmd "github.com/openchami/ochami/cmd/bss/boot"
+	dumpstate_cmd "github.com/openchami/ochami/cmd/bss/dumpstate"
+	history_cmd "github.com/openchami/ochami/cmd/bss/history"
+	hosts_cmd "github.com/openchami/ochami/cmd/bss/hosts"
+	service_cmd "github.com/openchami/ochami/cmd/bss/service"
+	status_cmd "github.com/openchami/ochami/cmd/bss/status" // DEPRECATED
 )
 
 func NewCmd() *cobra.Command {

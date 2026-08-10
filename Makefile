@@ -66,7 +66,7 @@ $(error '$(SHELL)' undefined.)
 endif
 
 NAME          ?= ochami
-IMPORT        := github.com/OpenCHAMI/$(NAME)/
+IMPORT        := github.com/openchami/$(NAME)/
 VERSION       ?= $(shell $(GIT) describe --tags --always --dirty --broken --abbrev=0)
 TAG           ?= $(shell $(GIT) describe --tags --always --abbrev=0)
 BRANCH        ?= $(shell $(GIT) branch --show-current)

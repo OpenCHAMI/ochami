@@ -202,7 +202,7 @@ at `ghcr.io/openchami/ochami:pr-<pr_number>`.
   principles, charter, governance
 - **[ochami Documentation](man/)** - Manual pages in scdoc format
 - **[OpenCHAMI Slack](https://openchami.slack.com)** - Community chat
-- **[ochami Issues](https://github.com/OpenCHAMI/ochami/issues)** - Bug reports
+- **[ochami Issues](https://github.com/openchami/ochami/issues)** - Bug reports
   and feature requests
 
 ## Quick Links

@@ -9,14 +9,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/config"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/config"
 
 	// Subcommands
-	bmc_cmd "github.com/OpenCHAMI/ochami/cmd/boot/bmc"
-	config_cmd "github.com/OpenCHAMI/ochami/cmd/boot/config"
-	node_cmd "github.com/OpenCHAMI/ochami/cmd/boot/node"
-	service_cmd "github.com/OpenCHAMI/ochami/cmd/boot/service"
+	bmc_cmd "github.com/openchami/ochami/cmd/boot/bmc"
+	config_cmd "github.com/openchami/ochami/cmd/boot/config"
+	node_cmd "github.com/openchami/ochami/cmd/boot/node"
+	service_cmd "github.com/openchami/ochami/cmd/boot/service"
 )
 
 func NewCmd() *cobra.Command {
