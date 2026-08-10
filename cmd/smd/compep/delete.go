@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/OpenCHAMI/smd/v2/pkg/sm"
+	"github.com/openchami/smd/v2/pkg/sm"
 	"github.com/spf13/cobra"
 
 	"github.com/OpenCHAMI/ochami/internal/cli"
