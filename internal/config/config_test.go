@@ -1033,11 +1033,15 @@ log:
 		}
 
 		ko, err := ReadConfig(path)
+		if err != nil {
+			t.Fatalf("read back failed: %v", err)
+		}
+
 		var got Config
 		err = ko.Unmarshal("", &got)
 
 		if err != nil {
-			t.Fatalf("read back failed: %v", err)
+			t.Fatalf("unmarshal failed: %v", err)
 		}
 		if got.Log.Level != "" {
 			t.Errorf("Log.Level = %q; want empty", got.Log.Level)
