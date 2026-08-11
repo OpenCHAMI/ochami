@@ -160,7 +160,6 @@ func InitConfig(cmd *cobra.Command, create bool) error {
 		err = config.LoadGlobalConfigFromFile(ConfigFile)
 	} else {
 		err = config.LoadGlobalConfigMerged()
-		// err = config.LoadGlobalMergedKoanf_new()
 	}
 	if err != nil {
 		err = fmt.Errorf("failed to load configuration: %w", err)
