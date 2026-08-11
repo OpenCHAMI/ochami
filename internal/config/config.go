@@ -58,9 +58,13 @@ var DefaultConfigMap = map[string]any{
 	"log.format":            "rfc3339",
 	"log.level":             "warning",
 	"log.color":             "auto",
-	"timeout":               30 * time.Second,
+	"timeout":               "30s",
 	"default-input-format":  "json",
 	"default-output-format": "json",
+}
+
+var DefaultClusterConfigMap = map[string]any{
+	"enable-auth": true,
 }
 
 var (
@@ -388,6 +392,8 @@ func LoadGlobalConfigMerged() error {
 		{"user", file.Provider(UserConfigFile), configParser},
 	}
 
+	// For merging purposes, maps name to key-value pairs
+	clusterMap := map[string]*koanf.Koanf{}
 	for _, c := range configsToLoad {
 		k2 := koanf.NewWithConf(kConfig)
 		err = k2.Load(c.provider, c.parser)
@@ -401,6 +407,31 @@ func LoadGlobalConfigMerged() error {
 				log.EarlyLogger.BasicLogf("\t%s -> %v", k, k2.Get(k))
 			}
 
+			// Merge clusters separately
+			var kClusterSlice []map[string]any
+			err = k2.Unmarshal("clusters", &kClusterSlice)
+			if err != nil {
+				return fmt.Errorf("unable to unmarshal cluster configs from config '%s': %w", c.name, err)
+			}
+
+			for i, cluster := range kClusterSlice {
+				name, ok := cluster["name"].(string)
+				if !ok || name == "" {
+					return fmt.Errorf("cluster #%d from config '%s' is missing a name", i, c.name)
+				}
+				if clusterMap[name] == nil {
+					clusterMap[name] = koanf.NewWithConf(kConfig)
+					err = clusterMap[name].Load(confmap.Provider(DefaultClusterConfigMap, "."), nil)
+					if err != nil {
+						return fmt.Errorf("unable to load default cluster config: %w", err)
+					}
+				}
+				err = clusterMap[name].Load(confmap.Provider(cluster["cluster"].(map[string]any), ""), nil)
+				if err != nil {
+					return fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
+				}
+			}
+
 			// Finish the job
 			err = k.Merge(k2)
 			if err != nil {
@@ -410,6 +441,16 @@ func LoadGlobalConfigMerged() error {
 			}
 		}
 	}
+
+	// add merged clusters back to primary koanf instance
+	clusterSlice := make([]map[string]any, 0, len(clusterMap))
+	for k, v := range clusterMap {
+		clusterSlice = append(clusterSlice, map[string]any{
+			"name":    k,
+			"cluster": v.Raw(),
+		})
+	}
+	k.Set("clusters", clusterSlice)
 
 	// Marshalling to the global config variable
 	err = k.Unmarshal("", &GlobalConfig)
@@ -490,7 +531,7 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 		return fmt.Errorf("failed to read %s for modification: %w", path, err)
 	}
 
-	var clusters []ConfigCluster
+	var clusters []map[string]any
 	err = ko.Unmarshal("clusters", &clusters)
 
 	// Make sure that if setting the cluster name, a cluster with that name
@@ -500,20 +541,18 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 			return fmt.Errorf("unable to unmarshal clusters: %w", err)
 		}
 		for _, cl := range clusters {
-			if cl.Name == value.(string) {
-				return fmt.Errorf("cluster with name %q already exists", cl.Name)
+			if cl["name"] == value.(string) {
+				return fmt.Errorf("cluster with name %q already exists", cl["name"])
 			}
 		}
 	}
 
 	// Determine if a new cluster needs to be added or an existing cluster
-	// needs to be modified. (Also grab the name for later use)
+	// needs to be modified.
 	cidx := -1
-	oldName := ""
 	for i, cl := range clusters {
-		if cl.Name == cluster {
+		if cl["name"] == cluster {
 			cidx = i
-			oldName = cl.Name
 			break
 		}
 	}
@@ -521,23 +560,29 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 	// Using -1 as a sentinel value to indicate creation is required
 	if cidx == -1 {
 		cidx = len(clusters)
-		err = ko.Set(fmt.Sprintf("clusters.%d.name", cidx), cluster)
-		if err != nil {
-			return fmt.Errorf("unable to modify config value 'name' in cluster '%s': %w", cluster, err)
-		}
-		// return fmt.Errorf("not implemented: cluster creation")
+		clusters = append(clusters, map[string]any{})
+		clusters[cidx]["name"] = cluster
 	}
 
-	err = ko.Set(fmt.Sprintf("clusters.%d.%s", cidx, path), value)
+	kc := koanf.NewWithConf(kConfig)
+	err = kc.Load(confmap.Provider(clusters[cidx], ""), nil)
+	if err != nil {
+		return fmt.Errorf("unable to load cluster '%s' from config '%s': %w", cluster, path, err)
+	}
+
+	err = kc.Set(key, value)
 	if err != nil {
 		return fmt.Errorf("unable to modify config value '%s' in cluster '%s': %w", key, cluster, err)
 	}
 
-	defaultCluster := ko.String(fmt.Sprintf("clusters.%d.name", cidx))
+	clusters[cidx] = kc.Raw()
+	ko.Set("clusters", clusters)
+
+	defaultCluster := ko.String("default-cluster")
 
 	// If default is set, set default-cluster to cluster name.
 	// Also do it if the default-cluster was renamed (to reflect the new name)
-	if dflt || (key == "name" && defaultCluster == oldName) {
+	if dflt || (key == "name" && defaultCluster == cluster) {
 		// If key was "name", set default-cluster to "name"
 		// instead of cluster specified in arg.
 		if key == "name" {
@@ -545,7 +590,7 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 			if ok {
 				err = ko.Set("default-cluster", s)
 			} else {
-				err = fmt.Errorf("value is not string")
+				err = fmt.Errorf("value '%v' is not a string", value)
 			}
 		} else {
 			err = ko.Set("default-cluster", cluster)
@@ -607,17 +652,34 @@ func DeleteConfigCluster(path, cluster, key string) error {
 		return fmt.Errorf("cluster name '%s' contains delimiter character '%s'", cluster, delim)
 	}
 
-	var clusters []ConfigCluster
+	var clusters []map[string]any
 	err = ko.Unmarshal("clusters", &clusters)
 	if err != nil {
 		return fmt.Errorf("unable to unmarshal clusters: %w", err)
 	}
 
-	for i, cl := range clusters {
-		if cl.Name == cluster {
-			ko.Delete(fmt.Sprintf("clusters.%d.%s", i, path))
+	found := false
+	for i := 0; i < len(clusters); i++ {
+		if clusters[i]["name"] == cluster {
+			ck := koanf.NewWithConf(kConfig)
+			err = ck.Load(confmap.Provider(clusters[i], ""), nil)
+			if err != nil {
+				return fmt.Errorf("unable to load cluster config from map: %w", err)
+			}
+			if !ck.Exists(key) {
+				return fmt.Errorf("key '%s' doesn't exist", key)
+			}
+			ck.Delete(key)
+			clusters[i] = ck.Raw()
+			found = true
 		}
 	}
+
+	if !found {
+		return fmt.Errorf("cluster '%s' doesn't exist", cluster)
+	}
+
+	ko.Set("clusters", clusters)
 
 	// Write modified config back to file
 	if err := WriteConfig(path, ko); err != nil {
@@ -714,9 +776,6 @@ func GetConfigStringFromFile(path, key, format string) (string, error) {
 // the whole config is returned. This function _only_ retrieves config options
 // for a cluster. To get global config, use GetConfig.
 func GetConfigCluster(cluster ConfigCluster, key string) (interface{}, error) {
-	if key == "" {
-		return cluster, nil
-	}
 	// Load config into koanf so the key can be used to get config.
 	var val interface{}
 	ko := koanf.NewWithConf(kConfig)
@@ -725,28 +784,6 @@ func GetConfigCluster(cluster ConfigCluster, key string) (interface{}, error) {
 	}
 	val = ko.Get(key)
 	return val, nil
-}
-
-// GetConfigClusterFromFile is like GetConfigCluster except that it reads the
-// config from the file at path instead of a ConfigCluster struct.
-func GetConfigClusterFromFile(path, cluster, key string) (interface{}, error) {
-	// Read in config file
-	ko, err := ReadConfig(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file %s: %w", path, err)
-	}
-
-	var clusters []ConfigCluster
-	err = ko.Unmarshal("clusters", &clusters)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal clusters from %s: %w", path, err)
-	}
-	for i, cl := range clusters {
-		if cl.Name == cluster {
-			return ko.Get(fmt.Sprintf("clusters.%d.%s", i, key)), nil
-		}
-	}
-	return nil, fmt.Errorf("cluster %q not found in %s", cluster, path)
 }
 
 // GetConfigClusterString wraps GetConfigCluster and returns a string
@@ -846,61 +883,4 @@ func getUserConfigPath() (string, error) {
 		return "", fmt.Errorf("unable to fetch current user: %w", err)
 	}
 	return filepath.Join(user.HomeDir, ".config", "ochami", "config.yaml"), nil
-}
-
-func LoadGlobalMergedKoanf_new() error {
-	log.EarlyLogger.BasicLog("early verbose log messages activated")
-
-	var err error
-	k := koanf.NewWithConf(kConfig)
-	GlobalKoanf = k
-
-	UserConfigFile, err = getUserConfigPath()
-	if err != nil {
-		return err
-	}
-
-	type configLoader struct {
-		name     string
-		provider koanf.Provider
-		parser   koanf.Parser
-	}
-
-	configsToLoad := []configLoader{
-		{"default", confmap.Provider(DefaultConfigMap, "."), nil},
-		// {"system", file.Provider(SystemConfigFile), configParser},
-		{"system", file.Provider("doc/config.example.yaml"), configParser},
-		{"user", file.Provider(UserConfigFile), configParser},
-	}
-
-	for _, c := range configsToLoad {
-		k2 := koanf.NewWithConf(kConfig)
-		err = k2.Load(c.provider, c.parser)
-		if errors.Is(err, os.ErrNotExist) { // This an error we can ignore
-			log.EarlyLogger.BasicLogf("config '%s' not found, skipping", c.name)
-		} else if err != nil { // If it gets here something has actually gone wrong
-			return fmt.Errorf("unable to load config '%s': %w", c.name, err)
-		} else { // Good to go
-			log.EarlyLogger.BasicLogf("successfully loaded key-value pairs from config '%s':", c.name)
-			for _, k := range k2.Keys() {
-				log.EarlyLogger.BasicLogf("\t%s -> %v", k, k2.Get(k))
-			}
-
-			// Finish the job
-			err = k.Merge(k2)
-			if err != nil {
-				return fmt.Errorf("unable to merge config '%s': %w", c.name, err)
-			} else {
-				log.EarlyLogger.BasicLogf("successfully merged config '%s'", c.name)
-			}
-		}
-	}
-
-	// Marshalling to the global config variable
-	err = k.Unmarshal("", &GlobalConfig)
-	if err != nil {
-		return fmt.Errorf("unable to unmarshal merged config: %w", err)
-	}
-
-	return nil
 }
