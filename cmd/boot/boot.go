@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
 
 	// Subcommands
 	bmc_cmd "github.com/openchami/ochami/cmd/boot/bmc"
@@ -39,8 +38,7 @@ See ochami-boot(1) for more details.`,
 
 	// Create flags
 	bootCmd.PersistentFlags().String("api-version", "", "version of service API to use in request")
-	to := config.DefaultConfigMap["timeout"].(time.Duration)
-	bootCmd.PersistentFlags().Duration("timeout", to, "timeout duration when making requests")
+	bootCmd.PersistentFlags().Duration("timeout", 30*time.Second, "timeout duration when making requests")
 	bootCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of boot service")
 
 	// Add subcommands
