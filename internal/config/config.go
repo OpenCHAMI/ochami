@@ -357,6 +357,28 @@ func RemoveFromSlice[T any](slice []T, index int) []T {
 	return slice[:len(slice)-1]
 }
 
+func LoadGlobalConfigDefaultOnly() error {
+	log.EarlyLogger.BasicLog("early verbose log messages activated")
+
+	var err error
+	k := koanf.NewWithConf(kConfig)
+	GlobalKoanf = k
+
+	err = k.Load(confmap.Provider(DefaultConfigMap, "."), nil)
+
+	// Marshalling to the global config variable
+	err = k.Unmarshal("", &GlobalConfig)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal merged config: %w", err)
+	}
+
+	log.EarlyLogger.BasicLogf("final config:")
+	for _, key := range k.Keys() {
+		log.EarlyLogger.BasicLogf("\t%s -> %v", key, k.Get(key))
+	}
+	return nil
+}
+
 // LoadGlobalConfigMerged populates the GlobalConfig Config structure and
 // GlobalKoanf structure with a configuration that is a merge of, in ascending
 // order of priority (higher is more priority:
