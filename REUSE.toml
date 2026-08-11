@@ -1,0 +1,32 @@
+version = 1
+
+[[annotations]]
+path = [
+    "doc/config.example.yaml",
+    "go.sum",
+    "man/ochami-bss.1.sc",
+    "man/ochami-cloud-init.1.sc",
+    "man/ochami-config.1.sc",
+    "man/ochami-config.5.sc",
+    "man/ochami-discover.1.sc",
+    "man/ochami-pcs.1.sc",
+    "man/ochami-smd.1.sc",
+    "man/ochami.1.sc",
+]
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "© 2024-2025 Triad National Security, LLC. All rights reserved.",
+    "© 2025 OpenCHAMI a Series of LF Projects, LLC",
+]
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = [
+    "man/ochami-boot.1.sc",
+    "man/ochami-metadata.1.sc",
+    "man/ochami-rcs.1.sc",
+    "renovate.json",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "© 2026 OpenCHAMI a Series of LF Projects, LLC"
+SPDX-License-Identifier = "MIT"
