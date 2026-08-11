@@ -192,6 +192,8 @@ on the data structure used with this command.
 Subcommands for this command are as follows:
 
 *get* [-F _format_]
+	Aliases: *list*
+
 	Get cluster-wide default meta-data.
 
 	This command accepts the following options:
@@ -322,6 +324,8 @@ Subcommands for this command are as follows:
 		- _yaml_
 
 *get*
+	Aliases: *list*
+
 	Get cloud-init group data.
 
 	Commands under this one send one or more GET requests to the
@@ -546,6 +550,8 @@ Get and manage cloud-init node data.
 Subcommands for this command are as follows:
 
 *get*
+	Aliases: *list*
+
 	Get cloud-init node data. This command has the following subcommands:
 
 	*group* [--header _when_] _node_id_ _group_name_...

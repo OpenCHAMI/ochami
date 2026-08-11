@@ -30,6 +30,6 @@ formatters:
       # with the given prefixes are grouped after 3rd-party packages.
       # Default: []
       local-prefixes:
-        - github.com/OpenCHAMI/ochami/
+        - github.com/openchami/ochami/
   exclusions:
     generated: lax

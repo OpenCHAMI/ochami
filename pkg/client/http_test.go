@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 func TestNewHTTPHeaders(t *testing.T) {

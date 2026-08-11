@@ -13,18 +13,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 
-	smd_lib "github.com/OpenCHAMI/ochami/internal/cli/smd"
+	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
 
 func newCmdCompepGet() *cobra.Command {
 	// compepGetCmd represents the "smd compep get" command
 	var compepGetCmd = &cobra.Command{
-		Use:   "get [<xname>...]",
-		Short: "Get all component endpoints or a subset, identified by xname",
+		Use:     "get [<xname>...]",
+		Aliases: []string{"list"},
+		Short:   "Get all component endpoints or a subset, identified by xname",
 		Long: `Get all component endpoints or a subset, identified by xname.
 
 See ochami-smd(1) for more details.`,

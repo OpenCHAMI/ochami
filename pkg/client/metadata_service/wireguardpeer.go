@@ -8,12 +8,24 @@ import (
 	"context"
 	"fmt"
 
-	api "github.com/OpenCHAMI/metadata-service/apis/cloud-init.openchami.io/v1"
-	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
+	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
+	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 
-	"github.com/OpenCHAMI/ochami/pkg/client"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/format"
 )
+
+// WireGuardPeerSpec is a wrapper around the metadata-service's
+// WireGuardPeerSpec and is used specifically for the simple API. For adding
+// WireGuard peers, a "name" field is required but is only provided in the
+// "metadata" structure, which is outside of the spec and is only available in
+// the advanced API. To get around this, the upstream spec is wrapped with a
+// "name" field so bulk specs can be added with names specified for each without
+// having to provide them as arguments.
+type WireGuardPeerSpec struct {
+	Name                  string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.WireGuardPeerSpec `yaml:",inline"`
+}
 
 // AddWireGuardPeers is a wrapper that calls the metadata-service client's
 // CreateWireGuardPeer() function, passing it context. It returns a slice of
@@ -148,6 +160,45 @@ func (msc *MetadataServiceClient) SetWireGuardPeer(token string, uid string, pee
 	item, err := msc.Client.WithBearerToken(token).UpdateWireGuardPeer(ctx, uid, peer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set WireGuard peer %+v: %w", peer, err)
+	}
+
+	return item, nil
+}
+
+// AddWireGuardPeerSpecs is like AddWireGuardPeers but calls the
+// metadata-service client's simple CreateWireGuardPeerSimple() function, which
+// only sends the resource name and spec.
+func (msc *MetadataServiceClient) AddWireGuardPeerSpecs(token string, peers []WireGuardPeerSpec) (peersAdded []api.WireGuardPeer, errors []error, funcErr error) {
+	// TODO: Make concurrent
+	for _, p := range peers {
+		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+		defer cancel()
+
+		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeerSimple(ctx, p.Name, p.WireGuardPeerSpec)
+		if err != nil {
+			newErr := fmt.Errorf("failed to add WireGuard peer %q (%+v): %w", p.Name, p.WireGuardPeerSpec, err)
+			errors = append(errors, newErr)
+		} else if item != nil {
+			peersAdded = append(peersAdded, *item)
+		} else {
+			newErr := fmt.Errorf("WireGuard peer creation did not err, but was not created for: %+v", p)
+			errors = append(errors, newErr)
+		}
+	}
+
+	return
+}
+
+// SetWireGuardPeerSpec is like SetWireGuardPeer but calls the metadata-service
+// client's simple UpdateWireGuardPeerSimple() function, which only sends the
+// resource spec.
+func (msc *MetadataServiceClient) SetWireGuardPeerSpec(token string, uid string, spec api.WireGuardPeerSpec) (*api.WireGuardPeer, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+	defer cancel()
+
+	item, err := msc.Client.WithBearerToken(token).UpdateWireGuardPeerSimple(ctx, uid, spec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set WireGuard peer %+v: %w", spec, err)
 	}
 
 	return item, nil

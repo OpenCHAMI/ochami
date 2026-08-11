@@ -10,9 +10,12 @@ import (
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
+
+	"github.com/openchami/ochami/internal/cli"
+	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
 func newCmdBootNodeAdd() *cobra.Command {
@@ -27,6 +30,7 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Add node using payload data
   ochami boot node add -d \
     '{
+       "name": "node01",
        "xname": "x1000c0s0b0n0",
        "nid": 42,
        "bootMac": "de:ca:fc:0f:fe:e1",
@@ -50,6 +54,7 @@ See ochami-boot(1) for more details.`,
   ochami boot node add -d \
     '[
        {
+         "name": "node01",
          "xname": "x1000c0s0b0n0",
          "nid": 42,
          "bootMac": "de:ca:fc:0f:fe:e1",
@@ -63,6 +68,7 @@ See ochami-boot(1) for more details.`,
          ]
        },
        {
+         "name": "node02",
          "xname": "x1000c0s0b0n1",
          "nid": 43,
          "bootMac": "de:ca:fc:0f:fe:e2",
@@ -76,6 +82,21 @@ See ochami-boot(1) for more details.`,
          ]
        }
      ]'
+
+  # Add node preserving labels/annotations (envelope API)
+  ochami boot node add -e -d \
+    '{
+       "metadata": {
+         "name": "x1000c0s0b0n0",
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "xname": "x1000c0s0b0n0",
+         "nid": 42
+       }
+     }'
 
   # Add nodes using input payload file
   ochami boot node add -d @payload.json
@@ -93,32 +114,64 @@ See ochami-boot(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read node data
-			nodes := []boot_service_client.CreateNodeRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayloadSlice[boot_service_client.CreateNodeRequest](cmd, &nodes)
-			} else {
-				cli.HandlePayloadStdinSlice[boot_service_client.CreateNodeRequest](cmd, &nodes)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			nodesCreated, errs, err := bootServiceClient.AddNodes(cli.Token, nodes)
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to add nodes")
+			var nodesCreated []*api.Node
+			var reqErrs []error
+			var reqErr error
+			if envelope {
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read node data
+				nodes := []boot_service_client.CreateNodeRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[boot_service_client.CreateNodeRequest](cmd, &nodes)
+				} else {
+					cli.HandlePayloadStdinSlice[boot_service_client.CreateNodeRequest](cmd, &nodes)
+				}
+
+				// Send off requests
+				nodesCreated, reqErrs, reqErr = bootServiceClient.AddNodes(cli.Token, nodes)
+			} else {
+				// Use simple API (spec)
+
+				// Read node data
+				nodes := []boot_service.NodeSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayloadSlice[boot_service.NodeSpec](cmd, &nodes)
+				} else {
+					cli.HandlePayloadStdinSlice[boot_service.NodeSpec](cmd, &nodes)
+				}
+
+				// Send off requests
+				nodesCreated, reqErrs, reqErr = bootServiceClient.AddNodeSpecs(cli.Token, nodes)
+			}
+
+			// Handle any non-request error
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to add nodes")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
 
 			// Deal with per-request errors
-			var errorsOccurred = false
-			for _, err := range errs {
+			var reqErrorsOccurred = false
+			for _, err := range reqErrs {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to add node")
-					errorsOccurred = true
+					reqErrorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("nodes created: %+v", nodesCreated)
-			if errorsOccurred {
+			var names []string
+			for _, node := range nodesCreated {
+				names = append(names, node.Metadata.Name)
+			}
+			log.Logger.Debug().Msgf("nodes created: %q", names)
+			if reqErrorsOccurred {
 				cli.LogHelpError(cmd)
 				log.Logger.Warn().Msg("node addition completed with errors")
 				os.Exit(1)

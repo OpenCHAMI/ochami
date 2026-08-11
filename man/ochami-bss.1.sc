@@ -221,6 +221,8 @@ Subcommands for this command are as follows:
 		Command line arguments to pass to kernel for components.
 
 *get* [-F _format_] [--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]
+	Aliases: *list*
+
 	Get boot parameters for all components or a subset of components, filtered
 	by MAC address, node ID, and/or xname.
 
@@ -390,6 +392,8 @@ Manage boot scripts for components.
 Subcommands for this command are as follows:
 
 *get* ([--mac _mac_] [--nid _nid_] [--xname _xname_])
+	Aliases: *list*
+
 	Get the iPXE boot script for a component. Exactly one of *--mac*, *--nid*,
 	or *--xname* is required to specify the component whose boot script to get.
 	Note that only *one* component's boot script is fetched.
@@ -466,6 +470,8 @@ Work with hosts in BSS.
 Subcommands for this command are as follows:
 
 *get* [-F _format_ ] [--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]
+	Aliases: *list*
+
 	Get a list of hosts that BSS knows about that are in SMD. These results can
 	be optionally filtered by MAC address, node ID, or xname. If no filters are
 	specified, all results are returned.

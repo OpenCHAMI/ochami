@@ -10,12 +10,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 
 	// Subcommands
-	service_cmd "github.com/OpenCHAMI/ochami/cmd/pcs/service"
-	status_cmd "github.com/OpenCHAMI/ochami/cmd/pcs/status"
-	transition_cmd "github.com/OpenCHAMI/ochami/cmd/pcs/transition"
+	service_cmd "github.com/openchami/ochami/cmd/pcs/service"
+	status_cmd "github.com/openchami/ochami/cmd/pcs/status"
+	transition_cmd "github.com/openchami/ochami/cmd/pcs/transition"
 )
 
 func NewCmd() *cobra.Command {

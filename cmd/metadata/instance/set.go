@@ -7,12 +7,14 @@ package instance
 import (
 	"os"
 
-	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
+	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
+
+	"github.com/openchami/ochami/internal/cli"
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
+	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdMetadataInstanceSet() *cobra.Command {
@@ -27,13 +29,21 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Set instance info details using payload data
   ochami metadata instance set instanceinfo-d614b918 -d \
     '{
+       "instance_id": "x1000c0s0b0n0",
+       "hostname": "nid001000.demo.cluster",
+       "local_hostname": "nid001000"
+     }'
+
+  # Set instance info details preserving labels/annotations (envelope API)
+  ochami metadata instance set instanceinfo-d614b918 -e -d \
+    '{
        "metadata": {
-         "name": "x1000c0s0b0n0-instance"
+         "labels": {
+           "env": "prod"
+         }
        },
        "spec": {
-         "instance_id": "x1000c0s0b0n0",
-         "hostname": "nid001000.demo.cluster",
-         "local_hostname": "nid001000"
+         "instance_id": "x1000c0s0b0n0"
        }
      }'
 
@@ -53,14 +63,43 @@ See ochami-metadata(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read instance data
-			instance := metadata_service_client.UpdateInstanceInfoRequest{}
-			cli.HandlePayload(cmd, &instance)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
+			}
 
-			// Send off requests
-			instanceSet, err := metadataServiceClient.SetInstanceInfo(cli.Token, args[0], instance)
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to set instance info")
+			var instanceSet *api.InstanceInfo
+			var reqErr error
+			if envelope {
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read instance data
+				instance := metadata_service_client.UpdateInstanceInfoRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &instance)
+				} else {
+					cli.HandlePayloadStdin(cmd, &instance)
+				}
+
+				// Send off request
+				instanceSet, reqErr = metadataServiceClient.SetInstanceInfo(cli.Token, args[0], instance)
+			} else {
+				// Use simple API (spec)
+
+				// Read instance data
+				spec := api.InstanceInfoSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &spec)
+				} else {
+					cli.HandlePayloadStdin(cmd, &spec)
+				}
+
+				// Send off request
+				instanceSet, reqErr = metadataServiceClient.SetInstanceInfoSpec(cli.Token, args[0], spec)
+			}
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to set instance info")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/OpenCHAMI/ochami/pkg/xname"
+	"github.com/openchami/ochami/pkg/xname"
 )
 
 const (

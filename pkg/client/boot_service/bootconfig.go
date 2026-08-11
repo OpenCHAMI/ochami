@@ -11,15 +11,27 @@ import (
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 
-	"github.com/OpenCHAMI/ochami/pkg/client"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/format"
 )
 
+// BootConfigSpec is a wrapper around the boot-service's BootConfigurationSpec
+// and is used specifically for the simple API. For adding boot configurations,
+// a "name" field is required but is only provided in the "metadata" structure,
+// which is outside of the spec and is only available in the advanced API. To get
+// around this, the upstream spec is wrapped with a "name" field so bulk specs
+// can be added with names specified for each without having to provide them as
+// arguments.
+type BootConfigSpec struct {
+	Name                      string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.BootConfigurationSpec `yaml:",inline"`
+}
+
 // AddBootConfigs is a wrapper that calls the boot-service client's
-// CreateBootConfiguration() function, passing it context. The output is a slice
-// of the boot configurations it created, each element of which corresponds to
-// an error in an error slice, followed by an error that is populatd if an error
-// occurred in the function itself.
+// CreateBootConfiguration() function, passing it context. It returns a slice of
+// successfully created boot configurations, a slice of per-request errors, and
+// an error that is populated if an error occurred in the function itself. A nil
+// resource returned without an error is reported as a per-request error.
 func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_service_client.CreateBootConfigurationRequest) (cfgsAdded []*api.BootConfiguration, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, bootCfg := range bootCfgs {
@@ -30,9 +42,12 @@ func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_servi
 		if err != nil {
 			newErr := fmt.Errorf("failed to add boot configuration %+v: %w", bootCfg, err)
 			errors = append(errors, newErr)
-			cfgsAdded = append(cfgsAdded, nil)
+		} else if item != nil {
+			cfgsAdded = append(cfgsAdded, item)
+		} else {
+			newErr := fmt.Errorf("boot configuration creation did not err, but was not created for: %+v", bootCfg)
+			errors = append(errors, newErr)
 		}
-		cfgsAdded = append(cfgsAdded, item)
 	}
 
 	return
@@ -147,6 +162,45 @@ func (bsc *BootServiceClient) SetBootConfig(token string, uid string, bootCfg bo
 	item, err := bsc.Client.WithBearerToken(token).UpdateBootConfiguration(ctx, uid, bootCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set boot configuration %+v: %w", bootCfg, err)
+	}
+
+	return item, nil
+}
+
+// AddBootConfigSpecs is like AddBootConfigs but calls the boot-service
+// client's simple CreateBootConfigurationSimple() function, which only sends
+// the resource name and spec.
+func (bsc *BootServiceClient) AddBootConfigSpecs(token string, bootCfgs []BootConfigSpec) (cfgsAdded []*api.BootConfiguration, errors []error, funcErr error) {
+	// TODO: Make concurrent
+	for _, bootCfg := range bootCfgs {
+		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+		defer cancel()
+
+		item, err := bsc.Client.WithBearerToken(token).CreateBootConfigurationSimple(ctx, bootCfg.Name, bootCfg.BootConfigurationSpec)
+		if err != nil {
+			newErr := fmt.Errorf("failed to add boot configuration %q (%+v): %w", bootCfg.Name, bootCfg.BootConfigurationSpec, err)
+			errors = append(errors, newErr)
+		} else if item != nil {
+			cfgsAdded = append(cfgsAdded, item)
+		} else {
+			newErr := fmt.Errorf("boot configuration creation did not err, but was not created for: %+v", bootCfg)
+			errors = append(errors, newErr)
+		}
+	}
+
+	return
+}
+
+// SetBootConfigSpec is like SetBootConfig but calls the boot-service client's
+// simple UpdateBootConfigurationSimple() function, which only sends the
+// resource spec.
+func (bsc *BootServiceClient) SetBootConfigSpec(token string, uid string, spec api.BootConfigurationSpec) (*api.BootConfiguration, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+	defer cancel()
+
+	item, err := bsc.Client.WithBearerToken(token).UpdateBootConfigurationSimple(ctx, uid, spec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set boot configuration %+v: %w", spec, err)
 	}
 
 	return item, nil

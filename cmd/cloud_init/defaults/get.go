@@ -11,20 +11,21 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 
 	// Command library
-	cloud_init_lib "github.com/OpenCHAMI/ochami/internal/cli/cloud_init"
+	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
 
 func newCmdDefaultsGet() *cobra.Command {
 	// defaultsGetCmd represents the "cloud-init defaults get" command
 	var defaultsGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get cloud-init default meta-data for a cluster",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get cloud-init default meta-data for a cluster",
 		Long: `Get cloud-init default meta-data for a cluster.
 
 See ochami-cloud-init(1) for more details.`,

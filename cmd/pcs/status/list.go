@@ -14,11 +14,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	pcs_lib "github.com/OpenCHAMI/ochami/internal/cli/pcs"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/internal/cli"
+	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 var xnames []string

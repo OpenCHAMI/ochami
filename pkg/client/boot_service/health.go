@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 // GetHealth is a wrapper that calls the boot-service client's GetHealth()

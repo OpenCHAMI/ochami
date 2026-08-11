@@ -12,9 +12,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/openchami/schemas/schemas"
 
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client/smd"
-	"github.com/OpenCHAMI/ochami/pkg/xname"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/smd"
+	"github.com/openchami/ochami/pkg/xname"
 )
 
 // DiscoveryInfoV2 is given the baseURI for the cluster and a NodeList

@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/config"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client/metadata_service"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
 // GetClient sets up the metadata-service client with the metadata-service base

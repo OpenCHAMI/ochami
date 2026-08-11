@@ -10,13 +10,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 
 	// Subcommands
-	defaults_cmd "github.com/OpenCHAMI/ochami/cmd/cloud_init/defaults"
-	group_cmd "github.com/OpenCHAMI/ochami/cmd/cloud_init/group"
-	node_cmd "github.com/OpenCHAMI/ochami/cmd/cloud_init/node"
-	service_cmd "github.com/OpenCHAMI/ochami/cmd/cloud_init/service"
+	defaults_cmd "github.com/openchami/ochami/cmd/cloud_init/defaults"
+	group_cmd "github.com/openchami/ochami/cmd/cloud_init/group"
+	node_cmd "github.com/openchami/ochami/cmd/cloud_init/node"
+	service_cmd "github.com/openchami/ochami/cmd/cloud_init/service"
 )
 
 func NewCmd() *cobra.Command {

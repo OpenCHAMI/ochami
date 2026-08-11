@@ -10,9 +10,11 @@ import (
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	boot_service_lib "github.com/OpenCHAMI/ochami/internal/cli/boot_service"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
+
+	"github.com/openchami/ochami/internal/cli"
+	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
+	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdBootConfigSet() *cobra.Command {
@@ -49,6 +51,20 @@ See ochami-boot(1) for more details.`,
        "priority": 42
      }'
 
+  # Set boot configuration preserving labels/annotations (envelope API)
+  ochami boot config set boo-914afad2 -e -d \
+    '{
+       "metadata": {
+         "labels": {
+           "env": "prod"
+         }
+       },
+       "spec": {
+         "hosts": ["item1"],
+         "kernel": "http://s3.openchami.cluster/kernels/vmlinuz1"
+       }
+     }'
+
   # Set boot configuration using input payload file
   ochami boot config set -d @payload.json boo-914afad2
   ochami boot config set -d @payload.yaml -f yaml boo-914afad2
@@ -65,18 +81,43 @@ See ochami-boot(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read boot configuration data
-			bcs := boot_service_client.UpdateBootConfigurationRequest{}
-			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &bcs)
-			} else {
-				cli.HandlePayloadStdin(cmd, &bcs)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
 			}
 
-			// Send off requests
-			cfgSet, err := bootServiceClient.SetBootConfig(cli.Token, args[0], bcs)
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to set boot configuration")
+			var cfgSet *api.BootConfiguration
+			var reqErr error
+			if envelope {
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read boot configuration data
+				bcs := boot_service_client.UpdateBootConfigurationRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &bcs)
+				} else {
+					cli.HandlePayloadStdin(cmd, &bcs)
+				}
+
+				// Send off request
+				cfgSet, reqErr = bootServiceClient.SetBootConfig(cli.Token, args[0], bcs)
+			} else {
+				// Use simple API (spec)
+
+				// Read boot configuration data
+				spec := api.BootConfigurationSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &spec)
+				} else {
+					cli.HandlePayloadStdin(cmd, &spec)
+				}
+
+				// Send off request
+				cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cli.Token, args[0], spec)
+			}
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to set boot configuration")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}

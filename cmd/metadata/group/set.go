@@ -7,12 +7,14 @@ package group
 import (
 	"os"
 
-	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
+	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
+
+	"github.com/openchami/ochami/internal/cli"
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
+	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdMetadataGroupSet() *cobra.Command {
@@ -27,13 +29,21 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Set group details using payload data
   ochami metadata group set group-d614b918 -d \
     '{
+       "template":"#cloud-config\npackages:\n  - vim\n",
+       "metaData":{"role":"compute"},
+       "osVersion":"ubuntu-22.04"
+     }'
+
+  # Set group details preserving labels/annotations (envelope API)
+  ochami metadata group set group-d614b918 -e -d \
+    '{
        "metadata": {
-         "name": "compute-group"
+         "labels": {
+           "role": "compute"
+         }
        },
        "spec": {
-         "template":"#cloud-config\npackages:\n  - vim\n",
-         "metaData":{"role":"compute"},
-         "osVersion":"ubuntu-22.04"
+         "template":"#cloud-config\npackages:\n  - vim\n"
        }
      }'
 
@@ -53,14 +63,43 @@ See ochami-metadata(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read group data
-			group := metadata_service_client.UpdateGroupRequest{}
-			cli.HandlePayload(cmd, &group)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
+			}
 
-			// Send off requests
-			groupSet, err := metadataServiceClient.SetGroup(cli.Token, args[0], group)
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to set group")
+			var groupSet *api.Group
+			var reqErr error
+			if envelope {
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read group data
+				group := metadata_service_client.UpdateGroupRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &group)
+				} else {
+					cli.HandlePayloadStdin(cmd, &group)
+				}
+
+				// Send off request
+				groupSet, reqErr = metadataServiceClient.SetGroup(cli.Token, args[0], group)
+			} else {
+				// Use simple API (spec)
+
+				// Read group data
+				spec := api.GroupSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &spec)
+				} else {
+					cli.HandlePayloadStdin(cmd, &spec)
+				}
+
+				// Send off request
+				groupSet, reqErr = metadataServiceClient.SetGroupSpec(cli.Token, args[0], spec)
+			}
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to set group")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}

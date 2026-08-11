@@ -11,7 +11,7 @@ import (
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/rs/zerolog"
 
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 const (

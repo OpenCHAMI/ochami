@@ -13,19 +13,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 
-	bss_lib "github.com/OpenCHAMI/ochami/internal/cli/bss"
+	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
 
 func newCmdBootScriptGet() *cobra.Command {
 	// bootScriptGetCmd represents the "bss boot script get" command
 	var bootScriptGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get iPXE boot script for a component",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get iPXE boot script for a component",
 		Long: `Get iPXE boot script for a component. Specifying one of --mac, --xname,
 or --nid is required to specify which component to fetch the boot script for.
 

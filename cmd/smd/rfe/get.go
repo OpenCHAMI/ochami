@@ -13,19 +13,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 
-	smd_lib "github.com/OpenCHAMI/ochami/internal/cli/smd"
+	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
 
 func newCmdRfeGet() *cobra.Command {
 	// rfeGetCmd represents the "smd rfe get" command
 	var rfeGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get all redfish endpoints or some based on filter(s)",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get all redfish endpoints or some based on filter(s)",
 		Long: `Get all redfish endpoints or some based on filter(s). If no options are passed,
 all redfish endpoints are returned. Optionally, options can be passed to limit the redfish
 endpoints returned.

@@ -15,20 +15,21 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
-	"github.com/OpenCHAMI/ochami/pkg/client/cloud_init"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/client/cloud_init"
 
-	cloud_init_lib "github.com/OpenCHAMI/ochami/internal/cli/cloud_init"
+	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
 
 func newCmdNodeGet() *cobra.Command {
 	// nodeGetCmd represents the "cloud-init group get" command
 	var nodeGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get data for specific node(s)",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get data for specific node(s)",
 		Long: `Get data for specific node(s).
 
 See ochami-cloud-init(1) for more details.`,

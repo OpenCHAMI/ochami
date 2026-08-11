@@ -10,12 +10,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 
 	// Subcommands
-	image_cmd "github.com/OpenCHAMI/ochami/cmd/bss/boot/image"
-	params_cmd "github.com/OpenCHAMI/ochami/cmd/bss/boot/params"
-	script_cmd "github.com/OpenCHAMI/ochami/cmd/bss/boot/script"
+	image_cmd "github.com/openchami/ochami/cmd/bss/boot/image"
+	params_cmd "github.com/openchami/ochami/cmd/bss/boot/params"
+	script_cmd "github.com/openchami/ochami/cmd/bss/boot/script"
 )
 
 func NewCmd() *cobra.Command {

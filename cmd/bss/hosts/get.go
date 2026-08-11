@@ -13,19 +13,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 
-	bss_lib "github.com/OpenCHAMI/ochami/internal/cli/bss"
+	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
 
 func newCmdHostsGet() *cobra.Command {
 	// hostsGetCmd represents the "bss hosts get" command
 	var hostsGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get information on hosts known to BSS",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get information on hosts known to BSS",
 		Long: `Get information on hosts known to BSS.
 
 See ochami-bss(1) for more details.`,

@@ -11,8 +11,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 var (

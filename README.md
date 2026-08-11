@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 `ochami` is the command line interface to interact with the API of OpenCHAMI
 services, especially the [State Management Database
 (SMD)](https://github.com/OpenCHAMI/smd) and the [Boot Script Service
-(BSS)](https://github.com/OpenCHAMI/bss). The tool is meant to ease interaction
+(BSS)](https://github.com/openchami/bss). The tool is meant to ease interaction
 with the API so one need not be proficient in `curl`.
 
 ## Contributing

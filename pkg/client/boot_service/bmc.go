@@ -11,14 +11,26 @@ import (
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 
-	"github.com/OpenCHAMI/ochami/pkg/client"
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/format"
 )
 
+// BMCSpec is a wrapper around the boot-service's BMCSpec and is used
+// specifically for the simple API. For adding BMCs, a "name" field is required
+// but is only provided in the "metadata" structure, which is outside of the
+// spec and is only available in the advanced API. To get around this, the
+// upstream spec is wrapped with a "name" field so bulk specs can be added with
+// names specified for each without having to provide them as arguments.
+type BMCSpec struct {
+	Name        string `json:"name" yaml:"name"` // Mandatory for adding resource
+	api.BMCSpec `yaml:",inline"`
+}
+
 // AddBMCs is a wrapper that calls the boot-service client's CreateBMC()
-// function, passing it context. The output is a slice of the BMCs it created,
-// each element of which corresponds to an error in an error slice, followed by
-// an error that is populatd if an error occurred in the function itself.
+// function, passing it context. It returns a slice of successfully created
+// BMCs, a slice of per-request errors, and an error that is populated if an
+// error occurred in the function itself. A nil resource returned without an
+// error is reported as a per-request error.
 func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.CreateBMCRequest) (bmcsAdded []*api.BMC, errors []error, funcErr error) {
 	// TODO: Make concurrent
 	for _, bmc := range bmcs {
@@ -29,9 +41,12 @@ func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.C
 		if err != nil {
 			newErr := fmt.Errorf("failed to add bmc %+v: %w", bmc, err)
 			errors = append(errors, newErr)
-			bmcsAdded = append(bmcsAdded, nil)
+		} else if item != nil {
+			bmcsAdded = append(bmcsAdded, item)
+		} else {
+			newErr := fmt.Errorf("BMC creation did not err, but was not created for: %+v", bmc)
+			errors = append(errors, newErr)
 		}
-		bmcsAdded = append(bmcsAdded, item)
 	}
 
 	return
@@ -142,6 +157,43 @@ func (bsc *BootServiceClient) SetBMC(token string, uid string, bmc boot_service_
 	item, err := bsc.Client.WithBearerToken(token).UpdateBMC(ctx, uid, bmc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set BMC %+v: %w", bmc, err)
+	}
+
+	return item, nil
+}
+
+// AddBMCSpecs is like AddBMCs but calls the boot-service client's simple
+// CreateBMCSimple() function, which only sends the resource name and spec.
+func (bsc *BootServiceClient) AddBMCSpecs(token string, bmcs []BMCSpec) (bmcsAdded []*api.BMC, errors []error, funcErr error) {
+	// TODO: Make concurrent
+	for _, bmc := range bmcs {
+		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+		defer cancel()
+
+		item, err := bsc.Client.WithBearerToken(token).CreateBMCSimple(ctx, bmc.Name, bmc.BMCSpec)
+		if err != nil {
+			newErr := fmt.Errorf("failed to add bmc %q (%+v): %w", bmc.Name, bmc.BMCSpec, err)
+			errors = append(errors, newErr)
+		} else if item != nil {
+			bmcsAdded = append(bmcsAdded, item)
+		} else {
+			newErr := fmt.Errorf("BMC creation did not err, but was not created for: %+v", bmc)
+			errors = append(errors, newErr)
+		}
+	}
+
+	return
+}
+
+// SetBMCSpec is like SetBMC but calls the boot-service client's simple
+// UpdateBMCSimple() function, which only sends the resource spec.
+func (bsc *BootServiceClient) SetBMCSpec(token string, uid string, spec api.BMCSpec) (*api.BMC, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+	defer cancel()
+
+	item, err := bsc.Client.WithBearerToken(token).UpdateBMCSimple(ctx, uid, spec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set BMC %+v: %w", spec, err)
 	}
 
 	return item, nil

@@ -21,7 +21,7 @@ import (
 	"github.com/gorilla/websocket"
 	"golang.org/x/term"
 
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 // ctrlCByte is the byte value for Ctrl+C in raw terminal mode.

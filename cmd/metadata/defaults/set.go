@@ -7,12 +7,14 @@ package defaults
 import (
 	"os"
 
-	metadata_service_client "github.com/OpenCHAMI/metadata-service/pkg/client"
+	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
+
+	"github.com/openchami/ochami/internal/cli"
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
+	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdMetadataDefaultsSet() *cobra.Command {
@@ -27,15 +29,24 @@ See ochami-metadata(1) for more details.`,
 		Example: `  # Set cluster defaults details using payload data
   ochami metadata defaults set clusterdefaults-d614b918 -d \
     '{
+       "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+       "cluster_name": "demo",
+       "description": "Demo cluster defaults",
+       "short_name": "nid",
+       "nid_length": 4
+     }'
+
+  # Set cluster defaults details preserving labels/annotations (envelope API)
+  ochami metadata defaults set clusterdefaults-d614b918 -e -d \
+    '{
        "metadata": {
-         "name": "demo-cluster-defaults"
+         "labels": {
+           "env": "prod"
+         }
        },
        "spec": {
          "base_url": "https://demo.openchami.cluster:8443/cloud-init",
-         "cluster_name": "demo",
-         "description": "Demo cluster defaults",
-         "short_name": "nid",
-         "nid_length": 4
+         "cluster_name": "demo"
        }
      }'
 
@@ -55,14 +66,43 @@ See ochami-metadata(1) for more details.`,
 			// Handle token for this command
 			cli.HandleToken(cmd)
 
-			// Read cluster defaults data
-			defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
-			cli.HandlePayload(cmd, &defaults)
+			// Determine how to read payload (simple versus advanced API)
+			envelope, flagErr := cmd.Flags().GetBool("envelope")
+			if flagErr != nil {
+				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
+			}
 
-			// Send off requests
-			defaultsSet, err := metadataServiceClient.SetDefaults(cli.Token, args[0], defaults)
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to set cluster defaults")
+			var defaultsSet *api.ClusterDefaults
+			var reqErr error
+			if envelope {
+				// Use advanced API (spec, metadata, annotations)
+
+				// Read cluster defaults data
+				defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &defaults)
+				} else {
+					cli.HandlePayloadStdin(cmd, &defaults)
+				}
+
+				// Send off request
+				defaultsSet, reqErr = metadataServiceClient.SetDefaults(cli.Token, args[0], defaults)
+			} else {
+				// Use simple API (spec)
+
+				// Read cluster defaults data
+				spec := api.ClusterDefaultsSpec{}
+				if cmd.Flag("data").Changed {
+					cli.HandlePayload(cmd, &spec)
+				} else {
+					cli.HandlePayloadStdin(cmd, &spec)
+				}
+
+				// Send off request
+				defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cli.Token, args[0], spec)
+			}
+			if reqErr != nil {
+				log.Logger.Error().Err(reqErr).Msg("failed to set cluster defaults")
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}

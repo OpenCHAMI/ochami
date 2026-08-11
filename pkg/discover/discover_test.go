@@ -14,7 +14,7 @@ import (
 
 	"github.com/openchami/schemas/schemas"
 
-	"github.com/OpenCHAMI/ochami/pkg/client/smd"
+	"github.com/openchami/ochami/pkg/client/smd"
 )
 
 func TestDiscoveryInfoV2_Table(t *testing.T) {

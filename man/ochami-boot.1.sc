@@ -8,16 +8,83 @@ ochami-boot - Communicate with the Boot Service
 
 *ochami boot* [_global-options_] _command_ [_command-options_] [_arguments_]
 
-*ochami boot* (*bmc* | *config* | *node*) *add* [-f _format_] [-d (_data_ | @_path_ | @-)]++
+*ochami boot* (*bmc* | *config* | *node*) *add* [-e] [-f _format_] [-d (_data_ | @_path_ | @-)]++
 *ochami boot* (*bmc* | *config* | *node*) *delete* [--no-confirm] _uid_...++
 *ochami boot* (*bmc* | *config* | *node*) *get* [-F _format_] _uid_++
 *ochami boot* (*bmc* | *config* | *node*) *list* [-F _format_]++
 *ochami boot* (*bmc* | *config* | *node*) *patch* [-f _format_] [-p _patch_method_] [-d (_data_ | @_path_ | @-)] _uid_++
 *ochami boot* (*bmc* | *config* | *node*) *patch* (--add _key_=_val_ | --remove _key_=_index_ | --set _key_=_val_ | --unset _key_)... _uid_++
-*ochami boot* (*bmc* | *config* | *node*) *set* [-f _format_] [-d (_data_ | @_path_ | @-)] _uid_++
+*ochami boot* (*bmc* | *config* | *node*) *set* [-e] [-f _format_] [-d (_data_ | @_path_ | @-)] _uid_++
 *ochami boot service status* [-F _format_]
 
-# DATA STRUCTURE
+# SIMPLE VERSUS ADVANCED API
+
+The user can either specify just the specification of a resource when
+creating/modifying it or specify additional annotations, labels, and metadata as
+outlined below.
+
+## SIMPLE API
+
+For commands that add or edit data (*add*, *set*), the default way to pass the
+data is via the specification ("spec") of the data itself with a mandatory
+*name* field (see *DATA SPECIFICATIONS* for data type specifications). This is the
+*simple API*.
+
+When using the simple API, the *name* field is _required_ to be specified in the
+spec. This will set the name in the metadata of the resource, which means the
+specified name will appear in *metadata.name* when listing the resource.
+
+For example, a resource spec when creating/modifying a resource would look
+something like:
+
+```
+{
+  "name": "my-resource",
+  // other spec data
+}
+```
+
+When listing that same resource, it will look like:
+
+```
+{
+  "metadata": {
+    "name": "my-resource",
+	...
+  },
+  ...
+  "spec": {
+	  // other spec data
+  }
+}
+```
+
+## ADVANCED API
+
+For finer-grain control, the *--envelope*/*-e* flag can be used to enable the
+*advanced* API, which allows specifying additional metadata, labels, and
+annotations. A JSON example of using this API would be:
+
+```
+{
+  "annotations": {...},
+  "labels": {...},
+  "metadata": {...},
+  "spec": {...}         // <- where spec goes
+}
+```
+
+This can be thought of as the "raw" data structure since the simple API
+abstracts creating this structure while the advanced API exposes it directly.
+Either way, this data structure is what is sent over the wire.
+
+# DATA SPECIFICATIONS
+
+The following are the specifications for the various boot-service resources
+accepted and returned by *ochami*.
+
+Note that the *name* field is omitted from the data specifications below since
+that is technically metadata (see *SIMPLE VERSUS ADVANCED API*).
 
 ## BOOT CONFIGURATION
 
@@ -128,6 +195,14 @@ The *bmc*, *config*, and *node* commands share a common set of subcommands for
 creating, deleting, reading, listing, patching, and replacing boot-service
 resources. The *service* command provides operations for boot-service itself.
 
+By default, the *add* and *set* subcommands use the boot-service _simple_ API,
+which sends only the resource spec (with a required _name_ field for *add*). Any
+_labels_ or _annotations_ must instead be supplied via the _envelope_ (advanced)
+API, which is enabled by passing the *-e*/*--envelope* flag and preserves
+metadata, labels, and annotations. See *SIMPLE VERSUS ADVANCED API* for details.
+This flag is available on the *add* and *set* subcommands of the *bmc*,
+*config*, and *node* commands.
+
 [[ *Resource*
 :< *Subcommands*
 :< *Description*
@@ -150,10 +225,10 @@ Manage BMCs stored in boot-service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add one or more BMC specifications to boot-service.
 
 	In the first and third forms of the command, data is read from standard
@@ -168,6 +243,12 @@ Subcommands for this command are as follows:
 	This command sends a POST request to boot-service's BMC endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -287,10 +368,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of a BMC identified by _uid_. The entire
 	specification for the BMC is replaced with the specification that is passed.
 
@@ -306,6 +387,12 @@ Subcommands for this command are as follows:
 	This command sends a PUT request to boot-service's BMC endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -326,10 +413,10 @@ Manage boot configurations stored in the boot service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add new boot configuration to be able to be used by nodes. If boot
 	configuration already exists for the specified components, this command will
 	fail.
@@ -347,6 +434,12 @@ Subcommands for this command are as follows:
 	endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -468,10 +561,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of a boot configuration identified by _uid_. The
 	entire specification for the boot configuration gets replaced with the
 	specification that is passed.
@@ -489,6 +582,12 @@ Subcommands for this command are as follows:
 	endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -509,10 +608,10 @@ Manage nodes stored in boot-service.
 
 Subcommands for this command are as follows:
 
-*add* [-f _format_] < _file_++
-*add* [-f _format_] -d @_file_++
-*add* [-f _format_] -d @- < _file_++
-*add* [-f _format_] -d _data_
+*add* [-e] [-f _format_] < _file_++
+*add* [-e] [-f _format_] -d @_file_++
+*add* [-e] [-f _format_] -d @- < _file_++
+*add* [-e] [-f _format_] -d _data_
 	Add one or more nodes to boot-service.
 
 	In the first and third forms of the command, data is read from standard
@@ -527,6 +626,12 @@ Subcommands for this command are as follows:
 	This command sends a POST request to boot-service's node endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -646,10 +751,10 @@ Subcommands for this command are as follows:
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
-*set* [-f _format_] _uid_ < _file_++
-*set* [-f _format_] -d @_file_ _uid_++
-*set* [-f _format_] -d @- _uid_ < _file_++
-*set* [-f _format_] -d _data_ _uid_
+*set* [-e] [-f _format_] _uid_ < _file_++
+*set* [-e] [-f _format_] -d @_file_ _uid_++
+*set* [-e] [-f _format_] -d @- _uid_ < _file_++
+*set* [-e] [-f _format_] -d _data_ _uid_
 	Set the specification of a node identified by _uid_. The entire
 	specification for the node is replaced with the specification that is
 	passed.
@@ -666,6 +771,12 @@ Subcommands for this command are as follows:
 	This command sends a PUT request to boot-service's node endpoint.
 
 	This command accepts the following options:
+
+	*-e, --envelope*
+		Use the envelope (advanced) API, preserving metadata, labels, and
+		annotations, instead of the simple API. Without this
+		flag, only the spec is sent and labels/annotations cannot be
+		specified. See *SIMPLE VERSUS ADVANCED API* for details.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data

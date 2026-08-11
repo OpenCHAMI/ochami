@@ -12,19 +12,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 
-	smd_lib "github.com/OpenCHAMI/ochami/internal/cli/smd"
+	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
 
 func newCmdGroupMemberGet() *cobra.Command {
 	// groupMemberGetCmd represents the "smd group member get" command
 	var groupMemberGetCmd = &cobra.Command{
-		Use:   "get <group_label>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Get members of a group",
+		Use:     "get <group_label>",
+		Aliases: []string{"list"},
+		Args:    cobra.ExactArgs(1),
+		Short:   "Get members of a group",
 		Long: `Get members of a group.
 
 See ochami-smd(1) for more details.`,

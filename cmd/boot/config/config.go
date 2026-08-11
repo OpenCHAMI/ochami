@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 )
 
 func NewCmd() *cobra.Command {
@@ -29,6 +29,9 @@ See ochami-boot(1) for more details.`,
 			}
 		},
 	}
+
+	// Create flags
+	bootConfigCmd.PersistentFlags().BoolP("envelope", "e", false, "use the envelope (advanced) API, preserving metadata/labels/annotations, instead of the simple API")
 
 	// Add subcommands
 	bootConfigCmd.AddCommand(

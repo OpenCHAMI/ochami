@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 const (

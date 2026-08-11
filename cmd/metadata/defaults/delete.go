@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	metadata_service_lib "github.com/OpenCHAMI/ochami/internal/cli/metadata_service"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
+	"github.com/openchami/ochami/internal/log"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/cli"
 )
 
 func newCmdMetadataDefaultsDelete() *cobra.Command {

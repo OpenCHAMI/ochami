@@ -13,19 +13,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 
-	smd_lib "github.com/OpenCHAMI/ochami/internal/cli/smd"
+	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
 
 func newCmdIfaceGet() *cobra.Command {
 	// ifaceGetCmd represents the "smd iface get" command
 	var ifaceGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get some or all ethernet interfaces",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get some or all ethernet interfaces",
 		Long: `Get some or all ethernet interfaces optionally based on filter(s). If no options are
 passed, all ethernet interfaces are returned. Optionally, options can be passed to limit the
 ethernet interfaces returned.

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/OpenCHAMI/ochami/pkg/format"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 // JSONPatchOperation is a single operation in an RFC 6902 JSON Patch document.

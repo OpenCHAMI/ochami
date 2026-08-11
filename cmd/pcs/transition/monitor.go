@@ -14,10 +14,10 @@ import (
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
 
-	pcs_lib "github.com/OpenCHAMI/ochami/internal/cli/pcs"
+	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
 )
 
 var pollInterval int = 1

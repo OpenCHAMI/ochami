@@ -5,7 +5,7 @@
 
 package main
 
-import "github.com/OpenCHAMI/ochami/cmd"
+import "github.com/openchami/ochami/cmd"
 
 func main() {
 	cmd.Execute()

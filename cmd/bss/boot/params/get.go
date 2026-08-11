@@ -13,19 +13,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/OpenCHAMI/ochami/internal/cli"
-	"github.com/OpenCHAMI/ochami/internal/log"
-	"github.com/OpenCHAMI/ochami/pkg/client"
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 
-	bss_lib "github.com/OpenCHAMI/ochami/internal/cli/bss"
+	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
 
 func newCmdBootParamsGet() *cobra.Command {
 	// bootParamsGetCmd represents the "bss boot params get" command
 	var bootParamsGetCmd = &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
-		Short: "Get boot parameters for one or all nodes",
+		Use:     "get",
+		Aliases: []string{"list"},
+		Args:    cobra.NoArgs,
+		Short:   "Get boot parameters for one or all nodes",
 		Long: `Get boot parameters for one or all nodes. If no options are passed, all boot
 parameters are returned. Optionally, --mac, --xname, and/or --nid can be passed at least once
 to get boot parameters for specific components.
