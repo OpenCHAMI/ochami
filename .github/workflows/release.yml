@@ -61,7 +61,7 @@ jobs:
           IS_PR_BUILD: 'false'
         with:
           version: '~> v2'
-          args: release --clean --release-notes ../notes.md --skip aur
+          args: release --clean --release-notes ../notes.md
         id: goreleaser
 
       - name: Process goreleaser output
