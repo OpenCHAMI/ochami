@@ -128,6 +128,10 @@ func (i ioStream) LoopYesNo(p string) (bool, error) {
 func InitConfig(cmd *cobra.Command, create bool) error {
 	// Do not read or write config file if --ignore-config passed
 	if cmd.Flags().Changed("ignore-config") {
+		err := config.LoadGlobalConfigDefaultOnly()
+		if err != nil {
+			return fmt.Errorf("unable to load default config: %w", err)
+		}
 		return nil
 	}
 
