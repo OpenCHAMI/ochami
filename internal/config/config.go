@@ -365,11 +365,14 @@ func LoadGlobalConfigDefaultOnly() error {
 	GlobalKoanf = k
 
 	err = k.Load(confmap.Provider(DefaultConfigMap, "."), nil)
+	if err != nil {
+		return fmt.Errorf("unable to load default config: %w", err)
+	}
 
 	// Marshalling to the global config variable
 	err = k.Unmarshal("", &GlobalConfig)
 	if err != nil {
-		return fmt.Errorf("unable to unmarshal merged config: %w", err)
+		return fmt.Errorf("unable to unmarshal default config: %w", err)
 	}
 
 	log.EarlyLogger.BasicLogf("final config:")
