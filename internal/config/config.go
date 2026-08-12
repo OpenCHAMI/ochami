@@ -496,6 +496,7 @@ func LoadGlobalConfigFromFile(path string) error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 
 	ko := koanf.NewWithConf(kConfig)
+	GlobalKoanf = ko
 	err := ko.Load(file.Provider(path), configParser)
 	if errors.Is(err, os.ErrNotExist) { // This an error we can ignore
 		log.EarlyLogger.BasicLogf("config '%s' not found, skipping", path)
@@ -506,6 +507,12 @@ func LoadGlobalConfigFromFile(path string) error {
 		for _, k := range ko.Keys() {
 			log.EarlyLogger.BasicLogf("\t%s -> %v", k, ko.Get(k))
 		}
+	}
+
+	// Marshalling to the global config variable
+	err = ko.Unmarshal("", &GlobalConfig)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal merged config: %w", err)
 	}
 
 	// No error occurred
