@@ -451,9 +451,14 @@ func LoadGlobalConfigMerged() error {
 						return fmt.Errorf("unable to load default cluster config: %w", err)
 					}
 				}
-				err = clusterMap[name].Load(confmap.Provider(cluster["cluster"].(map[string]any), ""), nil)
-				if err != nil {
-					return fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
+				switch cls := cluster["cluster"].(type) {
+				case map[string]any:
+					err = clusterMap[name].Load(confmap.Provider(cls, ""), nil)
+					if err != nil {
+						return fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
+					}
+				default:
+					return fmt.Errorf("unable to merge cluster '%s' from config '%s': value is not a map[string]any type", name, c.name)
 				}
 			}
 
