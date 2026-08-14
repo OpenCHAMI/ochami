@@ -21,7 +21,7 @@ require (
 	github.com/openchami/boot-service v0.3.1
 	github.com/openchami/bss v1.32.3
 	github.com/openchami/cloud-init v1.4.8
-	github.com/openchami/fabrica v0.4.9
+	github.com/openchami/fabrica v0.4.10
 	github.com/openchami/metadata-service v0.2.1
 	github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4
 	github.com/openchami/smd/v2 v2.20.5
