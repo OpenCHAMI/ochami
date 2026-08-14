@@ -47,6 +47,7 @@ func NewClient(baseURI string, timeout time.Duration, apiVersion string, logger 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create %s client: %w", serviceNameBootService, err)
 	}
+	bsc = bsc.WithShowToken(oc.ShowToken)
 
 	// Optionally set API version, if passed.
 	if apiVersion != "" {
