@@ -148,8 +148,8 @@ github.com/onsi/ginkgo/v2 v2.23.4 h1:ktYTpKJAVZnDT4VjxSbiBenUjmlL/5QkBEocaWXiQus
 github.com/onsi/ginkgo/v2 v2.23.4/go.mod h1:Bt66ApGPBFzHyR+JO10Zbt0Gsp4uWxu5mIOTusL46e8=
 github.com/onsi/gomega v1.37.0 h1:CdEG8g0S133B4OswTDC/5XPSzE1OeP29QOioj2PID2Y=
 github.com/onsi/gomega v1.37.0/go.mod h1:8D9+Txp43QWKhM24yyOBEdpkzN8FvJyAwecBgsU4KU0=
-github.com/openchami/boot-service v0.3.1 h1:DY8g1aPCNkeMFVOPwT58yzTBm792N6hRigmTTNq7mTE=
-github.com/openchami/boot-service v0.3.1/go.mod h1:C9Vk8cDNQHDmuDSaHb/KgpZjcAo3Dg2SndBLD3JFBl0=
+github.com/openchami/boot-service v0.3.2 h1:8iCSEw9oylxxlz82nSd4luyi+7KqveTKUzJYc534/uc=
+github.com/openchami/boot-service v0.3.2/go.mod h1:pR3ntZuKatkcJDMlVGEPPyNd1viiobRz19qFF5mwGPo=
 github.com/openchami/bss v1.32.3 h1:Jxvif/eQYcIuiYnCi4nQB2vdVR21Z4ES7Z1kWQtfbvk=
 github.com/openchami/bss v1.32.3/go.mod h1:seHDKKIUJVTfVQlOoN0zgam3EPLieV7wPurQ14WxOL0=
 github.com/openchami/cloud-init v1.4.8 h1:kJlq5lz0XHXEvqq4tk19JqG1cNudowWzGA+t91jHrB8=
