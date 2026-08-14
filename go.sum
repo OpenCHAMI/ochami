@@ -156,8 +156,8 @@ github.com/openchami/cloud-init v1.4.8 h1:kJlq5lz0XHXEvqq4tk19JqG1cNudowWzGA+t91
 github.com/openchami/cloud-init v1.4.8/go.mod h1:Od9ncf2sMapD+ezVTPXRT44vj2Gw4Pe8hFDCQc7ocYk=
 github.com/openchami/fabrica v0.4.10 h1:IQEifXLlqmTYL8sGPeyWU91TJNavl2nW7j0nOG1bxGc=
 github.com/openchami/fabrica v0.4.10/go.mod h1:sYUzamU3d3/wbW4AxKpMKRTAEA/OkEHoc8Tr76NKE8c=
-github.com/openchami/metadata-service v0.2.1 h1:l3/pc34Wj3go1AVDQ4iZIzZQqa3N5Z6AfJCj00Ly5BQ=
-github.com/openchami/metadata-service v0.2.1/go.mod h1:YkZHAuuJPi8G7h7/zSo+7sm4JEyphAY7NK/ssbiHBMw=
+github.com/openchami/metadata-service v0.2.2 h1:rvpq68HrEkFN1DXws+71Cm9q6MTS7yN+11tcYlYvonE=
+github.com/openchami/metadata-service v0.2.2/go.mod h1:eWJAeuSUsKbuqmT9x1CiotmoMWv0k9V9KpEOiMKGHnA=
 github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4 h1:89rudSw0TeedlHbGr5L9WEW9lJ3yMEtY2EgxoC7EGso=
 github.com/openchami/schemas v0.0.0-20250625220233-9aad17a286c4/go.mod h1:3dridLqXvAdO0ypPXuxnXRgaK2h/dItVKGseCgFQ13k=
 github.com/openchami/smd/v2 v2.20.5 h1:iMtQKKUYJ3HoRXmlHcFLitOlSBzYfYzAe1GN0Y8dtFA=
