@@ -76,7 +76,7 @@ var (
 	configParser = kyaml.Parser()
 
 	// Global koanf struct configuration
-	kConfig = koanf.Conf{Delim: "."}
+	kConfig = koanf.Conf{Delim: ".", StrictMerge: true}
 )
 
 // Config represents the structure of a configuration file.
