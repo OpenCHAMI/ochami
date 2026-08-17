@@ -360,6 +360,7 @@ func RemoveFromSlice[T any](slice []T, index int) []T {
 	return slice[:len(slice)-1]
 }
 
+// Returns the timeout from the default config, doing parsing and type conversions
 func GetDefaultTimeout() time.Duration {
 	// This should always be present since it's specific in the source
 	to := DefaultConfigMap["timeout"]
@@ -373,6 +374,8 @@ func GetDefaultTimeout() time.Duration {
 	return -1
 }
 
+// Like LoadGlobalConfigMerged, but only loads the default config (used for the
+// --ignore-config flag)
 func LoadGlobalConfigDefaultOnly() error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 
@@ -929,6 +932,7 @@ func WriteConfig(path string, k *koanf.Koanf) error {
 	return nil
 }
 
+// Returns the path of the user config, which is different for every user
 func getUserConfigPath() (string, error) {
 	// Generate user config path: ~/.config/ochami/config.yaml
 	user, err := user.Current()
