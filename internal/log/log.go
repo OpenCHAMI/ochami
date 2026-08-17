@@ -142,13 +142,3 @@ func (el BasicLogger) BasicLogf(fstr string, arg ...interface{}) {
 		fmt.Fprintf(el.out, fstr+"\n", arg...)
 	}
 }
-
-// If early logging is enabled, passes calls through to the underlying io.Writer
-// Otherwise, it's a noop
-func (el BasicLogger) Write(p []byte) (int, error) {
-	if el.EarlyVerbose {
-		return el.out.Write(p)
-	} else {
-		return len(p), nil
-	}
-}
