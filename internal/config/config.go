@@ -594,6 +594,11 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 		return fmt.Errorf("failed to read %s for modification: %w", path, err)
 	}
 
+	delim := ko.Delim()
+	if strings.Contains(cluster, delim) {
+		return fmt.Errorf("cluster name '%s' contains delimiter character '%s'", cluster, delim)
+	}
+
 	var clusters []map[string]any
 	err = ko.Unmarshal("clusters", &clusters)
 	if err != nil {
