@@ -903,11 +903,6 @@ func ReadConfig(path string) (*koanf.Koanf, error) {
 		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
 	}
 
-	// Unmarshal koanf data into config struct
-	if err := ko.Load(file.Provider(path), configParser); err != nil {
-		return ko, fmt.Errorf("failed to read config data: %w", err)
-	}
-
 	return ko, nil
 }
 
