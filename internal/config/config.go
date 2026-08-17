@@ -429,6 +429,12 @@ func LoadGlobalConfigMerged() error {
 		parser   koanf.Parser
 	}
 
+	// Create parsers and merge configs into it:
+	//
+	//   1. Default config
+	//   2. System config
+	//   3. User config
+	//
 	configsToLoad := []configLoader{
 		{"default", confmap.Provider(DefaultConfigMap, "."), nil},
 		{"system", file.Provider(SystemConfigFile), configParser},
@@ -450,7 +456,7 @@ func LoadGlobalConfigMerged() error {
 				log.EarlyLogger.BasicLogf("\t%s -> %v", k, k2.Get(k))
 			}
 
-			// Merge clusters separately
+			// Merge clusters separately, by name (same precedence as main merging)
 			var kClusterSlice []map[string]any
 			err = k2.Unmarshal("clusters", &kClusterSlice)
 			if err != nil {
