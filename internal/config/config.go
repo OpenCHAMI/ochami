@@ -432,7 +432,6 @@ func LoadGlobalConfigMerged() error {
 	configsToLoad := []configLoader{
 		{"default", confmap.Provider(DefaultConfigMap, "."), nil},
 		{"system", file.Provider(SystemConfigFile), configParser},
-		// {"system", file.Provider("doc/config.example.yaml"), configParser},
 		{"user", file.Provider(UserConfigFile), configParser},
 	}
 
