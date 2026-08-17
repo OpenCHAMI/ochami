@@ -107,7 +107,7 @@ jobs:
           fetch-tags: 1
           fetch-depth: 0
 
-      - name: Build manual pages
+      - name: Build with make
         run: |
           make
 
