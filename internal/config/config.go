@@ -911,12 +911,7 @@ func ReadConfig(path string) (*koanf.Koanf, error) {
 	return ko, nil
 }
 
-// WriteConfig takes a path and config file format and writes the current viper
-// configuration to the file pointed to by path in the format specified. If path
-// is empty, an error is returned. WriteConfig accepts any config file types
-// that viper accepts. If format is empty, the format is guessed by the config
-// file's file extension. If there is no file extension and format is empty,
-// YAML is used.
+// Marshals the config to YAML and writes it to the given path
 func WriteConfig(path string, k *koanf.Koanf) error {
 	if path == "" {
 		return fmt.Errorf("no configuration file path passed")
