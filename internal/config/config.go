@@ -650,10 +650,10 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 		// instead of cluster specified in arg.
 		if key == "name" {
 			s, ok := value.(string)
-			if ok {
-				err = ko.Set("default-cluster", s)
+			if !ok || s == "" {
+				err = fmt.Errorf("value '%v' is not a string or is an empty string", value)
 			} else {
-				err = fmt.Errorf("value '%v' is not a string", value)
+				err = ko.Set("default-cluster", s)
 			}
 		} else {
 			err = ko.Set("default-cluster", cluster)
