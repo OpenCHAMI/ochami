@@ -97,6 +97,18 @@ See ochami-config(5) for details on configuration options.`,
 
 			ko.Set("clusters", newClusters)
 
+			if clusterName == ko.String("default-cluster") {
+				ko.Delete("default-cluster")
+			}
+
+			// Write config to file
+			err = config.WriteConfig(fileToModify, ko)
+			if err != nil {
+				log.Logger.Error().Err(err).Msgf("failed to write config to %s", fileToModify)
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
+
 			// If we have reached here, the cluster was not found
 			log.Logger.Error().Msgf("cluster %s not found in config file %s", clusterName, cli.ConfigFile)
 			cli.LogHelpError(cmd)
