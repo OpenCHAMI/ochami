@@ -80,6 +80,9 @@ var (
 )
 
 // Config represents the structure of a configuration file.
+// Normally the omitempty field tag would be set, but koanf doesn't use it since
+// fields are first loaded into a map[string]any for merging purposes, so
+// unspecified fields simply aren't present during serialization
 type Config struct {
 	Log                 ConfigLog         `koanf:"log"`
 	Timeout             time.Duration     `koanf:"timeout"`
