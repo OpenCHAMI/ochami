@@ -68,7 +68,7 @@ var DefaultClusterConfigMap = map[string]any{
 }
 
 var (
-	GlobalConfig   = Config{}   // Global config struct
+	GlobalConfig   Config       // Global config struct
 	GlobalKoanf    *koanf.Koanf // Koanf instance for gobal config struct
 	UserConfigFile string
 
@@ -355,6 +355,19 @@ func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, 
 func RemoveFromSlice[T any](slice []T, index int) []T {
 	slice[len(slice)-1], slice[index] = slice[index], slice[len(slice)-1]
 	return slice[:len(slice)-1]
+}
+
+func GetDefaultTimeout() time.Duration {
+	// This should always be present since it's specific in the source
+	to := DefaultConfigMap["timeout"]
+	switch tot := to.(type) {
+	case time.Duration:
+		return tot
+	case string:
+		ret, _ := time.ParseDuration(tot)
+		return ret
+	}
+	return -1
 }
 
 func LoadGlobalConfigDefaultOnly() error {
