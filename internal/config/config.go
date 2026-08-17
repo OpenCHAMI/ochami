@@ -596,13 +596,13 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 
 	var clusters []map[string]any
 	err = ko.Unmarshal("clusters", &clusters)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal clusters: %w", err)
+	}
 
 	// Make sure that if setting the cluster name, a cluster with that name
 	// doesn't already exist.
 	if key == "name" {
-		if err != nil {
-			return fmt.Errorf("unable to unmarshal clusters: %w", err)
-		}
 		for _, cl := range clusters {
 			if cl["name"] == value.(string) {
 				return fmt.Errorf("cluster with name %q already exists", cl["name"])
