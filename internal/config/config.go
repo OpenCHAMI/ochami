@@ -381,7 +381,6 @@ func LoadGlobalConfigDefaultOnly() error {
 
 	var err error
 	k := koanf.NewWithConf(kConfig)
-	GlobalKoanf = k
 
 	err = k.Load(confmap.Provider(DefaultConfigMap, "."), nil)
 	if err != nil {
@@ -398,6 +397,8 @@ func LoadGlobalConfigDefaultOnly() error {
 	for _, key := range k.Keys() {
 		log.EarlyLogger.BasicLogf("\t%s -> %v", key, k.Get(key))
 	}
+
+	GlobalKoanf = k
 	return nil
 }
 
@@ -416,7 +417,6 @@ func LoadGlobalConfigMerged() error {
 
 	var err error
 	k := koanf.NewWithConf(kConfig)
-	GlobalKoanf = k
 
 	UserConfigFile, err = getUserConfigPath()
 	if err != nil {
@@ -511,6 +511,8 @@ func LoadGlobalConfigMerged() error {
 	for _, key := range k.Keys() {
 		log.EarlyLogger.BasicLogf("\t%s -> %v", key, k.Get(key))
 	}
+
+	GlobalKoanf = k
 	return nil
 }
 
@@ -520,7 +522,6 @@ func LoadGlobalConfigFromFile(path string) error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 
 	ko := koanf.NewWithConf(kConfig)
-	GlobalKoanf = ko
 	err := ko.Load(file.Provider(path), configParser)
 	if errors.Is(err, os.ErrNotExist) { // This an error we can ignore
 		log.EarlyLogger.BasicLogf("config '%s' not found, skipping", path)
@@ -540,6 +541,7 @@ func LoadGlobalConfigFromFile(path string) error {
 	}
 
 	// No error occurred
+	GlobalKoanf = ko
 	return nil
 }
 
