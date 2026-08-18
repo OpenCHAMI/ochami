@@ -54,21 +54,21 @@ See ochami-config(5) for details on the configuration options.`,
 			var err error
 			format := cmd.Flag("format").Value.String()
 			if cmd.Flags().Changed("system") {
-				ko, err = config.ReadConfig(config.SystemConfigFile)
+				ko, err = config.ReadConfigWithDefaults(config.SystemConfigFile)
 				if err != nil {
 					log.Logger.Error().Err(err).Msgf("failed to read system config file")
 					cli.LogHelpError(cmd)
 					os.Exit(1)
 				}
 			} else if cmd.Flags().Changed("user") {
-				ko, err = config.ReadConfig(config.UserConfigFile)
+				ko, err = config.ReadConfigWithDefaults(config.UserConfigFile)
 				if err != nil {
 					cli.LogHelpError(cmd)
 					log.Logger.Error().Err(err).Msgf("failed to read user config file")
 					os.Exit(1)
 				}
 			} else if cmd.Flags().Changed("config") {
-				ko, err = config.ReadConfig(cmd.Flag("config").Value.String())
+				ko, err = config.ReadConfigWithDefaults(cmd.Flag("config").Value.String())
 				if err != nil {
 					log.Logger.Error().Err(err).Msgf("failed to read config file %s", cmd.Flag("config").Value.String())
 					cli.LogHelpError(cmd)

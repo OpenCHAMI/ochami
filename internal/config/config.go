@@ -76,7 +76,7 @@ var (
 	configParser = kyaml.Parser()
 
 	// Global koanf struct configuration
-	kConfig = koanf.Conf{Delim: ".", StrictMerge: true}
+	kConfig = koanf.Conf{Delim: ".", StrictMerge: false}
 )
 
 // Config represents the structure of a configuration file.
@@ -629,7 +629,11 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 	if cidx == -1 {
 		cidx = len(clusters)
 		clusters = append(clusters, map[string]any{})
-		clusters[cidx]["name"] = cluster
+		if key == "name" {
+			clusters[cidx]["name"] = value
+		} else {
+			clusters[cidx]["name"] = cluster
+		}
 	}
 
 	kc := koanf.NewWithConf(kConfig)
@@ -644,7 +648,10 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 	}
 
 	clusters[cidx] = kc.Raw()
-	ko.Set("clusters", clusters)
+	err = ko.Set("clusters", clusters)
+	if err != nil {
+		return fmt.Errorf("unable to re-set clusters: %w", err)
+	}
 
 	defaultCluster := ko.String("default-cluster")
 
@@ -689,9 +696,9 @@ func DeleteConfig(path, key string) error {
 		return fmt.Errorf("failed to read %s for deletion: %w", path, err)
 	}
 
-	if !ko.Exists(key) {
-		return fmt.Errorf("key '%s' does not exist")
-	}
+	// if !ko.Exists(key) {
+	// 	return fmt.Errorf("key '%s' does not exist", key)
+	// }
 
 	ko.Delete(key)
 
@@ -907,6 +914,56 @@ func ReadConfig(path string) (*koanf.Koanf, error) {
 	if err := ko.Load(file.Provider(path), configParser); err != nil {
 		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
 	}
+
+	return ko, nil
+}
+
+// Same as ReadConfig but applies the defaults to the returned loanf object
+func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
+	if path == "" {
+		return nil, fmt.Errorf("no configuration file passed")
+	}
+	log.Logger.Debug().Msgf("reading config file: %s", path)
+
+	// Load config file into koanf to check for errors
+	ko := koanf.NewWithConf(kConfig)
+
+	if err := ko.Load(confmap.Provider(DefaultConfigMap, "."), nil); err != nil {
+		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
+	}
+
+	if err := ko.Load(file.Provider(path), configParser); err != nil {
+		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
+	}
+
+	// Merge clusters separately, by name (same precedence as main merging)
+	var kClusterSlice []map[string]any
+	err := ko.Unmarshal("clusters", &kClusterSlice)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal cluster configs from config '%s': %w", path, err)
+	}
+
+	for i, cluster := range kClusterSlice {
+		k := koanf.NewWithConf(kConfig)
+		err = k.Load(confmap.Provider(DefaultClusterConfigMap, "."), nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load default cluster config: %w", err)
+		}
+
+		c, ok := cluster["cluster"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("cluster '%s' is not a map", cluster["name"])
+		}
+		k.Load(confmap.Provider(c, ""), nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load cluster config: %w", err)
+		}
+
+		ko.Unmarshal("", &c)
+		kClusterSlice[i]["cluster"] = c
+	}
+
+	ko.Set("clusters", kClusterSlice)
 
 	return ko, nil
 }
