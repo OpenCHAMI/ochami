@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 [![Test](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml)
 [![CodeQL](https://github.com/OpenCHAMI/ochami/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/github-code-scanning/codeql)
 [![REUSE compliance check](https://github.com/OpenCHAMI/ochami/actions/workflows/reuse.yaml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/reuse.yaml)
+[![Vulnerability Check](https://github.com/OpenCHAMI/ochami/actions/workflows/govulncheck.yaml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/govulncheck.yaml)
 
 `ochami` is the command line interface to interact with the API of OpenCHAMI
 services, especially the [State Management Database
