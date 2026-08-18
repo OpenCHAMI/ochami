@@ -150,8 +150,8 @@ goreleaser-release: ## Run `goreleaser release` (accepts GORELEASER_OPTS)
 goreleaser-clean: ## Clean Goreleaser files (remove dist/)
 	$(RM) -rf dist/
 
-.PHONY: check-reuse
-check-reuse:
+.PHONY: reuse
+reuse: ## Check REUSE compliance
 	$(call require-command-shell,$(REUSE),reuse)
 	reuse lint --lines
 

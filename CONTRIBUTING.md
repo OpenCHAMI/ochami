@@ -58,7 +58,7 @@ make lint
 Check REUSE compliance:
 
 ```bash
-make check-reuse
+make reuse
 ```
 
 ### Local Container Builds
@@ -186,7 +186,7 @@ at `ghcr.io/openchami/ochami:pr-<pr_number>`.
    ```bash
    make test
    make lint
-   make check-reuse
+   make reuse
    ```
 4. **Commit with DCO sign-off** (see [OpenCHAMI Contributing
    Guidelines](https://github.com/OpenCHAMI/.github/blob/main/CONTRIBUTING.md#developer-certificate-of-origin-dco))
