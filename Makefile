@@ -160,6 +160,11 @@ lint:
 	$(call require-command-shell,$(GOLANGCI_LINT),golangci-lint)
 	$(GOLANGCI_LINT) run
 
+.PHONY: mod
+mod: ## Download and prune Go modules
+	$(call require-command-shell,$(GO),go)
+	$(GO) mod tidy
+
 .PHONY: test
 test: unit-test ## Run all tests
 
