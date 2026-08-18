@@ -198,6 +198,23 @@ simply be done via:
 make
 ```
 
+### Local checks before pushing
+
+Before pushing changes, build the project and run the same primary checks and
+tests used for pull requests:
+
+```bash
+# Build the executable.
+make
+
+# Run static checks and tests.
+make lint reuse mod test
+```
+
+The `lint` target requires `golangci-lint`, and `reuse` requires the REUSE CLI.
+The `mod` target tidies Go module files; review and commit any resulting changes
+to `go.mod` or `go.sum`.
+
 On Unix-like systems, one can also install the binary, man pages, and
 completions:
 
