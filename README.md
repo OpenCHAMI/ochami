@@ -10,6 +10,13 @@ SPDX-License-Identifier: MIT
 <!-- Text width is 80, only use spaces and use 4 spaces instead of tabs -->
 <!-- vim: set et sta tw=80 ts=4 sw=4 sts=0: -->
 
+[![Release with Goreleaser](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml)
+[![Build](https://github.com/OpenCHAMI/ochami/actions/workflows/build.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/build.yml)
+[![Lint](https://github.com/OpenCHAMI/ochami/actions/workflows/lint.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/lint.yml)
+[![Test](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml)
+[![CodeQL](https://github.com/OpenCHAMI/ochami/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/github-code-scanning/codeql)
+[![REUSE compliance check](https://github.com/OpenCHAMI/ochami/actions/workflows/reuse.yaml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/reuse.yaml)
+
 `ochami` is the command line interface to interact with the API of OpenCHAMI
 services, especially the [State Management Database
 (SMD)](https://github.com/OpenCHAMI/smd) and the [Boot Script Service
