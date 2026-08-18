@@ -15,7 +15,8 @@ on:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
     steps:
       - name: Set up latest stable Go
         uses: actions/setup-go@v7

@@ -8,10 +8,9 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - name: REUSE Compliance Check
-        uses: fsfe/reuse-action@v6
-        with:
-          args: lint --lines
+        run: pipx run --backend pip --spec reuse==6.2.0 reuse lint --lines

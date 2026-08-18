@@ -20,7 +20,8 @@ permissions:
 
 jobs:
   cleanup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
     steps:
       - name: Get PR number
         id: pr

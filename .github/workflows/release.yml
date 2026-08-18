@@ -14,12 +14,15 @@ on:
 
 jobs:
   build:
+    # Releases require Docker Buildx, which is unavailable on the unprivileged
+    # ubuntu-slim runner.
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Install scdoc for man page generation
         run: |
           sudo apt update
-          sudo apt install scdoc
+          sudo apt install -y --no-install-recommends scdoc
 
       - name: Set up latest stable Go
         uses: actions/setup-go@v7

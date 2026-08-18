@@ -18,12 +18,15 @@ permissions:
 
 jobs:
   build-goreleaser:
+    # GoReleaser requires Docker Buildx, which is unavailable on the
+    # unprivileged ubuntu-slim runner.
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Install scdoc for man page generation
         run: |
           sudo apt update
-          sudo apt install scdoc
+          sudo apt install -y --no-install-recommends scdoc
 
       - name: Set up latest stable Go
         uses: actions/setup-go@v7
@@ -89,12 +92,13 @@ jobs:
         id: goreleaser
 
   build-make-binaries:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
     steps:
       - name: Install build dependencies
         run: |
           sudo apt update
-          sudo apt install -y make git
+          sudo apt install -y --no-install-recommends make git
 
       - name: Set up latest stable Go
         uses: actions/setup-go@v7
@@ -112,7 +116,10 @@ jobs:
           make
 
   build-make-container-multistage:
+    # Container builds require a Docker daemon, which is unavailable on the
+    # unprivileged ubuntu-slim runner.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Install build dependencies
         run: |
@@ -130,13 +137,14 @@ jobs:
           make container
 
   docs-make:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
     steps:
 
       - name: Install build dependencies
         run: |
           sudo apt update
-          sudo apt install -y make git scdoc
+          sudo apt install -y --no-install-recommends make git scdoc
 
       - name: Set up latest stable Go
         uses: actions/setup-go@v7
