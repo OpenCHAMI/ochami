@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 [![Release with Goreleaser](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml)
 [![Test](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml)
 [![Coverage](https://coveralls.io/repos/github/OpenCHAMI/ochami/badge.svg?branch=main)](https://coveralls.io/github/OpenCHAMI/ochami?branch=main)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/OpenCHAMI/ochami/badge)](https://scorecard.dev/viewer/?uri=github.com/OpenCHAMI/ochami)
 
 <details>
 <summary>Additional project checks</summary>
@@ -27,7 +28,6 @@ SPDX-License-Identifier: MIT
 
 [![CodeQL](https://github.com/OpenCHAMI/ochami/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/github-code-scanning/codeql)
 [![Vulnerability Check](https://github.com/OpenCHAMI/ochami/actions/workflows/govulncheck.yaml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/govulncheck.yaml)
-[![OpenSSF Scorecard](https://github.com/OpenCHAMI/ochami/actions/workflows/scorecard.yaml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/scorecard.yaml)
 
 </details>
 <br/>
