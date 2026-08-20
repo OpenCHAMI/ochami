@@ -17,6 +17,7 @@ require (
 	github.com/knadh/koanf/providers/structs v1.0.1
 	github.com/knadh/koanf/v2 v2.3.6
 	github.com/lestrrat-go/jwx/v3 v3.2.0
+	github.com/lestrrat-go/jwx/v4 v4.2.0
 	github.com/nikolalohinski/gonja/v2 v2.9.0
 	github.com/openchami/boot-service v0.3.2
 	github.com/openchami/bss v1.32.3
