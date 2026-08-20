@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT
 
 [![CodeQL](https://github.com/OpenCHAMI/ochami/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/github-code-scanning/codeql)
 [![Vulnerability Check](https://github.com/OpenCHAMI/ochami/actions/workflows/govulncheck.yaml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/govulncheck.yaml)
-[![OpenSSF Scorecard](https://github.com/OpenCHAMI/ochami/actions/workflows/scorecard.yaml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/scorecard.yaml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/OpenCHAMI/ochami/badge)](https://scorecard.dev/viewer/?uri=github.com/OpenCHAMI/ochami)
 
 </details>
 <br/>
