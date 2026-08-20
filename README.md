@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 
 [![Release with Goreleaser](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml)
 [![Test](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml)
-[![Coverage](https://github.com/OpenCHAMI/ochami/actions/workflows/coverage.yaml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/coverage.yaml)
+[![Coverage](https://coveralls.io/repos/github/OpenCHAMI/ochami/badge.svg?branch=main)](https://coveralls.io/github/OpenCHAMI/ochami?branch=main)
 
 <details>
 <summary>Additional project checks</summary>

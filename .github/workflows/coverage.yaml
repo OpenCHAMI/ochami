@@ -35,3 +35,16 @@ jobs:
           TOTAL=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}')
           echo "Total coverage: ${TOTAL}"
           echo "Total coverage: ${TOTAL}" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Install Coveralls dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends curl
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
+        with:
+          coverage-reporter-version: v0.6.22
+          file: coverage.out
+          format: golang
+          github-token: ${{ secrets.GITHUB_TOKEN }}
