@@ -17,11 +17,11 @@ import (
 	"time"
 
 	kyaml "github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/file"
-	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/format"
@@ -53,97 +53,43 @@ const (
 
 // Default configuration values if either no configuration files exist or the
 // configuration files don't contain values for items that need them.
-var DefaultConfig = Config{
-	Log: ConfigLog{
-		Format: "rfc3339",
-		Level:  "warning",
-		Color:  "auto",
-	},
-	Timeout: 30 * time.Second,
+
+var DefaultConfigMap = map[string]any{
+	"log.format":            "rfc3339",
+	"log.level":             "warning",
+	"log.color":             "auto",
+	"timeout":               "30s",
+	"default-input-format":  "json",
+	"default-output-format": "json",
+}
+
+var DefaultClusterConfigMap = map[string]any{
+	"enable-auth": true,
 }
 
 var (
-	GlobalConfig   = DefaultConfig // Global config struct
-	GlobalKoanf    *koanf.Koanf    // Koanf instance for gobal config struct
+	GlobalConfig   Config       // Global config struct
+	GlobalKoanf    *koanf.Koanf // Koanf instance for gobal config struct
 	UserConfigFile string
 
 	// Koanf YAML parser provider
 	configParser = kyaml.Parser()
 
 	// Global koanf struct configuration
-	kConfig = koanf.Conf{Delim: ".", StrictMerge: true}
+	kConfig = koanf.Conf{Delim: ".", StrictMerge: false}
 )
 
 // Config represents the structure of a configuration file.
+// Normally the omitempty field tag would be set, but koanf doesn't use it since
+// fields are first loaded into a map[string]any for merging purposes, so
+// unspecified fields simply aren't present during serialization
 type Config struct {
-	Log                 ConfigLog         `yaml:"log,omitempty"`
-	Timeout             time.Duration     `yaml:"timeout,omitempty"`
-	DefaultCluster      string            `yaml:"default-cluster,omitempty"`
-	DefaultInputFormat  format.DataFormat `yaml:"default-input-format,omitempty"`
-	DefaultOutputFormat format.DataFormat `yaml:"default-output-format,omitempty"`
-	Clusters            []ConfigCluster   `yaml:"clusters,omitempty"`
-}
-
-// UnmarshalYAML unmarshals YAML into a Config, handling default values. For
-// instance, it detects if 'timeout' is present in the YAML and, if not, assigns
-// the default value.
-func (c *Config) UnmarshalYAML(value *yaml.Node) error {
-	type alias Config
-
-	// If node is top-level document (DocumentNode), work with MappingNode contained within
-	n := value
-	if n.Kind == yaml.DocumentNode && len(n.Content) == 1 {
-		n = n.Content[0]
-	}
-
-	// Detect whether config keys were explicitly set
-	hasTimeout := false
-	if n.Kind == yaml.MappingNode {
-		// Iterate over keys to find desired one
-		//
-		// Order of nodes in MappingNode are key, val, key, val, ...
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			switch n.Content[i].Value {
-			case "timeout":
-				// Make sure a value was passed
-				if len(n.Content[i+1].Value) == 0 {
-					return ErrInvalidConfigVal{
-						Key:      "timeout",
-						Value:    "empty value",
-						Expected: "duration",
-						Line:     n.Content[i].Line,
-					}
-				} else if _, err := time.ParseDuration(n.Content[i+1].Value); err != nil {
-					return ErrInvalidConfigVal{
-						Key:      "timeout",
-						Value:    "invalid duration",
-						Expected: "duration",
-						Line:     n.Content[i].Line,
-					}
-				}
-				// If key was found and is not empty, set our sentinel
-				hasTimeout = true
-				break
-			}
-		}
-	}
-
-	// Decode once into a alias type to avoid infinite recursion when unmarshalling
-	var tmp alias
-	if err := n.Decode(&tmp); err != nil {
-		return err
-	}
-
-	// Set default value only if the key was not present
-	if !hasTimeout {
-		tmp.Timeout = 30 * time.Second
-	}
-
-	// Assign temporarily-aliased struct back to receiver
-	*c = Config(tmp)
-
-	// No errors occurred
-	return nil
+	Log                 ConfigLog         `koanf:"log"`
+	Timeout             time.Duration     `koanf:"timeout"`
+	DefaultCluster      string            `koanf:"default-cluster"`
+	DefaultInputFormat  format.DataFormat `koanf:"default-input-format"`
+	DefaultOutputFormat format.DataFormat `koanf:"default-output-format"`
+	Clusters            []ConfigCluster   `koanf:"clusters"`
 }
 
 // GetCluster searches for a cluster by name and returns it if it exists in the
@@ -158,129 +104,74 @@ func (c Config) GetCluster(name string) (ConfigCluster, error) {
 }
 
 type ConfigLog struct {
-	Format string `yaml:"format,omitempty"`
-	Level  string `yaml:"level,omitempty"`
-	Color  string `yaml:"color,omitempty"`
+	Format string `koanf:"format"`
+	Level  string `koanf:"level"`
+	Color  string `koanf:"color"`
 }
 
 // ConfigCluster is a "wrapper" around an individual cluster configuration. It
 // contains the cluster's name, as well as the actual configuration structure.
 type ConfigCluster struct {
-	Name    string              `yaml:"name,omitempty"`
-	Cluster ConfigClusterConfig `yaml:"cluster,omitempty"`
+	Name    string              `koanf:"name"`
+	Cluster ConfigClusterConfig `koanf:"cluster"`
 }
 
 // ConfigClusterConfig is the actual structure for an individual cluster
 // configuration.
 type ConfigClusterConfig struct {
-	URI             string                       `yaml:"uri,omitempty"`
-	BootService     ConfigClusterBootService     `yaml:"boot-service,omitempty"`
-	BSS             ConfigClusterBSS             `yaml:"bss,omitempty"`
-	CloudInit       ConfigClusterCloudInit       `yaml:"cloud-init,omitempty"`
-	MetadataService ConfigClusterMetadataService `yaml:"metadata-service,omitempty"`
-	PCS             ConfigClusterPCS             `yaml:"pcs,omitempty"`
-	SMD             ConfigClusterSMD             `yaml:"smd,omitempty"`
-	RCS             ConfigClusterRCS             `yaml:"rcs,omitempty"`
-	EnableAuth      bool                         `yaml:"enable-auth"`
-}
-
-// UnmarshalYAML unmarshals YAML into a ConfigClusterConfig, handling default
-// values. For instance, it detects if 'enable-auth' is present in the YAML and,
-// if not, assigns a default value of true.
-func (c *ConfigClusterConfig) UnmarshalYAML(value *yaml.Node) error {
-	type alias ConfigClusterConfig
-
-	// If node is top-level document (DocumentNode), work with MappingNode contained within
-	n := value
-	if n.Kind == yaml.DocumentNode && len(n.Content) == 1 {
-		n = n.Content[0]
-	}
-
-	// Detect whether config keys were explicitly set
-	hasEnableAuth := false
-	if n.Kind == yaml.MappingNode {
-		// Iterate over keys to find desired one
-		//
-		// Order of nodes in MappingNode are key, val, key, val, ...
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			switch n.Content[i].Value {
-			case "enable-auth":
-				// Make sure a value was passed
-				if len(n.Content[i+1].Value) == 0 {
-					return ErrInvalidConfigVal{
-						Key:      "enable-auth",
-						Value:    "empty value",
-						Expected: "true or false",
-						Line:     n.Content[i].Line,
-					}
-				}
-				// If key was found and is not empty, set our sentinel
-				hasEnableAuth = true
-				break
-			}
-		}
-	}
-
-	// Decode once into a alias type to avoid infinite recursion when unmarshalling
-	var tmp alias
-	if err := n.Decode(&tmp); err != nil {
-		return err
-	}
-
-	// Set default value only if the key was not present
-	if !hasEnableAuth {
-		tmp.EnableAuth = true
-	}
-
-	// Assign temporarily-aliased struct back to receiver
-	*c = ConfigClusterConfig(tmp)
-
-	// No errors occurred
-	return nil
+	URI             string                       `koanf:"uri"`
+	BootService     ConfigClusterBootService     `koanf:"boot-service"`
+	BSS             ConfigClusterBSS             `koanf:"bss"`
+	CloudInit       ConfigClusterCloudInit       `koanf:"cloud-init"`
+	MetadataService ConfigClusterMetadataService `koanf:"metadata-service"`
+	PCS             ConfigClusterPCS             `koanf:"pcs"`
+	SMD             ConfigClusterSMD             `koanf:"smd"`
+	RCS             ConfigClusterRCS             `koanf:"rcs"`
+	EnableAuth      bool                         `koanf:"enable-auth"`
 }
 
 // ConfigClusterBootService represents configuration specifically for the
 // boot service.
 type ConfigClusterBootService struct {
-	APIVersion string `yaml:"api-version,omitempty"`
-	URI        string `yaml:"uri,omitempty"`
+	APIVersion string `koanf:"api-version"`
+	URI        string `koanf:"uri"`
 }
 
 // ConfigClusterBSS represents configuration specifically for the Boot Script
 // Service.
 type ConfigClusterBSS struct {
-	URI string `yaml:"uri,omitempty"`
+	URI string `koanf:"uri"`
 }
 
 // ConfigClusterCloudInit represents configuration specifically for the
 // cloud-init service.
 type ConfigClusterCloudInit struct {
-	URI string `yaml:"uri,omitempty"`
+	URI string `koanf:"uri"`
 }
 
 // ConfigClusterMetadataService represents configuration specifically for the
 // metadata service.
 type ConfigClusterMetadataService struct {
-	APIVersion string `yaml:"api-version,omitempty"`
-	URI        string `yaml:"uri,omitempty"`
+	APIVersion string `koanf:"api-version"`
+	URI        string `koanf:"uri"`
 }
 
 // ConfigClusterRCS represents configuration specifically for the Remote Console
 // Service.
 type ConfigClusterRCS struct {
-	URI string `yaml:"uri,omitempty"`
+	URI string `koanf:"uri"`
 }
 
 // ConfigClusterPCS represents configuration specifically for the Power Control
 // Service.
 type ConfigClusterPCS struct {
-	URI string `yaml:"uri,omitempty"`
+	URI string `koanf:"uri"`
 }
 
 // ConfigClusterSMD represents configuration specifically for the State
 // Management Database service.
 type ConfigClusterSMD struct {
-	URI string `yaml:"uri,omitempty"`
+	URI string `koanf:"uri"`
 }
 
 // MergeURIConfig takes a ConfigClusterConfig and returns a ConfigClusterConfig
@@ -462,28 +353,53 @@ func (ccc *ConfigClusterConfig) GetServiceBaseURI(svcName ServiceName) (string, 
 	return serviceBaseURI, nil
 }
 
-// unmarshalKoanfYAML is a helper function that unmarshals data in ko into out
-// using parser p. The reason this function exists is because koanf.Unmarshal
-// and koanf.MarshalWithConf use mapstructure for their unmarshalling, which
-// means that custom unmarshal functions defined for out do not get run.
-// unmarshalKoanfYAML ensures this happens by first marshalling the data in ko
-// into YAML, then using the YAML unmarshaller to unmarshal into out.
-func unmarshalKoanfYAML(ko *koanf.Koanf, out interface{}) error {
-	yamlBytes, err := ko.Marshal(kyaml.Parser())
-	if err != nil {
-		return fmt.Errorf("failed to marshal config data into YAML: %w", err)
-	}
-	if err := yaml.Unmarshal(yamlBytes, out); err != nil {
-		return fmt.Errorf("failed to unmarshal YAML bytes into config: %w", err)
-	}
-	return nil
-}
-
 // RemoveFromSlice removes an element from a slice and returns the resulting
 // slice. The element to be removed is identified by its index in the slice.
 func RemoveFromSlice[T any](slice []T, index int) []T {
 	slice[len(slice)-1], slice[index] = slice[index], slice[len(slice)-1]
 	return slice[:len(slice)-1]
+}
+
+// Returns the timeout from the default config, doing parsing and type conversions
+func GetDefaultTimeout() time.Duration {
+	// This should always be present since it's specific in the source
+	to := DefaultConfigMap["timeout"]
+	switch tot := to.(type) {
+	case time.Duration:
+		return tot
+	case string:
+		ret, _ := time.ParseDuration(tot)
+		return ret
+	}
+	return -1
+}
+
+// Like LoadGlobalConfigMerged, but only loads the default config (used for the
+// --ignore-config flag)
+func LoadGlobalConfigDefaultOnly() error {
+	log.EarlyLogger.BasicLog("early verbose log messages activated")
+
+	var err error
+	k := koanf.NewWithConf(kConfig)
+
+	err = k.Load(confmap.Provider(DefaultConfigMap, "."), nil)
+	if err != nil {
+		return fmt.Errorf("unable to load default config: %w", err)
+	}
+
+	// Marshalling to the global config variable
+	err = k.Unmarshal("", &GlobalConfig)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal default config: %w", err)
+	}
+
+	log.EarlyLogger.BasicLogf("final config:")
+	for _, key := range k.Keys() {
+		log.EarlyLogger.BasicLogf("\t%s -> %v", key, k.Get(key))
+	}
+
+	GlobalKoanf = k
+	return nil
 }
 
 // LoadGlobalConfigMerged populates the GlobalConfig Config structure and
@@ -499,107 +415,110 @@ func RemoveFromSlice[T any](slice []T, index int) []T {
 func LoadGlobalConfigMerged() error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 
-	// Generate user config path: ~/.config/ochami/config.yaml
-	user, err := user.Current()
+	var err error
+	k := koanf.NewWithConf(kConfig)
+
+	UserConfigFile, err = getUserConfigPath()
 	if err != nil {
-		return fmt.Errorf("unable to fetch current user: %w", err)
-	}
-	UserConfigFile = filepath.Join(user.HomeDir, ".config", "ochami", "config.yaml")
-
-	// Read config from each file in slice
-	type FileCfgMap struct {
-		File string
-		Cfg  Config
-	}
-	cfgsToCheck := []FileCfgMap{
-		{File: SystemConfigFile},
-		{File: UserConfigFile},
-	}
-	// Default config is first in list so it is loaded first (so that when
-	// other configs get merged, unset values are set to the default).
-	cfgsLoaded := []FileCfgMap{{File: "default", Cfg: DefaultConfig}}
-	for _, cfg := range cfgsToCheck {
-		// Read bytes of config file
-		cfgBytes, err := os.ReadFile(cfg.File)
-		if errors.Is(err, os.ErrNotExist) {
-			log.EarlyLogger.BasicLogf("config file %s not found, skipping", cfg.File)
-			continue
-		} else if err != nil {
-			log.EarlyLogger.BasicLogf("failed to load config file %s: %v", cfg.File, err)
-			log.EarlyLogger.BasicLogf("skipping config file %s", cfg.File)
-			continue
-		}
-
-		// Generate config struct from bytes via parser
-		_, c, err := GenerateConfigFromBytes(cfgBytes)
-		if err != nil {
-			return fmt.Errorf("failed to parse config bytes: %w", err)
-		}
-
-		// Add local config struct to slice of loaded configs
-		cfg.Cfg = c
-		cfgsLoaded = append(cfgsLoaded, cfg)
+		return err
 	}
 
-	// Create a parser and merge configs into it:
+	type configLoader struct {
+		name     string
+		provider koanf.Provider
+		parser   koanf.Parser
+	}
+
+	// Create parsers and merge configs into it:
 	//
 	//   1. Default config
 	//   2. System config
 	//   3. User config
 	//
-	ko := koanf.NewWithConf(kConfig)
-	for _, cfgLoaded := range cfgsLoaded {
-		if cfgLoaded.File == "default" {
-			log.EarlyLogger.BasicLogf("starting with default config")
-			if err := MergeConfigIntoParser(ko, cfgLoaded.Cfg); err != nil {
-				return fmt.Errorf("failed to load default config: %w", err)
-			}
-		} else {
-			log.EarlyLogger.BasicLogf("merging in config from %s", cfgLoaded.File)
+	configsToLoad := []configLoader{
+		{"default", confmap.Provider(DefaultConfigMap, "."), nil},
+		{"system", file.Provider(SystemConfigFile), configParser},
+		{"user", file.Provider(UserConfigFile), configParser},
+	}
 
-			serializedConfig, err := GetConfigString(cfgLoaded.Cfg, "", "yaml")
+	// For merging purposes, maps name to key-value pairs
+	clusterMap := map[string]*koanf.Koanf{}
+	for _, c := range configsToLoad {
+		k2 := koanf.NewWithConf(kConfig)
+		err = k2.Load(c.provider, c.parser)
+		if errors.Is(err, os.ErrNotExist) { // This an error we can ignore
+			log.EarlyLogger.BasicLogf("config '%s' not found, skipping", c.name)
+		} else if err != nil { // If it gets here something has actually gone wrong
+			return fmt.Errorf("unable to load config '%s': %w", c.name, err)
+		} else { // Good to go
+			log.EarlyLogger.BasicLogf("successfully loaded key-value pairs from config '%s':", c.name)
+			for _, k := range k2.Keys() {
+				log.EarlyLogger.BasicLogf("\t%s -> %v", k, k2.Get(k))
+			}
+
+			// Merge clusters separately, by name (same precedence as main merging)
+			var kClusterSlice []map[string]any
+			err = k2.Unmarshal("clusters", &kClusterSlice)
 			if err != nil {
-				return fmt.Errorf("failed to serialize config: %w", err)
+				return fmt.Errorf("unable to unmarshal cluster configs from config '%s': %w", c.name, err)
 			}
-			log.EarlyLogger.BasicLogf("config data:\n%s", serializedConfig)
 
-			if err := MergeConfigIntoParser(ko, cfgLoaded.Cfg); err != nil {
-				return fmt.Errorf("failed to merge config: %w", err)
+			for i, cluster := range kClusterSlice {
+				name, ok := cluster["name"].(string)
+				if !ok || name == "" {
+					return fmt.Errorf("cluster #%d from config '%s' is missing a name", i, c.name)
+				}
+				if clusterMap[name] == nil {
+					clusterMap[name] = koanf.NewWithConf(kConfig)
+					err = clusterMap[name].Load(confmap.Provider(DefaultClusterConfigMap, "."), nil)
+					if err != nil {
+						return fmt.Errorf("unable to load default cluster config: %w", err)
+					}
+				}
+				switch cls := cluster["cluster"].(type) {
+				case map[string]any:
+					err = clusterMap[name].Load(confmap.Provider(cls, ""), nil)
+					if err != nil {
+						return fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
+					}
+				default:
+					return fmt.Errorf("unable to merge cluster '%s' from config '%s': value is not a map[string]any type", name, c.name)
+				}
+			}
+
+			// Finish the job
+			err = k.Merge(k2)
+			if err != nil {
+				return fmt.Errorf("unable to merge config '%s': %w", c.name, err)
+			} else {
+				log.EarlyLogger.BasicLogf("successfully merged config '%s'", c.name)
 			}
 		}
 	}
 
-	// Set the merged parser as the global parser
-	GlobalKoanf = ko
-
-	// Unmarshal merged config from global parser into global config struct.
-	// koanf.UnMarshalWithConf won't unmarshal into the global config struct
-	// so we copy it, unmarshal into the copy, then set the copy as the
-	// global config.
-	c := GlobalConfig
-	if err := unmarshalKoanfYAML(ko, &c); err != nil {
-		return fmt.Errorf("failed to read merged config: %w", err)
+	// add merged clusters back to primary koanf instance
+	clusterSlice := make([]map[string]any, 0, len(clusterMap))
+	for k, v := range clusterMap {
+		clusterSlice = append(clusterSlice, map[string]any{
+			"name":    k,
+			"cluster": v.Raw(),
+		})
 	}
-	GlobalConfig = c
+	k.Set("clusters", clusterSlice)
 
-	log.EarlyLogger.BasicLog("config files, if any, have been merged")
-
-	if finalConfig, err := GetConfigString(GlobalConfig, "", "yaml"); err != nil {
-		log.EarlyLogger.BasicLogf("warning: failed to marshal config as YAML: %v", err)
-	} else {
-		log.EarlyLogger.BasicLogf("final merged config:\n%s", finalConfig)
+	// Marshalling to the global config variable
+	err = k.Unmarshal("", &GlobalConfig)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal merged config: %w", err)
 	}
 
+	log.EarlyLogger.BasicLogf("final config:")
+	for _, key := range k.Keys() {
+		log.EarlyLogger.BasicLogf("\t%s -> %v", key, k.Get(key))
+	}
+
+	GlobalKoanf = k
 	return nil
-}
-
-// MergeConfigIntoParser take a Config and merges it into the parser k. This can
-// be done iteratively to incorporate multiple Configs into one parser.
-func MergeConfigIntoParser(k *koanf.Koanf, cfg Config) error {
-	if k == nil {
-		return fmt.Errorf("koanf object cannot be nil")
-	}
-	return k.Load(structs.Provider(cfg, "yaml"), nil, koanf.WithMergeFunc(mergeConfig))
 }
 
 // LoadGlobalConfigFromFile reads a YAML configuration at path and loads it into
@@ -607,55 +526,28 @@ func MergeConfigIntoParser(k *koanf.Koanf, cfg Config) error {
 func LoadGlobalConfigFromFile(path string) error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 
-	// Read bytes of config file
-	log.EarlyLogger.BasicLogf("reading config bytes from config file %q", path)
-	cfgBytes, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("failed to read config bytes from file %q: %w", path, err)
+	ko := koanf.NewWithConf(kConfig)
+	err := ko.Load(file.Provider(path), configParser)
+	if errors.Is(err, os.ErrNotExist) { // This an error we can ignore
+		log.EarlyLogger.BasicLogf("config '%s' not found, skipping", path)
+	} else if err != nil { // If it gets here something has actually gone wrong
+		return fmt.Errorf("unable to load config '%s': %w", path, err)
+	} else { // Good to go
+		log.EarlyLogger.BasicLogf("successfully loaded key-value pairs from config '%s':", path)
+		for _, k := range ko.Keys() {
+			log.EarlyLogger.BasicLogf("\t%s -> %v", k, ko.Get(k))
+		}
 	}
-	log.EarlyLogger.BasicLog("successfully read config bytes")
 
-	// Generate parser struct and config struct from bytes
-	log.EarlyLogger.BasicLogf("parsing config bytes")
-	k, cfg, err := GenerateConfigFromBytes(cfgBytes)
+	// Marshalling to the global config variable
+	err = ko.Unmarshal("", &GlobalConfig)
 	if err != nil {
-		return fmt.Errorf("failed to parse config bytes: %w", err)
+		return fmt.Errorf("unable to unmarshal merged config: %w", err)
 	}
-	log.EarlyLogger.BasicLog("successfully parsed config bytes")
-
-	// Set results as global for later reference/modification
-	GlobalKoanf = k
-	GlobalConfig = cfg
 
 	// No error occurred
+	GlobalKoanf = ko
 	return nil
-}
-
-// GenerateConfigFromBytes takes a byte slice and parses it into a koanf
-// structure as YAML (returning an error if this fails), then unmarshals it into
-// a Config structure. Both the *koanf.Koanf and Config are returned.
-func GenerateConfigFromBytes(b []byte) (*koanf.Koanf, Config, error) {
-	// Initialize global parser structure
-	k := koanf.NewWithConf(kConfig)
-
-	// Initialize config to default config
-	cfg := DefaultConfig
-
-	// Load bytes into parser structure
-	if err := k.Load(rawbytes.Provider(b), configParser); err != nil {
-		return k, cfg, fmt.Errorf("failed to load config bytes: %w", err)
-	}
-
-	// Unmarshal the YAML directly from the input bytes into config struct,
-	// using the custom YAML unmarshaller. The koanf unmarshaller does not
-	// call the custom UnmarshalYAML since it uses mapstructure under the
-	// hood.
-	if err := yaml.Unmarshal(b, &cfg); err != nil {
-		return k, cfg, fmt.Errorf("failed to unmarshal YAML bytes into config: %w", err)
-	}
-
-	// Return parser structure and config structure
-	return k, cfg, nil
 }
 
 // ModifyConfig modifies a single key in a config file. It does this by opening
@@ -667,26 +559,18 @@ func GenerateConfigFromBytes(b []byte) (*koanf.Koanf, Config, error) {
 // returned. Otherwise, nil is returned.
 func ModifyConfig(path, key string, value interface{}) error {
 	// Open file for writing
-	cfg, err := ReadConfig(path)
+	ko, err := ReadConfig(path)
 	if err != nil {
 		return fmt.Errorf("failed to read %s for modification: %w", path, err)
 	}
 
 	// Perform modification
-	ko := koanf.NewWithConf(kConfig)
-	if err := ko.Load(structs.Provider(cfg, "yaml"), nil); err != nil {
-		return fmt.Errorf("failed to load config from %s: %w", path, err)
-	}
 	if err := ko.Set(key, value); err != nil {
 		return fmt.Errorf("failed to set key %s to value %v: %w", key, value, err)
 	}
-	var modCfg Config
-	if err := unmarshalKoanfYAML(ko, &modCfg); err != nil {
-		return fmt.Errorf("failed to read modified config: %w", err)
-	}
 
 	// Write file back to file
-	if err := WriteConfig(path, modCfg); err != nil {
+	if err := WriteConfig(path, ko); err != nil {
 		return fmt.Errorf("failed to write modified config to %s: %w", path, err)
 	}
 
@@ -703,93 +587,96 @@ func ModifyConfig(path, key string, value interface{}) error {
 // This function works similarly to ModifyConfig in that it loads the
 // configuration into a koanf instance, sets the key, then unmarhalls back into
 // a struct, where it can be written back to the config file.
-func ModifyConfigCluster(path, cluster, key string, dflt bool, value interface{}) error {
+func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error {
 	// Open file for writing
-	cfg, err := ReadConfig(path)
+	ko, err := ReadConfig(path)
 	if err != nil {
 		return fmt.Errorf("failed to read %s for modification: %w", path, err)
+	}
+
+	delim := ko.Delim()
+	if strings.Contains(cluster, delim) {
+		return fmt.Errorf("cluster name '%s' contains delimiter character '%s'", cluster, delim)
+	}
+
+	var clusters []map[string]any
+	err = ko.Unmarshal("clusters", &clusters)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal clusters: %w", err)
 	}
 
 	// Make sure that if setting the cluster name, a cluster with that name
 	// doesn't already exist.
 	if key == "name" {
-		for _, cl := range cfg.Clusters {
-			if cl.Name == value.(string) {
-				return fmt.Errorf("cluster with name %q already exists", cl.Name)
+		for _, cl := range clusters {
+			if cl["name"] == value.(string) {
+				return fmt.Errorf("cluster with name %q already exists", cl["name"])
 			}
 		}
 	}
 
 	// Determine if a new cluster needs to be added or an existing cluster
 	// needs to be modified.
-	var clusterToMod *ConfigCluster
-	newCluster := true
-	for cidx, cl := range cfg.Clusters {
-		if cl.Name == cluster || (key == "name" && cl.Name == value.(string)) {
-			// Existing cluster found, set pointer to it
-			clusterToMod = &(cfg.Clusters[cidx])
-			newCluster = false
+	cidx := -1
+	for i, cl := range clusters {
+		if cl["name"] == cluster {
+			cidx = i
 			break
 		}
 	}
-	ko := koanf.NewWithConf(kConfig)
-	if newCluster {
-		// Adding a new cluster; create it and append to list
-		nCl := ConfigCluster{Name: cluster}
-		if err := ko.Load(structs.Provider(nCl, "yaml"), nil); err != nil {
-			return fmt.Errorf("failed to load config for new cluster %s: %w", cluster, err)
-		}
 
-		// Modify key for new cluster
-		if err := ko.Set(key, value); err != nil {
-			return fmt.Errorf("failed to set key %s to value %v for new cluster %s: %w", key, value, cluster, err)
-		}
-		if err := unmarshalKoanfYAML(ko, &nCl); err != nil {
-			return fmt.Errorf("failed to read modified config for new cluster %s: %w", cluster, err)
-		}
-
-		// Add new cluster to cluster list
-		cfg.Clusters = append(cfg.Clusters, nCl)
-	} else {
-		// Modifying existing cluster; modify directly in cluster list
-		// Make sure there is a cluster to modify
-		if clusterToMod == nil {
-			return fmt.Errorf("unknown error finding existing cluster %s in %s", cluster, path)
-		}
-		if err := ko.Load(structs.Provider(*clusterToMod, "yaml"), nil); err != nil {
-			return fmt.Errorf("failed to load config for existing cluster %s: %w", cluster, err)
-		}
-
-		// Modify key for existing cluster
-		if err := ko.Set(key, value); err != nil {
-			return fmt.Errorf("failed to set key %s to value %v for existing cluster %s: %w", key, value, cluster, err)
-		}
-		if err := unmarshalKoanfYAML(ko, &clusterToMod); err != nil {
-			return fmt.Errorf("failed to read modified config for existing cluster %s: %w", cluster, err)
+	// Using -1 as a sentinel value to indicate creation is required
+	if cidx == -1 {
+		cidx = len(clusters)
+		clusters = append(clusters, map[string]any{})
+		if key == "name" {
+			clusters[cidx]["name"] = value
+		} else {
+			clusters[cidx]["name"] = cluster
 		}
 	}
 
+	kc := koanf.NewWithConf(kConfig)
+	err = kc.Load(confmap.Provider(clusters[cidx], ""), nil)
+	if err != nil {
+		return fmt.Errorf("unable to load cluster '%s' from config '%s': %w", cluster, path, err)
+	}
+
+	err = kc.Set(key, value)
+	if err != nil {
+		return fmt.Errorf("unable to modify config value '%s' in cluster '%s': %w", key, cluster, err)
+	}
+
+	clusters[cidx] = kc.Raw()
+	err = ko.Set("clusters", clusters)
+	if err != nil {
+		return fmt.Errorf("unable to re-set clusters: %w", err)
+	}
+
+	defaultCluster := ko.String("default-cluster")
+
 	// If default is set, set default-cluster to cluster name.
-	if dflt {
+	// Also do it if the default-cluster was renamed (to reflect the new name)
+	if dflt || (key == "name" && defaultCluster == cluster) {
+		// If key was "name", set default-cluster to "name"
+		// instead of cluster specified in arg.
 		if key == "name" {
-			// If key was "name", set default-cluster to "name"
-			// instead of cluster specified in arg.
-			cfg.DefaultCluster = value.(string)
+			s, ok := value.(string)
+			if !ok || s == "" {
+				err = fmt.Errorf("value '%v' is not a string or is an empty string", value)
+			} else {
+				err = ko.Set("default-cluster", s)
+			}
 		} else {
-			// If any other key, set default-cluster to cluster
-			// specified in arg.
-			cfg.DefaultCluster = cluster
+			err = ko.Set("default-cluster", cluster)
 		}
-	} else if cfg.DefaultCluster == cluster && key == "name" {
-		// Even if default is not set, if the current default cluster
-		// matches cluster specified in arg and key is "name", change
-		// default-cluster to the new name after changing the cluster
-		// name so it doesn't point to a non-existent cluster.
-		cfg.DefaultCluster = value.(string)
+		if err != nil {
+			return fmt.Errorf("failed to set default-cluster: %w", err)
+		}
 	}
 
 	// Write modified config back to file
-	if err := WriteConfig(path, cfg); err != nil {
+	if err := WriteConfig(path, ko); err != nil {
 		return fmt.Errorf("failed to write modified config to %s: %w", path, err)
 	}
 
@@ -804,26 +691,19 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value interface{}
 // an error is returned. Otherwise, nil is returned.
 func DeleteConfig(path, key string) error {
 	// Open file for writing
-	cfg, err := ReadConfig(path)
+	ko, err := ReadConfig(path)
 	if err != nil {
 		return fmt.Errorf("failed to read %s for deletion: %w", path, err)
 	}
 
-	// Perform deletion
-	ko := koanf.NewWithConf(kConfig)
-	if err := ko.Load(structs.Provider(cfg, "yaml"), nil); err != nil {
-		return fmt.Errorf("failed to load config from %s: %w", path, err)
-	}
+	// if !ko.Exists(key) {
+	// 	return fmt.Errorf("key '%s' does not exist", key)
+	// }
 
 	ko.Delete(key)
 
-	var modCfg Config
-	if err := unmarshalKoanfYAML(ko, &modCfg); err != nil {
-		return fmt.Errorf("failed to unset key %s from config for %s: %w", key, path, err)
-	}
-
 	// Write modified config back to file
-	if err := WriteConfig(path, modCfg); err != nil {
+	if err := WriteConfig(path, ko); err != nil {
 		return fmt.Errorf("failed to write modified config to %s: %w", path, err)
 	}
 
@@ -837,7 +717,7 @@ func DeleteConfig(path, key string) error {
 // doesn't exist or "name" is the key.
 func DeleteConfigCluster(path, cluster, key string) error {
 	// Open file for writing
-	cfg, err := ReadConfig(path)
+	ko, err := ReadConfig(path)
 	if err != nil {
 		return fmt.Errorf("failed to read %s for modification: %w", path, err)
 	}
@@ -846,34 +726,42 @@ func DeleteConfigCluster(path, cluster, key string) error {
 		return fmt.Errorf("cannot unset name of cluster")
 	}
 
-	// Find cluster to modify
-	var clusterToMod *ConfigCluster
-	for cidx, cl := range cfg.Clusters {
-		if cl.Name == cluster {
-			clusterToMod = &(cfg.Clusters[cidx])
-			break
+	delim := ko.Delim()
+	if strings.Contains(cluster, delim) {
+		return fmt.Errorf("cluster name '%s' contains delimiter character '%s'", cluster, delim)
+	}
+
+	var clusters []map[string]any
+	err = ko.Unmarshal("clusters", &clusters)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal clusters: %w", err)
+	}
+
+	found := false
+	for i := 0; i < len(clusters); i++ {
+		if clusters[i]["name"] == cluster {
+			ck := koanf.NewWithConf(kConfig)
+			err = ck.Load(confmap.Provider(clusters[i], ""), nil)
+			if err != nil {
+				return fmt.Errorf("unable to load cluster config from map: %w", err)
+			}
+			if !ck.Exists(key) {
+				return fmt.Errorf("key '%s' doesn't exist", key)
+			}
+			ck.Delete(key)
+			clusters[i] = ck.Raw()
+			found = true
 		}
 	}
-	if clusterToMod == nil {
-		return fmt.Errorf("cluster %q not found", cluster)
+
+	if !found {
+		return fmt.Errorf("cluster '%s' doesn't exist", cluster)
 	}
 
-	// Perform deletion
-	ko := koanf.NewWithConf(kConfig)
-	if err := ko.Load(structs.Provider(*clusterToMod, "yaml"), nil); err != nil {
-		return fmt.Errorf("failed to load config for cluster %s: %w", cluster, err)
-	}
-	ko.Delete(key)
-
-	// Write modified config back out to struct
-	var tmpCluster ConfigCluster
-	if err := unmarshalKoanfYAML(ko, &tmpCluster); err != nil {
-		return fmt.Errorf("failed to read modified cluster data: %w", err)
-	}
-	*clusterToMod = tmpCluster
+	ko.Set("clusters", clusters)
 
 	// Write modified config back to file
-	if err := WriteConfig(path, cfg); err != nil {
+	if err := WriteConfig(path, ko); err != nil {
 		return fmt.Errorf("failed to write modified config to %s: %w", path, err)
 	}
 
@@ -886,7 +774,7 @@ func DeleteConfigCluster(path, cluster, key string) error {
 // errs if the key begins with "clusters*" ("*" is one or more characters), i.e.
 // an individual cluster config is trying to be retrieved. To get an individual
 // cluster config, use GetConfigCluster.
-func GetConfig(cfg Config, key string) (interface{}, error) {
+func GetConfig(ko *koanf.Koanf, key string) (any, error) {
 	// Do not try to get individual cluster config. Use GetConfigCluster for
 	// that.
 	if strings.HasPrefix(key, "clusters") && len(key) > len("clusters") {
@@ -894,42 +782,36 @@ func GetConfig(cfg Config, key string) (interface{}, error) {
 	}
 
 	// Load config into koanf so the key can be used to get config.
-	var val interface{}
-	ko := koanf.NewWithConf(kConfig)
-	if err := ko.Load(structs.Provider(cfg, "yaml"), nil); err != nil {
-		return nil, fmt.Errorf("failed to load global config: %w", err)
-	}
+	var val any
 	if key != "" {
 		val = ko.Get(key)
 	} else {
-		// No key specified, return whole config
-		if err := unmarshalKoanfYAML(ko, &val); err != nil {
-			return nil, fmt.Errorf("failed to read config data: %w", err)
-		}
+		val = ko.Raw()
 	}
 	return val, nil
 }
 
 // GetConfigFromFile is like GetConfig except that it reads the config from the
 // file at path instead of a Config struct.
-func GetConfigFromFile(path, key string) (interface{}, error) {
+func GetConfigFromFile(path, key string) (any, error) {
 	// Read in config file
-	cfg, err := ReadConfig(path)
+	ko, err := ReadConfig(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file %s: %w", path, err)
 	}
 
-	return GetConfig(cfg, key)
+	return GetConfig(ko, key)
 }
 
 // GetConfigString wraps GetConfig and returns a string representation of the
 // value of key, using format to determine how to marshal the value.
 // Currently-supported formats are yaml, json, and json-pretty.
-func GetConfigString(cfg Config, key, format string) (string, error) {
-	val, err := GetConfig(cfg, key)
-	if err != nil {
-		return "", err
+func GetConfigString(ko *koanf.Koanf, key, format string) (string, error) {
+	if strings.HasPrefix(key, "clusters.") {
+		return "", fmt.Errorf("key cannot be a cluster")
 	}
+	// val, err := GetConfig(ko, key)
+	val := ko.Get(key)
 	if val == nil {
 		return "", nil
 	}
@@ -960,51 +842,27 @@ func GetConfigString(cfg Config, key, format string) (string, error) {
 // GetConfigFromFile.
 func GetConfigStringFromFile(path, key, format string) (string, error) {
 	// Read in config file
-	cfg, err := ReadConfig(path)
+	ko, err := ReadConfig(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to read config file %s: %w", path, err)
 	}
 
-	return GetConfigString(cfg, key, format)
+	return GetConfigString(ko, key, format)
 }
 
 // GetConfigCluster returns the config value of key for a ConfigCluster struct,
 // returning an error if loading the config into koanf errs. If key is empty,
-// the whole config is returned. This function _only_ retrieves confiog options
+// the whole config is returned. This function _only_ retrieves config options
 // for a cluster. To get global config, use GetConfig.
 func GetConfigCluster(cluster ConfigCluster, key string) (interface{}, error) {
 	// Load config into koanf so the key can be used to get config.
 	var val interface{}
 	ko := koanf.NewWithConf(kConfig)
-	if err := ko.Load(structs.Provider(cluster, "yaml"), nil); err != nil {
+	if err := ko.Load(structs.Provider(cluster, "koanf"), nil); err != nil {
 		return nil, fmt.Errorf("failed to load cluster config: %w", err)
 	}
-	if key != "" {
-		val = ko.Get(key)
-	} else {
-		// No key specified, return whole config
-		if err := unmarshalKoanfYAML(ko, &val); err != nil {
-			return nil, fmt.Errorf("failed to read cluster config: %w", err)
-		}
-	}
+	val = ko.Get(key)
 	return val, nil
-}
-
-// GetConfigClusterFromFile is like GetConfigCluster except that it reads the
-// config from the file at path instead of a ConfigCluster struct.
-func GetConfigClusterFromFile(path, cluster, key string) (interface{}, error) {
-	// Read in config file
-	cfg, err := ReadConfig(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file %s: %w", path, err)
-	}
-
-	for _, cl := range cfg.Clusters {
-		if cl.Name == cluster {
-			return GetConfigCluster(cl, key)
-		}
-	}
-	return nil, fmt.Errorf("cluster %q not found in %s", cluster, path)
 }
 
 // GetConfigClusterString wraps GetConfigCluster and returns a string
@@ -1045,40 +903,79 @@ func GetConfigClusterString(cluster ConfigCluster, key, format string) (string, 
 // errors, then unmarshals the config into a Config struct and returns it. If an
 // error in this process occurs or there is an error in the config, an error is
 // returned.
-func ReadConfig(path string) (Config, error) {
-	var cfg Config
+func ReadConfig(path string) (*koanf.Koanf, error) {
 	if path == "" {
-		return cfg, fmt.Errorf("no configuration file passed")
+		return nil, fmt.Errorf("no configuration file passed")
 	}
 	log.Logger.Debug().Msgf("reading config file: %s", path)
 
 	// Load config file into koanf to check for errors
 	ko := koanf.NewWithConf(kConfig)
 	if err := ko.Load(file.Provider(path), configParser); err != nil {
-		return cfg, fmt.Errorf("failed to load config file %s: %w", path, err)
+		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
 	}
 
-	// Unmarshal koanf data into config struct
-	if err := unmarshalKoanfYAML(ko, &cfg); err != nil {
-		return cfg, fmt.Errorf("failed to read config data: %w", err)
-	}
-
-	return cfg, nil
+	return ko, nil
 }
 
-// WriteConfig takes a path and config file format and writes the current viper
-// configuration to the file pointed to by path in the format specified. If path
-// is empty, an error is returned. WriteConfig accepts any config file types
-// that viper accepts. If format is empty, the format is guessed by the config
-// file's file extension. If there is no file extension and format is empty,
-// YAML is used.
-func WriteConfig(path string, cfg Config) error {
+// Same as ReadConfig but applies the defaults to the returned loanf object
+func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
+	if path == "" {
+		return nil, fmt.Errorf("no configuration file passed")
+	}
+	log.Logger.Debug().Msgf("reading config file: %s", path)
+
+	// Load config file into koanf to check for errors
+	ko := koanf.NewWithConf(kConfig)
+
+	if err := ko.Load(confmap.Provider(DefaultConfigMap, "."), nil); err != nil {
+		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
+	}
+
+	if err := ko.Load(file.Provider(path), configParser); err != nil {
+		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
+	}
+
+	// Merge clusters separately, by name (same precedence as main merging)
+	var kClusterSlice []map[string]any
+	err := ko.Unmarshal("clusters", &kClusterSlice)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal cluster configs from config '%s': %w", path, err)
+	}
+
+	for i, cluster := range kClusterSlice {
+		k := koanf.NewWithConf(kConfig)
+		err = k.Load(confmap.Provider(DefaultClusterConfigMap, "."), nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load default cluster config: %w", err)
+		}
+
+		c, ok := cluster["cluster"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("cluster '%s' is not a map", cluster["name"])
+		}
+		k.Load(confmap.Provider(c, ""), nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load cluster config: %w", err)
+		}
+
+		ko.Unmarshal("", &c)
+		kClusterSlice[i]["cluster"] = c
+	}
+
+	ko.Set("clusters", kClusterSlice)
+
+	return ko, nil
+}
+
+// Marshals the config to YAML and writes it to the given path
+func WriteConfig(path string, k *koanf.Koanf) error {
 	if path == "" {
 		return fmt.Errorf("no configuration file path passed")
 	}
 	log.Logger.Debug().Msgf("writing config file: %s", path)
 
-	c, err := yaml.Marshal(cfg)
+	c, err := k.Marshal(configParser)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config for writing: %w", err)
 	}
@@ -1098,11 +995,12 @@ func WriteConfig(path string, cfg Config) error {
 	return nil
 }
 
-// mergeConfig is the handler function that handles merging koanf
-// configurations. It is a wrapper around MergeMaps, which performs the actual
-// merging of the data structures.
-func mergeConfig(src, dst map[string]interface{}) error {
-	// "name" is key used to identify each cluster config in config's
-	// cluster list.
-	return MergeMaps(src, dst, "name")
+// Returns the path of the user config, which is different for every user
+func getUserConfigPath() (string, error) {
+	// Generate user config path: ~/.config/ochami/config.yaml
+	user, err := user.Current()
+	if err != nil {
+		return "", fmt.Errorf("unable to fetch current user: %w", err)
+	}
+	return filepath.Join(user.HomeDir, ".config", "ochami", "config.yaml"), nil
 }

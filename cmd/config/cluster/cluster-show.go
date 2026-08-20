@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/knadh/koanf/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -49,39 +50,39 @@ See ochami-config(5) for details on the configuration options.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Get the config from the relevant file depending on the flag,
 			// or the merged config if none.
-			var cfg config.Config
+			var ko *koanf.Koanf
 			var err error
 			format := cmd.Flag("format").Value.String()
 			if cmd.Flags().Changed("system") {
-				cfg, err = config.ReadConfig(config.SystemConfigFile)
+				ko, err = config.ReadConfigWithDefaults(config.SystemConfigFile)
 				if err != nil {
 					log.Logger.Error().Err(err).Msgf("failed to read system config file")
 					cli.LogHelpError(cmd)
 					os.Exit(1)
 				}
 			} else if cmd.Flags().Changed("user") {
-				cfg, err = config.ReadConfig(config.UserConfigFile)
+				ko, err = config.ReadConfigWithDefaults(config.UserConfigFile)
 				if err != nil {
 					cli.LogHelpError(cmd)
 					log.Logger.Error().Err(err).Msgf("failed to read user config file")
 					os.Exit(1)
 				}
 			} else if cmd.Flags().Changed("config") {
-				cfg, err = config.ReadConfig(cmd.Flag("config").Value.String())
+				ko, err = config.ReadConfigWithDefaults(cmd.Flag("config").Value.String())
 				if err != nil {
 					log.Logger.Error().Err(err).Msgf("failed to read config file %s", cmd.Flag("config").Value.String())
 					cli.LogHelpError(cmd)
 					os.Exit(1)
 				}
 			} else {
-				cfg = config.GlobalConfig
+				ko = config.GlobalKoanf
 			}
 
 			var key string
 			var val string
 			if len(args) == 0 {
 				// No cluster specified, get all of them.
-				val, err = config.GetConfigString(cfg, "clusters", format)
+				val, err = config.GetConfigString(ko, "clusters", format)
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to fetch config for all clusters")
 					cli.LogHelpError(cmd)
@@ -89,9 +90,15 @@ See ochami-config(5) for details on the configuration options.`,
 				}
 			} else {
 				var cfgCl *config.ConfigCluster
-				for cidx, cl := range cfg.Clusters {
+				var clusters []config.ConfigCluster
+				err = ko.Unmarshal("clusters", &clusters)
+				if err != nil {
+					log.Logger.Error().Err(err).Msgf("failed to unmarshal clusters from %s", cmd.Flag("config").Value.String())
+					os.Exit(1)
+				}
+				for cidx, cl := range clusters {
 					if cl.Name == args[0] {
-						cfgCl = &(cfg.Clusters[cidx])
+						cfgCl = &(clusters[cidx])
 						break
 					}
 				}

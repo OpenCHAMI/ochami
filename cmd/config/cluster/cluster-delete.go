@@ -68,39 +68,45 @@ See ochami-config(5) for details on configuration options.`,
 			}
 
 			// Read in config from file
-			cfg, err := config.ReadConfig(fileToModify)
+			ko, err := config.ReadConfig(fileToModify)
 			if err != nil {
 				log.Logger.Error().Err(err).Msgf("failed to read config from %s", fileToModify)
 				cli.LogHelpError(cmd)
 				os.Exit(1)
 			}
 
-			// Fetch existing cluster list config
+			var clusters []map[string]any
+			err = ko.Unmarshal("clusters", &clusters)
+			if err != nil {
+				log.Logger.Error().Err(err).Msgf("unable to unmarshal clusters")
+			}
+
+			found := false
 			clusterName := args[0]
-			for idx, cluster := range cfg.Clusters {
-				if cluster.Name == clusterName {
-					cfg.Clusters = config.RemoveFromSlice(cfg.Clusters, idx)
-
-					// If cluster was default, remove default-cluster
-					if cfg.DefaultCluster != "" {
-						if cfg.DefaultCluster == clusterName {
-							cfg.DefaultCluster = ""
-							log.Logger.Info().Msgf("cluster %s removed as default-cluster from config file %s", clusterName, fileToModify)
-						}
-					}
-
-					// Write out config file
-					// WARNING: This will rewrite the whole config file so modifications like
-					// comments will get erased.
-					if err := config.WriteConfig(fileToModify, cfg); err != nil {
-						log.Logger.Error().Err(err).Msgf("failed to write modified config to %s", fileToModify)
-						cli.LogHelpError(cmd)
-						os.Exit(1)
-					}
-					log.Logger.Info().Msgf("cluster %s removed from config file %s", clusterName, fileToModify)
-
-					os.Exit(0)
+			newClusters := make([]map[string]any, 0, len(clusters))
+			for _, c := range clusters {
+				if c["name"] != clusterName {
+					newClusters = append(newClusters, c)
+					found = true
 				}
+			}
+
+			if !found {
+				log.Logger.Error().Msgf("cluster '%s' doesn't exist", clusterName)
+			}
+
+			ko.Set("clusters", newClusters)
+
+			if clusterName == ko.String("default-cluster") {
+				ko.Delete("default-cluster")
+			}
+
+			// Write config to file
+			err = config.WriteConfig(fileToModify, ko)
+			if err != nil {
+				log.Logger.Error().Err(err).Msgf("failed to write config to %s", fileToModify)
+				cli.LogHelpError(cmd)
+				os.Exit(1)
 			}
 
 			// If we have reached here, the cluster was not found
