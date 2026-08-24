@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 <!-- Text width is 80, only use spaces and use 4 spaces instead of tabs -->
 <!-- vim: set et sta tw=80 ts=4 sw=4 sts=0: -->
 
-[![Release with Goreleaser](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/OpenCHAMI/ochami)](https://github.com/OpenCHAMI/ochami/releases/latest)
 [![Test](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/test.yml)
 [![Coverage](https://coveralls.io/repos/github/OpenCHAMI/ochami/badge.svg?branch=main)](https://coveralls.io/github/OpenCHAMI/ochami?branch=main)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/OpenCHAMI/ochami/badge)](https://scorecard.dev/viewer/?uri=github.com/OpenCHAMI/ochami)
@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 
 **Build quality**
 
+[![Release with Goreleaser](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/release.yml)
 [![Build](https://github.com/OpenCHAMI/ochami/actions/workflows/build.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/build.yml)
 [![Lint](https://github.com/OpenCHAMI/ochami/actions/workflows/lint.yml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/lint.yml)
 [![REUSE compliance check](https://github.com/OpenCHAMI/ochami/actions/workflows/reuse.yaml/badge.svg)](https://github.com/OpenCHAMI/ochami/actions/workflows/reuse.yaml)
