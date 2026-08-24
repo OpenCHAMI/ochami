@@ -15,6 +15,7 @@ INSTALL        ?= $(shell command -v install 2>/dev/null)
 SCDOC          ?= $(shell command -v scdoc 2>/dev/null)
 SHELL          ?= /bin/sh
 CONTAINER_PROG ?= $(shell command -v docker 2>/dev/null)
+GO_TOOLCHAIN_VERSION ?= $(shell awk '/^go / {print $$2; exit}' go.mod)
 
 # Allow override for PR builds in goreleaser
 IS_PR_BUILD ?= false
@@ -158,7 +159,7 @@ reuse: ## Check REUSE compliance
 .PHONY: lint
 lint:
 	$(call require-command-shell,$(GOLANGCI_LINT),golangci-lint)
-	$(GOLANGCI_LINT) run
+	GOTOOLCHAIN=go$(GO_TOOLCHAIN_VERSION) $(GOLANGCI_LINT) run
 
 .PHONY: mod
 mod: ## Download and prune Go modules
