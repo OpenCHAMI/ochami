@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-name: Coverage
+name: coverage
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   coverage:
-    name: Check test coverage
+    name: coverage
     runs-on: ubuntu-slim
     timeout-minutes: 15
     steps:

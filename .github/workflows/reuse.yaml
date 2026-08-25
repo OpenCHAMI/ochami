@@ -1,13 +1,14 @@
 # SPDX-FileCopyrightText: 2020 Free Software Foundation Europe e.V.
 # SPDX-License-Identifier: CC0-1.0
-name: REUSE compliance check
+name: reuse
 on: [push, pull_request]
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  reuse:
+    name: reuse
     runs-on: ubuntu-slim
     timeout-minutes: 10
     steps:

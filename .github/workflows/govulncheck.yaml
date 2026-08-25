@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-name: Vulnerability Check
+name: govulncheck
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   govulncheck:
-    name: Run govulncheck
+    name: govulncheck
     runs-on: ubuntu-slim
     timeout-minutes: 10
     steps:
