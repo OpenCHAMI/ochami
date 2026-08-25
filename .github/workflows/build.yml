@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-name: Build
+name: build
 on:
   pull_request:
   workflow_dispatch:
@@ -160,3 +160,21 @@ jobs:
       - name: Build manual pages
         run: |
           make man
+
+  build:
+    name: build
+    if: ${{ always() }}
+    needs:
+      - build-goreleaser
+      - build-make-binaries
+      - build-make-container-multistage
+      - docs-make
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Verify build jobs passed
+        run: |
+          [[ "${{ needs.build-goreleaser.result }}" == "success" ]]
+          [[ "${{ needs.build-make-binaries.result }}" == "success" ]]
+          [[ "${{ needs.build-make-container-multistage.result }}" == "success" ]]
+          [[ "${{ needs.docs-make.result }}" == "success" ]]

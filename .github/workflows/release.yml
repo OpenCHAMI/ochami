@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-name: Release with Goreleaser
+name: release
 
 permissions: write-all
 
@@ -13,10 +13,11 @@ on:
       - v*
 
 jobs:
-  build:
+  release:
     # Releases require Docker Buildx, which is unavailable on the unprivileged
     # ubuntu-slim runner.
     runs-on: ubuntu-latest
+    name: Release with Goreleaser
     timeout-minutes: 45
     steps:
       - name: Install scdoc for man page generation

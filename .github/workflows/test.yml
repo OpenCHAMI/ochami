@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-name: Test
+name: test
 
 permissions:
   contents: read
@@ -14,7 +14,8 @@ on:
   pull_request:
 
 jobs:
-  tests:
+  test:
+    name: test
     runs-on: ubuntu-slim
     timeout-minutes: 15
     steps:

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-name: Lint
+name: lint
 on:
   push:
     branches:
@@ -50,3 +50,17 @@ jobs:
         run: |
           go mod tidy
           git diff --exit-code -- go.mod go.sum
+
+  lint:
+    name: lint
+    if: ${{ always() }}
+    needs:
+      - golangci
+      - modules
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Verify lint jobs passed
+        run: |
+          [[ "${{ needs.golangci.result }}" == "success" ]]
+          [[ "${{ needs.modules.result }}" == "success" ]]

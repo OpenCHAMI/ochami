@@ -6,10 +6,11 @@
 # by a third party and are governed by separate terms of service, privacy
 # policy, and support documentation.
 
-name: Scorecard supply-chain security
+name: scorecard
 
 on:
   branch_protection_rule:
+  pull_request:
   schedule:
     - cron: '39 5 * * 1'
   push:
@@ -19,8 +20,8 @@ on:
 permissions: read-all
 
 jobs:
-  analysis:
-    name: Scorecard analysis
+  scorecard:
+    name: scorecard
     # Scorecard runs as a container action, which is unavailable on the
     # unprivileged ubuntu-slim runner.
     runs-on: ubuntu-latest
@@ -40,7 +41,7 @@ jobs:
         with:
           results_file: results.sarif
           results_format: sarif
-          publish_results: true
+          publish_results: ${{ github.event_name != 'pull_request' }}
 
       - name: Upload SARIF artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -50,6 +51,7 @@ jobs:
           retention-days: 5
 
       - name: Upload results to code scanning
+        if: github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
