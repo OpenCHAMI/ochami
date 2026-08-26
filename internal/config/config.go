@@ -954,13 +954,11 @@ func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
 		if !ok {
 			return nil, fmt.Errorf("cluster '%s' is not a map", cluster["name"])
 		}
-		k.Load(confmap.Provider(c, ""), nil)
-		if err != nil {
+
+		if err := k.Load(confmap.Provider(c, ""), nil); err != nil {
 			return nil, fmt.Errorf("unable to load cluster config: %w", err)
 		}
-
-		ko.Unmarshal("", &c)
-		kClusterSlice[i]["cluster"] = c
+		kClusterSlice[i]["cluster"] = k.Raw()
 	}
 
 	ko.Set("clusters", kClusterSlice)
