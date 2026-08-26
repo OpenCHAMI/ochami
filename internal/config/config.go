@@ -961,7 +961,10 @@ func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
 		kClusterSlice[i]["cluster"] = k.Raw()
 	}
 
-	ko.Set("clusters", kClusterSlice)
+	err = ko.Set("clusters", kClusterSlice)
+	if err != nil {
+		return nil, fmt.Errorf("unable to set merged clusters in global config: %w", err)
+	}
 
 	return ko, nil
 }
