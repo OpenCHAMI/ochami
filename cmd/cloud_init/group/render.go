@@ -132,7 +132,11 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Write rendered template to stdout
-			out.Flush()
+			if err := out.Flush(); err != nil {
+				log.Logger.Error().Err(err).Msg("failed to write rendered template")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
 		},
 	}
 

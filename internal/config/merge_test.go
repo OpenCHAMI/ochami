@@ -179,7 +179,9 @@ func Test_MergeSlices(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			MergeSlices(tt.args.srcSlice, tt.args.dstSlice, tt.args.mergeKey)
+			if err := MergeSlices(tt.args.srcSlice, tt.args.dstSlice, tt.args.mergeKey); err != nil {
+				t.Errorf("MergeSlices() unexpected error = %v", err)
+			}
 			if !reflect.DeepEqual(tt.args.dstSlice, tt.mergedSlice) {
 				t.Errorf("MergeSlices() = %v, want %v", tt.args.dstSlice, tt.mergedSlice)
 			}

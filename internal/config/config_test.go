@@ -20,6 +20,15 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
+// mustWriteFile writes data to path with mode 0o644, failing the test on error.
+// It centralizes error handling for config-file setup in tests.
+func mustWriteFile(t *testing.T, path string, data []byte) {
+	t.Helper()
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatalf("failed to write test config file %s: %v", path, err)
+	}
+}
+
 func TestConfig_GetCluster(t *testing.T) {
 	type args struct {
 		name string
@@ -805,7 +814,7 @@ func TestModifyConfig(t *testing.T) {
 	t.Run("modify default-cluster updates config", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
-		os.WriteFile(path, []byte("default-cluster: old\n"), 0o644)
+		mustWriteFile(t, path, []byte("default-cluster: old\n"))
 
 		if err := ModifyConfig(path, "default-cluster", "new"); err != nil {
 			t.Fatalf("ModifyConfig(): unexpected error: %v", err)
@@ -829,7 +838,7 @@ func TestModifyConfig(t *testing.T) {
 	t.Run("modify nested log.level updates config", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
-		os.WriteFile(path, []byte("log:\n  format: pretty\n  level: info"), 0o644)
+		mustWriteFile(t, path, []byte("log:\n  format: pretty\n  level: info"))
 
 		if err := ModifyConfig(path, "log.level", "debug"); err != nil {
 			t.Fatalf("ModifyConfig(): unexpected error: %v", err)
@@ -874,11 +883,11 @@ func TestModifyConfigCluster(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
 
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 default-cluster: ""
 clusters:
     - name: a
-    - name: b`), 0o644)
+    - name: b`))
 
 		err := ModifyConfigCluster(path, "a", "name", false, "b")
 		if err == nil {
@@ -890,9 +899,9 @@ clusters:
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
 
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 default-cluster: ""
-clusters: null`), 0o644)
+clusters: null`))
 
 		if err := ModifyConfigCluster(path, "c1", "name", false, "c1"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -920,10 +929,10 @@ clusters: null`), 0o644)
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
 
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 default-cluster: c1
 clusters:
-    - name: c1`), 0o644)
+    - name: c1`))
 
 		if err := ModifyConfigCluster(path, "c1", "name", false, "c2"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -951,9 +960,9 @@ clusters:
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
 
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 default-cluster: ""
-clusters: null`), 0o644)
+clusters: null`))
 
 		if err := ModifyConfigCluster(path, "c3", "name", true, "c3"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -997,9 +1006,9 @@ func TestDeleteConfig(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
 
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 default-cluster: orig
-clusters: []`), 0o644)
+clusters: []`))
 
 		if err := DeleteConfig(path, "default-cluster"); err != nil {
 			t.Fatalf("DeleteConfig(): unexpected error: %v", err)
@@ -1023,10 +1032,10 @@ clusters: []`), 0o644)
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
 
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 log:
     format: pretty
-    level: info`), 0o644)
+    level: info`))
 
 		if err := DeleteConfig(path, "log.level"); err != nil {
 			t.Fatalf("DeleteConfig(): unexpected error: %v", err)
@@ -1063,12 +1072,12 @@ log:
 				Level:  "l",
 			},
 		}
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 timeout: 30s
 default-cluster: x
 log:
     format: f
-    level: l`), 0o644)
+    level: l`))
 
 		if err := DeleteConfig(path, "does.not.exist"); err != nil {
 			t.Fatalf("DeleteConfig(): unexpected error deleting missing key: %v", err)
@@ -1110,11 +1119,11 @@ func TestDeleteConfigCluster(t *testing.T) {
 	t.Run("cannot unset name", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 clusters:
     - name: c1
       cluster:
-        uri: u1`), 0o644)
+        uri: u1`))
 
 		err := DeleteConfigCluster(path, "c1", "name")
 		if err == nil {
@@ -1125,9 +1134,9 @@ clusters:
 	t.Run("cluster not found returns error", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 clusters:
-  - name: a`), 0o644)
+  - name: a`))
 
 		err := DeleteConfigCluster(path, "b", "cluster.uri")
 		if err == nil {
@@ -1138,20 +1147,22 @@ clusters:
 	t.Run("delete cluster.uri clears only URI", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 clusters:
   - name: c1
     cluster:
         uri: u1
         bss:
-            uri: b1`), 0o644)
+            uri: b1`))
 
 		if err := DeleteConfigCluster(path, "c1", "cluster.uri"); err != nil {
 			t.Fatalf("DeleteConfigCluster(): unexpected error: %v", err)
 		}
 		ko, _ := ReadConfig(path)
 		var cl []ConfigCluster
-		ko.Unmarshal("clusters", &cl)
+		if err := ko.Unmarshal("clusters", &cl); err != nil {
+			t.Fatalf("unable to unmarshal clusters: %v", err)
+		}
 		if cl[0].Cluster.URI != "" {
 			t.Errorf("URI = %q; want empty", cl[0].Cluster.URI)
 		}
@@ -1163,13 +1174,13 @@ clusters:
 	t.Run("delete cluster.bss.uri clears only BSS URI", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
-		os.WriteFile(path, []byte(`
+		mustWriteFile(t, path, []byte(`
 clusters:
   - name: c2
     cluster:
         uri: u2
         bss:
-            uri: b2`), 0o644)
+            uri: b2`))
 
 		if err := DeleteConfigCluster(path, "c2", "cluster.bss.uri"); err != nil {
 			t.Fatalf("DeleteConfigCluster(): unexpected error: %v", err)
@@ -1206,7 +1217,7 @@ clusters:
 func TestGetConfig(t *testing.T) {
 	// sample config for testing
 	cfg := koanf.NewWithConf(kConfig)
-	cfg.Load(structs.Provider(Config{
+	if err := cfg.Load(structs.Provider(Config{
 		DefaultCluster: "def",
 		Log: ConfigLog{
 			Format: "json",
@@ -1216,7 +1227,9 @@ func TestGetConfig(t *testing.T) {
 			{Name: "c1"},
 			{Name: "c2"},
 		},
-	}, "koanf"), nil)
+	}, "koanf"), nil); err != nil {
+		t.Fatalf("failed to load sample config: %v", err)
+	}
 
 	t.Run("get default-cluster", func(t *testing.T) {
 		v, err := GetConfig(cfg, "default-cluster")
@@ -1396,7 +1409,7 @@ clusters:
 
 func TestGetConfigString(t *testing.T) {
 	ko := koanf.NewWithConf(kConfig)
-	ko.Load(structs.Provider(Config{
+	if err := ko.Load(structs.Provider(Config{
 		DefaultCluster: "dc",
 		Log: ConfigLog{
 			Format: "json",
@@ -1405,7 +1418,9 @@ func TestGetConfigString(t *testing.T) {
 		Clusters: []ConfigCluster{
 			{Name: "c1"},
 		},
-	}, "koanf"), nil)
+	}, "koanf"), nil); err != nil {
+		t.Fatalf("failed to load sample config: %v", err)
+	}
 
 	t.Run("nil value returns empty string", func(t *testing.T) {
 		s, err := GetConfigString(ko, "does.not.exist", "yaml")
@@ -1813,7 +1828,7 @@ func TestWriteConfig(t *testing.T) {
 	t.Run("new file", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "config.yaml")
-		defer os.RemoveAll(path)
+		defer os.RemoveAll(path) //nolint:errcheck // best-effort cleanup; t.TempDir also removes it
 
 		if err := WriteConfig(path, ko); err != nil {
 			t.Fatalf("WriteConfig(): error writing to new file: %v", err)
@@ -1832,7 +1847,7 @@ func TestWriteConfig(t *testing.T) {
 	t.Run("overwrite existing file preserving permissions", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "config.yaml")
-		defer os.RemoveAll(path)
+		defer os.RemoveAll(path) //nolint:errcheck // best-effort cleanup; t.TempDir also removes it
 
 		// create an existing file with a restrictive mode
 		if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
@@ -1857,6 +1872,92 @@ func TestWriteConfig(t *testing.T) {
 		err := WriteConfig("/root/protected.yaml", ko)
 		if err == nil {
 			t.Fatal("WriteConfig(): expected permission error, got nil")
+		}
+	})
+}
+
+func TestReadConfigWithDefaults(t *testing.T) {
+	t.Run("empty path", func(t *testing.T) {
+		if _, err := ReadConfigWithDefaults(""); err == nil {
+			t.Fatal("ReadConfigWithDefaults(): expected error for empty path, got nil")
+		}
+	})
+
+	t.Run("applies global and cluster defaults", func(t *testing.T) {
+		tmp := t.TempDir()
+		path := filepath.Join(tmp, "config.yaml")
+		content := `default-cluster: foo
+clusters:
+  - name: foo
+    cluster:
+      uri: https://foo.example.com
+`
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("setup failed: %v", err)
+		}
+
+		ko, err := ReadConfigWithDefaults(path)
+		if err != nil {
+			t.Fatalf("ReadConfigWithDefaults(): unexpected error: %v", err)
+		}
+
+		// Global default should be present even though not in the file.
+		if got := ko.String("timeout"); got != DefaultConfigMap["timeout"] {
+			t.Errorf("timeout = %q, want %q", got, DefaultConfigMap["timeout"])
+		}
+
+		// Cluster default (enable-auth: true) should be applied.
+		var clusters []ConfigCluster
+		if err := ko.Unmarshal("clusters", &clusters); err != nil {
+			t.Fatalf("unmarshal clusters: %v", err)
+		}
+		if len(clusters) != 1 {
+			t.Fatalf("got %d clusters, want 1", len(clusters))
+		}
+		if !clusters[0].Cluster.EnableAuth {
+			t.Errorf("clusters[0].Cluster.EnableAuth = false, want true")
+		}
+		if got := clusters[0].Cluster.URI; got != "https://foo.example.com" {
+			t.Errorf("clusters[0].Cluster.URI = %q, want https://foo.example.com", got)
+		}
+	})
+
+	t.Run("preserves cluster order", func(t *testing.T) {
+		tmp := t.TempDir()
+		path := filepath.Join(tmp, "config.yaml")
+		content := `clusters:
+  - name: zeta
+    cluster:
+      uri: https://zeta.example.com
+  - name: alpha
+    cluster:
+      uri: https://alpha.example.com
+  - name: mu
+    cluster:
+      uri: https://mu.example.com
+`
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("setup failed: %v", err)
+		}
+
+		want := []string{"zeta", "alpha", "mu"}
+		// Run multiple times to guard against map-order nondeterminism.
+		for i := 0; i < 5; i++ {
+			ko, err := ReadConfigWithDefaults(path)
+			if err != nil {
+				t.Fatalf("ReadConfigWithDefaults(): unexpected error: %v", err)
+			}
+			var clusters []ConfigCluster
+			if err := ko.Unmarshal("clusters", &clusters); err != nil {
+				t.Fatalf("unmarshal clusters: %v", err)
+			}
+			var got []string
+			for _, c := range clusters {
+				got = append(got, c.Name)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("iteration %d: cluster order = %v, want %v", i, got, want)
+			}
 		}
 	})
 }

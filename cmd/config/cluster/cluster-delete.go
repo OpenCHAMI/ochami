@@ -79,23 +79,34 @@ See ochami-config(5) for details on configuration options.`,
 			err = ko.Unmarshal("clusters", &clusters)
 			if err != nil {
 				log.Logger.Error().Err(err).Msgf("unable to unmarshal clusters")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
 			}
 
 			found := false
 			clusterName := args[0]
 			newClusters := make([]map[string]any, 0, len(clusters))
 			for _, c := range clusters {
-				if c["name"] != clusterName {
-					newClusters = append(newClusters, c)
+				if c["name"] == clusterName {
 					found = true
+					continue
 				}
+				newClusters = append(newClusters, c)
 			}
 
+			// It doesn't make sense to delete a cluster that doesn't
+			// exist, so err before writing anything back to the file.
 			if !found {
-				log.Logger.Error().Msgf("cluster '%s' doesn't exist", clusterName)
+				log.Logger.Error().Msgf("cluster %s not found in config file %s", clusterName, fileToModify)
+				cli.LogHelpError(cmd)
+				os.Exit(1)
 			}
 
-			ko.Set("clusters", newClusters)
+			if err := ko.Set("clusters", newClusters); err != nil {
+				log.Logger.Error().Err(err).Msgf("failed to set clusters")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
 
 			if clusterName == ko.String("default-cluster") {
 				ko.Delete("default-cluster")
@@ -109,10 +120,7 @@ See ochami-config(5) for details on configuration options.`,
 				os.Exit(1)
 			}
 
-			// If we have reached here, the cluster was not found
-			log.Logger.Error().Msgf("cluster %s not found in config file %s", clusterName, cli.ConfigFile)
-			cli.LogHelpError(cmd)
-			os.Exit(1)
+			log.Logger.Info().Msgf("deleted cluster %s from config file %s", clusterName, fileToModify)
 		},
 	}
 
