@@ -30,7 +30,6 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/synackd/go-kargs v0.0.1-beta.1
 	github.com/vbauerster/mpb/v8 v8.15.2
-	go.yaml.in/yaml/v3 v3.0.4
 	golang.org/x/term v0.45.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -91,6 +90,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/vbauerster/cupwriter v0.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b // indirect
