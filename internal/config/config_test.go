@@ -1860,3 +1860,89 @@ func TestWriteConfig(t *testing.T) {
 		}
 	})
 }
+
+func TestReadConfigWithDefaults(t *testing.T) {
+	t.Run("empty path", func(t *testing.T) {
+		if _, err := ReadConfigWithDefaults(""); err == nil {
+			t.Fatal("ReadConfigWithDefaults(): expected error for empty path, got nil")
+		}
+	})
+
+	t.Run("applies global and cluster defaults", func(t *testing.T) {
+		tmp := t.TempDir()
+		path := filepath.Join(tmp, "config.yaml")
+		content := `default-cluster: foo
+clusters:
+  - name: foo
+    cluster:
+      uri: https://foo.example.com
+`
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("setup failed: %v", err)
+		}
+
+		ko, err := ReadConfigWithDefaults(path)
+		if err != nil {
+			t.Fatalf("ReadConfigWithDefaults(): unexpected error: %v", err)
+		}
+
+		// Global default should be present even though not in the file.
+		if got := ko.String("timeout"); got != DefaultConfigMap["timeout"] {
+			t.Errorf("timeout = %q, want %q", got, DefaultConfigMap["timeout"])
+		}
+
+		// Cluster default (enable-auth: true) should be applied.
+		var clusters []ConfigCluster
+		if err := ko.Unmarshal("clusters", &clusters); err != nil {
+			t.Fatalf("unmarshal clusters: %v", err)
+		}
+		if len(clusters) != 1 {
+			t.Fatalf("got %d clusters, want 1", len(clusters))
+		}
+		if !clusters[0].Cluster.EnableAuth {
+			t.Errorf("clusters[0].Cluster.EnableAuth = false, want true")
+		}
+		if got := clusters[0].Cluster.URI; got != "https://foo.example.com" {
+			t.Errorf("clusters[0].Cluster.URI = %q, want https://foo.example.com", got)
+		}
+	})
+
+	t.Run("preserves cluster order", func(t *testing.T) {
+		tmp := t.TempDir()
+		path := filepath.Join(tmp, "config.yaml")
+		content := `clusters:
+  - name: zeta
+    cluster:
+      uri: https://zeta.example.com
+  - name: alpha
+    cluster:
+      uri: https://alpha.example.com
+  - name: mu
+    cluster:
+      uri: https://mu.example.com
+`
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("setup failed: %v", err)
+		}
+
+		want := []string{"zeta", "alpha", "mu"}
+		// Run multiple times to guard against map-order nondeterminism.
+		for i := 0; i < 5; i++ {
+			ko, err := ReadConfigWithDefaults(path)
+			if err != nil {
+				t.Fatalf("ReadConfigWithDefaults(): unexpected error: %v", err)
+			}
+			var clusters []ConfigCluster
+			if err := ko.Unmarshal("clusters", &clusters); err != nil {
+				t.Fatalf("unmarshal clusters: %v", err)
+			}
+			var got []string
+			for _, c := range clusters {
+				got = append(got, c.Name)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("iteration %d: cluster order = %v, want %v", i, got, want)
+			}
+		}
+	})
+}

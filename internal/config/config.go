@@ -374,6 +374,54 @@ func GetDefaultTimeout() time.Duration {
 	return -1
 }
 
+// clusterAccumulator merges cluster configurations by name across multiple
+// sources while preserving the order in which cluster names are first seen.
+// This provides deterministic output regardless of Go's map iteration order.
+//
+// This is the shared building block for the "effective" config loaders
+// (ReadConfigWithDefaults and LoadGlobalConfigMerged), as opposed to the "raw"
+// loader (ReadConfig), which applies no defaults and performs no merging.
+type clusterAccumulator struct {
+	order  []string                // cluster names in first-seen order
+	byName map[string]*koanf.Koanf // per-cluster merged koanf instance
+}
+
+// newClusterAccumulator returns an initialized clusterAccumulator.
+func newClusterAccumulator() *clusterAccumulator {
+	return &clusterAccumulator{byName: map[string]*koanf.Koanf{}}
+}
+
+// add merges a single cluster's config (the "cluster" sub-map) into the
+// accumulator under the given name, applying DefaultClusterConfigMap the first
+// time a name is seen. Later calls for the same name merge on top of earlier
+// ones (higher-priority sources should be added last).
+func (ca *clusterAccumulator) add(name string, cluster map[string]any) error {
+	if ca.byName[name] == nil {
+		ca.order = append(ca.order, name)
+		ca.byName[name] = koanf.NewWithConf(kConfig)
+		if err := ca.byName[name].Load(confmap.Provider(DefaultClusterConfigMap, "."), nil); err != nil {
+			return fmt.Errorf("unable to load default cluster config: %w", err)
+		}
+	}
+	if err := ca.byName[name].Load(confmap.Provider(cluster, ""), nil); err != nil {
+		return fmt.Errorf("unable to merge cluster '%s': %w", name, err)
+	}
+	return nil
+}
+
+// slice returns the accumulated clusters as a slice of maps suitable for
+// koanf.Set("clusters", ...), in first-seen order.
+func (ca *clusterAccumulator) slice() []map[string]any {
+	clusterSlice := make([]map[string]any, 0, len(ca.order))
+	for _, name := range ca.order {
+		clusterSlice = append(clusterSlice, map[string]any{
+			"name":    name,
+			"cluster": ca.byName[name].Raw(),
+		})
+	}
+	return clusterSlice
+}
+
 // Like LoadGlobalConfigMerged, but only loads the default config (used for the
 // --ignore-config flag)
 func LoadGlobalConfigDefaultOnly() error {
@@ -441,8 +489,9 @@ func LoadGlobalConfigMerged() error {
 		{"user", file.Provider(UserConfigFile), configParser},
 	}
 
-	// For merging purposes, maps name to key-value pairs
-	clusterMap := map[string]*koanf.Koanf{}
+	// For merging purposes, accumulate clusters by name preserving
+	// first-seen order (same precedence as main merging).
+	clusterAcc := newClusterAccumulator()
 	for _, c := range configsToLoad {
 		k2 := koanf.NewWithConf(kConfig)
 		err = k2.Load(c.provider, c.parser)
@@ -468,17 +517,15 @@ func LoadGlobalConfigMerged() error {
 				if !ok || name == "" {
 					return fmt.Errorf("cluster #%d from config '%s' is missing a name", i, c.name)
 				}
-				if clusterMap[name] == nil {
-					clusterMap[name] = koanf.NewWithConf(kConfig)
-					err = clusterMap[name].Load(confmap.Provider(DefaultClusterConfigMap, "."), nil)
-					if err != nil {
-						return fmt.Errorf("unable to load default cluster config: %w", err)
-					}
-				}
 				switch cls := cluster["cluster"].(type) {
 				case map[string]any:
-					err = clusterMap[name].Load(confmap.Provider(cls, ""), nil)
-					if err != nil {
+					if err = clusterAcc.add(name, cls); err != nil {
+						return fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
+					}
+				case nil:
+					// Cluster entry with no "cluster" sub-map; ensure
+					// the name is registered with defaults applied.
+					if err = clusterAcc.add(name, map[string]any{}); err != nil {
 						return fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
 					}
 				default:
@@ -497,14 +544,7 @@ func LoadGlobalConfigMerged() error {
 	}
 
 	// add merged clusters back to primary koanf instance
-	clusterSlice := make([]map[string]any, 0, len(clusterMap))
-	for k, v := range clusterMap {
-		clusterSlice = append(clusterSlice, map[string]any{
-			"name":    k,
-			"cluster": v.Raw(),
-		})
-	}
-	k.Set("clusters", clusterSlice)
+	k.Set("clusters", clusterAcc.slice())
 
 	// Marshalling to the global config variable
 	err = k.Unmarshal("", &GlobalConfig)
@@ -918,7 +958,11 @@ func ReadConfig(path string) (*koanf.Koanf, error) {
 	return ko, nil
 }
 
-// Same as ReadConfig but applies the defaults to the returned loanf object
+// ReadConfigWithDefaults is the "effective" single-file loader: like
+// ReadConfig, but it applies DefaultConfigMap to global keys and
+// DefaultClusterConfigMap to each cluster, mirroring what LoadGlobalConfigMerged
+// produces for a single source. It is used by read-only commands such as
+// "config show" and "config cluster show". Cluster order is preserved.
 func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
 	if path == "" {
 		return nil, fmt.Errorf("no configuration file passed")
@@ -929,41 +973,40 @@ func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
 	ko := koanf.NewWithConf(kConfig)
 
 	if err := ko.Load(confmap.Provider(DefaultConfigMap, "."), nil); err != nil {
-		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
+		return ko, fmt.Errorf("failed to load defaults for config file %s: %w", path, err)
 	}
 
 	if err := ko.Load(file.Provider(path), configParser); err != nil {
 		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
 	}
 
-	// Merge clusters separately, by name (same precedence as main merging)
+	// Apply per-cluster defaults, preserving first-seen order.
 	var kClusterSlice []map[string]any
-	err := ko.Unmarshal("clusters", &kClusterSlice)
-	if err != nil {
+	if err := ko.Unmarshal("clusters", &kClusterSlice); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal cluster configs from config '%s': %w", path, err)
 	}
 
+	clusterAcc := newClusterAccumulator()
 	for i, cluster := range kClusterSlice {
-		k := koanf.NewWithConf(kConfig)
-		err = k.Load(confmap.Provider(DefaultClusterConfigMap, "."), nil)
-		if err != nil {
-			return nil, fmt.Errorf("unable to load default cluster config: %w", err)
+		name, ok := cluster["name"].(string)
+		if !ok || name == "" {
+			return nil, fmt.Errorf("cluster #%d from config '%s' is missing a name", i, path)
 		}
-
-		c, ok := cluster["cluster"].(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("cluster '%s' is not a map", cluster["name"])
+		switch cls := cluster["cluster"].(type) {
+		case map[string]any:
+			if err := clusterAcc.add(name, cls); err != nil {
+				return nil, fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, path, err)
+			}
+		case nil:
+			if err := clusterAcc.add(name, map[string]any{}); err != nil {
+				return nil, fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, path, err)
+			}
+		default:
+			return nil, fmt.Errorf("cluster '%s' is not a map", name)
 		}
-		k.Load(confmap.Provider(c, ""), nil)
-		if err != nil {
-			return nil, fmt.Errorf("unable to load cluster config: %w", err)
-		}
-
-		ko.Unmarshal("", &c)
-		kClusterSlice[i]["cluster"] = c
 	}
 
-	ko.Set("clusters", kClusterSlice)
+	ko.Set("clusters", clusterAcc.slice())
 
 	return ko, nil
 }
