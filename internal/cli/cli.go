@@ -250,7 +250,9 @@ func CreateIfNotExists(path string) error {
 		if err != nil {
 			return fmt.Errorf("creating %s failed: %w", path, err)
 		}
-		f.Close()
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("closing %s failed: %w", path, err)
+		}
 	}
 
 	return nil

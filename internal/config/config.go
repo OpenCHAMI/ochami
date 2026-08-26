@@ -570,7 +570,9 @@ func LoadGlobalConfigMerged() error {
 	// because StrictMerge disallows overwriting the existing []interface{}
 	// value with a []map[string]any via Set.
 	k.Delete("clusters")
-	k.Set("clusters", clusterAcc.slice())
+	if err = k.Set("clusters", clusterAcc.slice()); err != nil {
+		return fmt.Errorf("unable to set merged clusters: %w", err)
+	}
 
 	// Validate the fully-merged (effective) config.
 	if err = validateConfig(k); err != nil {
@@ -829,7 +831,9 @@ func DeleteConfigCluster(path, cluster, key string) error {
 		return fmt.Errorf("cluster '%s' doesn't exist", cluster)
 	}
 
-	ko.Set("clusters", clusters)
+	if err := ko.Set("clusters", clusters); err != nil {
+		return fmt.Errorf("unable to re-set clusters: %w", err)
+	}
 
 	// Write modified config back to file
 	if err := WriteConfig(path, ko); err != nil {
@@ -1051,7 +1055,9 @@ func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
 	// slice. Delete first because StrictMerge disallows overwriting the
 	// existing []interface{} value with a []map[string]any via Set.
 	ko.Delete("clusters")
-	ko.Set("clusters", clusterAcc.slice())
+	if err := ko.Set("clusters", clusterAcc.slice()); err != nil {
+		return ko, fmt.Errorf("unable to set clusters for config '%s': %w", path, err)
+	}
 
 	// Validate the fully-merged (effective) config.
 	if err := validateConfig(ko); err != nil {

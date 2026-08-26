@@ -79,6 +79,8 @@ See ochami-config(5) for details on configuration options.`,
 			err = ko.Unmarshal("clusters", &clusters)
 			if err != nil {
 				log.Logger.Error().Err(err).Msgf("unable to unmarshal clusters")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
 			}
 
 			found := false
@@ -100,7 +102,11 @@ See ochami-config(5) for details on configuration options.`,
 				os.Exit(1)
 			}
 
-			ko.Set("clusters", newClusters)
+			if err := ko.Set("clusters", newClusters); err != nil {
+				log.Logger.Error().Err(err).Msgf("failed to set clusters")
+				cli.LogHelpError(cmd)
+				os.Exit(1)
+			}
 
 			if clusterName == ko.String("default-cluster") {
 				ko.Delete("default-cluster")

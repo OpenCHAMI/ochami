@@ -193,7 +193,9 @@ func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool,
 			}
 			return err
 		}
-		output.Write(message)
+		if _, err := output.Write(message); err != nil {
+			return err
+		}
 	}
 }
 
