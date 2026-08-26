@@ -82,3 +82,73 @@ func jsonResponse(body string) harness.ServiceResponse {
 		Headers:    map[string]string{"Content-Type": "application/json"},
 	}
 }
+
+// TestBSSBootParamsWriteRequests verifies that BSS write commands construct
+// requests in the form the service expects (method, path, body, auth header).
+func TestBSSBootParamsWriteRequests(t *testing.T) {
+	const token = "test-token-abc123"
+
+	t.Run("boot params add sends POST with expected body", func(t *testing.T) {
+		server := harness.NewFakeHTTPServer(t, harness.NewServiceHandler(map[string]harness.ServiceResponse{
+			"POST /boot/v1/bootparameters": {
+				StatusCode: http.StatusCreated,
+				Body:       ``,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+			},
+		}))
+		defer server.Close()
+
+		configPath := harness.TempConfigFile(t, harness.ClusterConfig(fmt.Sprintf(`bss:
+  uri: %s/boot/v1
+`, server.URL)))
+
+		result := harness.RunCLI(t,
+			"--config", configPath,
+			"--token", token,
+			"bss", "boot", "params", "add",
+			"--mac", "00:de:ad:be:ef:00",
+			"--kernel", "https://example.com/kernel",
+			"--initrd", "https://example.com/initrd",
+			"--params", "quiet nosplash",
+		)
+		harness.AssertExitCode(t, result, 0)
+		harness.AssertRequestCount(t, server, 1)
+		harness.AssertLastRequest(t, server, http.MethodPost, "/boot/v1/bootparameters")
+		// Verify the request body carries the boot parameters the user set. The
+		// BootParams struct uses omitempty for most fields, so only the set
+		// fields (plus the always-present cloud-init object) appear.
+		harness.AssertLastRequestBodyContains(t, server, `"macs":["00:de:ad:be:ef:00"]`)
+		harness.AssertLastRequestBodyContains(t, server, `"kernel":"https://example.com/kernel"`)
+		harness.AssertLastRequestBodyContains(t, server, `"initrd":"https://example.com/initrd"`)
+		harness.AssertLastRequestBodyContains(t, server, `"params":"quiet nosplash"`)
+		harness.AssertLastRequestAuthToken(t, server, token)
+	})
+
+	t.Run("boot params add fails on 400 response", func(t *testing.T) {
+		server := harness.NewFakeHTTPServer(t, harness.NewServiceHandler(map[string]harness.ServiceResponse{
+			"POST /boot/v1/bootparameters": {
+				StatusCode: http.StatusBadRequest,
+				Body:       `{"error":"bad request"}`,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+			},
+		}))
+		defer server.Close()
+
+		configPath := harness.TempConfigFile(t, harness.ClusterConfig(fmt.Sprintf(`bss:
+  uri: %s/boot/v1
+`, server.URL)))
+
+		result := harness.RunCLI(t,
+			"--config", configPath,
+			"--token", token,
+			"bss", "boot", "params", "add",
+			"--mac", "00:de:ad:be:ef:00",
+			"--kernel", "https://example.com/kernel",
+		)
+		harness.AssertRequestCount(t, server, 1)
+		harness.AssertLastRequest(t, server, http.MethodPost, "/boot/v1/bootparameters")
+		if result.ExitCode == 0 {
+			t.Fatalf("expected non-zero exit code on 400 response, got 0\nstdout: %s\nstderr: %s", result.Stdout, result.Stderr)
+		}
+	})
+}

@@ -9,6 +9,7 @@ package harness
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,9 +19,46 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
+
+// binaryBuild caches the result of building the ochami CLI binary so it is only
+// built once per test process rather than on every RunCLI invocation.
+var binaryBuild struct {
+	once sync.Once
+	path string
+	err  error
+}
+
+// ochamiBinary builds the ochami CLI binary a single time for the test process
+// and returns the path to the built executable. Subsequent calls reuse the same
+// binary. The binary is written to a dedicated temp directory that lives for the
+// duration of the process (cleaned up by the OS afterward).
+func ochamiBinary(t *testing.T) string {
+	t.Helper()
+	binaryBuild.once.Do(func() {
+		dir, err := os.MkdirTemp("", "ochami-integration-bin-")
+		if err != nil {
+			binaryBuild.err = fmt.Errorf("failed to create temp dir for ochami binary: %w", err)
+			return
+		}
+		bin := filepath.Join(dir, "ochami")
+		buildCmd := exec.Command("go", "build", "-o", bin, repoRoot(t))
+		var stderr bytes.Buffer
+		buildCmd.Stderr = &stderr
+		if err := buildCmd.Run(); err != nil {
+			binaryBuild.err = fmt.Errorf("failed to build ochami: %w: %s", err, stderr.String())
+			return
+		}
+		binaryBuild.path = bin
+	})
+	if binaryBuild.err != nil {
+		t.Fatalf("%v", binaryBuild.err)
+	}
+	return binaryBuild.path
+}
 
 // CLIResult holds the result of a CLI command execution
 type CLIResult struct {
@@ -40,12 +78,8 @@ func RunCLI(t *testing.T, args ...string) CLIResult {
 func RunCLIWithInput(t *testing.T, stdin string, args ...string) CLIResult {
 	t.Helper()
 
-	// Build the ochami binary if not already built
-	ochamiBin := filepath.Join(t.TempDir(), "ochami")
-	buildCmd := exec.Command("go", "build", "-o", ochamiBin, repoRoot(t))
-	if err := buildCmd.Run(); err != nil {
-		t.Fatalf("failed to build ochami: %v", err)
-	}
+	// Build the ochami binary once per process and reuse it.
+	ochamiBin := ochamiBinary(t)
 
 	// Execute the command
 	cmd := exec.Command(ochamiBin, args...)
@@ -296,4 +330,78 @@ func AssertLastRequestHeader(t *testing.T, server *FakeHTTPServer, key, want str
 		t.Fatal("no requests recorded")
 	}
 	AssertHeader(t, server.Requests[len(server.Requests)-1], key, want)
+}
+
+// RequestBody returns the recorded body of an HTTP request as a string.
+func RequestBody(t *testing.T, req *http.Request) string {
+	t.Helper()
+	if req.Body == nil {
+		return ""
+	}
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		t.Fatalf("failed to read recorded request body: %v", err)
+	}
+	// Restore the body so it may be read again if needed.
+	req.Body = io.NopCloser(bytes.NewReader(body))
+	return string(body)
+}
+
+// LastRequest returns the most recently recorded request, failing if none exist.
+func LastRequest(t *testing.T, server *FakeHTTPServer) *http.Request {
+	t.Helper()
+	if len(server.Requests) == 0 {
+		t.Fatal("no requests recorded")
+	}
+	return server.Requests[len(server.Requests)-1]
+}
+
+// AssertLastRequestJSONBody unmarshals the most recent request body as JSON and
+// compares it to the expected value after round-tripping both through JSON so
+// that key ordering and formatting differences are ignored. This verifies the
+// CLI constructs the request body in the form a service expects.
+func AssertLastRequestJSONBody(t *testing.T, server *FakeHTTPServer, wantJSON string) {
+	t.Helper()
+	got := RequestBody(t, LastRequest(t, server))
+
+	var gotVal, wantVal interface{}
+	if err := json.Unmarshal([]byte(got), &gotVal); err != nil {
+		t.Fatalf("recorded request body is not valid JSON: %v\nbody: %s", err, got)
+	}
+	if err := json.Unmarshal([]byte(wantJSON), &wantVal); err != nil {
+		t.Fatalf("expected JSON is not valid: %v\njson: %s", err, wantJSON)
+	}
+
+	gotNorm, _ := json.Marshal(gotVal)
+	wantNorm, _ := json.Marshal(wantVal)
+	if string(gotNorm) != string(wantNorm) {
+		t.Errorf("request JSON body mismatch:\ngot:  %s\nwant: %s", gotNorm, wantNorm)
+	}
+}
+
+// AssertLastRequestBodyContains checks that the most recent request body
+// contains the given substring.
+func AssertLastRequestBodyContains(t *testing.T, server *FakeHTTPServer, want string) {
+	t.Helper()
+	body := RequestBody(t, LastRequest(t, server))
+	if !strings.Contains(body, want) {
+		t.Errorf("request body does not contain expected string:\nbody: %s\nwant substring: %s", body, want)
+	}
+}
+
+// AssertLastRequestQuery checks that a query parameter on the most recent
+// request equals the expected value.
+func AssertLastRequestQuery(t *testing.T, server *FakeHTTPServer, key, want string) {
+	t.Helper()
+	req := LastRequest(t, server)
+	if got := req.URL.Query().Get(key); got != want {
+		t.Errorf("request query %q = %q, want %q", key, got, want)
+	}
+}
+
+// AssertLastRequestAuthToken checks that the most recent request carries a
+// Bearer Authorization header with the expected token.
+func AssertLastRequestAuthToken(t *testing.T, server *FakeHTTPServer, wantToken string) {
+	t.Helper()
+	AssertLastRequestHeader(t, server, "Authorization", "Bearer "+wantToken)
 }

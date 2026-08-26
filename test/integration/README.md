@@ -109,8 +109,17 @@ These tests:
 - Run the real `ochami` CLI binary
 - Route commands to local fake HTTP servers
 - Verify the outgoing HTTP method and path
+- Verify the outgoing request body and headers (including auth tokens) match
+  the form the real service expects, for write operations (POST/PUT/PATCH/DELETE)
+- Verify the CLI reports failure (non-zero exit) on service error responses
+  (4xx/5xx)
 - Return minimal valid mock responses for CLI formatting/unmarshalling
 - Avoid Docker and external service dependencies so they run quickly in CI
+
+Because these tests exercise request construction against fake servers rather
+than live services, they run in a few seconds and require no Docker. The `ochami`
+binary is built once per test process (see `harness.ochamiBinary`) and reused
+across all CLI invocations.
 
 ### Legacy Tests (`test/integration/legacy/`)
 
@@ -168,6 +177,26 @@ harness.AssertNotContains(t, output, "unwanted string")
 harness.AssertEqual(t, got, want)
 harness.AssertExitCode(t, result, 0)
 harness.AssertLastRequest(t, server, http.MethodGet, "/expected/path")
+```
+
+### Request-Form Assertions
+
+For write commands, verify the request body, query parameters, and auth token
+match what the service expects:
+
+```go
+// Assert the JSON body sent by the CLI (compared structurally, ignoring key
+// order and formatting).
+harness.AssertLastRequestJSONBody(t, server, `{"Components":[{"ID":"x0","Type":""}]}`)
+
+// Assert a substring is present in the request body.
+harness.AssertLastRequestBodyContains(t, server, `"kernel":"https://example.com/kernel"`)
+
+// Assert a query parameter value.
+harness.AssertLastRequestQuery(t, server, "type", "Node")
+
+// Assert the Bearer token was forwarded.
+harness.AssertLastRequestAuthToken(t, server, "my-token")
 ```
 
 ## CI Integration

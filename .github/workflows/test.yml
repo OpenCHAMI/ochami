@@ -14,8 +14,8 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: test
+  unit-tests:
+    name: Unit tests
     runs-on: ubuntu-slim
     timeout-minutes: 15
     steps:
@@ -31,4 +31,23 @@ jobs:
           fetch-depth: 0
 
       - name: Run Go unit tests
-        run: make test
+        run: make unit-test
+
+  integration-tests:
+    name: Integration tests
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    steps:
+      - name: Set up latest stable Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - name: Checkout repo
+        uses: actions/checkout@v7
+        with:
+          fetch-tags: 1
+          fetch-depth: 0
+
+      - name: Run Go integration tests
+        run: make integration-test
