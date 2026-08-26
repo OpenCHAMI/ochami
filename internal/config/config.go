@@ -21,7 +21,7 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
-	"go.yaml.in/yaml/v3"
+	"gopkg.in/yaml.v3"
 
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/format"
