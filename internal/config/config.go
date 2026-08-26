@@ -75,8 +75,16 @@ var (
 	// Koanf YAML parser provider
 	configParser = kyaml.Parser()
 
-	// Global koanf struct configuration
-	kConfig = koanf.Conf{Delim: ".", StrictMerge: false}
+	// Global koanf struct configuration. The effective loaders
+	// (LoadGlobalConfigMerged, ReadConfigWithDefaults) use StrictMerge so
+	// that incompatible types between merged sources are caught.
+	kConfig = koanf.Conf{Delim: ".", StrictMerge: true}
+
+	// Raw koanf configuration used by the edit/modify loaders (ReadConfig
+	// and friends). These wholesale-replace keys such as "clusters" (e.g.
+	// swapping a []interface{} for a []map[string]any), which StrictMerge
+	// disallows, so strict merging must stay disabled on this path.
+	kConfigRaw = koanf.Conf{Delim: ".", StrictMerge: false}
 )
 
 // Config represents the structure of a configuration file.
@@ -403,6 +411,13 @@ func (ca *clusterAccumulator) add(name string, cluster map[string]any) error {
 			return fmt.Errorf("unable to load default cluster config: %w", err)
 		}
 	}
+	// Coerce string booleans (e.g. "true") into real booleans so that
+	// StrictMerge does not fail merging against the typed defaults in
+	// DefaultClusterConfigMap. This also rejects null/invalid boolean
+	// values with a clean error.
+	if err := normalizeClusterBools(name, cluster); err != nil {
+		return err
+	}
 	if err := ca.byName[name].Load(confmap.Provider(cluster, ""), nil); err != nil {
 		return fmt.Errorf("unable to merge cluster '%s': %w", name, err)
 	}
@@ -505,6 +520,14 @@ func LoadGlobalConfigMerged() error {
 				log.EarlyLogger.BasicLogf("\t%s -> %v", k, k2.Get(k))
 			}
 
+			// Reject explicit null values for required global
+			// scalars up front so a clean validation error is
+			// surfaced instead of the cryptic type-mismatch error
+			// StrictMerge would otherwise produce.
+			if err = checkGlobalNulls(k2); err != nil {
+				return fmt.Errorf("invalid config '%s': %w", c.name, err)
+			}
+
 			// Merge clusters separately, by name (same precedence as main merging)
 			var kClusterSlice []map[string]any
 			err = k2.Unmarshal("clusters", &kClusterSlice)
@@ -543,8 +566,16 @@ func LoadGlobalConfigMerged() error {
 		}
 	}
 
-	// add merged clusters back to primary koanf instance
+	// add merged clusters back to primary koanf instance. Delete first
+	// because StrictMerge disallows overwriting the existing []interface{}
+	// value with a []map[string]any via Set.
+	k.Delete("clusters")
 	k.Set("clusters", clusterAcc.slice())
+
+	// Validate the fully-merged (effective) config.
+	if err = validateConfig(k); err != nil {
+		return fmt.Errorf("invalid merged config: %w", err)
+	}
 
 	// Marshalling to the global config variable
 	err = k.Unmarshal("", &GlobalConfig)
@@ -676,7 +707,7 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 		}
 	}
 
-	kc := koanf.NewWithConf(kConfig)
+	kc := koanf.NewWithConf(kConfigRaw)
 	err = kc.Load(confmap.Provider(clusters[cidx], ""), nil)
 	if err != nil {
 		return fmt.Errorf("unable to load cluster '%s' from config '%s': %w", cluster, path, err)
@@ -780,7 +811,7 @@ func DeleteConfigCluster(path, cluster, key string) error {
 	found := false
 	for i := 0; i < len(clusters); i++ {
 		if clusters[i]["name"] == cluster {
-			ck := koanf.NewWithConf(kConfig)
+			ck := koanf.NewWithConf(kConfigRaw)
 			err = ck.Load(confmap.Provider(clusters[i], ""), nil)
 			if err != nil {
 				return fmt.Errorf("unable to load cluster config from map: %w", err)
@@ -950,7 +981,7 @@ func ReadConfig(path string) (*koanf.Koanf, error) {
 	log.Logger.Debug().Msgf("reading config file: %s", path)
 
 	// Load config file into koanf to check for errors
-	ko := koanf.NewWithConf(kConfig)
+	ko := koanf.NewWithConf(kConfigRaw)
 	if err := ko.Load(file.Provider(path), configParser); err != nil {
 		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
 	}
@@ -976,7 +1007,17 @@ func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
 		return ko, fmt.Errorf("failed to load defaults for config file %s: %w", path, err)
 	}
 
-	if err := ko.Load(file.Provider(path), configParser); err != nil {
+	// Load the file into a separate instance first so explicit null values
+	// for required global scalars can be rejected with a clean error before
+	// StrictMerge would otherwise fail with a cryptic type mismatch.
+	fileKo := koanf.NewWithConf(kConfig)
+	if err := fileKo.Load(file.Provider(path), configParser); err != nil {
+		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
+	}
+	if err := checkGlobalNulls(fileKo); err != nil {
+		return ko, fmt.Errorf("invalid config '%s': %w", path, err)
+	}
+	if err := ko.Merge(fileKo); err != nil {
 		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
 	}
 
@@ -1006,7 +1047,16 @@ func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
 		}
 	}
 
+	// Replace the clusters key with the merged, default-applied, ordered
+	// slice. Delete first because StrictMerge disallows overwriting the
+	// existing []interface{} value with a []map[string]any via Set.
+	ko.Delete("clusters")
 	ko.Set("clusters", clusterAcc.slice())
+
+	// Validate the fully-merged (effective) config.
+	if err := validateConfig(ko); err != nil {
+		return ko, fmt.Errorf("invalid config '%s': %w", path, err)
+	}
 
 	return ko, nil
 }
