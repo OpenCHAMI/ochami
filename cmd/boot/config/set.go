@@ -5,8 +5,6 @@
 package config
 
 import (
-	"os"
-
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -74,12 +72,17 @@ See ochami-boot(1) for more details.`,
   echo '<json_data>' | ochami boot config set boo-914afad2
   echo '<yaml_data>' | ochami boot config set -d @- -f yaml boo-914afad2
   echo '<yaml_data>' | ochami boot config set -f yaml boo-914afad2`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
@@ -95,9 +98,13 @@ See ochami-boot(1) for more details.`,
 				// Read boot configuration data
 				bcs := boot_service_client.UpdateBootConfigurationRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &bcs)
+					if err := cli.HandlePayload(cmd, &bcs); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &bcs)
+					if err := cli.HandlePayloadStdin(cmd, &bcs); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
@@ -108,21 +115,25 @@ See ochami-boot(1) for more details.`,
 				// Read boot configuration data
 				spec := api.BootConfigurationSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &spec)
+					if err := cli.HandlePayload(cmd, &spec); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &spec)
+					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
 				cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to set boot configuration")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to set boot configuration: %w", reqErr)
 			}
 
 			log.Logger.Debug().Msgf("boot config set: %+v", cfgSet)
+
+			return nil
 		},
 	}
 

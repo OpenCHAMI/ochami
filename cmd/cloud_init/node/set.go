@@ -7,7 +7,6 @@ package node
 
 import (
 	"errors"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -62,48 +61,55 @@ See ochami-cloud-init(1) for more details.`,
   echo '<json_data>' | ochami cloud-init group set -d @-
   echo '<yaml_data>' | ochami cloud-init group set -f yaml
   echo '<yaml_data>' | ochami cloud-init group set -d @- -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// The instance information list we will send
 			ciInstInfo := []cistore.OpenCHAMIInstanceInfo{}
 
 			// Read payload from file or stdin.
 			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &ciInstInfo)
+				if err := cli.HandlePayload(cmd, &ciInstInfo); err != nil {
+					return err
+				}
 			} else {
-				cli.HandlePayloadStdin(cmd, &ciInstInfo)
+				if err := cli.HandlePayloadStdin(cmd, &ciInstInfo); err != nil {
+					return err
+				}
 			}
 
 			// Send data
 			_, errs, err := cloudInitClient.PutInstanceInfo(ciInstInfo, cli.Token)
 			if err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to set instance info")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to set instance info: %w", err)
 			}
 			// Since the requests are done iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("cloud-init node instance info request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("cloud-init node instance info request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to set node instance info in cloud-init")
+						log.Logger.Error().Err(e).Msg("failed to set node instance info in cloud-init")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				log.Logger.Warn().Msg("cloud-init node instance info setting completed with errors")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "cloud-init node instance info setting completed with errors")
 			}
+
+			return nil
 		},
 	}
 

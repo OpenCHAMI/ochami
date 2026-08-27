@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -57,60 +56,55 @@ func newCmdTransitionStart() *cobra.Command {
 See ochami-pcs(1) for more details.`,
 		Example: `  # Turn on a set of nodes
   ochami pcs transition start --xname "x0c0s7b0n1,x0c0s7b0n0,x0c0s4b0n1" on`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			operation = args[0]
 
 			if !isValidOperation(operation) {
 				// Include invalid operation in error message
-				log.Logger.Error().Str("operation", operation).Msg("Invalid operation")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "invalid operation: %s", operation)
 			}
 
 			// Create client to use for requests
-			pcsClient := pcs_lib.GetClient(cmd)
+			pcsClient, err := pcs_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Get the list of target components
-			var err error
 			xnames, err = cmd.Flags().GetStringSlice("xname")
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get value for --xname")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "failed to get value for --xname: %w", err)
 			}
 
 			// Create transition
 			transitionHttpEnv, err := pcsClient.CreateTransition(operation, nil, xnames, cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("PCS transition create request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to create transition")
+					return cli.Errorf(cli.CodeHTTP, "PCS transition create request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to create transition: %w", err)
 			}
 
 			// Unmarshall the transition
 			var output createOutput
 			err = json.Unmarshal(transitionHttpEnv.Body, &output)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to unmarshal output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to unmarshal output: %w", err)
 			}
 
 			// Print output
-			if outBytes, err := format.MarshalData(output, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Println(string(outBytes))
+			outBytes, err := format.MarshalData(output, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Println(string(outBytes))
+
+			return nil
 		},
 	}
 

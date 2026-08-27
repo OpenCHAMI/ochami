@@ -6,8 +6,6 @@
 package cluster
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -29,9 +27,7 @@ See ochami-config(5) for details on configuration options.`,
 			// It doesn't make sense to delete a cluster from a
 			// non-existent config file, so err if the config file doesn't
 			// exist.
-			cli.InitConfigAndLogging(cmd, false)
-
-			return nil
+			return cli.InitConfigAndLogging(cmd, false)
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// To mark both persistent and regular flags mutually exclusive,
@@ -42,11 +38,9 @@ See ochami-config(5) for details on configuration options.`,
 
 			// First and foremost, make sure config is loaded and logging
 			// works.
-			cli.InitConfigAndLogging(cmd, true)
-
-			return nil
+			return cli.InitConfigAndLogging(cmd, true)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get root command
 			rootCmd := cmd.Root()
 			_ = rootCmd // read persistent flags, annotations, etc.
@@ -56,9 +50,7 @@ See ochami-config(5) for details on configuration options.`,
 			if rootCmd.PersistentFlags().Lookup("config").Changed {
 				var err error
 				if fileToModify, err = rootCmd.PersistentFlags().GetString("config"); err != nil {
-					log.Logger.Error().Err(err).Msgf("unable to get value from --config flag")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to get value from --config flag: %w", err)
 				}
 			} else if cmd.Parent().Parent().PersistentFlags().Lookup("system").Changed {
 				// Check if --system was passed to the 'config' command
@@ -70,17 +62,12 @@ See ochami-config(5) for details on configuration options.`,
 			// Read in config from file
 			ko, err := config.ReadConfig(fileToModify)
 			if err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to read config from %s", fileToModify)
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "failed to read config from %s: %w", fileToModify, err)
 			}
 
 			var clusters []map[string]any
-			err = ko.Unmarshal("clusters", &clusters)
-			if err != nil {
-				log.Logger.Error().Err(err).Msgf("unable to unmarshal clusters")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+			if err := ko.Unmarshal("clusters", &clusters); err != nil {
+				return cli.Errorf(cli.CodeConfig, "unable to unmarshal clusters: %w", err)
 			}
 
 			found := false
@@ -97,15 +84,11 @@ See ochami-config(5) for details on configuration options.`,
 			// It doesn't make sense to delete a cluster that doesn't
 			// exist, so err before writing anything back to the file.
 			if !found {
-				log.Logger.Error().Msgf("cluster %s not found in config file %s", clusterName, fileToModify)
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "cluster %s not found in config file %s", clusterName, fileToModify)
 			}
 
 			if err := ko.Set("clusters", newClusters); err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to set clusters")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "failed to set clusters: %w", err)
 			}
 
 			if clusterName == ko.String("default-cluster") {
@@ -113,14 +96,13 @@ See ochami-config(5) for details on configuration options.`,
 			}
 
 			// Write config to file
-			err = config.WriteConfig(fileToModify, ko)
-			if err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to write config to %s", fileToModify)
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+			if err := config.WriteConfig(fileToModify, ko); err != nil {
+				return cli.Errorf(cli.CodeConfig, "failed to write config to %s: %w", fileToModify, err)
 			}
 
 			log.Logger.Info().Msgf("deleted cluster %s from config file %s", clusterName, fileToModify)
+
+			return nil
 		},
 	}
 

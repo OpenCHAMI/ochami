@@ -5,7 +5,7 @@
 package group
 
 import (
-	"os"
+	"errors"
 
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
@@ -15,6 +15,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataGroupSet() *cobra.Command {
@@ -27,25 +28,25 @@ func newCmdMetadataGroupSet() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Set group details using payload data
-  ochami metadata group set group-d614b918 -d \
-    '{
-       "template":"#cloud-config\npackages:\n  - vim\n",
-       "metaData":{"role":"compute"},
-       "osVersion":"ubuntu-22.04"
-     }'
+   ochami metadata group set group-d614b918 -d \
+     '{
+        "template":"#cloud-config\npackages:\n  - vim\n",
+        "metaData":{"role":"compute"},
+        "osVersion":"ubuntu-22.04"
+      }'
 
   # Set group details preserving labels/annotations (envelope API)
   ochami metadata group set group-d614b918 -e -d \
-    '{
-       "metadata": {
-         "labels": {
-           "role": "compute"
-         }
-       },
-       "spec": {
-         "template":"#cloud-config\npackages:\n  - vim\n"
-       }
-     }'
+     '{
+        "metadata": {
+          "labels": {
+            "role": "compute"
+          }
+        },
+        "spec": {
+          "template":"#cloud-config\npackages:\n  - vim\n"
+        }
+      }'
 
   # Set group details using file
   ochami metadata group set group-d614b918 -d @group.json
@@ -56,12 +57,17 @@ See ochami-metadata(1) for more details.`,
   echo '<json_data>' | ochami metadata group set group-d614b918
   echo '<yaml_data>' | ochami metadata group set group-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata group set group-d614b918 -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
@@ -77,9 +83,13 @@ See ochami-metadata(1) for more details.`,
 				// Read group data
 				group := metadata_service_client.UpdateGroupRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &group)
+					if err := cli.HandlePayload(cmd, &group); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &group)
+					if err := cli.HandlePayloadStdin(cmd, &group); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
@@ -90,29 +100,34 @@ See ochami-metadata(1) for more details.`,
 				// Read group data
 				spec := api.GroupSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &spec)
+					if err := cli.HandlePayload(cmd, &spec); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &spec)
+					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
 				groupSet, reqErr = metadataServiceClient.SetGroupSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to set group")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to set group: %w", reqErr)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to set group: %w", reqErr)
 			}
 
 			// Check that a modified item was returned
 			if groupSet == nil {
-				log.Logger.Error().Msg("group set returned no resource")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeGeneric, "group set returned no resource")
 			}
 
 			// Print UIDs of modified items
 			log.Logger.Info().Msgf("Groups set: %+v", []string{groupSet.Metadata.UID})
+
+			return nil
 		},
 	}
 

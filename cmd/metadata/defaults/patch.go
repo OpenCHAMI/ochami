@@ -5,15 +5,14 @@
 package defaults
 
 import (
-	"os"
+	"errors"
 
 	"github.com/spf13/cobra"
 
+	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
-
-	"github.com/openchami/ochami/internal/cli"
 )
 
 var (
@@ -50,10 +49,10 @@ of these methods.
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Patch using JSON patch (RFC 6902)
-  ochami metadata defaults patch clusterdefaults-d614b918 --patch-method rfc6902 --data '[
-    {"op":"replace","path":"/base_url","value":"https://demo.openchami.cluster:8443/metadata-service"},
-    {"op":"replace","path":"/short_name","value":"de"}
-  ]'
+   ochami metadata defaults patch clusterdefaults-d614b918 --patch-method rfc6902 --data '[
+     {"op":"replace","path":"/base_url","value":"https://demo.openchami.cluster:8443/metadata-service"},
+     {"op":"replace","path":"/short_name","value":"de"}
+   ]'
 
   # Patch specific fields using JSON merge patch (RFC 7386) (simple merge)
   ochami metadata defaults patch clusterdefaults-d614b918 --patch-method rfc7386 --data '{"short_name":"de"}'
@@ -70,12 +69,17 @@ See ochami-metadata(1) for more details.`,
   echo '<json_data>' | ochami metadata defaults patch clusterdefaults-d614b918
   echo '<yaml_data>' | ochami metadata defaults patch clusterdefaults-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata defaults patch clusterdefaults-d614b918 -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			var patchData map[string]interface{}
 			if cmd.Flag("set").Changed || cmd.Flag("unset").Changed || cmd.Flag("add").Changed || cmd.Flag("remove").Changed {
@@ -85,35 +89,38 @@ See ochami-metadata(1) for more details.`,
 
 				pd, err := client.NewKeyValPatch(setList, unsetList, addList, removeList)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("error creating key-value patch data")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return err
 				}
 				patchData = pd
 			} else {
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &patchData)
+					if err := cli.HandlePayload(cmd, &patchData); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &patchData)
+					if err := cli.HandlePayloadStdin(cmd, &patchData); err != nil {
+						return err
+					}
 				}
 			}
 
 			defaultsPatched, err := metadataServiceClient.PatchDefaults(cli.Token, formatPatch, args[0], patchData)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to patch cluster defaults")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to patch cluster defaults: %w", err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to patch cluster defaults: %w", err)
 			}
 
 			// Check that a modified item was returned
 			if defaultsPatched == nil {
-				log.Logger.Error().Msg("cluster defaults patch returned no resource")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeGeneric, "cluster defaults patch returned no resource")
 			}
 
 			// Print UIDs of modified items
 			log.Logger.Info().Msgf("Cluster defaults patched: %+v", []string{defaultsPatched.Metadata.UID})
+
+			return nil
 		},
 	}
 

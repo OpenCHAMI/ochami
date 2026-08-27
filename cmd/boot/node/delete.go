@@ -5,8 +5,6 @@
 package node
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
@@ -32,55 +30,56 @@ See ochami-boot(1) for more details.`,
 
   # Don't confirm deletion
   ochami boot node delete --no-confirm nod-bc76f7f2`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Ask before attempting deletion unless --no-confirm was passed
 			noConfirm, err := cmd.Flags().GetBool("no-confirm")
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get --no-confirm")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
 			}
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to fetch user input")
-					os.Exit(1)
+					return cli.Errorf(cli.CodeGeneric, "failed to fetch user input: %w", err)
 				} else if !respDelete {
 					log.Logger.Info().Msg("user aborted node deletion")
-					os.Exit(0)
+					return nil
 				} else {
 					log.Logger.Debug().Msg("user answered affirmatively to delete node(s)")
 				}
 			}
 
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Send off requests
 			nodesDeleted, errs, err := bootServiceClient.DeleteNodes(cli.Token, args)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to delete nodes")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to delete nodes: %w", err)
 			}
 
 			// Deal with per-request errors
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to delete node")
+			for _, e := range errs {
+				if e != nil {
+					log.Logger.Error().Err(e).Msg("failed to delete node")
 					errorsOccurred = true
 				}
 			}
 			log.Logger.Debug().Msgf("nodes deleted: %+v", nodesDeleted)
 			if errorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("node deletion completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "node deletion completed with errors")
 			}
+
+			return nil
 		},
 	}
 

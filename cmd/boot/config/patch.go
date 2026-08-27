@@ -5,8 +5,6 @@
 package config
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
@@ -71,12 +69,17 @@ See ochami-boot(1) for more details.`,
   echo '<json_data>' | ochami boot config patch boo-914afad2
   echo '<yaml_data>' | ochami boot config patch boo-914afad2 -d @- -f yaml
   echo '<yaml_data>' | ochami boot config patch boo-914afad2 -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			var patchData interface{}
 			patchMethod := formatPatch
@@ -84,9 +87,7 @@ See ochami-boot(1) for more details.`,
 				oldFormatPatch := patchMethod
 				newPatchMethod, pd, err := client.NewKeyValPatchData(setList, unsetList, addList, removeList)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("error creating key-value patch data")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "error creating key-value patch data: %w", err)
 				}
 				patchMethod = newPatchMethod
 				if cmd.Flag("patch-method").Changed && oldFormatPatch != patchMethod {
@@ -95,20 +96,24 @@ See ochami-boot(1) for more details.`,
 				patchData = pd
 			} else {
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &patchData)
+					if err := cli.HandlePayload(cmd, &patchData); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &patchData)
+					if err := cli.HandlePayloadStdin(cmd, &patchData); err != nil {
+						return err
+					}
 				}
 			}
 
 			cfgPatched, err := bootServiceClient.PatchBootConfig(cli.Token, patchMethod, args[0], patchData)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to patch boot configuration")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to patch boot configuration: %w", err)
 			}
 
 			log.Logger.Debug().Msgf("boot config patched: %+v", cfgPatched)
+
+			return nil
 		},
 	}
 

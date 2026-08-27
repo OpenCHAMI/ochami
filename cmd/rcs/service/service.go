@@ -17,8 +17,8 @@ func NewCmd() *cobra.Command {
 		Long: `Console service operations for remote-console.
 
 See ochami-rcs(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			cli.PrintUsageHandleError(cmd)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.PrintUsageHandleError(cmd)
 		},
 	}
 

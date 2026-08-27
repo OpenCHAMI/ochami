@@ -5,8 +5,6 @@
 package boot_service
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -19,13 +17,11 @@ import (
 // GetClient sets up the boot-service client with the boot-service base URI and
 // certificates (if necessary) and returns it. This function is used by each
 // subcommand.
-func GetClient(cmd *cobra.Command) *boot_service.BootServiceClient {
+func GetClient(cmd *cobra.Command) (*boot_service.BootServiceClient, error) {
 	// Without a base URI, we cannot do anything
 	bootServiceBaseURI, err := cli.GetBaseURIBootService(cmd)
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("failed to get base URI for boot-service")
-		cli.LogHelpError(cmd)
-		os.Exit(1)
+		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for boot-service: %w", err)
 	}
 
 	apiVersion, err := cli.GetAPIVersion(cmd, config.ServiceBoot)
@@ -36,13 +32,13 @@ func GetClient(cmd *cobra.Command) *boot_service.BootServiceClient {
 	// Create client to make request to boot-service
 	bootServiceClient, err := boot_service.NewClient(bootServiceBaseURI, cli.GetTimeout(cmd), apiVersion, log.Logger, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("error creating new boot-service client")
-		cli.LogHelpError(cmd)
-		os.Exit(1)
+		return nil, cli.Errorf(cli.CodeGeneric, "error creating new boot-service client: %w", err)
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	cli.UseCACert(bootServiceClient.OchamiClient)
+	if err := cli.UseCACert(bootServiceClient.OchamiClient); err != nil {
+		return nil, err
+	}
 
-	return bootServiceClient
+	return bootServiceClient, nil
 }

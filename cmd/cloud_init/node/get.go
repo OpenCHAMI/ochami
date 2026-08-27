@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
 	"gopkg.in/yaml.v3"
 
@@ -33,11 +32,11 @@ func newCmdNodeGet() *cobra.Command {
 		Long: `Get data for specific node(s).
 
 See ochami-cloud-init(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				cli.PrintUsageHandleError(cmd)
-				os.Exit(0)
+				return cli.PrintUsageHandleError(cmd)
 			}
+			return nil
 		},
 	}
 
@@ -63,37 +62,38 @@ func newCmdNodeGetGroup() *cobra.Command {
 See ochami-cloud-init(1) for more details.`,
 		Example: `  # Get data from compute and slurm groups for node x3000c0s0b0n0
   ochami cloud-init node get group x3000c0s0b1n0 compute slurm`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Get node group data
 			henvs, errs, err := cloudInitClient.GetNodeGroupData(cli.Token, args[0], args[1:]...)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get node group data")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get node group data: %w", err)
 			}
 			// Since the requests are done iteratively, we need to
 			// deal with each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("cloud-init node group request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("cloud-init node group request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to get cloud-init node group data")
+						log.Logger.Error().Err(e).Msg("failed to get cloud-init node group data")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				log.Logger.Warn().Msg("cloud-init node group data retrieval completed with errors")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "cloud-init node group data retrieval completed with errors")
 			}
 
 			// Collect node group data into string array
@@ -123,6 +123,8 @@ See ochami-cloud-init(1) for more details.`,
 					}
 				}
 			}
+
+			return nil
 		},
 	}
 
@@ -142,74 +144,65 @@ func newCmdNodeGetMetadata() *cobra.Command {
 		Long: `Get meta-data for specific node(s).
 
 See ochami-cloud-init(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Get meta-data
 			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitMetaData, cli.Token, args...)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get node meta-data")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get node meta-data: %w", err)
 			}
 			// Since the requests are done iteratively, we need to
 			// deal with each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("cloud-init node meta-data request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("cloud-init node meta-data request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to get cloud-init node meta-data")
+						log.Logger.Error().Err(e).Msg("failed to get cloud-init node meta-data")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				log.Logger.Warn().Msg("cloud-init node meta-data retrieval completed with errors")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "cloud-init node meta-data retrieval completed with errors")
 			}
 
 			// Collect node data into YAML array
-			errorsOccurred = false
 			var iiSlice []map[string]interface{}
 			for _, henv := range henvs {
 				var ii map[string]interface{}
 				if err := yaml.Unmarshal(henv.Body, &ii); err != nil {
-					log.Logger.Error().Err(err).Msg("failed to unmarshal HTTP body into group")
-					errorsOccurred = true
-				} else {
-					iiSlice = append(iiSlice, ii)
+					return cli.Errorf(cli.CodePayload, "failed to unmarshal HTTP body into group: %w", err)
 				}
-			}
-			if errorsOccurred {
-				log.Logger.Warn().Msg("not all instance info was collected due to errors")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				iiSlice = append(iiSlice, ii)
 			}
 
 			// Marshal data into JSON so it can be reformatted into
 			// desired output format.
 			iiSliceBytes, err := json.Marshal(iiSlice)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to marshal instance info list into JSON")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to marshal instance info list into JSON: %w", err)
 			}
 
 			// Print in desired format
-			if outBytes, err := client.FormatBody(iiSliceBytes, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(iiSliceBytes, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 
@@ -229,37 +222,38 @@ func newCmdNodeGetUserdata() *cobra.Command {
 		Long: `Get user-data for specific node(s).
 
 See ochami-cloud-init(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Get user-data
 			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitUserData, cli.Token, args...)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get node user-data")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get node user-data: %w", err)
 			}
 			// Since the requests are done iteratively, we need to
 			// deal with each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("cloud-init node user-data request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("cloud-init node user-data request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to get cloud-init node user-data")
+						log.Logger.Error().Err(e).Msg("failed to get cloud-init node user-data")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				log.Logger.Warn().Msg("cloud-init node user-data retrieval completed with errors")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "cloud-init node user-data retrieval completed with errors")
 			}
 
 			// Collect node data into string array
@@ -284,6 +278,8 @@ See ochami-cloud-init(1) for more details.`,
 					}
 				}
 			}
+
+			return nil
 		},
 	}
 
@@ -303,37 +299,38 @@ func newCmdNodeGetVendordata() *cobra.Command {
 		Long: `Get vendor-data for specific node(s).
 
 See ochami-cloud-init(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Get vendor-data
 			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitVendorData, cli.Token, args...)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get node vendor-data")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get node vendor-data: %w", err)
 			}
 			// Since the requests are done iteratively, we need to
 			// deal with each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("cloud-init node vendor-data request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("cloud-init node vendor-data request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to get cloud-init node vendor-data")
+						log.Logger.Error().Err(e).Msg("failed to get cloud-init node vendor-data")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				log.Logger.Warn().Msg("cloud-init node vendor-data retrieval completed with errors")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "cloud-init node vendor-data retrieval completed with errors")
 			}
 
 			// Collect node data into string array
@@ -358,6 +355,8 @@ See ochami-cloud-init(1) for more details.`,
 					}
 				}
 			}
+
+			return nil
 		},
 	}
 

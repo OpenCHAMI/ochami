@@ -5,8 +5,6 @@
 package bmc
 
 import (
-	"os"
-
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -60,12 +58,17 @@ See ochami-boot(1) for more details.`,
   echo '<json_data>' | ochami boot bmc set bmc-773d99bf
   echo '<yaml_data>' | ochami boot bmc set -d @- -f yaml bmc-773d99bf
   echo '<yaml_data>' | ochami boot bmc set -f yaml bmc-773d99bf`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
@@ -81,9 +84,13 @@ See ochami-boot(1) for more details.`,
 				// Read BMC data
 				bmc := boot_service_client.UpdateBMCRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &bmc)
+					if err := cli.HandlePayload(cmd, &bmc); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &bmc)
+					if err := cli.HandlePayloadStdin(cmd, &bmc); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
@@ -94,21 +101,25 @@ See ochami-boot(1) for more details.`,
 				// Read BMC data
 				spec := api.BMCSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &spec)
+					if err := cli.HandlePayload(cmd, &spec); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &spec)
+					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
 				bmcSet, reqErr = bootServiceClient.SetBMCSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to set bmc")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to set bmc: %w", reqErr)
 			}
 
 			log.Logger.Debug().Msgf("bmc set: %+v", bmcSet)
+
+			return nil
 		},
 	}
 

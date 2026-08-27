@@ -5,8 +5,6 @@
 package rcs
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	console_cmd "github.com/openchami/ochami/cmd/rcs/console"
@@ -23,9 +21,8 @@ func NewCmd() *cobra.Command {
 		Long: `Manage remote consoles via the remote-console service.
 
 See ochami-rcs(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			cli.PrintUsageHandleError(cmd)
-			os.Exit(0)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.PrintUsageHandleError(cmd)
 		},
 	}
 

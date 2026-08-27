@@ -7,8 +7,6 @@ package group
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -53,24 +51,26 @@ See ochami-cloud-init(1) for more details.`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flag("data").Changed {
 				if len(args) == 0 {
-					return fmt.Errorf("expected -d or at >= 1 argument (group name(s)); got none")
+					return cli.Errorf(cli.CodeUsage, "expected -d or at >= 1 argument (group name(s)); got none")
 				}
 			} else {
 				if len(args) > 0 {
-					return fmt.Errorf("raw data passed, ignoring extra arguments: %v", args)
+					return cli.Errorf(cli.CodeUsage, "raw data passed, ignoring extra arguments: %v", args)
 				}
 			}
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// The group data we will send
 			ciGroups := []cistore.GroupData{}
 
 			// Read payload from file or stdin.
 			var groupsToDel []string
 			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &ciGroups)
+				if err := cli.HandlePayload(cmd, &ciGroups); err != nil {
+					return err
+				}
 				for _, group := range ciGroups {
 					groupsToDel = append(groupsToDel, group.Name)
 				}
@@ -81,54 +81,55 @@ See ochami-cloud-init(1) for more details.`,
 			// Ask before attempting deletion unless --no-confirm was passed
 			noConfirm, err := cmd.Flags().GetBool("no-confirm")
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get --no-confirm")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
 			}
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("Error fetching user input")
-					os.Exit(1)
+					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 				} else if !respDelete {
 					log.Logger.Info().Msg("User aborted cloud-init group deletion")
-					os.Exit(0)
+					return nil
 				} else {
 					log.Logger.Debug().Msg("User answered affirmatively to delete cloud-init groups")
 				}
 			}
 
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Send data
 			_, errs, err := cloudInitClient.DeleteGroups(cli.Token, groupsToDel...)
 			if err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to delete groups")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to delete groups: %w", err)
 			}
 			// Since the requests are done iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("cloud-init group request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("cloud-init group request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to delete groups in cloud-init")
+						log.Logger.Error().Err(e).Msg("failed to delete groups in cloud-init")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				log.Logger.Warn().Msg("cloud-init group deletion completed with errors")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "cloud-init group deletion completed with errors")
 			}
+
+			return nil
 		},
 	}
 

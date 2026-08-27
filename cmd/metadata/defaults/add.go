@@ -5,7 +5,7 @@
 package defaults
 
 import (
-	"os"
+	"errors"
 
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
@@ -15,6 +15,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
@@ -28,36 +29,36 @@ func newCmdMetadataDefaultsAdd() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Add cluster defaults using payload data
-  ochami metadata defaults add -d \
-    '{
-       "name": "demo-cluster-defaults",
-       "base_url": "https://demo.openchami.cluster:8443/cloud-init",
-       "cluster_name": "demo",
-       "description": "Demo cluster defaults",
-       "short_name": "nid",
-       "nid_length": 4
-     }'
+   ochami metadata defaults add -d \
+     '{
+        "name": "demo-cluster-defaults",
+        "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+        "cluster_name": "demo",
+        "description": "Demo cluster defaults",
+        "short_name": "nid",
+        "nid_length": 4
+      }'
 
   # Add multiple cluster defaults using payload data
   ochami metadata defaults add -d \
-    '[
-       {
-         "name": "demo1-cluster-defaults",
-         "base_url": "https://demo1.openchami.cluster:8443/cloud-init",
-         "cluster_name": "demo1",
-         "description": "Demo 1 cluster defaults",
-         "short_name": "nid",
-         "nid_length": 4
-       },
-       {
-         "name": "demo2-cluster-defaults",
-         "base_url": "https://demo2.openchami.cluster:8443/cloud-init",
-         "cluster_name": "demo2",
-         "description": "Demo 2 cluster defaults",
-         "short_name": "de",
-         "nid_length": 3
-       }
-     ]'
+     '[
+        {
+          "name": "demo1-cluster-defaults",
+          "base_url": "https://demo1.openchami.cluster:8443/cloud-init",
+          "cluster_name": "demo1",
+          "description": "Demo 1 cluster defaults",
+          "short_name": "nid",
+          "nid_length": 4
+        },
+        {
+          "name": "demo2-cluster-defaults",
+          "base_url": "https://demo2.openchami.cluster:8443/cloud-init",
+          "cluster_name": "demo2",
+          "description": "Demo 2 cluster defaults",
+          "short_name": "de",
+          "nid_length": 3
+        }
+      ]'
 
   # Add multiple cluster defaults using YAML array of specs
   ochami metadata defaults add -f yaml <<'EOF'
@@ -71,18 +72,18 @@ See ochami-metadata(1) for more details.`,
 
   # Add cluster defaults preserving labels/annotations (envelope API)
   ochami metadata defaults add -e -d \
-    '{
-       "metadata": {
-         "name": "demo-cluster-defaults",
-         "labels": {
-           "env": "prod"
-         }
-       },
-       "spec": {
-         "base_url": "https://demo.openchami.cluster:8443/cloud-init",
-         "cluster_name": "demo"
-       }
-     }'
+     '{
+        "metadata": {
+          "name": "demo-cluster-defaults",
+          "labels": {
+            "env": "prod"
+          }
+        },
+        "spec": {
+          "base_url": "https://demo.openchami.cluster:8443/cloud-init",
+          "cluster_name": "demo"
+        }
+      }'
 
   # Add cluster defaults using input payload file
   ochami metadata defaults add -d @payload.json
@@ -93,12 +94,17 @@ See ochami-metadata(1) for more details.`,
   echo '<json_data>' | ochami metadata defaults add
   echo '<yaml_data>' | ochami metadata defaults add -f yaml -d @-
   echo '<yaml_data>' | ochami metadata defaults add -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
@@ -115,9 +121,13 @@ See ochami-metadata(1) for more details.`,
 				// Read cluster defaults data
 				defaults := []metadata_service_client.CreateClusterDefaultsRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[metadata_service_client.CreateClusterDefaultsRequest](cmd, &defaults)
+					if err := cli.HandlePayloadSlice[metadata_service_client.CreateClusterDefaultsRequest](cmd, &defaults); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[metadata_service_client.CreateClusterDefaultsRequest](cmd, &defaults)
+					if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateClusterDefaultsRequest](cmd, &defaults); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -128,9 +138,13 @@ See ochami-metadata(1) for more details.`,
 				// Read cluster defaults data
 				defaults := []metadata_service.ClusterDefaultsSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[metadata_service.ClusterDefaultsSpec](cmd, &defaults)
+					if err := cli.HandlePayloadSlice[metadata_service.ClusterDefaultsSpec](cmd, &defaults); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[metadata_service.ClusterDefaultsSpec](cmd, &defaults)
+					if err := cli.HandlePayloadStdinSlice[metadata_service.ClusterDefaultsSpec](cmd, &defaults); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -139,16 +153,21 @@ See ochami-metadata(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to add cluster defaults")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to add cluster defaults: %w", reqErr)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to add cluster defaults: %w", reqErr)
 			}
 
 			// Deal with per-request errors
 			var reqErrorsOccurred = false
 			for _, err := range reqErrs {
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to add cluster defaults")
+					if errors.Is(err, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(err).Msg("failed to add cluster defaults")
+					} else {
+						log.Logger.Error().Err(err).Msg("failed to add cluster defaults")
+					}
 					reqErrorsOccurred = true
 				}
 			}
@@ -162,10 +181,10 @@ See ochami-metadata(1) for more details.`,
 
 			// Warn if any request errors occurred
 			if reqErrorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("Cluster defaults addition completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "Cluster defaults addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 

@@ -7,8 +7,6 @@ package group
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -56,7 +54,7 @@ See ochami-smd(1) for more details.`,
 			// must be passed.
 			if !cmd.Flag("data").Changed {
 				if len(args) == 0 {
-					return fmt.Errorf("expected -d or >= 1 argument (group label), got %d", len(args))
+					return cli.Errorf(cli.CodeUsage, "expected -d or >= 1 argument (group label), got %d", len(args))
 				}
 			} else {
 				if len(args) > 1 {
@@ -66,39 +64,44 @@ See ochami-smd(1) for more details.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Ask before attempting deletion unless --no-confirm was passed
 			noConfirm, err := cmd.Flags().GetBool("no-confirm")
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get --no-confirm")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
 			}
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("Error fetching user input")
-					os.Exit(1)
+					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 				} else if !respDelete {
 					log.Logger.Info().Msg("User aborted group deletion")
-					os.Exit(0)
+					return nil
 				} else {
 					log.Logger.Debug().Msg("User answered affirmatively to delete groups")
 				}
 			}
 
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Create list of group labels to delete
 			var groups []smd.Group
 			var gLabelSlice []string
 			if cmd.Flag("data").Changed {
 				// Use payload file if passed
-				cli.HandlePayload(cmd, &groups)
+				if err := cli.HandlePayload(cmd, &groups); err != nil {
+					return err
+				}
 			} else {
 				// ...otherwise, use passed CLI arguments
 				gLabelSlice = args
@@ -107,15 +110,13 @@ See ochami-smd(1) for more details.`,
 			// Perform deletion
 			_, errs, err := smdClient.DeleteGroups(cli.Token, gLabelSlice...)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to delete groups in SMD")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to delete groups in SMD: %w", err)
 			}
 			// Since smdClient.DeleteGroups does the deletion iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
 			for _, e := range errs {
-				if err != nil {
+				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(e).Msg("SMD group deletion yielded unsuccessful HTTP response")
 					} else {
@@ -126,10 +127,10 @@ See ochami-smd(1) for more details.`,
 			}
 			// Warn the user if any errors occurred during deletion iterations
 			if errorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("SMD group deletion completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "SMD group deletion completed with errors")
 			}
+
+			return nil
 		},
 	}
 

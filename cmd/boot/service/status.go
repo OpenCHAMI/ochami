@@ -5,14 +5,14 @@
 package service
 
 import (
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
-	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdServiceStatus() *cobra.Command {
@@ -24,20 +24,26 @@ func newCmdServiceStatus() *cobra.Command {
 		Long: `Display status of the boot service.
 
 See ochami-boot(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Make request
 			outbytes, err := bootServiceClient.GetHealth(cli.FormatOutput)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get boot-service health")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to get boot-service health: %w", err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to get boot-service health: %w", err)
 			}
 
 			// Print output
 			fmt.Print(string(outbytes))
+
+			return nil
 		},
 	}
 

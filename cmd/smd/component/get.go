@@ -8,12 +8,10 @@ package component
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -29,29 +27,37 @@ func newCmdComponentGet() *cobra.Command {
 		Long: `Get all components or component by an xname or node ID.
 
 See ochami-smd(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			var httpEnv client.HTTPEnvelope
-			var err error
 			if cmd.Flag("xname").Changed {
 				// This endpoint requires authentication, so a token is needed
-				cli.SetToken(cmd)
-				cli.CheckToken(cmd)
+				if err := cli.SetToken(cmd); err != nil {
+					return err
+				}
+				if err := cli.CheckToken(cmd); err != nil {
+					return err
+				}
 
 				httpEnv, err = smdClient.GetComponentsXname(cmd.Flag("xname").Value.String(), cli.Token)
 			} else if cmd.Flag("nid").Changed {
 				// This endpoint requires authentication, so a token is needed
-				cli.SetToken(cmd)
-				cli.CheckToken(cmd)
+				if err := cli.SetToken(cmd); err != nil {
+					return err
+				}
+				if err := cli.CheckToken(cmd); err != nil {
+					return err
+				}
 
 				var nid int32
 				nid, err = cmd.Flags().GetInt32("nid")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("error getting nid from flag")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "error getting nid from flag: %w", err)
 				}
 				httpEnv, err = smdClient.GetComponentsNid(nid, cli.Token)
 			} else {
@@ -59,21 +65,19 @@ See ochami-smd(1) for more details.`,
 			}
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("SMD component request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to request components from SMD")
+					return cli.Errorf(cli.CodeHTTP, "SMD component request yielded unsuccessful HTTP response: %w", err)
 				}
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to request components from SMD: %w", err)
 			}
 
 			// Print output
-			if outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

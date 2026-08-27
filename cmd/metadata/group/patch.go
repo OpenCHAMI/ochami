@@ -5,7 +5,7 @@
 package group
 
 import (
-	"os"
+	"errors"
 
 	"github.com/spf13/cobra"
 
@@ -49,10 +49,10 @@ of these methods.
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Patch using JSON patch (RFC 6902)
-  ochami metadata group patch group-d614b918 --patch-method rfc6902 --data '[
-    {"op":"replace","path":"/template","value":"#cloud-config\npackages:\n  - vim\n"},
-    {"op":"replace","path":"/osVersion","value":"ubuntu-24.04"}
-  ]'
+   ochami metadata group patch group-d614b918 --patch-method rfc6902 --data '[
+     {"op":"replace","path":"/template","value":"#cloud-config\npackages:\n  - vim\n"},
+     {"op":"replace","path":"/osVersion","value":"ubuntu-24.04"}
+   ]'
 
   # Patch specific fields using JSON merge patch (RFC 7386) (simple merge)
   ochami metadata group patch group-d614b918 --patch-method rfc7386 --data '{"osVersion":"ubuntu-24.04"}'
@@ -69,12 +69,17 @@ See ochami-metadata(1) for more details.`,
   echo '<json_data>' | ochami metadata group patch group-d614b918
   echo '<yaml_data>' | ochami metadata group patch group-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata group patch group-d614b918 -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			var patchData map[string]interface{}
 			if cmd.Flag("set").Changed || cmd.Flag("unset").Changed || cmd.Flag("add").Changed || cmd.Flag("remove").Changed {
@@ -84,35 +89,38 @@ See ochami-metadata(1) for more details.`,
 
 				pd, err := client.NewKeyValPatch(setList, unsetList, addList, removeList)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("error creating key-value patch data")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return err
 				}
 				patchData = pd
 			} else {
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &patchData)
+					if err := cli.HandlePayload(cmd, &patchData); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &patchData)
+					if err := cli.HandlePayloadStdin(cmd, &patchData); err != nil {
+						return err
+					}
 				}
 			}
 
 			groupPatched, err := metadataServiceClient.PatchGroup(cli.Token, formatPatch, args[0], patchData)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to patch group")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to patch group: %w", err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to patch group: %w", err)
 			}
 
 			// Check that a modified item was returned
 			if groupPatched == nil {
-				log.Logger.Error().Msg("group patch returned no resource")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeGeneric, "group patch returned no resource")
 			}
 
 			// Print UIDs of modified items
 			log.Logger.Info().Msgf("Groups patched: %+v", []string{groupPatched.Metadata.UID})
+
+			return nil
 		},
 	}
 

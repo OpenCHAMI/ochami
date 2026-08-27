@@ -9,13 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
@@ -36,51 +34,49 @@ func newCmdStatusShow() *cobra.Command {
 See ochami-pcs(1) for more details.`,
 		Example: `  # show power status of component
   ochami pcs status show x3000c0s15b0`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			xname := args[0]
 
 			// Create client to use for requests
-			pcsClient := pcs_lib.GetClient(cmd)
+			pcsClient, err := pcs_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Get status
 			statusHttpEnv, err := pcsClient.GetStatus([]string{xname}, "", "", cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("PCS status request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to get power status")
+					return cli.Errorf(cli.CodeHTTP, "PCS status request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get power status: %w", err)
 			}
 
 			var output statusResponse
 
 			err = json.Unmarshal(statusHttpEnv.Body, &output)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to unmarshal status")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to unmarshal status: %w", err)
 			}
 
 			// Check if status array is empty
 			if len(output.Status) == 0 {
-				log.Logger.Error().Msg("no status found for the specified component")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeGeneric, "no status found for the specified component")
 			}
 
 			// Print output just for first element in status array
-			if outBytes, err := format.MarshalData(output.Status[0], cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Println(string(outBytes))
+			outBytes, err := format.MarshalData(output.Status[0], cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Println(string(outBytes))
+
+			return nil
 		},
 	}
 

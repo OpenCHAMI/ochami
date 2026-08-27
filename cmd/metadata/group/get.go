@@ -5,14 +5,14 @@
 package group
 
 import (
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
-	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataGroupGet() *cobra.Command {
@@ -25,29 +25,37 @@ func newCmdMetadataGroupGet() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Get info about a group
-  ochami metadata group get group-773d99bf
+   ochami metadata group get group-773d99bf
 
   # Get group in YAML format
   ochami metadata group get group-773d99bf -F yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			uid := args[0]
 
 			// Make request
 			outBytes, err := metadataServiceClient.GetGroup(cli.Token, cli.FormatOutput, uid)
 			if err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to get group info for %s", uid)
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to get group info for %s: %w", uid, err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to get group info for %s: %w", uid, err)
 			}
 
 			// Print output
 			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

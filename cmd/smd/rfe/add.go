@@ -7,8 +7,6 @@ package rfe
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -68,7 +66,7 @@ See ochami-smd(1) for more details.`,
 			// Check that all required args are passed
 			if !cmd.Flag("data").Changed {
 				if len(args) != 4 {
-					return fmt.Errorf("expected -d or 4 arguments (xname, name, ip address, mac address), got %d", len(args))
+					return cli.Errorf(cli.CodeUsage, "expected -d or 4 arguments (xname, name, ip address, mac address), got %d", len(args))
 				}
 			} else {
 				if len(args) > 0 {
@@ -78,21 +76,29 @@ See ochami-smd(1) for more details.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Check if a CA certificate was passed and load it into client if valid
-			cli.UseCACert(smdClient.OchamiClient)
+			if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+				return err
+			}
 
 			var rfes smd.RedfishEndpointSlice
-			var err error
 			if cmd.Flag("data").Changed {
 				// Use payload file if passed
-				cli.HandlePayload(cmd, &rfes)
+				if err := cli.HandlePayload(cmd, &rfes); err != nil {
+					return err
+				}
 			} else {
 				// ...otherwise use CLI options/args
 				rfe := csm.RedfishEndpoint{
@@ -103,30 +109,22 @@ See ochami-smd(1) for more details.`,
 				}
 				if cmd.Flag("domain").Changed {
 					if rfe.Domain, err = cmd.Flags().GetString("domain"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch domain")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch domain: %w", err)
 					}
 				}
 				if cmd.Flag("hostname").Changed {
 					if rfe.Hostname, err = cmd.Flags().GetString("hostname"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch hostname")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch hostname: %w", err)
 					}
 				}
 				if cmd.Flag("username").Changed {
 					if rfe.User, err = cmd.Flags().GetString("username"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch username")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch username: %w", err)
 					}
 				}
 				if cmd.Flag("password").Changed {
 					if rfe.Password, err = cmd.Flags().GetString("password"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch password")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch password: %w", err)
 					}
 				}
 				rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
@@ -135,28 +133,26 @@ See ochami-smd(1) for more details.`,
 			// Send off request
 			_, errs, err := smdClient.PostRedfishEndpoints(rfes, cli.Token)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to add redfish endpoint in SMD")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to add redfish endpoint in SMD: %w", err)
 			}
 			// Since smdClient.PostRedfishEndpoints does the addition iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("SMD redfish endpoint request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("SMD redfish endpoint request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to add redfish endpoint(s) to SMD")
+						log.Logger.Error().Err(e).Msg("failed to add redfish endpoint(s) to SMD")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("SMD redfish endpoint addition completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "SMD redfish endpoint addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 

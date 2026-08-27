@@ -9,12 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
@@ -29,9 +27,12 @@ func NewCmd() *cobra.Command {
 		Long: `Fetch the endpoint history of BSS.
 
 See ochami-bss(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bssClient := bss_lib.GetClient(cmd)
+			bssClient, err := bss_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// If no ID flags are specified, get all boot parameters
 			qstr := ""
@@ -40,18 +41,14 @@ See ochami-bss(1) for more details.`,
 				if cmd.Flag("xname").Changed {
 					x, err := cmd.Flags().GetString("xname")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch xname")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch xname: %w", err)
 					}
 					values.Add("name", x)
 				}
 				if cmd.Flag("endpoint").Changed {
 					e, err := cmd.Flags().GetString("endpoint")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch endpoint")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch endpoint: %w", err)
 					}
 					values.Add("endpoint", e)
 				}
@@ -62,22 +59,19 @@ See ochami-bss(1) for more details.`,
 			httpEnv, err := bssClient.GetEndpointHistory(qstr)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("BSS endpoint history request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to request endpoint history from BSS")
+					return cli.Errorf(cli.CodeHTTP, "BSS endpoint history request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to request endpoint history from BSS: %w", err)
 			}
 
 			// Print output
-			if outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

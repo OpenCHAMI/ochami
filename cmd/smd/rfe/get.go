@@ -9,12 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -32,12 +30,17 @@ all redfish endpoints are returned. Optionally, options can be passed to limit t
 endpoints returned.
 
 See ochami-smd(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// If no ID flags are specified, get all redfish endpoints
 			qstr := ""
@@ -47,9 +50,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("xname").Changed {
 					s, err := cmd.Flags().GetStringSlice("xname")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch xname list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch xname list: %w", err)
 					}
 					for _, x := range s {
 						values.Add("id", x)
@@ -58,9 +59,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("mac").Changed {
 					s, err := cmd.Flags().GetStringSlice("mac")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch mac list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch mac list: %w", err)
 					}
 					for _, m := range s {
 						values.Add("macaddr", m)
@@ -69,9 +68,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("ip").Changed {
 					s, err := cmd.Flags().GetStringSlice("ip")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch ip list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch ip list: %w", err)
 					}
 					for _, i := range s {
 						values.Add("ipaddress", i)
@@ -80,9 +77,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("fqdn").Changed {
 					s, err := cmd.Flags().GetStringSlice("fqdn")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch fqdn list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch fqdn list: %w", err)
 					}
 					for _, f := range s {
 						values.Add("fqdn", f)
@@ -91,9 +86,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("type").Changed {
 					s, err := cmd.Flags().GetStringSlice("type")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch type list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch type list: %w", err)
 					}
 					for _, t := range s {
 						values.Add("type", t)
@@ -102,9 +95,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("uuid").Changed {
 					s, err := cmd.Flags().GetStringSlice("uuid")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch uuid list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch uuid list: %w", err)
 					}
 					for _, u := range s {
 						values.Add("uuid", u)
@@ -115,22 +106,19 @@ See ochami-smd(1) for more details.`,
 			httpEnv, err := smdClient.GetRedfishEndpoints(qstr, cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("SMD redfish endpoint request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to request redfish endpoints from SMD")
+					return cli.Errorf(cli.CodeHTTP, "SMD redfish endpoint request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to request redfish endpoints from SMD: %w", err)
 			}
 
 			// Print output
-			if outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

@@ -5,7 +5,7 @@
 package peer
 
 import (
-	"os"
+	"errors"
 
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
@@ -15,6 +15,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
@@ -28,36 +29,36 @@ func newCmdMetadataPeerAdd() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Add WireGuard peer using JSON
-  ochami metadata peer add -d \
-    '{
-       "name": "peer-nid001000",
-       "public_key": "xTIBA5rboUvnH4htodjb6e6e97QjLERt1NAB4mZqp8Dg=",
-       "allowed_ip": "10.42.1.1/32",
-       "description": "Peer for nid001000"
-     }'
+   ochami metadata peer add -d \
+     '{
+        "name": "peer-nid001000",
+        "public_key": "xTIBA5rboUvnH4htodjb6e6e97QjLERt1NAB4mZqp8Dg=",
+        "allowed_ip": "10.42.1.1/32",
+        "description": "Peer for nid001000"
+      }'
 
   # Add peer from YAML
   ochami metadata peer add -f yaml <<'EOF'
-   name: peer-nid001000
-   public_key: xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=
-   allowed_ip: 10.42.1.1/32
-   description: Compute node peer
-   EOF
+    name: peer-nid001000
+    public_key: xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=
+    allowed_ip: 10.42.1.1/32
+    description: Compute node peer
+    EOF'
 
   # Add multiple WireGuard peers using JSON array of specs
   ochami metadata peer add -d \
-    '[
-       {
-         "name": "peer-nid001000",
-         "public_key": "xTIBA5rboUvnH4htodjb6e6e97QjLERt1NAB4mZqp8Dg=",
-         "allowed_ip": "10.42.1.1/32"
-       },
-       {
-         "name": "peer-nid001001",
-         "public_key": "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh=",
-         "allowed_ip": "10.42.1.2/32"
-       }
-     ]'
+     '[
+        {
+          "name": "peer-nid001000",
+          "public_key": "xTIBA5rboUvnH4htodjb6e6e97QjLERt1NAB4mZqp8Dg=",
+          "allowed_ip": "10.42.1.1/32"
+        },
+        {
+          "name": "peer-nid001001",
+          "public_key": "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh=",
+          "allowed_ip": "10.42.1.2/32"
+        }
+      ]'
 
   # Add multiple WireGuard peers using YAML array of specs
   ochami metadata peer add -f yaml <<'EOF'
@@ -67,22 +68,22 @@ See ochami-metadata(1) for more details.`,
    - name: peer-nid001001
      public_key: "yUJCB6sbcpVwoI5iupekc7f798RkMFSu2OBC5nArq9Eh="
      allowed_ip: "10.42.1.2/32"
-   EOF
+   EOF'
 
   # Add WireGuard peer preserving labels/annotations (envelope API)
   ochami metadata peer add -e -d \
-    '{
-       "metadata": {
-         "name": "peer-nid001000",
-         "labels": {
-           "env": "prod"
-         }
-       },
-       "spec": {
-         "public_key": "xTIBA5rboUvnH4htodjb6e6e97QjLERt1NAB4mZqp8Dg=",
-         "allowed_ip": "10.42.1.1/32"
-       }
-     }'
+     '{
+        "metadata": {
+          "name": "peer-nid001000",
+          "labels": {
+            "env": "prod"
+          }
+        },
+        "spec": {
+          "public_key": "xTIBA5rboUvnH4htodjb6e6e97QjLERt1NAB4mZqp8Dg=",
+          "allowed_ip": "10.42.1.1/32"
+        }
+      }'
 
   # Add multiple peers from file
   ochami metadata peer add -d @peers.json
@@ -93,12 +94,17 @@ See ochami-metadata(1) for more details.`,
   echo '<json_data>' | ochami metadata peer add
   echo '<yaml_data>' | ochami metadata peer add -f yaml -d @-
   echo '<yaml_data>' | ochami metadata peer add -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
@@ -115,9 +121,13 @@ See ochami-metadata(1) for more details.`,
 				// Read peer data
 				peers := []metadata_service_client.CreateWireGuardPeerRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers)
+					if err := cli.HandlePayloadSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers)
+					if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -128,9 +138,13 @@ See ochami-metadata(1) for more details.`,
 				// Read peer data
 				peers := []metadata_service.WireGuardPeerSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[metadata_service.WireGuardPeerSpec](cmd, &peers)
+					if err := cli.HandlePayloadSlice[metadata_service.WireGuardPeerSpec](cmd, &peers); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[metadata_service.WireGuardPeerSpec](cmd, &peers)
+					if err := cli.HandlePayloadStdinSlice[metadata_service.WireGuardPeerSpec](cmd, &peers); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -139,16 +153,21 @@ See ochami-metadata(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to add WireGuard peers")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to add WireGuard peers: %w", reqErr)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to add WireGuard peers: %w", reqErr)
 			}
 
 			// Deal with per-request errors
 			var reqErrorsOccurred = false
 			for _, err := range reqErrs {
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to add WireGuard peer")
+					if errors.Is(err, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(err).Msg("failed to add WireGuard peer")
+					} else {
+						log.Logger.Error().Err(err).Msg("failed to add WireGuard peer")
+					}
 					reqErrorsOccurred = true
 				}
 			}
@@ -162,10 +181,10 @@ See ochami-metadata(1) for more details.`,
 
 			// Warn if any request errors occurred
 			if reqErrorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("WireGuard peer addition completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "WireGuard peer addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 

@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -24,31 +23,31 @@ import (
 )
 
 // getGroupData returns a slice of cloud-init group data for the
-// requested groups. If an error occurs, the program exits.
-func getGroupData(cmd *cobra.Command, args []string) (groupSlice []cistore.GroupData) {
+// requested groups.
+func getGroupData(cmd *cobra.Command, args []string) (groupSlice []cistore.GroupData, err error) {
 	// Create client to use for requests
-	cloudInitClient := cloud_init_lib.GetClient(cmd)
+	cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+	if err != nil {
+		return nil, err
+	}
 
 	// Handle token for this command
-	cli.HandleToken(cmd)
+	if err := cli.HandleToken(cmd); err != nil {
+		return nil, err
+	}
 
 	// Get data
 	if len(args) == 0 {
 		// No args passed, get all group data at once
 		henvs, errs, err := cloudInitClient.GetGroups(cli.Token)
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get all groups from cloud-init")
-			cli.LogHelpError(cmd)
-			os.Exit(1)
+			return nil, cli.Errorf(cli.CodeNetwork, "failed to get all groups from cloud-init: %w", err)
 		}
 		if errs[0] != nil {
 			if errors.Is(errs[0], client.UnsuccessfulHTTPError) {
-				log.Logger.Error().Err(errs[0]).Msg("cloud-init group request yielded unsuccessful HTTP response")
-			} else {
-				log.Logger.Error().Err(errs[0]).Msg("failed to cloud-init groups")
+				return nil, cli.Errorf(cli.CodeHTTP, "cloud-init group request yielded unsuccessful HTTP response: %w", errs[0])
 			}
-			cli.LogHelpError(cmd)
-			os.Exit(1)
+			return nil, cli.Errorf(cli.CodeNetwork, "failed to get cloud-init groups: %w", errs[0])
 		}
 
 		// Group data is formatted as a map keyed on the name,
@@ -58,9 +57,7 @@ func getGroupData(cmd *cobra.Command, args []string) (groupSlice []cistore.Group
 		// Convert group map into group slice.
 		var groupMap map[string]cistore.GroupData
 		if err := json.Unmarshal(henvs[0].Body, &groupMap); err != nil {
-			log.Logger.Error().Err(err).Msg("failed to unmarshal all groups")
-			cli.LogHelpError(cmd)
-			os.Exit(1)
+			return nil, cli.Errorf(cli.CodePayload, "failed to unmarshal all groups: %w", err)
 		}
 		groupSlice = cloud_init.CIGroupDataMapToSlice(groupMap)
 	} else {
@@ -68,47 +65,35 @@ func getGroupData(cmd *cobra.Command, args []string) (groupSlice []cistore.Group
 		// for just those groups.
 		henvs, errs, err := cloudInitClient.GetGroups(cli.Token, args...)
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to get cloud-init groups")
-			cli.LogHelpError(cmd)
-			os.Exit(1)
+			return nil, cli.Errorf(cli.CodeNetwork, "failed to get cloud-init groups: %w", err)
 		}
 		// Since the requests are done iteratively, we need to
 		// deal with each error that might have occurred.
 		var errorsOccurred = false
-		for _, err := range errs {
-			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("cloud-init group request yielded unsuccessful HTTP response")
+		for _, e := range errs {
+			if e != nil {
+				if errors.Is(e, client.UnsuccessfulHTTPError) {
+					log.Logger.Error().Err(e).Msg("cloud-init group request yielded unsuccessful HTTP response")
 				} else {
-					log.Logger.Error().Err(err).Msg("failed to get cloud-init groups")
+					log.Logger.Error().Err(e).Msg("failed to get cloud-init groups")
 				}
 				errorsOccurred = true
 			}
 		}
 		if errorsOccurred {
-			log.Logger.Warn().Msg("cloud-init group retrieval completed with errors")
-			cli.LogHelpError(cmd)
-			os.Exit(1)
+			return nil, cli.Errorf(cli.CodeHTTP, "cloud-init group retrieval completed with errors")
 		}
 
 		// Collect group data into JSON array
-		errorsOccurred = false
 		for _, henv := range henvs {
 			var ciGroup cistore.GroupData
 			if err := json.Unmarshal(henv.Body, &ciGroup); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to unmarshal HTTP body into group")
-				errorsOccurred = true
-			} else {
-				groupSlice = append(groupSlice, ciGroup)
+				return nil, cli.Errorf(cli.CodePayload, "failed to unmarshal HTTP body into group: %w", err)
 			}
-		}
-		if errorsOccurred {
-			log.Logger.Warn().Msg("not all group data was collected due to errors")
-			cli.LogHelpError(cmd)
-			os.Exit(1)
+			groupSlice = append(groupSlice, ciGroup)
 		}
 	}
-	return
+	return groupSlice, nil
 }
 
 func newCmdGroupGet() *cobra.Command {
@@ -121,11 +106,11 @@ func newCmdGroupGet() *cobra.Command {
 		Long: `Get group data for all or a subset of cloud-init groups.
 
 See ochami-cloud-init(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				cli.PrintUsageHandleError(cmd)
-				os.Exit(0)
+				return cli.PrintUsageHandleError(cmd)
 			}
+			return nil
 		},
 	}
 
@@ -150,9 +135,12 @@ See ochami-cloud-init(1) for more details.`,
 		Example: `  # Get just the cloud-init configuration
   ochami cloud-init group get config
   ochami cloud-init group get config compute`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get all data for specified (or unspecified) groups
-			groupSlice := getGroupData(cmd, args)
+			groupSlice, err := getGroupData(cmd, args)
+			if err != nil {
+				return err
+			}
 
 			// Extract cloud-config for each group
 			type configGroup struct {
@@ -179,14 +167,12 @@ See ochami-cloud-init(1) for more details.`,
 					Content:  newCfg.Content,
 					Encoding: newCfg.Encoding,
 				}
-				if cBytes, err := cloud_init.DecodeCloudConfig(ccf); err != nil {
-					log.Logger.Error().Err(err).Msgf("failed to decode cloud-config for %s", newCfg.Name)
-					cli.LogHelpError(cmd)
-					os.Exit(1)
-				} else {
-					newCfg.Content = cBytes
-					newCfg.Encoding = "plain"
+				cBytes, err := cloud_init.DecodeCloudConfig(ccf)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to decode cloud-config for %s: %w", newCfg.Name, err)
 				}
+				newCfg.Content = cBytes
+				newCfg.Encoding = "plain"
 
 				configSlice = append(configSlice, newCfg)
 			}
@@ -208,6 +194,8 @@ See ochami-cloud-init(1) for more details.`,
 					}
 				}
 			}
+
+			return nil
 		},
 	}
 
@@ -229,9 +217,12 @@ See ochami-cloud-init(1) for more details.`,
 		Example: `  # Get just the meta-data
   ochami cloud-init group get meta-data
   ochami cloud-init group get meta-data compute`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get all data for specified (or unspecified) groups
-			groupSlice := getGroupData(cmd, args)
+			groupSlice, err := getGroupData(cmd, args)
+			if err != nil {
+				return err
+			}
 
 			// Extract meta-data for each group
 			type mdGroup struct {
@@ -251,19 +242,17 @@ See ochami-cloud-init(1) for more details.`,
 			// desired output format.
 			groupSliceBytes, err := json.Marshal(mdSlice)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to marshal group list into JSON")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to marshal group list into JSON: %w", err)
 			}
 
 			// Print in desired format
-			if outBytes, err := client.FormatBody(groupSliceBytes, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(groupSliceBytes, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 
@@ -285,27 +274,28 @@ See ochami-cloud-init(1) for more details.`,
 		Example: `  # Get raw information about group from cloud-init server
   ochami cloud-init group get raw
   ochami cloud-init group get raw compute`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get all data for specified (or unspecified) groups
-			groupSlice := getGroupData(cmd, args)
+			groupSlice, err := getGroupData(cmd, args)
+			if err != nil {
+				return err
+			}
 
 			// Marshal data into JSON so it can be reformatted into
 			// desired output format.
 			groupSliceBytes, err := json.Marshal(groupSlice)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to marshal group list into JSON")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to marshal group list into JSON: %w", err)
 			}
 
 			// Print in desired format
-			if outBytes, err := client.FormatBody(groupSliceBytes, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(groupSliceBytes, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

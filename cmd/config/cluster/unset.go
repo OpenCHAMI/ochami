@@ -6,13 +6,10 @@
 package cluster
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/config"
-	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdClusterUnset() *cobra.Command {
@@ -30,9 +27,7 @@ See ochami-config(5) for details on the configuration options.`,
 			// It doesn't make sense to unset a cluster config from a
 			// non-existent config file, so err if the specified config
 			// file doesn't exist.
-			cli.InitConfigAndLogging(cmd, false)
-
-			return nil
+			return cli.InitConfigAndLogging(cmd, false)
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// To mark both persistent and regular flags mutually exclusive,
@@ -43,7 +38,7 @@ See ochami-config(5) for details on the configuration options.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// We must have a config file in order to write cluster info
 			var fileToModify string
 			if cmd.Flags().Changed("config") {
@@ -57,10 +52,10 @@ See ochami-config(5) for details on the configuration options.`,
 
 			// Perform modification
 			if err := config.DeleteConfigCluster(fileToModify, args[0], args[1]); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to modify config file")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}
+
+			return nil
 		},
 	}
 
