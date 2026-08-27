@@ -394,6 +394,15 @@ type clusterAccumulator struct {
 	byName map[string]*koanf.Koanf // per-cluster merged koanf instance
 }
 
+// configLoader identifies a named configuration source and the provider and
+// parser needed to load it. A missing source is skipped, allowing callers to
+// represent optional system and user configuration files.
+type configLoader struct {
+	name     string
+	provider koanf.Provider
+	parser   koanf.Parser
+}
+
 // newClusterAccumulator returns an initialized clusterAccumulator.
 func newClusterAccumulator() *clusterAccumulator {
 	return &clusterAccumulator{byName: map[string]*koanf.Koanf{}}
@@ -437,23 +446,94 @@ func (ca *clusterAccumulator) slice() []map[string]any {
 	return clusterSlice
 }
 
+// loadConfigSources merges named configuration sources in order, applying
+// per-cluster defaults and preserving the order in which cluster names are
+// first seen. It returns the effective koanf and Config values without
+// modifying package globals, allowing callers to publish the new config only
+// after the complete load succeeds.
+func loadConfigSources(configsToLoad []configLoader) (*koanf.Koanf, Config, error) {
+	k := koanf.NewWithConf(kConfig)
+	clusterAcc := newClusterAccumulator()
+
+	for _, c := range configsToLoad {
+		k2 := koanf.NewWithConf(kConfig)
+		err := k2.Load(c.provider, c.parser)
+		if errors.Is(err, os.ErrNotExist) {
+			log.EarlyLogger.BasicLogf("config '%s' not found, skipping", c.name)
+			continue
+		}
+		if err != nil {
+			return nil, Config{}, fmt.Errorf("unable to load config '%s': %w", c.name, err)
+		}
+
+		log.EarlyLogger.BasicLogf("successfully loaded key-value pairs from config '%s':", c.name)
+		for _, key := range k2.Keys() {
+			log.EarlyLogger.BasicLogf("\t%s -> %v", key, k2.Get(key))
+		}
+
+		// Reject explicit null values for required global scalars before
+		// StrictMerge can turn them into a less useful type mismatch.
+		if err := checkGlobalNulls(k2); err != nil {
+			return nil, Config{}, fmt.Errorf("invalid config '%s': %w", c.name, err)
+		}
+
+		var clusters []map[string]any
+		if err := k2.Unmarshal("clusters", &clusters); err != nil {
+			return nil, Config{}, fmt.Errorf("unable to unmarshal cluster configs from config '%s': %w", c.name, err)
+		}
+		for i, cluster := range clusters {
+			name, ok := cluster["name"].(string)
+			if !ok || name == "" {
+				return nil, Config{}, fmt.Errorf("cluster #%d from config '%s' is missing a name", i, c.name)
+			}
+			switch cls := cluster["cluster"].(type) {
+			case map[string]any:
+				if err := clusterAcc.add(name, cls); err != nil {
+					return nil, Config{}, fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
+				}
+			case nil:
+				if err := clusterAcc.add(name, map[string]any{}); err != nil {
+					return nil, Config{}, fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
+				}
+			default:
+				return nil, Config{}, fmt.Errorf("unable to merge cluster '%s' from config '%s': value is not a map[string]any type", name, c.name)
+			}
+		}
+
+		if err := k.Merge(k2); err != nil {
+			return nil, Config{}, fmt.Errorf("unable to merge config '%s': %w", c.name, err)
+		}
+		log.EarlyLogger.BasicLogf("successfully merged config '%s'", c.name)
+	}
+
+	// Replace the raw source cluster list with the merged, default-applied,
+	// ordered representation. Delete first because StrictMerge rejects the
+	// []interface{} to []map[string]any replacement.
+	k.Delete("clusters")
+	if err := k.Set("clusters", clusterAcc.slice()); err != nil {
+		return nil, Config{}, fmt.Errorf("unable to set merged clusters: %w", err)
+	}
+	if err := validateConfig(k); err != nil {
+		return nil, Config{}, fmt.Errorf("invalid merged config: %w", err)
+	}
+
+	var cfg Config
+	if err := k.Unmarshal("", &cfg); err != nil {
+		return nil, Config{}, fmt.Errorf("unable to unmarshal merged config: %w", err)
+	}
+	return k, cfg, nil
+}
+
 // Like LoadGlobalConfigMerged, but only loads the default config (used for the
 // --ignore-config flag)
 func LoadGlobalConfigDefaultOnly() error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 
-	var err error
-	k := koanf.NewWithConf(kConfig)
-
-	err = k.Load(confmap.Provider(DefaultConfigMap, "."), nil)
+	k, cfg, err := loadConfigSources([]configLoader{
+		{name: "default", provider: confmap.Provider(DefaultConfigMap, ".")},
+	})
 	if err != nil {
-		return fmt.Errorf("unable to load default config: %w", err)
-	}
-
-	// Marshalling to the global config variable
-	err = k.Unmarshal("", &GlobalConfig)
-	if err != nil {
-		return fmt.Errorf("unable to unmarshal default config: %w", err)
+		return err
 	}
 
 	log.EarlyLogger.BasicLogf("final config:")
@@ -461,6 +541,7 @@ func LoadGlobalConfigDefaultOnly() error {
 		log.EarlyLogger.BasicLogf("\t%s -> %v", key, k.Get(key))
 	}
 
+	GlobalConfig = cfg
 	GlobalKoanf = k
 	return nil
 }
@@ -478,19 +559,11 @@ func LoadGlobalConfigDefaultOnly() error {
 func LoadGlobalConfigMerged() error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 
-	var err error
-	k := koanf.NewWithConf(kConfig)
-
-	UserConfigFile, err = getUserConfigPath()
+	userConfigFile, err := getUserConfigPath()
 	if err != nil {
 		return err
 	}
-
-	type configLoader struct {
-		name     string
-		provider koanf.Provider
-		parser   koanf.Parser
-	}
+	UserConfigFile = userConfigFile
 
 	// Create parsers and merge configs into it:
 	//
@@ -499,90 +572,14 @@ func LoadGlobalConfigMerged() error {
 	//   3. User config
 	//
 	configsToLoad := []configLoader{
-		{"default", confmap.Provider(DefaultConfigMap, "."), nil},
-		{"system", file.Provider(SystemConfigFile), configParser},
-		{"user", file.Provider(UserConfigFile), configParser},
+		{name: "default", provider: confmap.Provider(DefaultConfigMap, ".")},
+		{name: "system", provider: file.Provider(SystemConfigFile), parser: configParser},
+		{name: "user", provider: file.Provider(UserConfigFile), parser: configParser},
 	}
 
-	// For merging purposes, accumulate clusters by name preserving
-	// first-seen order (same precedence as main merging).
-	clusterAcc := newClusterAccumulator()
-	for _, c := range configsToLoad {
-		k2 := koanf.NewWithConf(kConfig)
-		err = k2.Load(c.provider, c.parser)
-		if errors.Is(err, os.ErrNotExist) { // This an error we can ignore
-			log.EarlyLogger.BasicLogf("config '%s' not found, skipping", c.name)
-		} else if err != nil { // If it gets here something has actually gone wrong
-			return fmt.Errorf("unable to load config '%s': %w", c.name, err)
-		} else { // Good to go
-			log.EarlyLogger.BasicLogf("successfully loaded key-value pairs from config '%s':", c.name)
-			for _, k := range k2.Keys() {
-				log.EarlyLogger.BasicLogf("\t%s -> %v", k, k2.Get(k))
-			}
-
-			// Reject explicit null values for required global
-			// scalars up front so a clean validation error is
-			// surfaced instead of the cryptic type-mismatch error
-			// StrictMerge would otherwise produce.
-			if err = checkGlobalNulls(k2); err != nil {
-				return fmt.Errorf("invalid config '%s': %w", c.name, err)
-			}
-
-			// Merge clusters separately, by name (same precedence as main merging)
-			var kClusterSlice []map[string]any
-			err = k2.Unmarshal("clusters", &kClusterSlice)
-			if err != nil {
-				return fmt.Errorf("unable to unmarshal cluster configs from config '%s': %w", c.name, err)
-			}
-
-			for i, cluster := range kClusterSlice {
-				name, ok := cluster["name"].(string)
-				if !ok || name == "" {
-					return fmt.Errorf("cluster #%d from config '%s' is missing a name", i, c.name)
-				}
-				switch cls := cluster["cluster"].(type) {
-				case map[string]any:
-					if err = clusterAcc.add(name, cls); err != nil {
-						return fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
-					}
-				case nil:
-					// Cluster entry with no "cluster" sub-map; ensure
-					// the name is registered with defaults applied.
-					if err = clusterAcc.add(name, map[string]any{}); err != nil {
-						return fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, c.name, err)
-					}
-				default:
-					return fmt.Errorf("unable to merge cluster '%s' from config '%s': value is not a map[string]any type", name, c.name)
-				}
-			}
-
-			// Finish the job
-			err = k.Merge(k2)
-			if err != nil {
-				return fmt.Errorf("unable to merge config '%s': %w", c.name, err)
-			} else {
-				log.EarlyLogger.BasicLogf("successfully merged config '%s'", c.name)
-			}
-		}
-	}
-
-	// add merged clusters back to primary koanf instance. Delete first
-	// because StrictMerge disallows overwriting the existing []interface{}
-	// value with a []map[string]any via Set.
-	k.Delete("clusters")
-	if err = k.Set("clusters", clusterAcc.slice()); err != nil {
-		return fmt.Errorf("unable to set merged clusters: %w", err)
-	}
-
-	// Validate the fully-merged (effective) config.
-	if err = validateConfig(k); err != nil {
-		return fmt.Errorf("invalid merged config: %w", err)
-	}
-
-	// Marshalling to the global config variable
-	err = k.Unmarshal("", &GlobalConfig)
+	k, cfg, err := loadConfigSources(configsToLoad)
 	if err != nil {
-		return fmt.Errorf("unable to unmarshal merged config: %w", err)
+		return err
 	}
 
 	log.EarlyLogger.BasicLogf("final config:")
@@ -590,6 +587,7 @@ func LoadGlobalConfigMerged() error {
 		log.EarlyLogger.BasicLogf("\t%s -> %v", key, k.Get(key))
 	}
 
+	GlobalConfig = cfg
 	GlobalKoanf = k
 	return nil
 }
