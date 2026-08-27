@@ -594,31 +594,31 @@ func LoadGlobalConfigMerged() error {
 	return nil
 }
 
-// LoadGlobalConfigFromFile reads a YAML configuration at path and loads it into
-// the GlobalConfig Config structure.
+// LoadGlobalConfigFromFile reads a YAML configuration at path, applies global
+// and per-cluster defaults, validates the effective configuration, and loads it
+// into GlobalConfig and GlobalKoanf.
 func LoadGlobalConfigFromFile(path string) error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 
-	ko := koanf.NewWithConf(kConfig)
-	err := ko.Load(file.Provider(path), configParser)
-	if errors.Is(err, os.ErrNotExist) { // This an error we can ignore
-		log.EarlyLogger.BasicLogf("config '%s' not found, skipping", path)
-	} else if err != nil { // If it gets here something has actually gone wrong
-		return fmt.Errorf("unable to load config '%s': %w", path, err)
-	} else { // Good to go
-		log.EarlyLogger.BasicLogf("successfully loaded key-value pairs from config '%s':", path)
-		for _, k := range ko.Keys() {
-			log.EarlyLogger.BasicLogf("\t%s -> %v", k, ko.Get(k))
-		}
-	}
-
-	// Marshalling to the global config variable
-	err = ko.Unmarshal("", &GlobalConfig)
+	ko, err := ReadConfigWithDefaults(path)
 	if err != nil {
-		return fmt.Errorf("unable to unmarshal merged config: %w", err)
+		return fmt.Errorf("unable to load config '%s': %w", path, err)
 	}
 
-	// No error occurred
+	log.EarlyLogger.BasicLogf("successfully loaded effective config '%s':", path)
+	for _, key := range ko.Keys() {
+		log.EarlyLogger.BasicLogf("\t%s -> %v", key, ko.Get(key))
+	}
+
+	// Unmarshal into a fresh value and only update the package globals after
+	// every load step succeeds, preventing failed reloads from leaving partial
+	// or stale global state behind.
+	var cfg Config
+	if err := ko.Unmarshal("", &cfg); err != nil {
+		return fmt.Errorf("unable to unmarshal effective config '%s': %w", path, err)
+	}
+
+	GlobalConfig = cfg
 	GlobalKoanf = ko
 	return nil
 }

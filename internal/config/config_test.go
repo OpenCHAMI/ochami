@@ -796,6 +796,130 @@ func TestRemoveFromSlice(t *testing.T) {
 	}
 }
 
+func TestLoadGlobalConfigFromFile(t *testing.T) {
+	originalConfig := GlobalConfig
+	originalKoanf := GlobalKoanf
+	t.Cleanup(func() {
+		GlobalConfig = originalConfig
+		GlobalKoanf = originalKoanf
+	})
+
+	t.Run("sparse config applies global and cluster defaults", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		mustWriteFile(t, path, []byte(`default-cluster: foo
+clusters:
+  - name: foo
+    cluster:
+      uri: https://foo.example.com
+`))
+
+		// Seed stale values to ensure the loader replaces, rather than merges
+		// into, the previous global state.
+		GlobalConfig = Config{
+			Log:            ConfigLog{Format: "stale", Level: "stale", Color: "stale"},
+			Timeout:        time.Hour,
+			DefaultCluster: "stale",
+		}
+
+		if err := LoadGlobalConfigFromFile(path); err != nil {
+			t.Fatalf("LoadGlobalConfigFromFile(): unexpected error: %v", err)
+		}
+
+		if GlobalConfig.Log.Format != DefaultConfigMap["log.format"] {
+			t.Errorf("log.format = %q, want %q", GlobalConfig.Log.Format, DefaultConfigMap["log.format"])
+		}
+		if GlobalConfig.Log.Level != DefaultConfigMap["log.level"] {
+			t.Errorf("log.level = %q, want %q", GlobalConfig.Log.Level, DefaultConfigMap["log.level"])
+		}
+		if GlobalConfig.Log.Color != DefaultConfigMap["log.color"] {
+			t.Errorf("log.color = %q, want %q", GlobalConfig.Log.Color, DefaultConfigMap["log.color"])
+		}
+		if GlobalConfig.Timeout != GetDefaultTimeout() {
+			t.Errorf("timeout = %s, want %s", GlobalConfig.Timeout, GetDefaultTimeout())
+		}
+		cluster, err := GlobalConfig.GetCluster("foo")
+		if err != nil {
+			t.Fatalf("GetCluster(foo): unexpected error: %v", err)
+		}
+		if !cluster.Cluster.EnableAuth {
+			t.Error("cluster enable-auth = false, want true default")
+		}
+		if GlobalKoanf == nil {
+			t.Fatal("GlobalKoanf = nil, want effective config")
+		}
+	})
+
+	t.Run("quoted enable-auth is coerced", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		mustWriteFile(t, path, []byte(`clusters:
+  - name: foo
+    cluster:
+      uri: https://foo.example.com
+      enable-auth: "false"
+`))
+
+		if err := LoadGlobalConfigFromFile(path); err != nil {
+			t.Fatalf("LoadGlobalConfigFromFile(): unexpected error: %v", err)
+		}
+		cluster, err := GlobalConfig.GetCluster("foo")
+		if err != nil {
+			t.Fatalf("GetCluster(foo): unexpected error: %v", err)
+		}
+		if cluster.Cluster.EnableAuth {
+			t.Error("cluster enable-auth = true, want coerced false")
+		}
+	})
+
+	t.Run("failed load does not change globals", func(t *testing.T) {
+		tests := []struct {
+			name string
+			path func(*testing.T) string
+		}{
+			{
+				name: "null timeout",
+				path: func(t *testing.T) string {
+					path := filepath.Join(t.TempDir(), "config.yaml")
+					mustWriteFile(t, path, []byte("timeout:\n"))
+					return path
+				},
+			},
+			{
+				name: "null enable-auth",
+				path: func(t *testing.T) string {
+					path := filepath.Join(t.TempDir(), "config.yaml")
+					mustWriteFile(t, path, []byte("clusters:\n  - name: foo\n    cluster:\n      enable-auth:\n"))
+					return path
+				},
+			},
+			{
+				name: "missing file",
+				path: func(t *testing.T) string {
+					return filepath.Join(t.TempDir(), "missing.yaml")
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				sentinelConfig := Config{DefaultCluster: "sentinel", Timeout: time.Hour}
+				sentinelKoanf := koanf.NewWithConf(kConfigRaw)
+				GlobalConfig = sentinelConfig
+				GlobalKoanf = sentinelKoanf
+
+				if err := LoadGlobalConfigFromFile(tt.path(t)); err == nil {
+					t.Fatal("LoadGlobalConfigFromFile(): expected error, got nil")
+				}
+				if !reflect.DeepEqual(GlobalConfig, sentinelConfig) {
+					t.Errorf("GlobalConfig changed after failed load: got %+v, want %+v", GlobalConfig, sentinelConfig)
+				}
+				if GlobalKoanf != sentinelKoanf {
+					t.Error("GlobalKoanf changed after failed load")
+				}
+			})
+		}
+	})
+}
+
 func TestModifyConfig(t *testing.T) {
 	t.Run("empty path returns error", func(t *testing.T) {
 		err := ModifyConfig("", "default-cluster", "new")
