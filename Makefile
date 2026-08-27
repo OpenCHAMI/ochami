@@ -177,7 +177,8 @@ unit-test: ## Run unit tests only
 .PHONY: coverage
 coverage: ## Run unit tests and generate a coverage profile
 	$(call require-command-shell,$(GO),go)
-	$(GO) test -covermode=atomic -coverprofile=coverage.out ./...
+	$(GO) test -covermode=atomic -coverprofile=coverage.out -coverpkg=./... ./...
+	$(GO) tool cover -func=coverage.out
 
 .PHONY: clean
 clean: ## Clean Go build artifacts
