@@ -1094,7 +1094,11 @@ func WriteConfig(path string, k *koanf.Koanf) error {
 
 // Returns the path of the user config, which is different for every user
 func getUserConfigPath() (string, error) {
-	// Generate user config path: ~/.config/ochami/config.yaml
+	// First, check if HOME is set
+	if home := os.Getenv("HOME"); home != "" {
+		return filepath.Join(home, ".config", "ochami", "config.yaml"), nil
+	}
+	// Fall back to Go's user library
 	user, err := user.Current()
 	if err != nil {
 		return "", fmt.Errorf("unable to fetch current user: %w", err)

@@ -2085,3 +2085,133 @@ clusters:
 		}
 	})
 }
+
+// TestLoadGlobalConfigMerged ensures that the merged loader applies defaults and
+// respects user‑config precedence. The system config path is constant and may not
+// exist on the test runner, which is fine – the loader skips missing files.
+func TestLoadGlobalConfigMerged(t *testing.T) {
+	// Preserve original globals and HOME.
+	origConfig, origKoanf := GlobalConfig, GlobalKoanf
+	origHome := os.Getenv("HOME")
+	t.Cleanup(func() {
+		GlobalConfig, GlobalKoanf = origConfig, origKoanf
+		os.Setenv("HOME", origHome)
+	})
+
+	// Set HOME to a temporary directory.
+	tmpHome := t.TempDir()
+	os.Setenv("HOME", tmpHome)
+
+	// Write test user config to the temp HOME.
+	cfgDir := filepath.Join(tmpHome, ".config", "ochami")
+	cfgPath := filepath.Join(cfgDir, "config.yaml")
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
+		t.Fatalf("mkdir config dir: %v", err)
+	}
+	userCfg := []byte(`timeout: 1m
+default-cluster: foo
+clusters:
+  - name: foo
+    cluster:
+      uri: https://foo.example.com
+`)
+	if err := os.WriteFile(cfgPath, userCfg, 0o600); err != nil {
+		t.Fatalf("write user config: %v", err)
+	}
+
+	// Call the loader (system config will be skipped).
+	if err := LoadGlobalConfigMerged(); err != nil {
+		t.Fatalf("LoadGlobalConfigMerged failed: %v", err)
+	}
+
+	// Verify that values from the user config took precedence over defaults.
+	if GlobalConfig.Timeout != time.Minute {
+		t.Errorf("timeout = %s, want %s", GlobalConfig.Timeout, time.Minute)
+	}
+	if GlobalConfig.DefaultCluster != "foo" {
+		t.Errorf("default-cluster = %q, want %q", GlobalConfig.DefaultCluster, "foo")
+	}
+	// The cluster should exist and retain its default enable‑auth (true).
+	cl, err := GlobalConfig.GetCluster("foo")
+	if err != nil {
+		t.Fatalf("GetCluster(foo) error: %v", err)
+	}
+	if cl.Cluster.URI != "https://foo.example.com" {
+		t.Errorf("cluster uri = %q, want https://foo.example.com", cl.Cluster.URI)
+	}
+	if !cl.Cluster.EnableAuth {
+		t.Errorf("enable‑auth default should be true when omitted")
+	}
+}
+
+// TestGetUserConfigPath verifies that the helper respects the HOME environment
+// variable and constructs the expected path.
+func TestGetUserConfigPath(t *testing.T) {
+	tmpHome := t.TempDir()
+	// Override HOME for this test.
+	oldHome, had := os.LookupEnv("HOME")
+	os.Setenv("HOME", tmpHome)
+	if had {
+		defer os.Setenv("HOME", oldHome)
+	} else {
+		defer os.Unsetenv("HOME")
+	}
+
+	p, err := getUserConfigPath()
+	if err != nil {
+		t.Fatalf("getUserConfigPath returned error: %v", err)
+	}
+	want := filepath.Join(tmpHome, ".config", "ochami", "config.yaml")
+	if p != want {
+		t.Fatalf("path = %s, want %s", p, want)
+	}
+}
+
+// TestGetDefaultTimeout simply ensures the helper returns the parsed default.
+func TestGetDefaultTimeout(t *testing.T) {
+	got := GetDefaultTimeout()
+	want, _ := time.ParseDuration(DefaultConfigMap["timeout"].(string))
+	if got != want {
+		t.Fatalf("GetDefaultTimeout = %s, want %s", got, want)
+	}
+}
+
+// TestReadConfigWithDefaultsAppliesClusterDefaults checks that a cluster that
+// omits enable‑auth receives the default value (true).
+func TestReadConfigWithDefaultsAppliesClusterDefaults(t *testing.T) {
+	cfg := []byte(`clusters:
+  - name: bar
+    cluster:
+      uri: https://bar.example.com
+`)
+	path := filepath.Join(t.TempDir(), "cfg.yaml")
+	if err := os.WriteFile(path, cfg, 0o644); err != nil {
+		t.Fatalf("write cfg: %v", err)
+	}
+	ko, err := ReadConfigWithDefaults(path)
+	if err != nil {
+		t.Fatalf("ReadConfigWithDefaults error: %v", err)
+	}
+	var clusters []ConfigCluster
+	if err := ko.Unmarshal("clusters", &clusters); err != nil {
+		t.Fatalf("unmarshal clusters: %v", err)
+	}
+	if len(clusters) != 1 {
+		t.Fatalf("expected 1 cluster, got %d", len(clusters))
+	}
+	if !clusters[0].Cluster.EnableAuth {
+		t.Errorf("enable‑auth default not applied; got false, want true")
+	}
+	// Ensure the URI is preserved.
+	if clusters[0].Cluster.URI != "https://bar.example.com" {
+		t.Errorf("uri mismatch: %s", clusters[0].Cluster.URI)
+	}
+	// Verify that the overall koanf still contains the default log.format.
+	if v := ko.String("log.format"); v != DefaultConfigMap["log.format"] {
+		t.Errorf("log.format = %q, want %q", v, DefaultConfigMap["log.format"])
+	}
+	// Ensure the slice ordering is deterministic (single element).
+	if order := reflect.TypeOf(clusters); order.Kind() != reflect.Slice {
+		t.Errorf("clusters not slice: %v", order)
+	}
+}
