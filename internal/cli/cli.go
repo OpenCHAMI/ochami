@@ -198,6 +198,17 @@ func InitLogging(cmd *cobra.Command) error {
 		config.GlobalConfig.Log.Color = lc
 	}
 
+	// Apply defaults for any missing log settings before initializing
+	if config.GlobalConfig.Log.Level == "" {
+		config.GlobalConfig.Log.Level = config.DefaultConfigMap["log.level"].(string)
+	}
+	if config.GlobalConfig.Log.Format == "" {
+		config.GlobalConfig.Log.Format = config.DefaultConfigMap["log.format"].(string)
+	}
+	if config.GlobalConfig.Log.Color == "" {
+		config.GlobalConfig.Log.Color = config.DefaultConfigMap["log.color"].(string)
+	}
+
 	if err := log.Init(config.GlobalConfig.Log.Level, config.GlobalConfig.Log.Format, config.GlobalConfig.Log.Color); err != nil {
 		return err
 	}
