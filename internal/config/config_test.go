@@ -18,6 +18,7 @@ import (
 	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
+	"gopkg.in/yaml.v3"
 )
 
 // mustWriteFile writes data to path with mode 0o644, failing the test on error.
@@ -1560,13 +1561,42 @@ func TestGetConfigString(t *testing.T) {
 		}
 	})
 
-	t.Run("string value returns directly", func(t *testing.T) {
+	t.Run("string value marshals to YAML", func(t *testing.T) {
 		s, err := GetConfigString(ko, "default-cluster")
 		if err != nil {
 			t.Fatalf("GetConfigString(): unexpected error: %v", err)
 		}
-		if s != "dc" {
-			t.Errorf("got %q, want %q", s, "dc")
+		var got string
+		if err := yaml.Unmarshal([]byte(s), &got); err != nil {
+			t.Fatalf("failed to parse YAML output %q: %v", s, err)
+		}
+		if got != "dc" {
+			t.Errorf("round-trip value = %q, want %q", got, "dc")
+		}
+	})
+
+	t.Run("ambiguous strings remain strings in YAML", func(t *testing.T) {
+		values := []string{"null", "true", "123", "key: value", "line one\nline two"}
+		for _, value := range values {
+			t.Run(value, func(t *testing.T) {
+				if err := ko.Set("default-cluster", value); err != nil {
+					t.Fatalf("failed to set test value: %v", err)
+				}
+				out, err := GetConfigString(ko, "default-cluster")
+				if err != nil {
+					t.Fatalf("GetConfigString(): unexpected error: %v", err)
+				}
+				var got string
+				if err := yaml.Unmarshal([]byte(out), &got); err != nil {
+					t.Fatalf("failed to parse YAML output %q: %v", out, err)
+				}
+				if got != value {
+					t.Errorf("round-trip value = %q, want %q", got, value)
+				}
+			})
+		}
+		if err := ko.Set("default-cluster", "dc"); err != nil {
+			t.Fatalf("failed to restore test config: %v", err)
 		}
 	})
 
@@ -1631,13 +1661,17 @@ clusters:
 		}
 	})
 
-	t.Run("string value returns directly", func(t *testing.T) {
+	t.Run("string value marshals to YAML", func(t *testing.T) {
 		out, err := GetConfigStringFromFile(cfgPath, "default-cluster")
 		if err != nil {
 			t.Fatalf("GetConfigStringFromFile(): unexpected error: %v", err)
 		}
-		if out != "dc" {
-			t.Errorf("got %q, want %q", out, "dc")
+		var got string
+		if err := yaml.Unmarshal([]byte(out), &got); err != nil {
+			t.Fatalf("failed to parse YAML output %q: %v", out, err)
+		}
+		if got != "dc" {
+			t.Errorf("round-trip value = %q, want %q", got, "dc")
 		}
 	})
 
@@ -1775,13 +1809,38 @@ func TestGetConfigClusterString(t *testing.T) {
 		}
 	})
 
-	t.Run("string value returns directly", func(t *testing.T) {
+	t.Run("string value marshals to YAML", func(t *testing.T) {
 		s, err := GetConfigClusterString(cluster, "name")
 		if err != nil {
 			t.Fatalf("GetConfigClusterString(): unexpected error: %v", err)
 		}
-		if s != "c1" {
-			t.Errorf("got %q, want %q", s, "c1")
+		var got string
+		if err := yaml.Unmarshal([]byte(s), &got); err != nil {
+			t.Fatalf("failed to parse YAML output %q: %v", s, err)
+		}
+		if got != "c1" {
+			t.Errorf("round-trip value = %q, want %q", got, "c1")
+		}
+	})
+
+	t.Run("ambiguous strings remain strings in YAML", func(t *testing.T) {
+		values := []string{"null", "true", "123", "key: value", "line one\nline two"}
+		for _, value := range values {
+			t.Run(value, func(t *testing.T) {
+				cluster := cluster
+				cluster.Name = value
+				out, err := GetConfigClusterString(cluster, "name")
+				if err != nil {
+					t.Fatalf("GetConfigClusterString(): unexpected error: %v", err)
+				}
+				var got string
+				if err := yaml.Unmarshal([]byte(out), &got); err != nil {
+					t.Fatalf("failed to parse YAML output %q: %v", out, err)
+				}
+				if got != value {
+					t.Errorf("round-trip value = %q, want %q", got, value)
+				}
+			})
 		}
 	})
 

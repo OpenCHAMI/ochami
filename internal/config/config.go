@@ -876,26 +876,27 @@ func GetConfigFromFile(path, key string) (any, error) {
 	return GetConfig(ko, key)
 }
 
+// marshalConfigValue returns a YAML representation of val. A nil value is
+// represented by an empty string to preserve the missing-key behavior of the
+// config show commands instead of emitting YAML null.
+func marshalConfigValue(key string, val any) (string, error) {
+	if val == nil {
+		return "", nil
+	}
+	valBytes, err := yaml.Marshal(val)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal value for key %q: %w", key, err)
+	}
+	return string(valBytes), nil
+}
+
 // GetConfigString wraps GetConfig and returns a YAML string representation of
 // the value of key.
 func GetConfigString(ko *koanf.Koanf, key string) (string, error) {
 	if strings.HasPrefix(key, "clusters.") {
 		return "", fmt.Errorf("key cannot be a cluster")
 	}
-	val := ko.Get(key)
-	if val == nil {
-		return "", nil
-	}
-	switch val.(type) {
-	case map[string]interface{}, []interface{}:
-		valBytes, err := yaml.Marshal(val)
-		if err != nil {
-			return "", fmt.Errorf("failed to marshal value for key %q: %w", key, err)
-		}
-		return string(valBytes), nil
-	default:
-		return fmt.Sprintf("%v", val), nil
-	}
+	return marshalConfigValue(key, ko.Get(key))
 }
 
 // GetConfigStringFromFile is like GetConfigString except that it wraps
@@ -932,19 +933,7 @@ func GetConfigClusterString(cluster ConfigCluster, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if val == nil {
-		return "", nil
-	}
-	switch val.(type) {
-	case map[string]interface{}, []interface{}:
-		valBytes, err := yaml.Marshal(val)
-		if err != nil {
-			return "", fmt.Errorf("failed to marshal value for key %q: %w", key, err)
-		}
-		return string(valBytes), nil
-	default:
-		return fmt.Sprintf("%v", val), nil
-	}
+	return marshalConfigValue(key, val)
 }
 
 // ReadConfig opens the config file at path and loads it into koanf to check for

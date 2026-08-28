@@ -123,7 +123,7 @@ See ochami-config(5) for details on the configuration options.`,
 				}
 			}
 			if val != "" {
-				fmt.Printf("%v\n", val)
+				fmt.Print(val)
 			}
 		},
 	}

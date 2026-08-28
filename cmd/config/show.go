@@ -93,7 +93,7 @@ See ochami-config(5) for details on the configuration options.`,
 				os.Exit(1)
 			}
 			if val != "" {
-				fmt.Printf("%v\n", val)
+				fmt.Print(val)
 			}
 		},
 	}
