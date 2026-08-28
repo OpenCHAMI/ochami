@@ -199,7 +199,7 @@ func InitLogging(cmd *cobra.Command) error {
 	}
 
 	if err := log.Init(config.GlobalConfig.Log.Level, config.GlobalConfig.Log.Format, config.GlobalConfig.Log.Color); err != nil {
-		return fmt.Errorf("failed to Initialize logger: %w", err)
+		return err
 	}
 
 	log.Logger.Debug().Msg("logging has been initialized")
@@ -218,7 +218,7 @@ func InitConfigAndLogging(cmd *cobra.Command, createCfg bool) {
 		os.Exit(1)
 	}
 	if err := InitLogging(cmd); err != nil {
-		el.BasicLogf("failed to initialized logging: %v", err)
+		el.BasicLogf("failed to initialize logging: %v", err)
 		el.BasicLogf("see '%s --help' for long command help", cmd.CommandPath())
 		os.Exit(1)
 	}
