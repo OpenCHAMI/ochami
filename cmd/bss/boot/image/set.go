@@ -162,7 +162,11 @@ See ochami-bss(1) for more details.`,
 			for bpIdx, bp := range bps {
 				// Edit parameters for nodes
 				k := kargs.NewKargs([]byte(bp.Params))
-				k.SetKarg("root", args[0])
+				if err := k.SetKarg("root", args[0]); err != nil {
+					log.Logger.Error().Err(err).Msg("failed to set 'root' kernel argument")
+					errorsOccurred = true
+					continue
+				}
 				bps[bpIdx].Params = k.String()
 
 				// Send modified params back to BSS

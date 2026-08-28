@@ -9,8 +9,15 @@ linters:
   disable:
     - staticcheck
     - unused
-    - errcheck
   settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - (*github.com/spf13/cobra.Command).RegisterFlagCompletionFunc
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
     exhaustive:
       default-signifies-exhaustive: true
   exclusions:

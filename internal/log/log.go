@@ -34,6 +34,8 @@ var (
 func Init(ll, lf, lc string) error {
 	var loggerLevel zerolog.Level
 	switch ll {
+	case "error":
+		loggerLevel = zerolog.ErrorLevel
 	case "warning":
 		loggerLevel = zerolog.WarnLevel
 	case "info":

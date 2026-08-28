@@ -50,7 +50,9 @@ func MergeMaps(src, dst map[string]interface{}, mergeKey string) error {
 			// Items are slices, use MergeSlices to merge
 			srcSlice := svTyped
 			dstSlice := dv.([]interface{})
-			MergeSlices(&srcSlice, &dstSlice, mergeKey)
+			if err := MergeSlices(&srcSlice, &dstSlice, mergeKey); err != nil {
+				return err
+			}
 			dst[k] = dstSlice
 
 		default:
@@ -69,10 +71,11 @@ func MergeMaps(src, dst map[string]interface{}, mergeKey string) error {
 //
 // If a slice element is a map, MergeSlices will check if mergeKey is present
 // in the maps and, if so, will call MergeMaps to perform a deep merge on the
-// maps.
-func MergeSlices(src, dst *[]interface{}, mergeKey string) {
+// maps. An error from that deep merge (e.g. a type mismatch) is propagated to
+// the caller.
+func MergeSlices(src, dst *[]interface{}, mergeKey string) error {
 	if src == nil || dst == nil {
-		return
+		return nil
 	}
 	for _, s := range *src {
 		matched := false
@@ -90,7 +93,9 @@ func MergeSlices(src, dst *[]interface{}, mergeKey string) {
 						if dv, has := dMap[mergeKey]; has && dv == keyVal {
 							// mergeKey found in dst map element (conflicting
 							// map between src and dst); perform deep merge
-							MergeMaps(sMap, dMap, mergeKey)
+							if err := MergeMaps(sMap, dMap, mergeKey); err != nil {
+								return err
+							}
 							matched = true
 							break
 						}
@@ -115,4 +120,6 @@ func MergeSlices(src, dst *[]interface{}, mergeKey string) {
 			*dst = append(*dst, s)
 		}
 	}
+
+	return nil
 }

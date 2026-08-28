@@ -19,7 +19,11 @@ type ErrInvalidConfigVal struct {
 }
 
 func (eicv ErrInvalidConfigVal) Error() string {
-	return fmt.Sprintf("line %d: invalid value for key %q: got %s but expected %s", eicv.Line, eicv.Key, eicv.Value, eicv.Expected)
+	msg := fmt.Sprintf("invalid value for key %q: got %s but expected %s", eicv.Key, eicv.Value, eicv.Expected)
+	if eicv.Line > 0 {
+		return fmt.Sprintf("line %d: %s", eicv.Line, msg)
+	}
+	return msg
 }
 
 // ErrUnknownCluster represents an error that occurs when a requested cluster

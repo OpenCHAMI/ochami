@@ -8,10 +8,10 @@ ochami-config - Manage configuration for ochami CLI
 
 ochami config [GLOBALOPTS] cluster delete _cluster_name_++
 ochami config [GLOBALOPTS] cluster set [-d] _cluster_name_ _key_ _value_++
-ochami config [GLOBALOPTS] cluster show [-f _format_] [_cluster_name_] [_key_]++
+ochami config [GLOBALOPTS] cluster show [_cluster_name_] [_key_]++
 ochami config [GLOBALOPTS] cluster unset _cluster_name_ _key_++
 ochami config [GLOBALOPTS] set _key_ _value_++
-ochami config [GLOBALOPTS] show [-f _format_] [_key_]++
+ochami config [GLOBALOPTS] show [_key_]++
 ochami config [GLOBALOPTS] unset _key_
 
 # GLOBAL OPTIONS
@@ -33,6 +33,10 @@ neither *--config*, *--system*, nor *--user* (mutually exclusive) are specified,
 *ochami* uses the user-level configuration file for modification commands and
 uses the resulting config of merging the user-level config with the system-wide
 config (the former preceding the latter) for printing commands.
+
+Missing system-wide and user-level configuration files are skipped. If a file
+exists but cannot be read, parsed, validated, or merged, *ochami* reports the
+error and exits instead of silently ignoring the invalid configuration.
 
 The format of _key_ uses a period (*.*) to delimit subkeys, following a
 *<superkey>.<subkey>* syntax. For example, in order to reference the *format*
@@ -78,21 +82,11 @@ Subcommands for this command are as follows:
 		is not specified on the command line, this cluster's configuration is
 		used.
 
-*show* [-f _format_] [_cluster_name_] [_key_]
+*show* [_cluster_name_] [_key_]
 	Show the configuration for _cluster_name_ or all clusters if _cluster_name_
 	is unspecified. If _key_ is not specified, show the whole configuration for
-	_cluster_name_, otherwise show the value for _key_.
-
-	This command accepts the following options:
-
-	*-f, --format* _format_
-		Format of config output.
-
-		Default: *json*
-		Supported:
-		- _json_
-		- _json-pretty_
-		- _yaml_
+	_cluster_name_, otherwise show the value for _key_. Configuration is printed
+	as YAML.
 
 *unset* _cluster_name_ _key_
 	Unset the _key_ configuration option from _cluster_name_
@@ -118,10 +112,11 @@ Show the *ochami* configuration.
 
 The format of this command is:
 
-*show* [-f _format_] [_key_]
+*show* [_key_]
 
 Print the known *ochami* configuration. An optional _key_ can be passed to print
 a specific global config option, otherwise the whole configuration is printed.
+Configuration is printed as YAML.
 By default, the config that is used is that merged from the user-level config
 file and the system-wide config file, with the former preceding the latter. This
 is unless any of the config file options are passed. In that case, only the
@@ -130,17 +125,6 @@ config from the relevant file is read.
 This command only deals with global configuration options, and not with
 individual cluster configurations, though the cluster list can be shown. Use
 *ochami config cluster show* to view individual cluster configuration.
-
-This command accepts the following options:
-
-*-f, --format* _format_
-	Format of config output.
-
-	Default: *json*
-	Supported:
-	- _json_
-	- _json-pretty_
-	- _yaml_
 
 ## unset
 

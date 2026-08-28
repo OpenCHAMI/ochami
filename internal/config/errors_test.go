@@ -12,53 +12,45 @@ import (
 )
 
 func TestErrInvalidConfigVal_Error(t *testing.T) {
-	type fields struct {
-		Key      string
-		Value    string
-		Expected string
-		Line     int
-	}
 	tests := []struct {
-		name   string
-		fields fields
-		want   fields
+		name string
+		err  ErrInvalidConfigVal
+		want string
 	}{
 		{
-			name: "expected fields contained in error",
-			fields: fields{
+			name: "known line is included",
+			err: ErrInvalidConfigVal{
 				Key:      "enable-auth",
 				Value:    "empty string",
 				Expected: "true or false",
 				Line:     1,
 			},
-			want: fields{
+			want: `line 1: invalid value for key "enable-auth": got empty string but expected true or false`,
+		},
+		{
+			name: "unknown line is omitted",
+			err: ErrInvalidConfigVal{
 				Key:      "enable-auth",
-				Value:    "empty string",
-				Expected: "true or false",
-				Line:     1,
+				Value:    "null",
+				Expected: "boolean",
 			},
+			want: `invalid value for key "enable-auth": got null but expected boolean`,
+		},
+		{
+			name: "negative line is omitted",
+			err: ErrInvalidConfigVal{
+				Key:      "timeout",
+				Value:    "invalid",
+				Expected: "duration",
+				Line:     -1,
+			},
+			want: `invalid value for key "timeout": got invalid but expected duration`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			eicv := ErrInvalidConfigVal{
-				Key:      tt.fields.Key,
-				Value:    tt.fields.Value,
-				Expected: tt.fields.Expected,
-				Line:     tt.fields.Line,
-			}
-			got := eicv.Error()
-			if !strings.Contains(got, tt.want.Key) {
-				t.Errorf("ErrInvalidConfigVal.Error() does not contain expected Key %s, full error was %s", tt.want.Key, got)
-			}
-			if !strings.Contains(got, tt.want.Value) {
-				t.Errorf("ErrInvalidConfigVal.Error() does not contain expected Value %s, full error was %s", tt.want.Value, got)
-			}
-			if !strings.Contains(got, tt.want.Expected) {
-				t.Errorf("ErrInvalidConfigVal.Error() does not contain expected Expected %s, full error was %s", tt.want.Expected, got)
-			}
-			if !strings.Contains(got, fmt.Sprintf("%d", tt.want.Line)) {
-				t.Errorf("ErrInvalidConfigVal.Error() does not contain expected Line %d, full error was %s", tt.want.Line, got)
+			if got := tt.err.Error(); got != tt.want {
+				t.Errorf("ErrInvalidConfigVal.Error() = %q, want %q", got, tt.want)
 			}
 		})
 	}
