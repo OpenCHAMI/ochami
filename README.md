@@ -79,6 +79,10 @@ If neither exist, it will use compiled defaults. Configuration in the second
 file override configuration in the first. Alternatively, the `-c`/`--config`
 flag can be used to manually specify a config file path.
 
+Missing system-wide and user configuration files are skipped. If a file exists
+but cannot be read, parsed, validated, or merged, `ochami` reports the error and
+exits instead of silently ignoring the invalid configuration.
+
 Let's generate a user-level configuration:
 
 ```bash

@@ -395,8 +395,9 @@ type clusterAccumulator struct {
 }
 
 // configLoader identifies a named configuration source and the provider and
-// parser needed to load it. A missing source is skipped, allowing callers to
-// represent optional system and user configuration files.
+// parser needed to load it. A source that does not exist is skipped, allowing
+// callers to represent optional system and user configuration files. All other
+// loading failures are returned to the caller.
 type configLoader struct {
 	name     string
 	provider koanf.Provider
@@ -554,8 +555,8 @@ func LoadGlobalConfigDefaultOnly() error {
 // 2. System config file (/etc/ochami/config.yaml)
 // 3. User config file (~/.config/ochami/config.yaml)
 //
-// If any of the system or user config file fails to load, it is skipped in the
-// merging.
+// Missing system or user config files are skipped. If an existing file cannot
+// be read, parsed, validated, or merged, the error is returned.
 func LoadGlobalConfigMerged() error {
 	log.EarlyLogger.BasicLog("early verbose log messages activated")
 

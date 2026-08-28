@@ -34,6 +34,10 @@ neither *--config*, *--system*, nor *--user* (mutually exclusive) are specified,
 uses the resulting config of merging the user-level config with the system-wide
 config (the former preceding the latter) for printing commands.
 
+Missing system-wide and user-level configuration files are skipped. If a file
+exists but cannot be read, parsed, validated, or merged, *ochami* reports the
+error and exits instead of silently ignoring the invalid configuration.
+
 The format of _key_ uses a period (*.*) to delimit subkeys, following a
 *<superkey>.<subkey>* syntax. For example, in order to reference the *format*
 key under the *log* key, the key reference path would be *log.format*.
