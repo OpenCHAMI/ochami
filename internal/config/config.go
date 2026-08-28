@@ -6,7 +6,6 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -877,32 +876,19 @@ func GetConfigFromFile(path, key string) (any, error) {
 	return GetConfig(ko, key)
 }
 
-// GetConfigString wraps GetConfig and returns a string representation of the
-// value of key, using format to determine how to marshal the value.
-// Currently-supported formats are yaml, json, and json-pretty.
-func GetConfigString(ko *koanf.Koanf, key, format string) (string, error) {
+// GetConfigString wraps GetConfig and returns a YAML string representation of
+// the value of key.
+func GetConfigString(ko *koanf.Koanf, key string) (string, error) {
 	if strings.HasPrefix(key, "clusters.") {
 		return "", fmt.Errorf("key cannot be a cluster")
 	}
-	// val, err := GetConfig(ko, key)
 	val := ko.Get(key)
 	if val == nil {
 		return "", nil
 	}
 	switch val.(type) {
 	case map[string]interface{}, []interface{}:
-		var err error
-		var valBytes []byte
-		switch format {
-		case "yaml":
-			valBytes, err = yaml.Marshal(val)
-		case "json":
-			valBytes, err = json.Marshal(val)
-		case "json-pretty":
-			valBytes, err = json.MarshalIndent(val, "", "\t")
-		default:
-			return "", fmt.Errorf("unknown format: %s", format)
-		}
+		valBytes, err := yaml.Marshal(val)
 		if err != nil {
 			return "", fmt.Errorf("failed to marshal value for key %q: %w", key, err)
 		}
@@ -914,14 +900,14 @@ func GetConfigString(ko *koanf.Koanf, key, format string) (string, error) {
 
 // GetConfigStringFromFile is like GetConfigString except that it wraps
 // GetConfigFromFile.
-func GetConfigStringFromFile(path, key, format string) (string, error) {
+func GetConfigStringFromFile(path, key string) (string, error) {
 	// Read in config file
 	ko, err := ReadConfig(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to read config file %s: %w", path, err)
 	}
 
-	return GetConfigString(ko, key, format)
+	return GetConfigString(ko, key)
 }
 
 // GetConfigCluster returns the config value of key for a ConfigCluster struct,
@@ -939,10 +925,9 @@ func GetConfigCluster(cluster ConfigCluster, key string) (interface{}, error) {
 	return val, nil
 }
 
-// GetConfigClusterString wraps GetConfigCluster and returns a string
-// representation of the value of key, using format to determine how to marshal
-// the value. Currently-supported formats are yaml, json, and json-pretty.
-func GetConfigClusterString(cluster ConfigCluster, key, format string) (string, error) {
+// GetConfigClusterString wraps GetConfigCluster and returns a YAML string
+// representation of the value of key.
+func GetConfigClusterString(cluster ConfigCluster, key string) (string, error) {
 	val, err := GetConfigCluster(cluster, key)
 	if err != nil {
 		return "", err
@@ -952,18 +937,7 @@ func GetConfigClusterString(cluster ConfigCluster, key, format string) (string, 
 	}
 	switch val.(type) {
 	case map[string]interface{}, []interface{}:
-		var err error
-		var valBytes []byte
-		switch format {
-		case "yaml":
-			valBytes, err = yaml.Marshal(val)
-		case "json":
-			valBytes, err = json.Marshal(val)
-		case "json-pretty":
-			valBytes, err = json.MarshalIndent(val, "", "\t")
-		default:
-			return "", fmt.Errorf("unknown format: %s", format)
-		}
+		valBytes, err := yaml.Marshal(val)
 		if err != nil {
 			return "", fmt.Errorf("failed to marshal value for key %q: %w", key, err)
 		}

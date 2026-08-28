@@ -51,7 +51,6 @@ See ochami-config(5) for details on the configuration options.`,
 			// or the merged config if none.
 			var ko *koanf.Koanf
 			var err error
-			format := cmd.Flag("format").Value.String()
 			if cmd.Flags().Changed("system") {
 				ko, err = config.ReadConfigWithDefaults(config.SystemConfigFile)
 				if err != nil {
@@ -83,7 +82,7 @@ See ochami-config(5) for details on the configuration options.`,
 			if len(args) == 1 {
 				key = args[0]
 			}
-			val, err = config.GetConfigString(ko, key, format)
+			val, err = config.GetConfigString(ko, key)
 			if err != nil {
 				if key == "" {
 					log.Logger.Error().Err(err).Msgf("failed to get full config")
@@ -98,9 +97,6 @@ See ochami-config(5) for details on the configuration options.`,
 			}
 		},
 	}
-
-	// Create flags
-	showCmd.Flags().StringP("format", "f", "yaml", "format of config output (yaml,json,json-pretty)")
 
 	return showCmd
 }

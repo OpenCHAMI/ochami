@@ -1547,7 +1547,7 @@ func TestGetConfigString(t *testing.T) {
 	}
 
 	t.Run("nil value returns empty string", func(t *testing.T) {
-		s, err := GetConfigString(ko, "does.not.exist", "yaml")
+		s, err := GetConfigString(ko, "does.not.exist")
 		if err != nil {
 			t.Fatalf("GetConfigString(): unexpected error: %v", err)
 		}
@@ -1556,64 +1556,43 @@ func TestGetConfigString(t *testing.T) {
 		}
 	})
 
-	t.Run("string value ignores format", func(t *testing.T) {
-		for _, format := range []string{"", "yaml", "json", "json-pretty"} {
-			s, err := GetConfigString(ko, "default-cluster", format)
-			if err != nil {
-				t.Fatalf("GetConfigString(): unexpected error for format %q: %v", format, err)
-			}
-			if s != "dc" {
-				t.Errorf("format %q: got %q, want %q", format, s, "dc")
-			}
-		}
-	})
-
-	t.Run("struct value uses sprint", func(t *testing.T) {
-		s, err := GetConfigString(ko, "log", "json")
+	t.Run("string value returns directly", func(t *testing.T) {
+		s, err := GetConfigString(ko, "default-cluster")
 		if err != nil {
 			t.Fatalf("GetConfigString(): unexpected error: %v", err)
 		}
-		// ConfigLog prints as "{json info}"
-		wanted := `{"color":"","format":"json","level":"info"}`
-		if s != wanted {
-			t.Errorf("got %q, want %q", s, wanted)
+		if s != "dc" {
+			t.Errorf("got %q, want %q", s, "dc")
 		}
 	})
 
-	t.Run("unsupported format returns error", func(t *testing.T) {
-		_, err := GetConfigString(ko, "clusters", "xml")
-		if err == nil {
-			t.Fatalf("GetConfigString(): expected unknown format error, got %v", err)
+	t.Run("map value marshals to YAML", func(t *testing.T) {
+		s, err := GetConfigString(ko, "log")
+		if err != nil {
+			t.Fatalf("GetConfigString(): unexpected error: %v", err)
+		}
+		if !strings.Contains(s, "format: json") || !strings.Contains(s, "level: info") {
+			t.Errorf("YAML output missing expected log fields: %s", s)
 		}
 	})
 
-	t.Run("map value marshals to yaml", func(t *testing.T) {
-		out, err := GetConfigString(ko, "", "yaml")
+	t.Run("slice value marshals to YAML", func(t *testing.T) {
+		out, err := GetConfigString(ko, "clusters")
+		if err != nil {
+			t.Fatalf("GetConfigString(): unexpected error: %v", err)
+		}
+		if !strings.Contains(out, "name: c1") {
+			t.Errorf("YAML output missing cluster: %s", out)
+		}
+	})
+
+	t.Run("whole config marshals to YAML", func(t *testing.T) {
+		out, err := GetConfigString(ko, "")
 		if err != nil {
 			t.Fatalf("GetConfigString(): unexpected error: %v", err)
 		}
 		if !strings.Contains(out, "default-cluster: dc") {
 			t.Errorf("yaml output missing default-cluster: %s", out)
-		}
-	})
-
-	t.Run("map value marshals to json", func(t *testing.T) {
-		out, err := GetConfigString(ko, "", "json")
-		if err != nil {
-			t.Fatalf("GetConfigString(): unexpected error: %v", err)
-		}
-		if !strings.Contains(out, `"default-cluster":"dc"`) {
-			t.Errorf("json output missing default-cluster: %s", out)
-		}
-	})
-
-	t.Run("map value marshals to pretty json", func(t *testing.T) {
-		out, err := GetConfigString(ko, "", "json-pretty")
-		if err != nil {
-			t.Fatalf("GetConfigString(): unexpected error: %v", err)
-		}
-		if !strings.Contains(out, "\n\t") {
-			t.Errorf("pretty json output not indented: %s", out)
 		}
 	})
 }
@@ -1635,72 +1614,43 @@ clusters:
 	}
 
 	t.Run("empty path returns error", func(t *testing.T) {
-		_, err := GetConfigStringFromFile("", "default-cluster", "yaml")
+		_, err := GetConfigStringFromFile("", "default-cluster")
 		if err == nil {
 			t.Fatalf("GetConfigStringFromFile(): expected read error, got %v", err)
 		}
 	})
 
 	t.Run("nonexistent file returns error", func(t *testing.T) {
-		_, err := GetConfigStringFromFile(filepath.Join(tmp, "nope.yaml"), "default-cluster", "json")
+		_, err := GetConfigStringFromFile(filepath.Join(tmp, "nope.yaml"), "default-cluster")
 		if err == nil {
 			t.Fatalf("GetConfigStringFromFile(): expected read error for missing file, got %v", err)
 		}
 	})
 
-	t.Run("string value ignores format", func(t *testing.T) {
-		for _, fmtName := range []string{"yaml", "json", "json-pretty", ""} {
-			out, err := GetConfigStringFromFile(cfgPath, "default-cluster", fmtName)
-			if err != nil {
-				t.Fatalf("GetConfigStringFromFile(): unexpected error for format %q: %v", fmtName, err)
-			}
-			if out != "dc" {
-				t.Errorf("format %q: got %q, want %q", fmtName, out, "dc")
-			}
+	t.Run("string value returns directly", func(t *testing.T) {
+		out, err := GetConfigStringFromFile(cfgPath, "default-cluster")
+		if err != nil {
+			t.Fatalf("GetConfigStringFromFile(): unexpected error: %v", err)
 		}
-	})
-
-	t.Run("unsupported format returns error", func(t *testing.T) {
-		_, err := GetConfigStringFromFile(cfgPath, "", "xml")
-		if err == nil {
-			t.Fatalf("GetConfigStringFromFile(): expected unknown format error, got %v", err)
+		if out != "dc" {
+			t.Errorf("got %q, want %q", out, "dc")
 		}
 	})
 
 	t.Run("clusters key returns error", func(t *testing.T) {
-		_, err := GetConfigStringFromFile(cfgPath, "clusters.c1.name", "json")
+		_, err := GetConfigStringFromFile(cfgPath, "clusters.c1.name")
 		if err == nil {
 			t.Fatalf("GetConfigStringFromFile(): expected clusters-prefix error, got %v", err)
 		}
 	})
 
-	t.Run("whole config yaml output", func(t *testing.T) {
-		out, err := GetConfigStringFromFile(cfgPath, "", "yaml")
+	t.Run("whole config YAML output", func(t *testing.T) {
+		out, err := GetConfigStringFromFile(cfgPath, "")
 		if err != nil {
 			t.Fatalf("GetConfigStringFromFile(): unexpected error: %v", err)
 		}
 		if !strings.Contains(out, "default-cluster: dc") || !strings.Contains(out, "log:") {
 			t.Errorf("yaml output missing expected fields: %s", out)
-		}
-	})
-
-	t.Run("whole config json output", func(t *testing.T) {
-		out, err := GetConfigStringFromFile(cfgPath, "", "json")
-		if err != nil {
-			t.Fatalf("GetConfigStringFromFile(): unexpected error: %v", err)
-		}
-		if !strings.Contains(out, `"default-cluster":"dc"`) {
-			t.Errorf("json output missing default-cluster: %s", out)
-		}
-	})
-
-	t.Run("whole config pretty json output", func(t *testing.T) {
-		out, err := GetConfigStringFromFile(cfgPath, "", "json-pretty")
-		if err != nil {
-			t.Fatalf("GetConfigStringFromFile(): unexpected error: %v", err)
-		}
-		if !strings.Contains(out, "\n\t") {
-			t.Errorf("pretty JSON output not indented: %s", out)
 		}
 	})
 }
@@ -1812,7 +1762,7 @@ func TestGetConfigClusterString(t *testing.T) {
 	}
 
 	t.Run("nil value returns empty", func(t *testing.T) {
-		s, err := GetConfigClusterString(cluster, "does.not.exist", "yaml")
+		s, err := GetConfigClusterString(cluster, "does.not.exist")
 		if err != nil {
 			t.Fatalf("GetConfigClusterString(): unexpected error: %v", err)
 		}
@@ -1821,52 +1771,23 @@ func TestGetConfigClusterString(t *testing.T) {
 		}
 	})
 
-	t.Run("string value ignores format", func(t *testing.T) {
-		for _, fmtName := range []string{"yaml", "json", "json-pretty", ""} {
-			s, err := GetConfigClusterString(cluster, "name", fmtName)
-			if err != nil {
-				t.Fatalf("GetConfigClusterString(): unexpected error for format %q: %v", fmtName, err)
-			}
-			if s != "c1" {
-				t.Errorf("format %q: got %q, want %q", fmtName, s, "c1")
-			}
+	t.Run("string value returns directly", func(t *testing.T) {
+		s, err := GetConfigClusterString(cluster, "name")
+		if err != nil {
+			t.Fatalf("GetConfigClusterString(): unexpected error: %v", err)
 		}
-	})
-
-	t.Run("unsupported format returns error", func(t *testing.T) {
-		_, err := GetConfigClusterString(cluster, "", "xml")
-		if err == nil {
-			t.Fatalf("GetConfigClusterString(): expected unknown format error, got %v", err)
+		if s != "c1" {
+			t.Errorf("got %q, want %q", s, "c1")
 		}
 	})
 
 	t.Run("whole cluster YAML output", func(t *testing.T) {
-		out, err := GetConfigClusterString(cluster, "", "yaml")
+		out, err := GetConfigClusterString(cluster, "")
 		if err != nil {
 			t.Fatalf("GetConfigClusterString(): unexpected error: %v", err)
 		}
 		if !strings.Contains(out, "name: c1") || !strings.Contains(out, "uri: http://example.com") {
 			t.Errorf("yaml output missing expected fields: %s", out)
-		}
-	})
-
-	t.Run("whole cluster JSON output", func(t *testing.T) {
-		out, err := GetConfigClusterString(cluster, "", "json")
-		if err != nil {
-			t.Fatalf("GetConfigClusterString(): unexpected error: %v", err)
-		}
-		if !strings.Contains(out, `"name":"c1"`) || !strings.Contains(out, `"uri":"http://example.com"`) {
-			t.Errorf("json output missing expected fields: %s", out)
-		}
-	})
-
-	t.Run("whole cluster pretty JSON output", func(t *testing.T) {
-		out, err := GetConfigClusterString(cluster, "", "json-pretty")
-		if err != nil {
-			t.Fatalf("GetConfigClusterString(): unexpected error: %v", err)
-		}
-		if !strings.Contains(out, "\n\t") {
-			t.Errorf("pretty-json output not indented: %s", out)
 		}
 	})
 }
