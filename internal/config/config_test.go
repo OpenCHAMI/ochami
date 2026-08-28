@@ -1184,7 +1184,7 @@ log:
 		}
 	})
 
-	t.Run("delete non-existent key leaves config unchanged", func(t *testing.T) {
+	t.Run("delete non-existent key returns error and leaves config unchanged", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
 
@@ -1203,8 +1203,12 @@ log:
     format: f
     level: l`))
 
-		if err := DeleteConfig(path, "does.not.exist"); err != nil {
-			t.Fatalf("DeleteConfig(): unexpected error deleting missing key: %v", err)
+		err := DeleteConfig(path, "does.not.exist")
+		if err == nil {
+			t.Fatal("DeleteConfig(): expected error deleting missing key, got nil")
+		}
+		if !strings.Contains(err.Error(), "key 'does.not.exist' does not exist") {
+			t.Errorf("DeleteConfig(): error = %q, want missing-key error", err)
 		}
 
 		ko, err := ReadConfig(path)

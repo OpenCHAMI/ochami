@@ -767,9 +767,9 @@ func DeleteConfig(path, key string) error {
 		return fmt.Errorf("failed to read %s for deletion: %w", path, err)
 	}
 
-	// if !ko.Exists(key) {
-	// 	return fmt.Errorf("key '%s' does not exist", key)
-	// }
+	if !ko.Exists(key) {
+		return fmt.Errorf("key '%s' does not exist", key)
+	}
 
 	ko.Delete(key)
 
