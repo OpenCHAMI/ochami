@@ -130,4 +130,37 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 			t.Errorf("timeout = %q, want 45s", got)
 		}
 	})
+
+	t.Run("empty log.level rejected", func(t *testing.T) {
+		path := writeCfg(t, "log:\n  level: \"\"\n")
+		_, err := ReadConfigWithDefaults(path)
+		if err == nil {
+			t.Fatal("expected error for empty log.level, got nil")
+		}
+		var eicv ErrInvalidConfigVal
+		if !errors.As(err, &eicv) {
+			t.Fatalf("expected ErrInvalidConfigVal, got %T: %v", err, err)
+		}
+		if eicv.Key != "log.level" {
+			t.Errorf("error key = %q, want log.level", eicv.Key)
+		}
+		if eicv.Value != "empty string" {
+			t.Errorf("error value = %q, want empty string", eicv.Value)
+		}
+	})
+
+	t.Run("empty log.format rejected", func(t *testing.T) {
+		path := writeCfg(t, "log:\n  format: \"\"\n")
+		_, err := ReadConfigWithDefaults(path)
+		if err == nil {
+			t.Fatal("expected error for empty log.format, got nil")
+		}
+		var eicv ErrInvalidConfigVal
+		if !errors.As(err, &eicv) {
+			t.Fatalf("expected ErrInvalidConfigVal, got %T: %v", err, err)
+		}
+		if eicv.Key != "log.format" {
+			t.Errorf("error key = %q, want log.format", eicv.Key)
+		}
+	})
 }

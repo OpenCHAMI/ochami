@@ -44,13 +44,19 @@ var requiredGlobalScalars = []string{
 }
 
 // checkGlobalNulls returns an ErrInvalidConfigVal if any required global scalar
-// key exists in ko but is explicitly null. This is checked per-source before
-// merging so that a clean validation error is surfaced instead of the cryptic
+// key exists in ko but is explicitly null or an empty string. This is checked per-source
+// before merging so that a clean validation error is surfaced instead of the cryptic
 // type-mismatch error StrictMerge would otherwise produce.
 func checkGlobalNulls(ko *koanf.Koanf) error {
 	for _, key := range requiredGlobalScalars {
-		if ko.Exists(key) && ko.Get(key) == nil {
-			return ErrInvalidConfigVal{Key: key, Value: "null", Expected: "non-null value"}
+		if ko.Exists(key) {
+			val := ko.Get(key)
+			if val == nil {
+				return ErrInvalidConfigVal{Key: key, Value: "null", Expected: "non-null value"}
+			}
+			if s, ok := val.(string); ok && s == "" {
+				return ErrInvalidConfigVal{Key: key, Value: "empty string", Expected: "non-empty value"}
+			}
 		}
 	}
 	return nil
