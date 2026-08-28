@@ -166,15 +166,16 @@ func InitConfig(cmd *cobra.Command, create bool) error {
 		err = config.LoadGlobalConfigMerged()
 	}
 	if err != nil {
-		err = fmt.Errorf("failed to load configuration: %w", err)
+		return err
 	}
 
-	return err
+	return nil
 }
 
 // Set log level verbosity based on config file (log.level) or --log-level.
 // The command line option overrides the config file option.
 func InitLogging(cmd *cobra.Command) error {
+	// 1. Apply command-line overrides first (highest precedence)
 	if cmd.Flags().Changed("log-format") {
 		lf, err := cmd.Flags().GetString("log-format")
 		if err != nil {
@@ -189,7 +190,6 @@ func InitLogging(cmd *cobra.Command) error {
 		}
 		config.GlobalConfig.Log.Level = ll
 	}
-
 	if cmd.Flags().Changed("log-color") {
 		lc, err := cmd.Flags().GetString("log-color")
 		if err != nil {
@@ -198,7 +198,7 @@ func InitLogging(cmd *cobra.Command) error {
 		config.GlobalConfig.Log.Color = lc
 	}
 
-	// Apply defaults for any missing log settings before initializing
+	// 2. Apply defaults for empty values (lowest precedence)
 	if config.GlobalConfig.Log.Level == "" {
 		config.GlobalConfig.Log.Level = config.DefaultConfigMap["log.level"].(string)
 	}
@@ -209,6 +209,7 @@ func InitLogging(cmd *cobra.Command) error {
 		config.GlobalConfig.Log.Color = config.DefaultConfigMap["log.color"].(string)
 	}
 
+	// 3. Initialize logger
 	if err := log.Init(config.GlobalConfig.Log.Level, config.GlobalConfig.Log.Format, config.GlobalConfig.Log.Color); err != nil {
 		return err
 	}
@@ -223,11 +224,13 @@ func InitLogging(cmd *cobra.Command) error {
 // missing. This creation only applies when a config file is explicitly
 // specified on the command line and not the merged config.
 func InitConfigAndLogging(cmd *cobra.Command, createCfg bool) {
+	// Load configuration first (this populates GlobalConfig)
 	if err := InitConfig(cmd, createCfg); err != nil {
 		el.BasicLogf("failed to initialize config: %v", err)
 		el.BasicLogf("see '%s --help' for long command help", cmd.CommandPath())
 		os.Exit(1)
 	}
+	// Initialize logging second (flag overrides are applied inside InitLogging)
 	if err := InitLogging(cmd); err != nil {
 		el.BasicLogf("failed to initialize logging: %v", err)
 		el.BasicLogf("see '%s --help' for long command help", cmd.CommandPath())

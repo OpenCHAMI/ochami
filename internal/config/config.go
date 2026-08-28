@@ -600,7 +600,7 @@ func LoadGlobalConfigFromFile(path string) error {
 
 	ko, err := ReadConfigWithDefaults(path)
 	if err != nil {
-		return fmt.Errorf("unable to load config '%s': %w", path, err)
+		return err
 	}
 
 	log.EarlyLogger.BasicLogf("successfully loaded effective config '%s':", path)
@@ -978,35 +978,35 @@ func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
 	// StrictMerge would otherwise fail with a cryptic type mismatch.
 	fileKo := koanf.NewWithConf(kConfig)
 	if err := fileKo.Load(file.Provider(path), configParser); err != nil {
-		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
+		return ko, err
 	}
 	if err := checkGlobalNulls(fileKo); err != nil {
-		return ko, fmt.Errorf("invalid config '%s': %w", path, err)
+		return ko, err
 	}
 	if err := ko.Merge(fileKo); err != nil {
-		return ko, fmt.Errorf("failed to load config file %s: %w", path, err)
+		return ko, err
 	}
 
 	// Apply per-cluster defaults, preserving first-seen order.
 	var kClusterSlice []map[string]any
 	if err := ko.Unmarshal("clusters", &kClusterSlice); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal cluster configs from config '%s': %w", path, err)
+		return nil, fmt.Errorf("unable to unmarshal cluster configs: %w", err)
 	}
 
 	clusterAcc := newClusterAccumulator()
 	for i, cluster := range kClusterSlice {
 		name, ok := cluster["name"].(string)
 		if !ok || name == "" {
-			return nil, fmt.Errorf("cluster #%d from config '%s' is missing a name", i, path)
+			return nil, fmt.Errorf("cluster #%d is missing a name", i)
 		}
 		switch cls := cluster["cluster"].(type) {
 		case map[string]any:
 			if err := clusterAcc.add(name, cls); err != nil {
-				return nil, fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, path, err)
+				return nil, fmt.Errorf("unable to merge cluster '%s': %w", name, err)
 			}
 		case nil:
 			if err := clusterAcc.add(name, map[string]any{}); err != nil {
-				return nil, fmt.Errorf("unable to merge cluster '%s' from config '%s': %w", name, path, err)
+				return nil, fmt.Errorf("unable to merge cluster '%s': %w", name, err)
 			}
 		default:
 			return nil, fmt.Errorf("cluster '%s' is not a map", name)
@@ -1018,12 +1018,12 @@ func ReadConfigWithDefaults(path string) (*koanf.Koanf, error) {
 	// existing []interface{} value with a []map[string]any via Set.
 	ko.Delete("clusters")
 	if err := ko.Set("clusters", clusterAcc.slice()); err != nil {
-		return ko, fmt.Errorf("unable to set clusters for config '%s': %w", path, err)
+		return ko, fmt.Errorf("unable to set clusters: %w", err)
 	}
 
 	// Validate the fully-merged (effective) config.
 	if err := validateConfig(ko); err != nil {
-		return ko, fmt.Errorf("invalid config '%s': %w", path, err)
+		return ko, err
 	}
 
 	return ko, nil
