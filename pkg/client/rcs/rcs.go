@@ -27,6 +27,13 @@ import (
 // ctrlCByte is the byte value for Ctrl+C in raw terminal mode.
 const ctrlCByte = byte(0x03)
 
+// messageWriter is the subset of *websocket.Conn used to forward console input.
+// It is an interface so the input-streaming helpers can be unit-tested with a
+// fake writer instead of a live websocket connection.
+type messageWriter interface {
+	WriteMessage(messageType int, data []byte) error
+}
+
 // HealthResponse represents the response from the /health endpoint of the Remote Console Service.
 type HealthResponse struct {
 	NumberConsoles     string `json:"consoles" yaml:"consoles"`
@@ -251,7 +258,7 @@ func enableRawTerminalMode(stdinFile *os.File) (*term.State, error) {
 }
 
 // streamRawConsoleInput reads from stdin in raw mode and forwards keystrokes to the websocket connection, translating Ctrl+C into an interrupt signal.
-func streamRawConsoleInput(stdin io.Reader, conn *websocket.Conn, interrupt chan os.Signal, errChan chan error) {
+func streamRawConsoleInput(stdin io.Reader, conn messageWriter, interrupt chan os.Signal, errChan chan error) {
 	buf := make([]byte, 1)
 	for {
 		bytesRead, err := stdin.Read(buf)
@@ -279,7 +286,7 @@ func streamRawConsoleInput(stdin io.Reader, conn *websocket.Conn, interrupt chan
 	}
 }
 
-func streamBufferedConsoleInput(stdin io.Reader, conn *websocket.Conn, errChan chan error) {
+func streamBufferedConsoleInput(stdin io.Reader, conn messageWriter, errChan chan error) {
 	buf := make([]byte, 1024)
 	for {
 		bytesRead, err := stdin.Read(buf)
