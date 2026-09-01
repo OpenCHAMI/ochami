@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -35,6 +36,11 @@ type cmdResult struct {
 // sequentially by default but subtests/parallel tests could interleave, we
 // guard the global swap with a mutex.
 var stdoutMu sync.Mutex
+
+// testStdin, when non-nil, is used as the interactive input stream for the next
+// runOchami call. runOchamiWithInput sets it so commands that prompt (e.g.
+// delete confirmations) read a scripted answer. It is reset after each run.
+var testStdin io.Reader
 
 // runOchami executes the ochami root command with the provided arguments,
 // capturing anything written to os.Stdout during execution. It returns a
@@ -72,10 +78,15 @@ func runOchami(t *testing.T, args ...string) cmdResult {
 	cli.Token = ""
 
 	// Redirect the interactive I/O stream to the same capture pipe so output
-	// written via cli.Ios.Out() (e.g. "rcs console show") is captured too, and
-	// give it an empty stdin by default. Tests needing to drive interactive
-	// prompts should use runOchamiWithInput, which sets a reader before calling.
-	restoreIos := cli.SetIOStream(cli.Ios.In(), w, w)
+	// written via cli.Ios.Out() (e.g. "rcs console show") and any interactive
+	// prompt text are captured in the returned stdout. Input defaults to an
+	// empty reader unless a test provided one via testStdin (runOchamiWithInput).
+	stdin := io.Reader(strings.NewReader(""))
+	if testStdin != nil {
+		stdin = testStdin
+		testStdin = nil
+	}
+	restoreIos := cli.SetIOStream(stdin, w, w)
 	defer restoreIos()
 
 	rootCmd := NewRootCmd()
