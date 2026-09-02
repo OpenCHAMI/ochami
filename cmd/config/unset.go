@@ -11,7 +11,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/configfile"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 func newCmdUnset() *cobra.Command {
@@ -62,7 +63,7 @@ See ochami-config(5) for details on the configuration options.`,
 				// Check if --system was passed to 'config' command
 				fileToModify = config.SystemConfigFile
 			} else {
-				fileToModify = config.UserConfigFile
+				fileToModify = cli.UserConfigFile
 			}
 
 			// Refuse to modify config if user tries to modify cluster config
@@ -71,7 +72,7 @@ See ochami-config(5) for details on the configuration options.`,
 			}
 
 			// Perform modification
-			if err := config.DeleteConfig(fileToModify, args[0]); err != nil {
+			if err := configfile.DeleteConfig(fileToModify, args[0]); err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}
 

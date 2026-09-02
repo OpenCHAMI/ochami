@@ -122,6 +122,21 @@ docker run ghcr.io/openchami/ochami:latest ochami --version
 podman run ghcr.io/openchami/ochami:latest ochami --version
 ```
 
+## Project Structure
+
+### Public Packages
+
+- `pkg/config` - Configuration loading, merging, cluster lookup, and service URI
+  resolution. Use this package for any code that needs to work with ochami
+  configuration. It is state-independent: the loaders (`config.Load`,
+  `config.LoadFile`, `config.LoadDefaults`, `config.LoadMerged`) return a fresh
+  `config.Config` without touching package-global state, so it is safe to build
+  multiple independent configurations and easy to use in tests. See the package
+  documentation (`go doc github.com/openchami/ochami/pkg/config`) and the
+  runnable examples in `pkg/config/example_test.go` for usage. On-disk editing of
+  config files used by the `ochami config` commands lives in the internal
+  `internal/configfile` package and is intentionally not part of the public API.
+
 ## Submitting Pull Requests
 
 ### Container Builds on PRs

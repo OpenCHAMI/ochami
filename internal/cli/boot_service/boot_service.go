@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 // GetClient sets up the boot-service client with the boot-service base URI and
