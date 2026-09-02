@@ -17,7 +17,31 @@ import (
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
 
+// bssStatusClient is the subset of the BSS client that the "bss service status"
+// command depends on. Defining it here (rather than importing a concrete client
+// type) lets tests substitute a fake and exercise the command's response
+// handling and error mapping without a live service.
+type bssStatusClient interface {
+	GetStatus(component string) (client.HTTPEnvelope, error)
+}
+
+// bssStatusClientProvider builds a bssStatusClient from the command context. The
+// production provider constructs a real BSS client; tests inject their own.
+type bssStatusClientProvider func(cmd *cobra.Command) (bssStatusClient, error)
+
+// realBSSStatusClient is the production provider used by newCmdServiceStatus. It
+// delegates to the internal CLI helper that wires up a configured BSS client.
+func realBSSStatusClient(cmd *cobra.Command) (bssStatusClient, error) {
+	return bss_lib.GetClient(cmd)
+}
+
 func newCmdServiceStatus() *cobra.Command {
+	return newCmdServiceStatusWithClient(realBSSStatusClient)
+}
+
+// newCmdServiceStatusWithClient builds the "bss service status" command using
+// the given client provider. It exists so tests can inject a fake client.
+func newCmdServiceStatusWithClient(getClient bssStatusClientProvider) *cobra.Command {
 	// serviceStatusCmd represents the "bss service status" command
 	var serviceStatusCmd = &cobra.Command{
 		Use:   "status",
@@ -28,7 +52,7 @@ func newCmdServiceStatus() *cobra.Command {
 See ochami-bss(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
+			bssClient, err := getClient(cmd)
 			if err != nil {
 				return err
 			}

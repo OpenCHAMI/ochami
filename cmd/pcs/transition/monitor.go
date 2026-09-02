@@ -14,6 +14,7 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 
 	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/pkg/client"
 
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
 )
@@ -53,6 +54,24 @@ type transitionProgress struct {
 	TaskCounts transitionTaskCounts `json:"taskCounts" yaml:"taskCounts"`
 }
 
+// pcsTransitionClient is the subset of the PCS client that the "pcs transition
+// monitor" command depends on. Defining it here lets tests drive the polling
+// loop with a fake that returns a scripted sequence of transition states.
+type pcsTransitionClient interface {
+	GetTransition(transitionID, token string) (client.HTTPEnvelope, error)
+}
+
+// pcsTransitionClientProvider builds a pcsTransitionClient from the command
+// context. The production provider constructs a real PCS client; tests inject
+// their own.
+type pcsTransitionClientProvider func(cmd *cobra.Command) (pcsTransitionClient, error)
+
+// realPCSTransitionClient is the production provider used by
+// newCmdTransitionMonitor.
+func realPCSTransitionClient(cmd *cobra.Command) (pcsTransitionClient, error) {
+	return pcs_lib.GetClient(cmd)
+}
+
 // Create and style a progress bar
 func createBar(p *mpb.Progress, name string) *mpb.Bar {
 	return p.AddBar(0, mpb.PrependDecorators(
@@ -65,6 +84,13 @@ func createBar(p *mpb.Progress, name string) *mpb.Bar {
 }
 
 func newCmdTransitionMonitor() *cobra.Command {
+	return newCmdTransitionMonitorWithClient(realPCSTransitionClient)
+}
+
+// newCmdTransitionMonitorWithClient builds the "pcs transition monitor" command
+// using the given client provider. It exists so tests can inject a fake client
+// and drive the polling loop deterministically.
+func newCmdTransitionMonitorWithClient(getClient pcsTransitionClientProvider) *cobra.Command {
 	// transitionMonitorCmd represents the "pcs transition monitor" command
 	var transitionMonitorCmd = &cobra.Command{
 		Use:   "monitor <transition_id>",
@@ -79,7 +105,7 @@ See ochami-pcs(1) for more details.`,
 			transitionID := args[0]
 
 			// Create client to use for requests
-			pcsClient, err := pcs_lib.GetClient(cmd)
+			pcsClient, err := getClient(cmd)
 			if err != nil {
 				return err
 			}
