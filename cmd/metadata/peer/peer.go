@@ -21,12 +21,7 @@ Commands under this one interact with the metadata-service
 WireGuard peer endpoint.
 
 See ochami-metadata(1) for more details.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return cli.PrintUsageHandleError(cmd)
-			}
-			return nil
-		},
+		RunE: cli.PrintUsage,
 	}
 
 	// Create flags

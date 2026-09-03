@@ -17,12 +17,7 @@ func NewCmd() *cobra.Command {
 		Use:   "transition",
 		Args:  cobra.NoArgs,
 		Short: "Manage PCS transitions",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return cli.PrintUsageHandleError(cmd)
-			}
-			return nil
-		},
+		RunE:  cli.PrintUsage,
 	}
 
 	// Add subcommands
