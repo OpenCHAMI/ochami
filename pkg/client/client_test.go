@@ -420,6 +420,169 @@ func TestReadPayloadSlice(t *testing.T) {
 	}
 }
 
+func TestReadPayloadDataSlice(t *testing.T) {
+	type Item struct {
+		K int `json:"k" yaml:"k"`
+	}
+
+	tests := []struct {
+		name    string
+		input   string
+		fmt     format.DataFormat
+		want    []Item
+		wantErr bool
+	}{
+		{
+			name:  "json single object",
+			input: `{"k":7}`,
+			fmt:   format.DataFormatJson,
+			want:  []Item{{K: 7}},
+		},
+		{
+			name:  "json array",
+			input: `[{"k":1},{"k":2}]`,
+			fmt:   format.DataFormatJson,
+			want:  []Item{{K: 1}, {K: 2}},
+		},
+		{
+			name:  "yaml sequence",
+			input: "- k: 3\n- k: 4\n",
+			fmt:   format.DataFormatYaml,
+			want:  []Item{{K: 3}, {K: 4}},
+		},
+		{
+			name:    "empty input",
+			input:   "",
+			fmt:     format.DataFormatJson,
+			wantErr: true,
+		},
+		{
+			name:    "malformed json",
+			input:   `{"k":}`,
+			fmt:     format.DataFormatJson,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			got := []Item{{K: -1}}
+			err := ReadPayloadDataSlice[Item](tc.input, tc.fmt, &got)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("ReadPayloadDataSlice error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if tc.wantErr {
+				return
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("got %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+}
+
+// withStdin replaces os.Stdin with a pipe containing data for the duration of
+// fn, restoring the original afterward.
+func withStdin(t *testing.T, data string, fn func()) {
+	t.Helper()
+	oldStdin := os.Stdin
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	os.Stdin = r
+	defer func() {
+		_ = r.Close()
+		os.Stdin = oldStdin
+	}()
+	if _, err := w.Write([]byte(data)); err != nil {
+		t.Fatalf("write stdin pipe: %v", err)
+	}
+	_ = w.Close()
+	fn()
+}
+
+func TestReadPayloadStdin(t *testing.T) {
+	withStdin(t, `{"k":42}`, func() {
+		var m map[string]int
+		if err := ReadPayloadStdin(format.DataFormatJson, &m); err != nil {
+			t.Fatalf("ReadPayloadStdin error = %v", err)
+		}
+		if m["k"] != 42 {
+			t.Errorf("m[k] = %d, want 42", m["k"])
+		}
+	})
+}
+
+func TestReadPayloadStdinSlice(t *testing.T) {
+	type Item struct {
+		K int `json:"k" yaml:"k"`
+	}
+	withStdin(t, `[{"k":1},{"k":2}]`, func() {
+		got := []Item{}
+		if err := ReadPayloadStdinSlice[Item](format.DataFormatJson, &got); err != nil {
+			t.Fatalf("ReadPayloadStdinSlice error = %v", err)
+		}
+		want := []Item{{K: 1}, {K: 2}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %#v, want %#v", got, want)
+		}
+	})
+}
+
+func TestCanonicalizeInterface(t *testing.T) {
+	tests := []struct {
+		name  string
+		input interface{}
+		want  interface{}
+	}{
+		{
+			name:  "scalar unchanged",
+			input: 42,
+			want:  42,
+		},
+		{
+			name:  "string-keyed map recursed",
+			input: map[string]interface{}{"a": map[string]interface{}{"b": 1}},
+			want:  map[string]interface{}{"a": map[string]interface{}{"b": 1}},
+		},
+		{
+			name:  "interface-keyed map canonicalized",
+			input: map[interface{}]interface{}{"a": 1, "b": 2},
+			want:  map[string]interface{}{"a": 1, "b": 2},
+		},
+		{
+			name: "nested interface-keyed map in slice",
+			input: []interface{}{
+				map[interface{}]interface{}{"x": 1},
+			},
+			want: []interface{}{
+				map[string]interface{}{"x": 1},
+			},
+		},
+		{
+			name: "interface-keyed map with nested interface-keyed map",
+			input: map[interface{}]interface{}{
+				"outer": map[interface{}]interface{}{"inner": "v"},
+			},
+			want: map[string]interface{}{
+				"outer": map[string]interface{}{"inner": "v"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			got := CanonicalizeInterface(tc.input)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("CanonicalizeInterface = %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestReadPayloadInterfaceRFC6902Array(t *testing.T) {
 	var got interface{}
 	err := ReadPayload(`[{"op":"replace","path":"/hostname","value":"ex01"}]`, format.DataFormatJson, &got)
