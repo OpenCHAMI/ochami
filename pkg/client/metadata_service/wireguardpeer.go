@@ -121,7 +121,7 @@ func (msc *MetadataServiceClient) ListWireGuardPeers(token string, outFormat for
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the WireGuardPeer identified by uid. It returns the modified
 // WireGuardPeer resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.WireGuardPeer, error) {
+func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.WireGuardPeer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 

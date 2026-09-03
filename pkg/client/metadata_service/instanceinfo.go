@@ -121,7 +121,7 @@ func (msc *MetadataServiceClient) ListInstanceInfos(token string, outFormat form
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the InstanceInfo identified by uid. It returns the modified
 // InstanceInfo resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.InstanceInfo, error) {
+func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.InstanceInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
