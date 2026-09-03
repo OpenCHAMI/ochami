@@ -179,3 +179,42 @@ func TestSetBMCSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 		t.Errorf("simple set unexpectedly included labels: %+v", gotBody["labels"])
 	}
 }
+
+func TestEnvelopeSetMethods(t *testing.T) {
+	tests := []struct {
+		name     string
+		wantPath string
+		call     func(*BootServiceClient) error
+	}{
+		{"bmc", "/bmcs/uid", func(c *BootServiceClient) error {
+			_, err := c.SetBMC("tok", "uid", boot_service_client.UpdateBMCRequest{})
+			return err
+		}},
+		{"config", "/bootconfigurations/uid", func(c *BootServiceClient) error {
+			_, err := c.SetBootConfig("tok", "uid", boot_service_client.UpdateBootConfigurationRequest{})
+			return err
+		}},
+		{"node", "/nodes/uid", func(c *BootServiceClient) error {
+			_, err := c.SetNode("tok", "uid", boot_service_client.UpdateNodeRequest{})
+			return err
+		}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotMethod, gotPath, gotAuth string
+			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				gotMethod, gotPath, gotAuth = r.Method, r.URL.Path, r.Header.Get("Authorization")
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{}`))
+			})
+			defer srv.Close()
+			if err := tc.call(c); err != nil {
+				t.Fatalf("set: %v", err)
+			}
+			if gotMethod != http.MethodPut || gotPath != tc.wantPath || gotAuth != "Bearer tok" {
+				t.Errorf("request = %s %s auth=%q, want PUT %s", gotMethod, gotPath, gotAuth, tc.wantPath)
+			}
+		})
+	}
+}
