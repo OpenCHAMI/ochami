@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/pkg/format"
@@ -599,5 +600,108 @@ func TestReadPayloadInterfaceRFC6902Array(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v, want %#v", got, want)
+	}
+}
+
+// TestReadPayloadFileVariants covers ReadPayloadFile / ReadPayloadFileSlice for
+// a real file (JSON and YAML), a missing file, and malformed content.
+func TestReadPayloadFileVariants(t *testing.T) {
+	dir := t.TempDir()
+
+	jsonPath := dir + "/p.json"
+	if err := os.WriteFile(jsonPath, []byte(`{"name":"node"}`), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	var one map[string]any
+	if err := ReadPayloadFile(jsonPath, format.DataFormatJson, &one); err != nil {
+		t.Errorf("ReadPayloadFile(json) = %v, want nil", err)
+	}
+
+	yamlPath := dir + "/p.yaml"
+	if err := os.WriteFile(yamlPath, []byte("name: node\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	var oney map[string]any
+	if err := ReadPayloadFile(yamlPath, format.DataFormatYaml, &oney); err != nil {
+		t.Errorf("ReadPayloadFile(yaml) = %v, want nil", err)
+	}
+
+	// Missing file.
+	if err := ReadPayloadFile(dir+"/missing.json", format.DataFormatJson, &one); err == nil {
+		t.Error("ReadPayloadFile(missing) = nil, want error")
+	}
+
+	// Malformed content.
+	badPath := dir + "/bad.json"
+	if err := os.WriteFile(badPath, []byte(`{not json`), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := ReadPayloadFile(badPath, format.DataFormatJson, &one); err == nil {
+		t.Error("ReadPayloadFile(malformed) = nil, want error")
+	}
+
+	// Slice variant.
+	arrPath := dir + "/arr.json"
+	if err := os.WriteFile(arrPath, []byte(`[{"name":"a"},{"name":"b"}]`), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	var many []map[string]any
+	if err := ReadPayloadFileSlice(arrPath, format.DataFormatJson, &many); err != nil {
+		t.Errorf("ReadPayloadFileSlice = %v, want nil", err)
+	}
+	if len(many) != 2 {
+		t.Errorf("ReadPayloadFileSlice len = %d, want 2", len(many))
+	}
+	// Slice missing file.
+	if err := ReadPayloadFileSlice(dir+"/missing.json", format.DataFormatJson, &many); err == nil {
+		t.Error("ReadPayloadFileSlice(missing) = nil, want error")
+	}
+}
+
+// TestReadPayloadReaderVariants covers ReadPayloadReader and
+// ReadPayloadReaderSlice success and error arms.
+func TestReadPayloadReaderVariants(t *testing.T) {
+	var one map[string]any
+	if err := ReadPayloadReader(strings.NewReader(`{"name":"node"}`), format.DataFormatJson, &one); err != nil {
+		t.Errorf("ReadPayloadReader = %v, want nil", err)
+	}
+	if err := ReadPayloadReader(strings.NewReader(`{bad`), format.DataFormatJson, &one); err == nil {
+		t.Error("ReadPayloadReader(malformed) = nil, want error")
+	}
+
+	var many []map[string]any
+	if err := ReadPayloadReaderSlice(strings.NewReader(`[{"name":"a"}]`), format.DataFormatJson, &many); err != nil {
+		t.Errorf("ReadPayloadReaderSlice = %v, want nil", err)
+	}
+	if err := ReadPayloadReaderSlice(strings.NewReader(`[bad`), format.DataFormatJson, &many); err == nil {
+		t.Error("ReadPayloadReaderSlice(malformed) = nil, want error")
+	}
+}
+
+// TestReadPayloadDataVariants covers ReadPayloadData / ReadPayloadDataSlice
+// success (JSON, YAML) and unmarshal-error arms.
+func TestReadPayloadDataVariants(t *testing.T) {
+	var one map[string]any
+	if err := ReadPayloadData(`{"name":"node"}`, format.DataFormatJson, &one); err != nil {
+		t.Errorf("ReadPayloadData(json) = %v, want nil", err)
+	}
+	if err := ReadPayloadData("name: node\n", format.DataFormatYaml, &one); err != nil {
+		t.Errorf("ReadPayloadData(yaml) = %v, want nil", err)
+	}
+	// Unmarshalling an object into a slice pointer should error.
+	var bad []string
+	if err := ReadPayloadData(`{"name":"node"}`, format.DataFormatJson, &bad); err == nil {
+		t.Error("ReadPayloadData(object into []string) = nil, want error")
+	}
+
+	var many []map[string]any
+	if err := ReadPayloadDataSlice(`[{"name":"a"},{"name":"b"}]`, format.DataFormatJson, &many); err != nil {
+		t.Errorf("ReadPayloadDataSlice(json) = %v, want nil", err)
+	}
+	if len(many) != 2 {
+		t.Errorf("ReadPayloadDataSlice len = %d, want 2", len(many))
+	}
+	if err := ReadPayloadDataSlice(`{bad`, format.DataFormatJson, &many); err == nil {
+		t.Error("ReadPayloadDataSlice(malformed) = nil, want error")
 	}
 }
