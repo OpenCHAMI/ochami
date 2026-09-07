@@ -70,10 +70,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Determine how to read payload (simple versus advanced API)
-			envelope, flagErr := cmd.Flags().GetBool("envelope")
-			if flagErr != nil {
-				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
-			}
+			envelope, _ := cmd.Flags().GetBool("envelope")
 
 			var groupSet *api.Group
 			var reqErr error
