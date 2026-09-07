@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/config"
 )
@@ -73,6 +74,36 @@ func (ce *CodedError) Code() int {
 // errors.Is/errors.As.
 func Errorf(code int, format string, args ...any) error {
 	return &CodedError{code: code, err: fmt.Errorf(format, args...)}
+}
+
+// ClassifyClientError maps service errors to the CLI's HTTP and network exit
+// codes while preserving the original error for inspection.
+func ClassifyClientError(err error, httpMsg, netMsg string) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, client.UnsuccessfulHTTPError) {
+		return Errorf(CodeHTTP, "%s: %w", httpMsg, err)
+	}
+	return Errorf(CodeNetwork, "%s: %w", netMsg, err)
+}
+
+// AggregateItemErrors logs non-nil per-item errors and reports a single HTTP
+// failure when one or more iterations failed. Iterative client operations use
+// their top-level error for transport failures, so item errors represent HTTP
+// responses from individual requests.
+func AggregateItemErrors(errs []error, msg string) error {
+	errorsOccurred := false
+	for _, err := range errs {
+		if err != nil {
+			log.Logger.Error().Err(err).Msg(msg)
+			errorsOccurred = true
+		}
+	}
+	if errorsOccurred {
+		return Errorf(CodeHTTP, "%s completed with errors", msg)
+	}
+	return nil
 }
 
 // CodeError wraps an existing error with an explicit exit code without altering
