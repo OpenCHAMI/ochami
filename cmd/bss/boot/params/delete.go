@@ -95,52 +95,31 @@ See ochami-bss(1) for more details.`,
 			// Set the hosts the boot parameters are for
 			var err error
 			if cmd.Flag("xname").Changed {
-				bp.Hosts, err = cmd.Flags().GetStringSlice("xname")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch xname list: %w", err)
-				}
+				bp.Hosts, _ = cmd.Flags().GetStringSlice("xname")
 			}
 			if cmd.Flag("mac").Changed {
-				bp.Macs, err = cmd.Flags().GetStringSlice("mac")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch mac list: %w", err)
-				}
+				bp.Macs, _ = cmd.Flags().GetStringSlice("mac")
 				if err = bp.CheckMacs(); err != nil {
 					return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
 				}
 			}
 			if cmd.Flag("nid").Changed {
-				bp.Nids, err = cmd.Flags().GetInt32Slice("nid")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch nid list: %w", err)
-				}
+				bp.Nids, _ = cmd.Flags().GetInt32Slice("nid")
 			}
 
 			// Set the boot parameters
 			if cmd.Flag("kernel").Changed {
-				bp.Kernel, err = cmd.Flags().GetString("kernel")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch kernel uri: %w", err)
-				}
+				bp.Kernel, _ = cmd.Flags().GetString("kernel")
 			}
 			if cmd.Flag("initrd").Changed {
-				bp.Initrd, err = cmd.Flags().GetString("initrd")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch initrd uri: %w", err)
-				}
+				bp.Initrd, _ = cmd.Flags().GetString("initrd")
 			}
 			if cmd.Flag("params").Changed {
-				bp.Params, err = cmd.Flags().GetString("params")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch params: %w", err)
-				}
+				bp.Params, _ = cmd.Flags().GetString("params")
 			}
 
 			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, err := cmd.Flags().GetBool("no-confirm")
-			if err != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
-			}
+			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
