@@ -19,9 +19,6 @@ import (
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
 )
 
-var xnames []string
-var operation string
-
 // validOperations returns a list of valid PCS operations
 func validOperations() []string {
 	return []string{"force-off", "hard-restart", "off", "on", "reinit", "soft-off", "soft-restart"}
@@ -56,7 +53,7 @@ See ochami-pcs(1) for more details.`,
 		Example: `  # Turn on a set of nodes
   ochami pcs transition start --xname "x0c0s7b0n1,x0c0s7b0n0,x0c0s4b0n1" on`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			operation = args[0]
+			operation := args[0]
 
 			if !isValidOperation(operation) {
 				// Include invalid operation in error message
@@ -75,10 +72,7 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Get the list of target components
-			xnames, err = cmd.Flags().GetStringSlice("xname")
-			if err != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to get value for --xname: %w", err)
-			}
+			xnames, _ := cmd.Flags().GetStringSlice("xname")
 
 			// Create transition
 			transitionHttpEnv, err := pcsClient.CreateTransition(operation, nil, xnames, cli.Token)
