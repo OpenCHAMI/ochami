@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 
@@ -110,9 +109,7 @@ See ochami-pcs(1) for more details.`,
 
 	// Create flags
 	transitionStartCmd.Flags().StringSliceP("xname", "x", []string{}, "The list of target components")
-	if err := transitionStartCmd.MarkFlagRequired("xname"); err != nil {
-		log.Logger.Fatal().Err(err).Msg("failed to mark xname as required")
-	}
+	_ = transitionStartCmd.MarkFlagRequired("xname")
 
 	transitionStartCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
