@@ -84,7 +84,7 @@ See ochami-bss(1) for more details.`,
 				}
 				return cli.Errorf(cli.CodeNetwork, "failed to request boot script from BSS: %w", err)
 			}
-			fmt.Println(string(httpEnv.Body))
+			fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
 
 			return nil
 		},
