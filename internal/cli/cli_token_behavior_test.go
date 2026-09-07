@@ -109,6 +109,22 @@ func TestHandleToken_AuthDisabledCluster(t *testing.T) {
 	}
 }
 
+// TestHandleToken_UnknownCluster verifies direct callers cannot silently skip
+// token handling for a cluster that does not exist.
+func TestHandleToken_UnknownCluster(t *testing.T) {
+	origCfg := ActiveConfig()
+	t.Cleanup(func() { SetActiveConfig(origCfg) })
+
+	SetActiveConfig(config.Config{DefaultCluster: "missing"})
+	err := HandleToken(tokenTestCmd())
+	if err == nil {
+		t.Fatal("HandleToken(): expected error for unknown cluster, got nil")
+	}
+	if got := ExitCode(err); got != CodeConfig {
+		t.Errorf("exit code = %d, want CodeConfig (%d)", got, CodeConfig)
+	}
+}
+
 // TestHandleToken_AuthEnabledMissingToken verifies that an auth-enabled cluster
 // requires a token and errors when none is available.
 func TestHandleToken_AuthEnabledMissingToken(t *testing.T) {
