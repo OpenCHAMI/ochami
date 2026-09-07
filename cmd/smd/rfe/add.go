@@ -108,24 +108,16 @@ See ochami-smd(1) for more details.`,
 					MACAddr:   args[3],
 				}
 				if cmd.Flag("domain").Changed {
-					if rfe.Domain, err = cmd.Flags().GetString("domain"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch domain: %w", err)
-					}
+					rfe.Domain, _ = cmd.Flags().GetString("domain")
 				}
 				if cmd.Flag("hostname").Changed {
-					if rfe.Hostname, err = cmd.Flags().GetString("hostname"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch hostname: %w", err)
-					}
+					rfe.Hostname, _ = cmd.Flags().GetString("hostname")
 				}
 				if cmd.Flag("username").Changed {
-					if rfe.User, err = cmd.Flags().GetString("username"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch username: %w", err)
-					}
+					rfe.User, _ = cmd.Flags().GetString("username")
 				}
 				if cmd.Flag("password").Changed {
-					if rfe.Password, err = cmd.Flags().GetString("password"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch password: %w", err)
-					}
+					rfe.Password, _ = cmd.Flags().GetString("password")
 				}
 				rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
 			}

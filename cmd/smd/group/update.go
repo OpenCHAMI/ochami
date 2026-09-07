@@ -98,14 +98,10 @@ See ochami-smd(1) for more details.`,
 				// ...otherwise use CLI options/args
 				group := smd.Group{Label: args[0]}
 				if cmd.Flag("description").Changed {
-					if group.Description, err = cmd.Flags().GetString("description"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch description: %w", err)
-					}
+					group.Description, _ = cmd.Flags().GetString("description")
 				}
 				if cmd.Flag("tag").Changed {
-					if group.Tags, err = cmd.Flags().GetStringSlice("tag"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch tags: %w", err)
-					}
+					group.Tags, _ = cmd.Flags().GetStringSlice("tag")
 				}
 				groups = append(groups, group)
 			}

@@ -74,62 +74,41 @@ See ochami-smd(1) for more details.`,
 				cmd.Flag("type").Changed || cmd.Flag("older-than").Changed || cmd.Flag("newer-than").Changed {
 				values := url.Values{}
 				if cmd.Flag("mac").Changed {
-					s, err := cmd.Flags().GetStringSlice("mac")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch macs: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("mac")
 					for _, m := range s {
 						values.Add("MACAddress", m)
 					}
 				}
 				if cmd.Flag("ip").Changed {
-					s, err := cmd.Flags().GetStringSlice("ip")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch IPs: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("ip")
 					for _, i := range s {
 						values.Add("IPAddress", i)
 					}
 				}
 				if cmd.Flag("net").Changed {
-					s, err := cmd.Flags().GetStringSlice("net")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch networks: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("net")
 					for _, n := range s {
 						values.Add("Network", n)
 					}
 				}
 				if cmd.Flag("comp-id").Changed {
-					s, err := cmd.Flags().GetStringSlice("comp-id")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch component IDs: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("comp-id")
 					for _, c := range s {
 						values.Add("ComponentID", c)
 					}
 				}
 				if cmd.Flag("type").Changed {
-					s, err := cmd.Flags().GetStringSlice("type")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch type: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("type")
 					for _, t := range s {
 						values.Add("Type", t)
 					}
 				}
 				if cmd.Flag("older-than").Changed {
-					s, err := cmd.Flags().GetString("older-than")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch older-than timestamp: %w", err)
-					}
+					s, _ := cmd.Flags().GetString("older-than")
 					values.Add("OlderThan", s)
 				}
 				if cmd.Flag("newer-than").Changed {
-					s, err := cmd.Flags().GetString("newer-than")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch newer-than timestamp: %w", err)
-					}
+					s, _ := cmd.Flags().GetString("newer-than")
 					values.Add("NewerThan", s)
 				}
 				qstr = values.Encode()
