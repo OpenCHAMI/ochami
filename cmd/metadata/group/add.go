@@ -165,11 +165,7 @@ See ochami-metadata(1) for more details.`,
 			var reqErrorsOccurred = false
 			for _, err := range reqErrs {
 				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("failed to add group")
-					} else {
-						log.Logger.Error().Err(err).Msg("failed to add group")
-					}
+					log.Logger.Error().Err(err).Msg("failed to add group")
 					reqErrorsOccurred = true
 				}
 			}
