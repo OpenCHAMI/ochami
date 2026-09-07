@@ -41,7 +41,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Print output
-			fmt.Print(string(outbytes))
+			fmt.Fprint(cli.Ios.Out(), string(outbytes))
 
 			return nil
 		},
