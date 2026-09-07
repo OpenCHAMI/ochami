@@ -108,6 +108,12 @@ See ochami-smd(1) for more details.`,
 				if err := cli.HandlePayload(cmd, &ceSlice); err != nil {
 					return err
 				}
+				for _, ce := range ceSlice {
+					xnameSlice = append(xnameSlice, ce.ID)
+				}
+				if len(xnameSlice) == 0 {
+					return cli.Errorf(cli.CodeUsage, "payload contained no component endpoints to delete")
+				}
 			} else {
 				// ...otherwise, use passed CLI arguments
 				xnameSlice = args

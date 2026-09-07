@@ -108,6 +108,12 @@ See ochami-smd(1) for more details.`,
 				if err := cli.HandlePayload(cmd, &eiSlice); err != nil {
 					return err
 				}
+				for _, ei := range eiSlice {
+					eIdSlice = append(eIdSlice, ei.ID)
+				}
+				if len(eIdSlice) == 0 {
+					return cli.Errorf(cli.CodeUsage, "payload contained no ethernet interfaces to delete")
+				}
 			} else {
 				// ...otherwise, use passed CLI arguments
 				eIdSlice = args

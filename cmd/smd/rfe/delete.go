@@ -108,6 +108,12 @@ See ochami-smd(1) for more details.`,
 				if err := cli.HandlePayload(cmd, &rfeSlice); err != nil {
 					return err
 				}
+				for _, rfe := range rfeSlice.RedfishEndpoints {
+					xnameSlice = append(xnameSlice, rfe.ID)
+				}
+				if len(xnameSlice) == 0 {
+					return cli.Errorf(cli.CodeUsage, "payload contained no redfish endpoints to delete")
+				}
 			} else {
 				// ...otherwise, use passed CLI arguments
 				xnameSlice = args

@@ -194,6 +194,27 @@ func TestSMDComponentDeleteNoConfirm(t *testing.T) {
 	}
 }
 
+// TestSMDComponentDeleteByData verifies IDs in a payload drive DELETE requests.
+func TestSMDComponentDeleteByData(t *testing.T) {
+	var deletes int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deletes++
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "smd", "component", "delete", "--ignore-config", "--uri", srv.URL,
+		"--token", "faketoken", "--no-confirm", "-d", `{"Components":[{"ID":"x3000c1s7b56n0"}]}`)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if deletes != 1 {
+		t.Errorf("DELETE count = %d, want 1", deletes)
+	}
+}
+
 // TestSMDComponentDeleteAllPartialFailure verifies that a per-item unsuccessful
 // HTTP response during multi-item deletion resolves to CodeHTTP (the
 // "completed with errors" aggregate).

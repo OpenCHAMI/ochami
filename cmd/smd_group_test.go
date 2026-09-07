@@ -231,11 +231,13 @@ func TestSMDGroupDeleteByLabels(t *testing.T) {
 	}
 }
 
-// TestSMDGroupDeleteByData verifies "delete -d <payload>" is accepted and
-// exercises the payload-handling branch (the payload is parsed into a Group
-// slice; the command completes successfully).
+// TestSMDGroupDeleteByData verifies labels in a payload drive DELETE requests.
 func TestSMDGroupDeleteByData(t *testing.T) {
+	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deletes++
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -244,6 +246,9 @@ func TestSMDGroupDeleteByData(t *testing.T) {
 		"--no-confirm", "-d", `[{"label":"compute"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if deletes != 1 {
+		t.Errorf("DELETE count = %d, want 1", deletes)
 	}
 }
 

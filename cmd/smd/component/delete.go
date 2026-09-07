@@ -111,6 +111,12 @@ See ochami-smd(1) for more details.`,
 				if err := cli.HandlePayload(cmd, &compSlice); err != nil {
 					return err
 				}
+				for _, component := range compSlice.Components {
+					xnameSlice = append(xnameSlice, component.ID)
+				}
+				if len(xnameSlice) == 0 {
+					return cli.Errorf(cli.CodeUsage, "payload contained no components to delete")
+				}
 			} else {
 				// ...otherwise, use passed CLI arguments
 				xnameSlice = args

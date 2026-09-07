@@ -126,6 +126,27 @@ func TestSMDCompepDeleteByXnames(t *testing.T) {
 	}
 }
 
+// TestSMDCompepDeleteByData verifies IDs in a payload drive DELETE requests.
+func TestSMDCompepDeleteByData(t *testing.T) {
+	var deletes int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deletes++
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "smd", "compep", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--no-confirm", "-d", `[{"ID":"x3000c1s7b56n0"}]`)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if deletes != 1 {
+		t.Errorf("DELETE count = %d, want 1", deletes)
+	}
+}
+
 // TestSMDCompepDeleteAllConfirm verifies "delete --all" prompts and, on "y",
 // issues a DELETE.
 func TestSMDCompepDeleteAllConfirm(t *testing.T) {

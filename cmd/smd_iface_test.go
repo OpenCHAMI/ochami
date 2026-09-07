@@ -299,11 +299,13 @@ func TestSMDIfaceDeleteAbort(t *testing.T) {
 	}
 }
 
-// TestSMDIfaceDeleteByData verifies "delete -d <payload>" is accepted and
-// exercises the payload-handling branch of the delete command. (The payload is
-// parsed into an EthernetInterface slice; the command completes successfully.)
+// TestSMDIfaceDeleteByData verifies IDs in a payload drive DELETE requests.
 func TestSMDIfaceDeleteByData(t *testing.T) {
+	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deletes++
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -312,6 +314,9 @@ func TestSMDIfaceDeleteByData(t *testing.T) {
 		"--no-confirm", "-d", `[{"ID":"decafc0ffeee"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if deletes != 1 {
+		t.Errorf("DELETE count = %d, want 1", deletes)
 	}
 }
 

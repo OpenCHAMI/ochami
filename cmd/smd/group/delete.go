@@ -102,6 +102,12 @@ See ochami-smd(1) for more details.`,
 				if err := cli.HandlePayload(cmd, &groups); err != nil {
 					return err
 				}
+				for _, group := range groups {
+					gLabelSlice = append(gLabelSlice, group.Label)
+				}
+				if len(gLabelSlice) == 0 {
+					return cli.Errorf(cli.CodeUsage, "payload contained no groups to delete")
+				}
 			} else {
 				// ...otherwise, use passed CLI arguments
 				gLabelSlice = args
