@@ -105,7 +105,7 @@ See ochami-config(5) for details on the configuration options.`,
 				}
 			}
 			if val != "" {
-				fmt.Print(val)
+				fmt.Fprint(cli.Ios.Out(), val)
 			}
 
 			return nil
