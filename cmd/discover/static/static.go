@@ -20,11 +20,6 @@ import (
 	"github.com/openchami/ochami/pkg/discover"
 )
 
-var (
-	// Variable to store the value of --discovery-method.
-	discoveryVersion = discover.DiscoveryMethodV2
-)
-
 // nodeCommon keeps basic node information that is common between the deprecated
 // discovery format and the new format. It exists so that group-building logic
 // does not have to be duplicated per format. Once the deprecated format is
@@ -81,6 +76,8 @@ func buildGroupList(nodesCommon []nodeCommon) []smd.Group {
 }
 
 func NewCmd() *cobra.Command {
+	discoveryVersion := discover.DiscoveryMethodV2
+
 	// staticCmd represents the "discover static" command
 	var staticCmd = &cobra.Command{
 		Use:   "static [--overwrite] [-d (<data> | @<path>)] [-f <format>]",

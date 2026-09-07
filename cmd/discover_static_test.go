@@ -17,8 +17,23 @@ import (
 	"sync"
 	"testing"
 
+	discover_static "github.com/openchami/ochami/cmd/discover/static"
 	"github.com/openchami/ochami/internal/cli"
 )
+
+// TestDiscoverStaticFlagStateIsLocal verifies one command invocation cannot
+// change the default discovery version of a subsequently constructed command.
+func TestDiscoverStaticFlagStateIsLocal(t *testing.T) {
+	first := discover_static.NewCmd()
+	if err := first.Flags().Set("discovery-version", "1"); err != nil {
+		t.Fatalf("set first discovery version: %v", err)
+	}
+
+	second := discover_static.NewCmd()
+	if got := second.Flags().Lookup("discovery-version").Value.String(); got != "2" {
+		t.Errorf("second command discovery version = %q, want default 2", got)
+	}
+}
 
 // smdOverwriteServer returns an httptest.Server that emulates SMD's overwrite
 // semantics: it returns 409 Conflict for the first POST to redfish, ethernet,
