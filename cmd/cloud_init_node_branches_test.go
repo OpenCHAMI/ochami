@@ -22,7 +22,7 @@ import (
 // "node get meta-data".
 func TestCloudInitNodeGetMetadataFormats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("hostname: node01\n"))
+		_, _ = w.Write([]byte("hostname: node01\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -42,7 +42,7 @@ func TestCloudInitNodeGetMetadataFormats(t *testing.T) {
 // user-data for the node.
 func TestCloudInitNodeGetUserdata(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n"))
+		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -60,7 +60,7 @@ func TestCloudInitNodeGetUserdata(t *testing.T) {
 // vendor-data for the node.
 func TestCloudInitNodeGetVendordata(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("#cloud-config\nvendor: acme\n"))
+		_, _ = w.Write([]byte("#cloud-config\nvendor: acme\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -189,7 +189,7 @@ func TestCloudInitNodeSetMalformedPayload(t *testing.T) {
 // header-printing arms).
 func TestCloudInitNodeGetDataHeaderModes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n"))
+		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -208,7 +208,7 @@ func TestCloudInitNodeGetDataHeaderModes(t *testing.T) {
 // group data over multiple groups.
 func TestCloudInitNodeGetGroupHeaderModes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n"))
+		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

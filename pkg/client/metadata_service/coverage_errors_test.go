@@ -39,16 +39,24 @@ func TestAddHelpersPerItemError(t *testing.T) {
 	c, srv := errServer(t)
 	defer srv.Close()
 
-	if _, errs, _ := c.AddGroups("", []metadata_service_client.CreateGroupRequest{{}}); len(errs) == 0 {
+	if _, errs, err := c.AddGroups("", []metadata_service_client.CreateGroupRequest{{}}); err != nil {
+		t.Fatalf("AddGroups: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("AddGroups: expected a per-item error")
 	}
-	if _, errs, _ := c.AddDefaults("", []metadata_service_client.CreateClusterDefaultsRequest{{}}); len(errs) == 0 {
+	if _, errs, err := c.AddDefaults("", []metadata_service_client.CreateClusterDefaultsRequest{{}}); err != nil {
+		t.Fatalf("AddDefaults: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("AddDefaults: expected a per-item error")
 	}
-	if _, errs, _ := c.AddInstanceInfos("", []metadata_service_client.CreateInstanceInfoRequest{{}}); len(errs) == 0 {
+	if _, errs, err := c.AddInstanceInfos("", []metadata_service_client.CreateInstanceInfoRequest{{}}); err != nil {
+		t.Fatalf("AddInstanceInfos: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("AddInstanceInfos: expected a per-item error")
 	}
-	if _, errs, _ := c.AddWireGuardPeers("", []metadata_service_client.CreateWireGuardPeerRequest{{}}); len(errs) == 0 {
+	if _, errs, err := c.AddWireGuardPeers("", []metadata_service_client.CreateWireGuardPeerRequest{{}}); err != nil {
+		t.Fatalf("AddWireGuardPeers: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("AddWireGuardPeers: expected a per-item error")
 	}
 }
@@ -57,16 +65,24 @@ func TestDeleteHelpersPerItemError(t *testing.T) {
 	c, srv := errServer(t)
 	defer srv.Close()
 
-	if _, errs, _ := c.DeleteGroups("", []string{"uid"}); len(errs) == 0 {
+	if _, errs, err := c.DeleteGroups("", []string{"uid"}); err != nil {
+		t.Fatalf("DeleteGroups: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("DeleteGroups: expected a per-item error")
 	}
-	if _, errs, _ := c.DeleteDefaults("", []string{"uid"}); len(errs) == 0 {
+	if _, errs, err := c.DeleteDefaults("", []string{"uid"}); err != nil {
+		t.Fatalf("DeleteDefaults: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("DeleteDefaults: expected a per-item error")
 	}
-	if _, errs, _ := c.DeleteInstanceInfos("", []string{"uid"}); len(errs) == 0 {
+	if _, errs, err := c.DeleteInstanceInfos("", []string{"uid"}); err != nil {
+		t.Fatalf("DeleteInstanceInfos: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("DeleteInstanceInfos: expected a per-item error")
 	}
-	if _, errs, _ := c.DeleteWireGuardPeers("", []string{"uid"}); len(errs) == 0 {
+	if _, errs, err := c.DeleteWireGuardPeers("", []string{"uid"}); err != nil {
+		t.Fatalf("DeleteWireGuardPeers: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("DeleteWireGuardPeers: expected a per-item error")
 	}
 }

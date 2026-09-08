@@ -357,8 +357,10 @@ func DefaultTimeout() time.Duration {
 	case time.Duration:
 		return tot
 	case string:
-		ret, _ := time.ParseDuration(tot)
-		return ret
+		ret, err := time.ParseDuration(tot)
+		if err == nil {
+			return ret
+		}
 	}
 	return -1
 }

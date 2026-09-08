@@ -40,7 +40,7 @@ func TestBSSWrappersHTTPError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte("boom"))
+				_, _ = w.Write([]byte("boom")) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 

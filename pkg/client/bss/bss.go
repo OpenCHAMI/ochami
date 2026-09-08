@@ -64,7 +64,7 @@ func (bc *BSSClient) PostBootParams(bp bssTypes.BootParams, token string) (clien
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = bc.PostData(BSSRelpathBootParams, "", headers, body)
 	if err != nil {
@@ -90,7 +90,7 @@ func (bc *BSSClient) PutBootParams(bp bssTypes.BootParams, token string) (client
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = bc.PutData(BSSRelpathBootParams, "", headers, body)
 	if err != nil {
@@ -116,7 +116,7 @@ func (bc *BSSClient) PatchBootParams(bp bssTypes.BootParams, token string) (clie
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = bc.PatchData(BSSRelpathBootParams, "", headers, body)
 	if err != nil {
@@ -142,7 +142,7 @@ func (bc *BSSClient) DeleteBootParams(bp bssTypes.BootParams, token string) (cli
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = bc.DeleteData(BSSRelpathBootParams, "", headers, body)
 	if err != nil {
@@ -164,7 +164,7 @@ func (bc *BSSClient) GetBootParams(query, token string) (client.HTTPEnvelope, er
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = bc.GetData(BSSRelpathBootParams, query, headers)
 	if err != nil {

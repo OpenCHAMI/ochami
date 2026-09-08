@@ -38,13 +38,19 @@ func TestBootAddHelpersPerItemError(t *testing.T) {
 	c, srv := errClient(t)
 	defer srv.Close()
 
-	if _, errs, _ := c.AddBMCs("", []boot_service_client.CreateBMCRequest{{}}); len(errs) == 0 {
+	if _, errs, err := c.AddBMCs("", []boot_service_client.CreateBMCRequest{{}}); err != nil {
+		t.Fatalf("AddBMCs: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("AddBMCs: expected a per-item error")
 	}
-	if _, errs, _ := c.AddNodes("", []boot_service_client.CreateNodeRequest{{}}); len(errs) == 0 {
+	if _, errs, err := c.AddNodes("", []boot_service_client.CreateNodeRequest{{}}); err != nil {
+		t.Fatalf("AddNodes: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("AddNodes: expected a per-item error")
 	}
-	if _, errs, _ := c.AddBootConfigs("", []boot_service_client.CreateBootConfigurationRequest{{}}); len(errs) == 0 {
+	if _, errs, err := c.AddBootConfigs("", []boot_service_client.CreateBootConfigurationRequest{{}}); err != nil {
+		t.Fatalf("AddBootConfigs: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("AddBootConfigs: expected a per-item error")
 	}
 }
@@ -53,13 +59,19 @@ func TestBootDeleteHelpersPerItemError(t *testing.T) {
 	c, srv := errClient(t)
 	defer srv.Close()
 
-	if _, errs, _ := c.DeleteBMCs("", []string{"uid"}); len(errs) == 0 {
+	if _, errs, err := c.DeleteBMCs("", []string{"uid"}); err != nil {
+		t.Fatalf("DeleteBMCs: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("DeleteBMCs: expected a per-item error")
 	}
-	if _, errs, _ := c.DeleteNodes("", []string{"uid"}); len(errs) == 0 {
+	if _, errs, err := c.DeleteNodes("", []string{"uid"}); err != nil {
+		t.Fatalf("DeleteNodes: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("DeleteNodes: expected a per-item error")
 	}
-	if _, errs, _ := c.DeleteBootConfigs("", []string{"uid"}); len(errs) == 0 {
+	if _, errs, err := c.DeleteBootConfigs("", []string{"uid"}); err != nil {
+		t.Fatalf("DeleteBootConfigs: unexpected common error: %v", err)
+	} else if len(errs) == 0 {
 		t.Error("DeleteBootConfigs: expected a per-item error")
 	}
 }

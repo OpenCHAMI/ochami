@@ -110,7 +110,7 @@ func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xname
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
 	// Create the request body
@@ -155,7 +155,7 @@ func (pc *PCSClient) GetTransitions(token string) (client.HTTPEnvelope, error) {
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
 	henv, err = pc.GetData(PCSTransitions, "", headers)
@@ -177,7 +177,7 @@ func (pc *PCSClient) GetTransition(id string, token string) (client.HTTPEnvelope
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
 	pcsTransitionsEndpoint, err = url.JoinPath(PCSTransitions, id)
@@ -205,7 +205,7 @@ func (pc *PCSClient) DeleteTransition(id string, token string) (client.HTTPEnvel
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
 	pcsTransitionEndpoint, err = url.JoinPath(PCSTransitions, id)
@@ -232,7 +232,7 @@ func (pc *PCSClient) GetStatus(xnames []string, powerStateFilter string, mgmtSta
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
 	values := url.Values{}

@@ -29,10 +29,18 @@ func validToken(t *testing.T) string {
 	}
 	now := time.Now()
 	tok := jwt.New()
-	_ = tok.Set(jwt.ExpirationKey, now.Add(1*time.Hour))
-	_ = tok.Set(jwt.NotBeforeKey, now.Add(-1*time.Hour))
-	_ = tok.Set(jwt.IssuedAtKey, now.Add(-1*time.Hour))
-	_ = tok.Set(jwt.SubjectKey, "test-subject")
+	if err := tok.Set(jwt.ExpirationKey, now.Add(1*time.Hour)); err != nil {
+		t.Fatalf("set expiration claim: %v", err)
+	}
+	if err := tok.Set(jwt.NotBeforeKey, now.Add(-1*time.Hour)); err != nil {
+		t.Fatalf("set not-before claim: %v", err)
+	}
+	if err := tok.Set(jwt.IssuedAtKey, now.Add(-1*time.Hour)); err != nil {
+		t.Fatalf("set issued-at claim: %v", err)
+	}
+	if err := tok.Set(jwt.SubjectKey, "test-subject"); err != nil {
+		t.Fatalf("set subject claim: %v", err)
+	}
 	signed, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), privKey))
 	if err != nil {
 		t.Fatalf("failed to sign token: %v", err)

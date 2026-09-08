@@ -105,7 +105,7 @@ func (n Node) ResolveBMC() (bmc_spec string, err error) {
 }
 
 func (n Node) String() string {
-	bmc_spec, _ := n.ResolveBMC()
+	bmc_spec, _ := n.ResolveBMC() //nolint:errcheck // String cannot return an error; an unresolved BMC is rendered empty
 	nStr := fmt.Sprintf("name=%q nid=%d xname=%s bmc=%s groups=%v interfaces=[",
 		n.Name, n.NID, n.Xname, bmc_spec, n.Groups)
 	for idx, iface := range n.Ifaces {

@@ -61,7 +61,7 @@ func smdOverwriteServer(t *testing.T, rec *smdOverwriteRecorder) *httptest.Serve
 				postSeen["rfe"] = true
 				mu.Unlock()
 				w.WriteHeader(http.StatusConflict)
-				_, _ = w.Write([]byte(`{"type":"about:blank","detail":"exists"}`))
+				_, _ = w.Write([]byte(`{"type":"about:blank","detail":"exists"}`)) //nolint:errcheck // test response writes are observed by the client
 				return
 			}
 			if r.Method == http.MethodPut {
@@ -69,11 +69,11 @@ func smdOverwriteServer(t *testing.T, rec *smdOverwriteRecorder) *httptest.Serve
 				rec.rfePut = true
 				rec.mu.Unlock()
 			}
-			_, _ = w.Write([]byte(`[]`))
+			_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 		case strings.Contains(path, "EthernetInterfaces"):
 			if r.Method == http.MethodPost {
 				w.WriteHeader(http.StatusConflict)
-				_, _ = w.Write([]byte(`{"detail":"exists"}`))
+				_, _ = w.Write([]byte(`{"detail":"exists"}`)) //nolint:errcheck // test response writes are observed by the client
 				return
 			}
 			if r.Method == http.MethodPatch {
@@ -81,11 +81,11 @@ func smdOverwriteServer(t *testing.T, rec *smdOverwriteRecorder) *httptest.Serve
 				rec.ifacePatch = true
 				rec.mu.Unlock()
 			}
-			_, _ = w.Write([]byte(`[]`))
+			_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 		case strings.Contains(path, "groups"):
 			if r.Method == http.MethodPost {
 				w.WriteHeader(http.StatusConflict)
-				_, _ = w.Write([]byte(`{"detail":"exists"}`))
+				_, _ = w.Write([]byte(`{"detail":"exists"}`)) //nolint:errcheck // test response writes are observed by the client
 				return
 			}
 			if r.Method == http.MethodPatch {
@@ -93,11 +93,11 @@ func smdOverwriteServer(t *testing.T, rec *smdOverwriteRecorder) *httptest.Serve
 				rec.groupPatch = true
 				rec.mu.Unlock()
 			}
-			_, _ = w.Write([]byte(`[]`))
+			_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 		default:
 			// Components and everything else succeed.
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`[]`))
+			_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 		}
 	}))
 }
@@ -158,7 +158,7 @@ func TestDiscoverStaticV1(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -188,7 +188,7 @@ func TestDiscoverStaticStdin(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -232,7 +232,7 @@ func TestDiscoverStaticDeprecatedFormat(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -283,7 +283,7 @@ func TestDiscoverStaticOverwriteHTTPError(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -306,7 +306,7 @@ func TestDiscoverStaticOverwritePutFails(t *testing.T) {
 		if strings.Contains(r.URL.Path, "RedfishEndpoints") {
 			if r.Method == http.MethodPost {
 				w.WriteHeader(http.StatusConflict)
-				_, _ = w.Write([]byte(`{"detail":"exists"}`))
+				_, _ = w.Write([]byte(`{"detail":"exists"}`)) //nolint:errcheck // test response writes are observed by the client
 				return
 			}
 			// PUT fallback also fails.
@@ -314,7 +314,7 @@ func TestDiscoverStaticOverwritePutFails(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -337,14 +337,14 @@ func TestDiscoverStaticV1OverwritePatchFails(t *testing.T) {
 		if strings.Contains(r.URL.Path, "EthernetInterfaces") {
 			if r.Method == http.MethodPost {
 				w.WriteHeader(http.StatusConflict)
-				_, _ = w.Write([]byte(`{"detail":"exists"}`))
+				_, _ = w.Write([]byte(`{"detail":"exists"}`)) //nolint:errcheck // test response writes are observed by the client
 				return
 			}
 			http.Error(w, "boom", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -368,14 +368,14 @@ func TestDiscoverStaticOverwriteGroupPatchFails(t *testing.T) {
 		if strings.Contains(r.URL.Path, "groups") {
 			if r.Method == http.MethodPost {
 				w.WriteHeader(http.StatusConflict)
-				_, _ = w.Write([]byte(`{"detail":"exists"}`))
+				_, _ = w.Write([]byte(`{"detail":"exists"}`)) //nolint:errcheck // test response writes are observed by the client
 				return
 			}
 			http.Error(w, "boom", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -399,7 +399,7 @@ func TestDiscoverStaticComponentHTTPError(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -423,7 +423,7 @@ func TestDiscoverStaticOverwriteComponentError(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -447,7 +447,7 @@ func TestDiscoverStaticV1IfaceError(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -471,7 +471,7 @@ func TestDiscoverStaticGroupError(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

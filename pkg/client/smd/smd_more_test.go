@@ -33,7 +33,7 @@ func TestGetStatus(t *testing.T) {
 			var gotPath string
 			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 			if _, err := sc.GetStatus(tc.component); err != nil {
@@ -53,7 +53,7 @@ func TestGetEthernetInterfaceByID(t *testing.T) {
 		var gotPath string
 		sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 			gotPath = r.URL.Path
-			_, _ = w.Write([]byte(`{}`))
+			_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 		})
 		defer srv.Close()
 		if _, err := sc.GetEthernetInterfaceByID("deadbeef", "tok", false); err != nil {
@@ -67,7 +67,7 @@ func TestGetEthernetInterfaceByID(t *testing.T) {
 		var gotPath string
 		sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 			gotPath = r.URL.Path
-			_, _ = w.Write([]byte(`{}`))
+			_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 		})
 		defer srv.Close()
 		if _, err := sc.GetEthernetInterfaceByID("deadbeef", "tok", true); err != nil {
@@ -84,7 +84,7 @@ func TestGetGroupMembership(t *testing.T) {
 	var gotPath string
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 	if _, err := sc.GetGroupMembership("id=x0", "tok"); err != nil {
@@ -236,7 +236,7 @@ func TestIterativeDeletesPerItemHTTPError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte("boom"))
+				_, _ = w.Write([]byte("boom")) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 

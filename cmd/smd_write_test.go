@@ -24,7 +24,7 @@ func TestSMDGroupMemberAdd(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`"x0c0s0b0n0"`))
+		_, _ = w.Write([]byte(`"x0c0s0b0n0"`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -47,7 +47,7 @@ func TestSMDGroupMemberDelete(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok"}`))
+		_, _ = w.Write([]byte(`{"code":0,"message":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -69,7 +69,7 @@ func TestSMDGroupUpdate(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -111,7 +111,7 @@ func TestSMDRFEDeleteNoConfirm(t *testing.T) {
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok"}`))
+		_, _ = w.Write([]byte(`{"code":0,"message":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

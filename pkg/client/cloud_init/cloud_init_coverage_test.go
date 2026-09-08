@@ -155,7 +155,7 @@ func TestDeleteGroupsSuccess(t *testing.T) {
 // TestGetNodeDataSuccess verifies the success arm of GetNodeData.
 func TestGetNodeDataSuccess(t *testing.T) {
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 

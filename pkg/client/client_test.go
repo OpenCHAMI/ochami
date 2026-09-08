@@ -25,10 +25,10 @@ func TestGetData(t *testing.T) {
 		case "/ok":
 			w.Header().Set("X-Test", "yes")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"msg":"success"}`))
+			_, _ = w.Write([]byte(`{"msg":"success"}`)) //nolint:errcheck // test response writes are observed by the client
 		case "/fail":
 			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("oops"))
+			_, _ = w.Write([]byte("oops")) //nolint:errcheck // test response writes are observed by the client
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -91,10 +91,10 @@ func TestPostData(t *testing.T) {
 		switch r.URL.Path {
 		case "/ok":
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"msg":"created"}`))
+			_, _ = w.Write([]byte(`{"msg":"created"}`)) //nolint:errcheck // test response writes are observed by the client
 		case "/fail":
 			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("boom"))
+			_, _ = w.Write([]byte("boom")) //nolint:errcheck // test response writes are observed by the client
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

@@ -170,7 +170,7 @@ func TestCloudInitServiceStatusQuietHTTPError(t *testing.T) {
 // document through the command's injected output stream.
 func TestCloudInitServiceStatusAPI(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"openapi":"3.0.0"}`))
+		_, _ = w.Write([]byte(`{"openapi":"3.0.0"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

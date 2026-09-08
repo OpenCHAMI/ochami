@@ -100,27 +100,27 @@ See ochami-bss(1) for details.`,
 
 			// Set the hosts the boot parameters are for
 			if cmd.Flag("xname").Changed {
-				bp.Hosts, _ = cmd.Flags().GetStringSlice("xname")
+				bp.Hosts, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 			if cmd.Flag("mac").Changed {
-				bp.Macs, _ = cmd.Flags().GetStringSlice("mac")
+				bp.Macs, _ = cmd.Flags().GetStringSlice("mac") //nolint:errcheck // flag is registered with the matching type on this command
 				if err = bp.CheckMacs(); err != nil {
 					return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
 				}
 			}
 			if cmd.Flag("nid").Changed {
-				bp.Nids, _ = cmd.Flags().GetInt32Slice("nid")
+				bp.Nids, _ = cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 
 			// Set the boot parameters
 			if cmd.Flag("kernel").Changed {
-				bp.Kernel, _ = cmd.Flags().GetString("kernel")
+				bp.Kernel, _ = cmd.Flags().GetString("kernel") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 			if cmd.Flag("initrd").Changed {
-				bp.Initrd, _ = cmd.Flags().GetString("initrd")
+				bp.Initrd, _ = cmd.Flags().GetString("initrd") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 			if cmd.Flag("params").Changed {
-				bp.Params, _ = cmd.Flags().GetString("params")
+				bp.Params, _ = cmd.Flags().GetString("params") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 
 			// Send 'em off

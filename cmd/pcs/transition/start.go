@@ -70,7 +70,7 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Get the list of target components
-			xnames, _ := cmd.Flags().GetStringSlice("xname")
+			xnames, _ := cmd.Flags().GetStringSlice("xname") //nolint:errcheck // flag is registered with the matching type on this command
 
 			// Create transition
 			transitionHttpEnv, err := pcsClient.CreateTransition(operation, nil, xnames, cli.Token)
@@ -99,7 +99,7 @@ See ochami-pcs(1) for more details.`,
 
 	// Create flags
 	transitionStartCmd.Flags().StringSliceP("xname", "x", []string{}, "The list of target components")
-	_ = transitionStartCmd.MarkFlagRequired("xname")
+	_ = transitionStartCmd.MarkFlagRequired("xname") //nolint:errcheck // xname is registered immediately above
 
 	transitionStartCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 

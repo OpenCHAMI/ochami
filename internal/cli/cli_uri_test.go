@@ -64,7 +64,9 @@ func TestGetBaseURI(t *testing.T) {
 			service:     config.ServiceSMD,
 			defaultClus: "foo",
 			setup: func(cmd *cobra.Command) {
-				_ = cmd.Flags().Set("cluster", "bar")
+				if err := cmd.Flags().Set("cluster", "bar"); err != nil {
+					t.Fatalf("set cluster flag: %v", err)
+				}
 			},
 			want: "https://bar.example.com/hsm/v2",
 		},
@@ -73,7 +75,9 @@ func TestGetBaseURI(t *testing.T) {
 			service:     config.ServiceSMD,
 			defaultClus: "foo",
 			setup: func(cmd *cobra.Command) {
-				_ = cmd.Flags().Set("cluster", "nope")
+				if err := cmd.Flags().Set("cluster", "nope"); err != nil {
+					t.Fatalf("set cluster flag: %v", err)
+				}
 			},
 			wantErr: true,
 		},
@@ -88,7 +92,9 @@ func TestGetBaseURI(t *testing.T) {
 			service:     config.ServiceSMD,
 			defaultClus: "",
 			setup: func(cmd *cobra.Command) {
-				_ = cmd.Flags().Set("cluster-uri", "https://flag.example.com")
+				if err := cmd.Flags().Set("cluster-uri", "https://flag.example.com"); err != nil {
+					t.Fatalf("set cluster-uri flag: %v", err)
+				}
 			},
 			want: "https://flag.example.com/hsm/v2",
 		},
@@ -97,7 +103,9 @@ func TestGetBaseURI(t *testing.T) {
 			service:     config.ServiceSMD,
 			defaultClus: "foo",
 			setup: func(cmd *cobra.Command) {
-				_ = cmd.Flags().Set("uri", "https://svc.example.com/custom")
+				if err := cmd.Flags().Set("uri", "https://svc.example.com/custom"); err != nil {
+					t.Fatalf("set uri flag: %v", err)
+				}
 			},
 			want: "https://svc.example.com/custom",
 		},
@@ -135,7 +143,9 @@ func TestGetBaseURI_UnknownServiceWithURIFlag(t *testing.T) {
 	activeConfig = config.Config{}
 
 	cmd := newURICmd()
-	_ = cmd.Flags().Set("uri", "https://x.example.com")
+	if err := cmd.Flags().Set("uri", "https://x.example.com"); err != nil {
+		t.Fatalf("set uri flag: %v", err)
+	}
 
 	if _, err := GetBaseURI(cmd, config.ServiceName("bogus")); err == nil {
 		t.Fatal("expected error for unknown service with --uri, got nil")
@@ -184,7 +194,9 @@ func TestGetAPIVersion(t *testing.T) {
 			service:     config.ServiceBoot,
 			defaultClus: "foo",
 			setup: func(cmd *cobra.Command) {
-				_ = cmd.Flags().Set("api-version", "v9")
+				if err := cmd.Flags().Set("api-version", "v9"); err != nil {
+					t.Fatalf("set api-version flag: %v", err)
+				}
 			},
 			want: "v9",
 		},
@@ -199,7 +211,9 @@ func TestGetAPIVersion(t *testing.T) {
 			service:     config.ServiceBoot,
 			defaultClus: "foo",
 			setup: func(cmd *cobra.Command) {
-				_ = cmd.Flags().Set("cluster", "nope")
+				if err := cmd.Flags().Set("cluster", "nope"); err != nil {
+					t.Fatalf("set cluster flag: %v", err)
+				}
 			},
 			wantErr: true,
 		},

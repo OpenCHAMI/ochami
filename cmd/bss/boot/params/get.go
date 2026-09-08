@@ -54,19 +54,19 @@ See ochami-bss(1) for more details.`,
 				cmd.Flag("nid").Changed {
 				values := url.Values{}
 				if cmd.Flag("xname").Changed {
-					s, _ := cmd.Flags().GetStringSlice("xname")
+					s, _ := cmd.Flags().GetStringSlice("xname") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, x := range s {
 						values.Add("name", x)
 					}
 				}
 				if cmd.Flag("mac").Changed {
-					s, _ := cmd.Flags().GetStringSlice("mac")
+					s, _ := cmd.Flags().GetStringSlice("mac") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, m := range s {
 						values.Add("mac", m)
 					}
 				}
 				if cmd.Flag("nid").Changed {
-					s, _ := cmd.Flags().GetInt32Slice("nid")
+					s, _ := cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, n := range s {
 						values.Add("nid", fmt.Sprintf("%d", n))
 					}

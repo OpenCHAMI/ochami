@@ -45,7 +45,7 @@ func TestSimpleGetters(t *testing.T) {
 			var gotPath string
 			cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 
@@ -65,7 +65,7 @@ func TestGetGroupsAll(t *testing.T) {
 	var gotPath string
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -87,7 +87,7 @@ func TestGetGroupsByID(t *testing.T) {
 	var paths []string
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
 		paths = append(paths, r.URL.Path)
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -110,7 +110,7 @@ func TestGetNodeData(t *testing.T) {
 	var gotPath string
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`data`))
+		_, _ = w.Write([]byte(`data`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 

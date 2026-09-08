@@ -109,16 +109,16 @@ See ochami-smd(1) for more details.`,
 				// ...otherwise use CLI options/args
 				group := smd.Group{Label: args[0]}
 				if cmd.Flag("description").Changed {
-					group.Description, _ = cmd.Flags().GetString("description")
+					group.Description, _ = cmd.Flags().GetString("description") //nolint:errcheck // flag is registered with the matching type on this command
 				}
 				if cmd.Flag("tag").Changed {
-					group.Tags, _ = cmd.Flags().GetStringSlice("tag")
+					group.Tags, _ = cmd.Flags().GetStringSlice("tag") //nolint:errcheck // flag is registered with the matching type on this command
 				}
 				if cmd.Flag("exclusive-group").Changed {
-					group.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group")
+					group.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group") //nolint:errcheck // flag is registered with the matching type on this command
 				}
 				if cmd.Flag("member").Changed {
-					group.Members.IDs, _ = cmd.Flags().GetStringSlice("member")
+					group.Members.IDs, _ = cmd.Flags().GetStringSlice("member") //nolint:errcheck // flag is registered with the matching type on this command
 				}
 				groups = append(groups, group)
 			}

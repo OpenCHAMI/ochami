@@ -42,19 +42,19 @@ See ochami-bss(1) for more details.`,
 
 			// At least one of these required
 			if cmd.Flag("xname").Changed {
-				s, _ := cmd.Flags().GetStringSlice("xname")
+				s, _ := cmd.Flags().GetStringSlice("xname") //nolint:errcheck // xname is a registered StringSlice flag
 				for _, x := range s {
 					values.Add("name", x)
 				}
 			}
 			if cmd.Flag("mac").Changed {
-				s, _ := cmd.Flags().GetStringSlice("mac")
+				s, _ := cmd.Flags().GetStringSlice("mac") //nolint:errcheck // mac is a registered StringSlice flag
 				for _, m := range s {
 					values.Add("mac", m)
 				}
 			}
 			if cmd.Flag("nid").Changed {
-				s, _ := cmd.Flags().GetInt32Slice("nid")
+				s, _ := cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // nid is a registered Int32Slice flag
 				for _, n := range s {
 					values.Add("nid", fmt.Sprintf("%d", n))
 				}
@@ -62,15 +62,15 @@ See ochami-bss(1) for more details.`,
 
 			// These are optional
 			if cmd.Flag("retry").Changed {
-				s, _ := cmd.Flags().GetInt("retry")
+				s, _ := cmd.Flags().GetInt("retry") //nolint:errcheck // retry is a registered Int flag
 				values.Add("retry", fmt.Sprintf("%d", s))
 			}
 			if cmd.Flag("arch").Changed {
-				s, _ := cmd.Flags().GetString("arch")
+				s, _ := cmd.Flags().GetString("arch") //nolint:errcheck // arch is a registered String flag
 				values.Add("arch", s)
 			}
 			if cmd.Flag("timestamp").Changed {
-				s, _ := cmd.Flags().GetInt("timestamp")
+				s, _ := cmd.Flags().GetInt("timestamp") //nolint:errcheck // timestamp is a registered Int flag
 				values.Add("timestamp", fmt.Sprintf("%d", s))
 			}
 			qstr := values.Encode()

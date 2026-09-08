@@ -23,7 +23,7 @@ func TestNewClientPropagatesShowToken(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

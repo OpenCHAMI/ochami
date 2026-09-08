@@ -27,7 +27,7 @@ func TestBSSBootImageSetByXnameAndNid(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.Method {
 				case http.MethodGet:
-					_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"kernel":"http://s3/vmlinuz","params":"root=live:old"}]`))
+					_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"kernel":"http://s3/vmlinuz","params":"root=live:old"}]`)) //nolint:errcheck // test response writes are observed by the client
 				case http.MethodPut:
 					puts++
 					w.WriteHeader(http.StatusOK)
@@ -71,7 +71,7 @@ func TestBSSBootImageSetGetHTTPError(t *testing.T) {
 func TestBSSBootImageSetPutHTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"kernel":"http://s3/vmlinuz","params":"root=live:old"}]`))
+			_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"kernel":"http://s3/vmlinuz","params":"root=live:old"}]`)) //nolint:errcheck // test response writes are observed by the client
 			return
 		}
 		http.Error(w, "bad", http.StatusBadRequest)
@@ -94,7 +94,7 @@ func TestBSSBootScriptGetQuery(t *testing.T) {
 	var gotQuery url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
-		_, _ = w.Write([]byte(`#!ipxe`))
+		_, _ = w.Write([]byte(`#!ipxe`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -132,7 +132,7 @@ func TestBSSHostsGetQueryAndFormats(t *testing.T) {
 	var gotQuery url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
-		_, _ = w.Write([]byte(`[{"ID":"x0c0s0b0n0"}]`))
+		_, _ = w.Write([]byte(`[{"ID":"x0c0s0b0n0"}]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -170,7 +170,7 @@ func TestBSSHistoryGetQueryAndFormats(t *testing.T) {
 	var gotQuery url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

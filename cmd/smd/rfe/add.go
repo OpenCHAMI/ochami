@@ -108,16 +108,16 @@ See ochami-smd(1) for more details.`,
 					MACAddr:   args[3],
 				}
 				if cmd.Flag("domain").Changed {
-					rfe.Domain, _ = cmd.Flags().GetString("domain")
+					rfe.Domain, _ = cmd.Flags().GetString("domain") //nolint:errcheck // flag is registered with the matching type on this command
 				}
 				if cmd.Flag("hostname").Changed {
-					rfe.Hostname, _ = cmd.Flags().GetString("hostname")
+					rfe.Hostname, _ = cmd.Flags().GetString("hostname") //nolint:errcheck // flag is registered with the matching type on this command
 				}
 				if cmd.Flag("username").Changed {
-					rfe.User, _ = cmd.Flags().GetString("username")
+					rfe.User, _ = cmd.Flags().GetString("username") //nolint:errcheck // flag is registered with the matching type on this command
 				}
 				if cmd.Flag("password").Changed {
-					rfe.Password, _ = cmd.Flags().GetString("password")
+					rfe.Password, _ = cmd.Flags().GetString("password") //nolint:errcheck // flag is registered with the matching type on this command
 				}
 				rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
 			}

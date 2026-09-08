@@ -13,7 +13,9 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -21,6 +23,13 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 )
+
+func writeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
+	t.Helper()
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		t.Errorf("encode test response: %v", err)
+	}
+}
 
 // cmdResult captures everything a command-level test needs to assert on after
 // running the CLI: the error returned from Execute, the exit code that error
@@ -69,7 +78,9 @@ func runOchami(t *testing.T, args ...string) cmdResult {
 	outCh := make(chan string, 1)
 	go func() {
 		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
+		if _, err := io.Copy(&buf, r); err != nil {
+			t.Errorf("copy command output: %v", err)
+		}
 		outCh <- buf.String()
 	}()
 

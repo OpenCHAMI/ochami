@@ -61,7 +61,9 @@ func TestHTTPHeaders_Add(t *testing.T) {
 			name: "append value",
 			h: func() *HTTPHeaders {
 				h := NewHTTPHeaders()
-				_ = h.Add("A", "first")
+				if err := h.Add("A", "first"); err != nil {
+					t.Fatalf("Add(): %v", err)
+				}
 				return h
 			}(),
 			args:    args{key: "A", value: "second"},

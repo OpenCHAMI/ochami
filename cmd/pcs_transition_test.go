@@ -19,7 +19,7 @@ import (
 // TestPCSTransitionListFormats verifies list output-format variants.
 func TestPCSTransitionListFormats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"transitions":[]}`))
+		_, _ = w.Write([]byte(`{"transitions":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

@@ -51,13 +51,13 @@ See ochami-smd(1) for more details.`,
 			if cmd.Flag("name").Changed || cmd.Flag("tag").Changed {
 				values := url.Values{}
 				if cmd.Flag("name").Changed {
-					s, _ := cmd.Flags().GetStringSlice("name")
+					s, _ := cmd.Flags().GetStringSlice("name") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, n := range s {
 						values.Add("group", n)
 					}
 				}
 				if cmd.Flag("tag").Changed {
-					s, _ := cmd.Flags().GetStringSlice("tag")
+					s, _ := cmd.Flags().GetStringSlice("tag") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, t := range s {
 						values.Add("tag", t)
 					}
