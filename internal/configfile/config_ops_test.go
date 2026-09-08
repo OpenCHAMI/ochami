@@ -110,6 +110,16 @@ func TestModifyConfigCluster(t *testing.T) {
 		}
 	})
 
+	t.Run("rename rejects non-string and empty values", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "cfg.yaml")
+		mustWriteFile(t, path, []byte("clusters:\n  - name: c1\n"))
+		for _, value := range []any{42, ""} {
+			if err := ModifyConfigCluster(path, "c1", "name", false, value); err == nil {
+				t.Errorf("ModifyConfigCluster(name=%v) error = nil", value)
+			}
+		}
+	})
+
 	t.Run("rename to duplicate cluster name returns error", func(t *testing.T) {
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
@@ -1081,6 +1091,13 @@ func TestWriteConfig(t *testing.T) {
 		}
 		if perm := fi.Mode().Perm(); perm != 0o600 {
 			t.Errorf("WriteConfig(): file mode = %o, want 0600", perm)
+		}
+		matches, err := filepath.Glob(filepath.Join(tmp, ".config.yaml.*"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(matches) != 0 {
+			t.Errorf("temporary files left behind: %v", matches)
 		}
 	})
 
