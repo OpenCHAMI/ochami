@@ -32,7 +32,7 @@ See ochami-rcs(1) for more details.`,
 			if err != nil {
 				return err
 			}
-			consoles, err := rcsClient.ListConsoles(cli.Token)
+			consoles, err := rcsClient.ListConsoles(cmd.Context(), cli.Token)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to list consoles: %w", err)
 			}

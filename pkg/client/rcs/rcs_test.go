@@ -44,7 +44,7 @@ func TestGetStatus(t *testing.T) {
 	})
 	defer srv.Close()
 
-	resp, err := c.GetStatus("tok")
+	resp, err := c.GetStatus(context.Background(), "tok")
 	if err != nil {
 		t.Fatalf("GetStatus: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestListConsoles(t *testing.T) {
 	})
 	defer srv.Close()
 
-	consoles, err := c.ListConsoles("tok")
+	consoles, err := c.ListConsoles(context.Background(), "tok")
 	if err != nil {
 		t.Fatalf("ListConsoles: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestListConsolesHTTPError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.ListConsoles("tok"); err == nil {
+	if _, err := c.ListConsoles(context.Background(), "tok"); err == nil {
 		t.Fatal("expected an error, got nil")
 	}
 }

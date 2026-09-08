@@ -9,6 +9,7 @@ package rcs
 // GetStatus success/error arms.
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -72,7 +73,7 @@ func TestGetStatusSuccess(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.GetStatus("tok"); err != nil {
+	if _, err := c.GetStatus(context.Background(), "tok"); err != nil {
 		t.Errorf("GetStatus = %v, want nil", err)
 	}
 }
@@ -83,7 +84,7 @@ func TestGetStatusHTTPError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.GetStatus("tok"); err == nil {
+	if _, err := c.GetStatus(context.Background(), "tok"); err == nil {
 		t.Error("GetStatus with HTTP error = nil, want error")
 	}
 }
@@ -94,7 +95,7 @@ func TestGetStatusMalformedBody(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.GetStatus("tok"); err == nil {
+	if _, err := c.GetStatus(context.Background(), "tok"); err == nil {
 		t.Error("GetStatus with malformed body = nil, want error")
 	}
 }
@@ -105,7 +106,7 @@ func TestListConsolesMalformedBody(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.ListConsoles("tok"); err == nil {
+	if _, err := c.ListConsoles(context.Background(), "tok"); err == nil {
 		t.Error("ListConsoles with malformed body = nil, want error")
 	}
 }

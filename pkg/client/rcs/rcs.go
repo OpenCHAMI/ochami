@@ -27,12 +27,33 @@ import (
 // ctrlCByte is the byte value for Ctrl+C in raw terminal mode.
 const ctrlCByte = byte(0x03)
 
-// messageWriter is the subset of *websocket.Conn used to forward console input.
-// It is an interface so the input-streaming helpers can be unit-tested with a
-// fake writer instead of a live websocket connection.
 type messageWriter interface {
 	WriteMessage(messageType int, data []byte) error
 }
+
+type messageReader interface {
+	ReadMessage() (messageType int, data []byte, err error)
+}
+
+type messageConn interface {
+	messageReader
+	messageWriter
+	Close() error
+}
+
+type terminalController interface {
+	IsTerminal(fd int) bool
+	MakeRaw(fd int) (*term.State, error)
+	Restore(fd int, state *term.State) error
+}
+
+type systemTerminal struct{}
+
+func (systemTerminal) IsTerminal(fd int) bool                  { return term.IsTerminal(fd) }
+func (systemTerminal) MakeRaw(fd int) (*term.State, error)     { return term.MakeRaw(fd) }
+func (systemTerminal) Restore(fd int, state *term.State) error { return term.Restore(fd, state) }
+
+type websocketDialFunc func(context.Context, string, http.Header) (messageConn, *http.Response, error)
 
 // HealthResponse represents the response from the /health endpoint of the Remote Console Service.
 type HealthResponse struct {
@@ -56,6 +77,8 @@ type NodeConsoleInfo struct {
 
 type RCSClient struct {
 	*client.OchamiClient
+	dial     websocketDialFunc
+	terminal terminalController
 }
 
 // NewClient creates a new RCSClient with the given base URI. Behavior such as
@@ -66,7 +89,13 @@ func NewClient(baseURI string, opts ...client.Option) (*RCSClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &RCSClient{oc}, nil
+	return &RCSClient{
+		OchamiClient: oc,
+		dial: func(ctx context.Context, uri string, headers http.Header) (messageConn, *http.Response, error) {
+			return websocket.DefaultDialer.DialContext(ctx, uri, headers)
+		},
+		terminal: systemTerminal{},
+	}, nil
 }
 
 // headersForToken creates HTTP headers with the given token for authentication.
@@ -80,7 +109,7 @@ func headersForToken(token string) (*client.HTTPHeaders, error) {
 }
 
 // dialWebSocket constructs the websocket URL for the console endpoint and attempts to establish a connection with the appropriate headers.
-func (c *RCSClient) dialWebSocket(ctx context.Context, nodeID string, query string, headers *client.HTTPHeaders) (*websocket.Conn, error) {
+func (c *RCSClient) dialWebSocket(ctx context.Context, nodeID string, query string, headers *client.HTTPHeaders) (messageConn, error) {
 	endpoint := fmt.Sprintf("/consoles/%s", nodeID)
 	uriStr, err := c.GetURI(endpoint, query)
 	if err != nil {
@@ -97,13 +126,12 @@ func (c *RCSClient) dialWebSocket(ctx context.Context, nodeID string, query stri
 		u.Scheme = "ws"
 	}
 
-	dialer := websocket.DefaultDialer
 	var requestHeaders http.Header
 	if headers != nil {
 		requestHeaders = http.Header(*headers)
 	}
 
-	conn, resp, err := dialer.DialContext(ctx, u.String(), requestHeaders)
+	conn, resp, err := c.dial(ctx, u.String(), requestHeaders)
 	if err != nil {
 		return nil, websocketDialError(nodeID, resp, err)
 	}
@@ -143,13 +171,13 @@ func websocketDialError(nodeID string, resp *http.Response, err error) error {
 }
 
 // GetStatus retrieves the health status of the Remote Console Service using the /health endpoint.
-func (c *RCSClient) GetStatus(token string) (*HealthResponse, error) {
+func (c *RCSClient) GetStatus(ctx context.Context, token string) (*HealthResponse, error) {
 	headers, err := headersForToken(token)
 	if err != nil {
 		return nil, err
 	}
 
-	he, err := c.GetData(context.Background(), "/health", "", headers)
+	he, err := c.GetData(ctx, "/health", "", headers)
 	if err != nil {
 		return nil, err
 	}
@@ -162,13 +190,13 @@ func (c *RCSClient) GetStatus(token string) (*HealthResponse, error) {
 }
 
 // ListConsoles retrieves the list of available consoles from the Remote Console Service using the /consoles endpoint.
-func (c *RCSClient) ListConsoles(token string) ([]NodeConsoleInfo, error) {
+func (c *RCSClient) ListConsoles(ctx context.Context, token string) ([]NodeConsoleInfo, error) {
 	headers, err := headersForToken(token)
 	if err != nil {
 		return nil, err
 	}
 
-	he, err := c.GetData(context.Background(), "/consoles", "", headers)
+	he, err := c.GetData(ctx, "/consoles", "", headers)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +209,7 @@ func (c *RCSClient) ListConsoles(token string) ([]NodeConsoleInfo, error) {
 }
 
 // ShowConsole connects to the console for the specified node and streams its output to the provided writer.
-func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool, lines int, token string, output io.Writer) error {
+func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool, lines int, token string, output io.Writer) (retErr error) {
 	headers, err := headersForToken(token)
 	if err != nil {
 		return err
@@ -191,7 +219,7 @@ func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool,
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() { retErr = errors.Join(retErr, conn.Close()) }()
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -219,39 +247,36 @@ func isNormalWebSocketClose(err error) bool {
 
 // terminalInputState restores stdin after raw terminal mode has been enabled.
 type terminalInputState struct {
-	file  *os.File
-	state *term.State
+	file       *os.File
+	state      *term.State
+	controller terminalController
 }
 
 func (t terminalInputState) Restore() error {
-	if t.file == nil || t.state == nil {
+	if t.file == nil || t.state == nil || t.controller == nil {
 		return nil
 	}
 
-	return term.Restore(int(t.file.Fd()), t.state)
+	return t.controller.Restore(int(t.file.Fd()), t.state)
 }
 
 // terminalInputFile checks if stdin is a terminal and returns the file if so.
-func terminalInputFile(stdin io.Reader) (*os.File, bool) {
+func terminalInputFile(stdin io.Reader, controller terminalController) (*os.File, bool) {
 	stdinFile, ok := stdin.(*os.File)
 	if !ok {
 		return nil, false
 	}
 
-	if !term.IsTerminal(int(stdinFile.Fd())) {
+	if !controller.IsTerminal(int(stdinFile.Fd())) {
 		return nil, false
 	}
 
 	return stdinFile, true
 }
 
-func enableRawTerminalMode(stdinFile *os.File) (*term.State, error) {
-	oldState, err := term.GetState(int(stdinFile.Fd()))
+func enableRawTerminalMode(stdinFile *os.File, controller terminalController) (*term.State, error) {
+	oldState, err := controller.MakeRaw(int(stdinFile.Fd()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get terminal state: %w", err)
-	}
-
-	if _, err := term.MakeRaw(int(stdinFile.Fd())); err != nil {
 		return nil, fmt.Errorf("failed to set terminal raw mode: %w", err)
 	}
 
@@ -310,10 +335,10 @@ func streamBufferedConsoleInput(stdin io.Reader, conn messageWriter, errChan cha
 }
 
 // startConsoleInputStream starts stdin forwarding and returns terminal state for cleanup.
-func startConsoleInputStream(stdin io.Reader, conn *websocket.Conn, interrupt chan os.Signal, errChan chan error) (terminalInputState, error) {
+func startConsoleInputStream(stdin io.Reader, conn messageWriter, controller terminalController, interrupt chan os.Signal, errChan chan error) (terminalInputState, error) {
 
 	// If stdin is a terminal, enable raw mode for immediate keystroke forwarding and interrupt handling. Otherwise, stream input in buffered mode.
-	stdinFile, ok := terminalInputFile(stdin)
+	stdinFile, ok := terminalInputFile(stdin, controller)
 	if !ok {
 		// Piped or redirected input should stay buffered so non-interactive input still works.
 		go streamBufferedConsoleInput(stdin, conn, errChan)
@@ -322,17 +347,17 @@ func startConsoleInputStream(stdin io.Reader, conn *websocket.Conn, interrupt ch
 	}
 
 	// Raw mode lets us forward keystrokes immediately instead of waiting for line buffering.
-	oldState, err := enableRawTerminalMode(stdinFile)
+	oldState, err := enableRawTerminalMode(stdinFile, controller)
 	if err != nil {
 		return terminalInputState{}, err
 	}
 
 	go streamRawConsoleInput(stdin, conn, interrupt, errChan)
 
-	return terminalInputState{file: stdinFile, state: oldState}, nil
+	return terminalInputState{file: stdinFile, state: oldState, controller: controller}, nil
 }
 
-func streamConsoleOutput(stdout io.Writer, conn *websocket.Conn, errChan chan error, done chan struct{}) {
+func streamConsoleOutput(stdout io.Writer, conn messageReader, errChan chan error, done chan struct{}) {
 	defer close(done)
 	for {
 		messageType, message, err := conn.ReadMessage()
@@ -354,19 +379,19 @@ func streamConsoleOutput(stdout io.Writer, conn *websocket.Conn, errChan chan er
 }
 
 // startConsoleOutputStream starts websocket output forwarding to stdout.
-func startConsoleOutputStream(stdout io.Writer, conn *websocket.Conn, errChan chan error, done chan struct{}) {
+func startConsoleOutputStream(stdout io.Writer, conn messageReader, errChan chan error, done chan struct{}) {
 	go streamConsoleOutput(stdout, conn, errChan, done)
 }
 
 // waitForConsoleExit waits for shutdown, an interrupt, or an I/O error.
-func waitForConsoleExit(ctx context.Context, conn *websocket.Conn, interrupt chan os.Signal, done chan struct{}, errChan chan error) error {
+func waitForConsoleExit(ctx context.Context, conn messageWriter, interrupt chan os.Signal, done chan struct{}, errChan chan error) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-interrupt:
 		// Translate local interrupt into a clean websocket close so the remote side can shut down cleanly.
 		if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
-			return nil
+			return fmt.Errorf("failed to send websocket close message: %w", err)
 		}
 		// Give the read goroutine a moment to observe the close before returning.
 		select {
@@ -379,7 +404,7 @@ func waitForConsoleExit(ctx context.Context, conn *websocket.Conn, interrupt cha
 	}
 }
 
-func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token string, stdin io.Reader, stdout io.Writer) error {
+func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token string, stdin io.Reader, stdout io.Writer) (retErr error) {
 	headers, err := headersForToken(token)
 	if err != nil {
 		return err
@@ -389,7 +414,7 @@ func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token str
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() { retErr = errors.Join(retErr, conn.Close()) }()
 
 	// Set up interrupt handling to allow Ctrl+C to cleanly close the console connection.
 	interrupt := make(chan os.Signal, 1)
@@ -399,15 +424,13 @@ func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token str
 	errChan := make(chan error, 2)
 	done := make(chan struct{})
 
-	restoreTerminal, err := startConsoleInputStream(stdin, conn, interrupt, errChan)
+	restoreTerminal, err := startConsoleInputStream(stdin, conn, c.terminal, interrupt, errChan)
 	if err != nil {
 		return err
 	}
 
 	// Restore the terminal when the console session ends, even if there are errors or interrupts.
-	defer func() {
-		_ = restoreTerminal.Restore() //nolint:errcheck // best-effort cleanup after the session's result is known
-	}()
+	defer func() { retErr = errors.Join(retErr, restoreTerminal.Restore()) }()
 
 	startConsoleOutputStream(stdout, conn, errChan, done)
 
