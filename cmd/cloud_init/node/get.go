@@ -105,16 +105,16 @@ See ochami-cloud-init(1) for more details.`,
 			// Print each datum
 			for idx, g := range gSlice {
 				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Println(g)
+					fmt.Fprintln(cli.Ios.Out(), g)
 				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Printf("--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
-					fmt.Println(g)
+					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
+					fmt.Fprintln(cli.Ios.Out(), g)
 				} else {
 					if len(gSlice) == 1 {
-						fmt.Println(g)
+						fmt.Fprintln(cli.Ios.Out(), g)
 					} else {
-						fmt.Printf("--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
-						fmt.Println(g)
+						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
+						fmt.Fprintln(cli.Ios.Out(), g)
 					}
 				}
 			}
@@ -195,7 +195,7 @@ See ochami-cloud-init(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Print(string(outBytes))
+			fmt.Fprint(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},
@@ -260,16 +260,16 @@ See ochami-cloud-init(1) for more details.`,
 			// Print each datum
 			for idx, ii := range iiSlice {
 				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Println(ii)
+					fmt.Fprintln(cli.Ios.Out(), ii)
 				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Printf("--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-					fmt.Println(ii)
+					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
+					fmt.Fprintln(cli.Ios.Out(), ii)
 				} else {
 					if len(iiSlice) == 1 {
-						fmt.Println(ii)
+						fmt.Fprintln(cli.Ios.Out(), ii)
 					} else {
-						fmt.Printf("--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-						fmt.Println(ii)
+						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
+						fmt.Fprintln(cli.Ios.Out(), ii)
 					}
 				}
 			}
@@ -337,16 +337,16 @@ See ochami-cloud-init(1) for more details.`,
 			// Print each datum
 			for idx, ii := range iiSlice {
 				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Println(ii)
+					fmt.Fprintln(cli.Ios.Out(), ii)
 				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Printf("--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-					fmt.Println(ii)
+					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
+					fmt.Fprintln(cli.Ios.Out(), ii)
 				} else {
 					if len(iiSlice) == 1 {
-						fmt.Println(ii)
+						fmt.Fprintln(cli.Ios.Out(), ii)
 					} else {
-						fmt.Printf("--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-						fmt.Println(ii)
+						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
+						fmt.Fprintln(cli.Ios.Out(), ii)
 					}
 				}
 			}
