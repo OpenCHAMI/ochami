@@ -6,6 +6,7 @@
 package smd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -174,7 +175,7 @@ func (sc *SMDClient) GetStatus(component string) (client.HTTPEnvelope, error) {
 		return henv, fmt.Errorf("GetStatus(): error creating SMD status endpoint: %w", err)
 	}
 
-	henv, err = sc.GetData(smdStatusEndpoint, "", nil)
+	henv, err = sc.GetData(context.Background(), smdStatusEndpoint, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetStatus(): error getting SMD all status: %w", err)
 	}
@@ -185,7 +186,7 @@ func (sc *SMDClient) GetStatus(component string) (client.HTTPEnvelope, error) {
 // GetComponentsAll is a wrapper function around OchamiClient.GetData that queries
 // /State/Components.
 func (sc *SMDClient) GetComponentsAll() (client.HTTPEnvelope, error) {
-	henv, err := sc.GetData(SMDRelpathComponents, "", nil)
+	henv, err := sc.GetData(context.Background(), SMDRelpathComponents, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetComponentsAll(): error getting components: %w", err)
 	}
@@ -202,7 +203,7 @@ func (sc *SMDClient) GetComponentsXname(xname, token string) (client.HTTPEnvelop
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := sc.GetData(finalEP, "", headers)
+	henv, err := sc.GetData(context.Background(), finalEP, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetComponentsXname(): error getting component for xname %q: %w", xname, err)
 	}
@@ -219,7 +220,7 @@ func (sc *SMDClient) GetComponentsNid(nid int32, token string) (client.HTTPEnvel
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := sc.GetData(finalEP, "", headers)
+	henv, err := sc.GetData(context.Background(), finalEP, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetComponentsNid(): error getting component for NID %d: %w", nid, err)
 	}
@@ -241,7 +242,7 @@ func (sc *SMDClient) GetRedfishEndpoints(query, token string) (client.HTTPEnvelo
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.GetData(SMDRelpathRedfishEndpoints, query, headers)
+	henv, err = sc.GetData(context.Background(), SMDRelpathRedfishEndpoints, query, headers)
 	if err != nil {
 		err = fmt.Errorf("GetRedfishEndpoints(): error getting redfish endpoints: %w", err)
 	}
@@ -253,7 +254,7 @@ func (sc *SMDClient) GetRedfishEndpoints(query, token string) (client.HTTPEnvelo
 // query string and passes it to OchamiClient.GetData using SMD's ethernet
 // interfaces endpoint.
 func (sc *SMDClient) GetEthernetInterfaces(query string) (client.HTTPEnvelope, error) {
-	henv, err := sc.GetData(SMDRelpathEthernetInterfaces, query, nil)
+	henv, err := sc.GetData(context.Background(), SMDRelpathEthernetInterfaces, query, nil)
 	if err != nil {
 		err = fmt.Errorf("GetEthernetInterfaces(): error getting ethernet interfaces: %w", err)
 	}
@@ -289,7 +290,7 @@ func (sc *SMDClient) GetEthernetInterfaceByID(id, token string, getIPs bool) (cl
 			return henv, fmt.Errorf("GetEthernetInterfacesByID(): failed to join endpoint %s with id %q: %w", ep, id, err)
 		}
 	}
-	henv, err = sc.GetData(ep, "", headers)
+	henv, err = sc.GetData(context.Background(), ep, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetEthernetInterfacesByID(): failed to GET ethernet interfaces in SMD: %w", err)
 	}
@@ -312,7 +313,7 @@ func (sc *SMDClient) GetComponentEndpoints(token string, xnames ...string) ([]cl
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, xname := range xnames {
-		henv, err := sc.GetData(SMDRelpathComponentEndpoints+"/"+xname, "", headers)
+		henv, err := sc.GetData(context.Background(), SMDRelpathComponentEndpoints+"/"+xname, "", headers)
 		if err != nil {
 			newErr := fmt.Errorf("GetComponentEndpoints(): failed to GET component endpoint from SMD: %w", err)
 			log.Logger.Debug().Err(err).Msg("failed to get component endpoint")
@@ -339,7 +340,7 @@ func (sc *SMDClient) GetComponentEndpointsAll(token string) (client.HTTPEnvelope
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.GetData(SMDRelpathComponentEndpoints, "", headers)
+	henv, err = sc.GetData(context.Background(), SMDRelpathComponentEndpoints, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetComponentEndpointsAll(): error getting component endpoints: %w", err)
 	}
@@ -362,7 +363,7 @@ func (sc *SMDClient) GetGroups(query, token string) (client.HTTPEnvelope, error)
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.GetData(SMDRelpathGroups, query, headers)
+	henv, err = sc.GetData(context.Background(), SMDRelpathGroups, query, headers)
 	if err != nil {
 		err = fmt.Errorf("GetGroups(): error getting groups: %w", err)
 	}
@@ -386,7 +387,7 @@ func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, 
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := sc.GetData(finalEP, "", headers)
+	henv, err := sc.GetData(context.Background(), finalEP, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetGroupMembers(): error getting group members for group %s: %w", group, err)
 	}
@@ -403,7 +404,7 @@ func (sc *SMDClient) GetGroupMembership(qstr, token string) (client.HTTPEnvelope
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := sc.GetData(SMDRelpathMemberships, qstr, headers)
+	henv, err := sc.GetData(context.Background(), SMDRelpathMemberships, qstr, headers)
 	if err != nil {
 		err = fmt.Errorf("GetGroupMembership(): error getting group memberships for query %s: %w", qstr, err)
 	}
@@ -429,7 +430,7 @@ func (sc *SMDClient) PostComponents(compSlice ComponentSlice, token string) (cli
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.PostData(SMDRelpathComponents, "", headers, body)
+	henv, err = sc.PostData(context.Background(), SMDRelpathComponents, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PostComponents(): failed to POST component(s) to SMD: %w", err)
 	}
@@ -460,7 +461,7 @@ func (sc *SMDClient) PostRedfishEndpoints(rfes RedfishEndpointSlice, token strin
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := sc.PostData(SMDRelpathRedfishEndpoints, "", headers, body)
+		henv, err := sc.PostData(context.Background(), SMDRelpathRedfishEndpoints, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PostRedfishEndpoints(): failed to POST redfish endpoint to SMD: %w", err)
@@ -494,7 +495,7 @@ func (sc *SMDClient) PostRedfishEndpointsV2(rfes RedfishEndpointSliceV2, token s
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := sc.PostData(SMDRelpathRedfishEndpoints, "", headers, body)
+		henv, err := sc.PostData(context.Background(), SMDRelpathRedfishEndpoints, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PostRedfishEndpointsV2(): failed to POST redfish endpoint to SMD: %w", err)
@@ -530,7 +531,7 @@ func (sc *SMDClient) PostEthernetInterfaces(eis []EthernetInterface, token strin
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := sc.PostData(SMDRelpathEthernetInterfaces, "", headers, body)
+		henv, err := sc.PostData(context.Background(), SMDRelpathEthernetInterfaces, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PostEthernetInterfaces(): failed to POST ethernet interface(s) to SMD: %w", err)
@@ -566,7 +567,7 @@ func (sc *SMDClient) PostGroups(groups []Group, token string) ([]client.HTTPEnve
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := sc.PostData(SMDRelpathGroups, "", headers, body)
+		henv, err := sc.PostData(context.Background(), SMDRelpathGroups, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PostGroups(): failed to POST group to SMD: %w", err)
@@ -616,7 +617,7 @@ func (sc *SMDClient) PostGroupMembers(token, group string, members ...string) ([
 			errors = append(errors, newErr)
 			continue
 		}
-		henv, err := sc.PostData(groupPath, "", headers, body)
+		henv, err := sc.PostData(context.Background(), groupPath, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PostGroupMembers(): failed to POST member %s to group %s: %w", member, group, err)
@@ -671,7 +672,7 @@ func (sc *SMDClient) PutComponents(compSlice ComponentSlice, token string) ([]cl
 			newErr := fmt.Errorf("PutComponents(): failed to marshal component into JSON: %w", marshalErr)
 			errors = append(errors, newErr)
 		}
-		henv, err := sc.PutData(xnamePath, "", headers, body)
+		henv, err := sc.PutData(context.Background(), xnamePath, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PutComponents(): failed to PUT component %s in SMD: %w", comp.ID, err)
@@ -720,7 +721,7 @@ func (sc *SMDClient) PutRedfishEndpoints(rfes RedfishEndpointSlice, token string
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := sc.PutData(xnamePath, "", headers, body)
+		henv, err := sc.PutData(context.Background(), xnamePath, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PutRedfishEndpoints(): failed to PUT redfish endpoint to SMD: %w", err)
@@ -767,7 +768,7 @@ func (sc *SMDClient) PutRedfishEndpointsV2(rfes RedfishEndpointSliceV2, token st
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := sc.PutData(xnamePath, "", headers, body)
+		henv, err := sc.PutData(context.Background(), xnamePath, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PutRedfishEndpointsV2(): failed to PUT redfish endpoint to SMD: %w", err)
@@ -820,7 +821,7 @@ func (sc *SMDClient) PutGroupMembers(token, group string, members ...string) (cl
 	if body, err = json.Marshal(g); err != nil {
 		return henv, fmt.Errorf("PutGroupMembers(): failed to marshal group data: %w", err)
 	}
-	henv, err = sc.PutData(groupPath, "", headers, body)
+	henv, err = sc.PutData(context.Background(), groupPath, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PutGroupMembers(): failed to PUT members to group %s: %w", group, err)
 	}
@@ -863,7 +864,7 @@ func (sc *SMDClient) PatchComponentsNID(comps ComponentSlice, token string) (cli
 	}
 
 	// Send request
-	henv, err := sc.PatchData(nidPath, "", headers, body)
+	henv, err := sc.PatchData(context.Background(), nidPath, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PatchComponentsNID(): failed to PATCH stripped components in SMD: %w", err)
 	}
@@ -916,7 +917,7 @@ func (sc *SMDClient) PatchEthernetInterfaces(eis []EthernetInterface, token stri
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := sc.PatchData(eiPath, "", headers, body)
+		henv, err := sc.PatchData(context.Background(), eiPath, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PatchEthernetInterfaces(): failed to PATCH ethernet interface(s) to SMD: %w", err)
@@ -965,7 +966,7 @@ func (sc *SMDClient) PatchGroups(groups []Group, token string) ([]client.HTTPEnv
 			errors = append(errors, newErr)
 			continue
 		}
-		henv, err := sc.PatchData(groupPath, "", headers, body)
+		henv, err := sc.PatchData(context.Background(), groupPath, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PatchGroups(): failed to PATCH group %s in SMD: %w", group.Label, err)
@@ -1004,7 +1005,7 @@ func (sc *SMDClient) DeleteComponents(token string, xnames ...string) ([]client.
 			errors = append(errors, newErr)
 			continue
 		}
-		henv, err := sc.DeleteData(xnamePath, "", headers, nil)
+		henv, err := sc.DeleteData(context.Background(), xnamePath, "", headers, nil)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteComponents(): failed to DELETE component %s in SMD: %w", xname, err)
@@ -1032,7 +1033,7 @@ func (sc *SMDClient) DeleteComponentsAll(token string) (client.HTTPEnvelope, err
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.DeleteData(SMDRelpathComponents, "", headers, nil)
+	henv, err = sc.DeleteData(context.Background(), SMDRelpathComponents, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteComponentsAll(): failed to DELETE component(s) to SMD: %w", err)
 	}
@@ -1066,7 +1067,7 @@ func (sc *SMDClient) DeleteRedfishEndpoints(token string, xnames ...string) ([]c
 			errors = append(errors, newErr)
 			continue
 		}
-		henv, err := sc.DeleteData(xnamePath, "", headers, nil)
+		henv, err := sc.DeleteData(context.Background(), xnamePath, "", headers, nil)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteRedfishEndpoints(): failed to DELETE redfish endpoint %s in SMD: %w", xname, err)
@@ -1095,7 +1096,7 @@ func (sc *SMDClient) DeleteRedfishEndpointsAll(token string) (client.HTTPEnvelop
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.DeleteData(SMDRelpathRedfishEndpoints, "", headers, nil)
+	henv, err = sc.DeleteData(context.Background(), SMDRelpathRedfishEndpoints, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteRedfishEndpointsAll(): failed to DELETE redfish endpoint(s) to SMD: %w", err)
 	}
@@ -1130,7 +1131,7 @@ func (sc *SMDClient) DeleteEthernetInterfaces(token string, eIds ...string) ([]c
 			errors = append(errors, newErr)
 			continue
 		}
-		henv, err := sc.DeleteData(eIdPath, "", headers, nil)
+		henv, err := sc.DeleteData(context.Background(), eIdPath, "", headers, nil)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteEthernetInterfaces(): failed to DELETE ethernet interface %s in SMD: %w", eId, err)
@@ -1159,7 +1160,7 @@ func (sc *SMDClient) DeleteEthernetInterfacesAll(token string) (client.HTTPEnvel
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.DeleteData(SMDRelpathEthernetInterfaces, "", headers, nil)
+	henv, err = sc.DeleteData(context.Background(), SMDRelpathEthernetInterfaces, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteEthernetInterfacesAll(): failed to DELETE ethernet interface(s) to SMD: %w", err)
 	}
@@ -1193,7 +1194,7 @@ func (sc *SMDClient) DeleteComponentEndpoints(token string, xnames ...string) ([
 			errors = append(errors, newErr)
 			continue
 		}
-		henv, err := sc.DeleteData(finalEP, "", headers, nil)
+		henv, err := sc.DeleteData(context.Background(), finalEP, "", headers, nil)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteComponentEndpoints(): failed to DELETE component endpoint %s in SMD: %w", xname, err)
@@ -1222,7 +1223,7 @@ func (sc *SMDClient) DeleteComponentEndpointsAll(token string) (client.HTTPEnvel
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.DeleteData(SMDRelpathComponentEndpoints, "", headers, nil)
+	henv, err = sc.DeleteData(context.Background(), SMDRelpathComponentEndpoints, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteComponentEndpointsAll(): failed to DELETE component endpoint(s) to SMD: %w", err)
 	}
@@ -1256,7 +1257,7 @@ func (sc *SMDClient) DeleteGroups(token string, groupLabels ...string) ([]client
 			errors = append(errors, newErr)
 			continue
 		}
-		henv, err := sc.DeleteData(labelPath, "", headers, nil)
+		henv, err := sc.DeleteData(context.Background(), labelPath, "", headers, nil)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteGroups(): failed to DELETE group %s in SMD: %w", label, err)
@@ -1301,7 +1302,7 @@ func (sc *SMDClient) DeleteGroupMembers(token, group string, members ...string) 
 			errors = append(errors, newErr)
 			continue
 		}
-		henv, err := sc.DeleteData(memberPath, "", headers, nil)
+		henv, err := sc.DeleteData(context.Background(), memberPath, "", headers, nil)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteGroupMembers(): failed to DELETE member %s from group %s in SMD: %w", member, group, err)

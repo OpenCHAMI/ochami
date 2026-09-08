@@ -7,6 +7,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -70,21 +71,30 @@ func WithShowToken(show bool) Option {
 	}
 }
 
-// defaultClient creates an http.DefaultClient for its OchamiClient.
-func (oc *OchamiClient) defaultClient() {
-	oc.Client = http.DefaultClient
+func defaultTransport() *http.Transport {
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return &http.Transport{}
+	}
+	return transport.Clone()
 }
 
-// defaultClientInsecure creates an http.DefaultClient for its OchamiClient and
-// configures it to not try to verify TLS certificates.
+// defaultClient creates an isolated HTTP client for its OchamiClient.
+func (oc *OchamiClient) defaultClient() {
+	oc.Client = &http.Client{Transport: defaultTransport()}
+}
+
+// defaultClientInsecure creates an isolated HTTP client and configures it not
+// to verify TLS certificates.
 func (oc *OchamiClient) defaultClientInsecure() {
-	oc.Client = http.DefaultClient
-	oc.Client.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{
-			// This default client does not verify server certificate
-			InsecureSkipVerify: true,
-		},
+	transport := defaultTransport()
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{}
+	} else {
+		transport.TLSClientConfig = transport.TLSClientConfig.Clone()
 	}
+	transport.TLSClientConfig.InsecureSkipVerify = true
+	oc.Client = &http.Client{Transport: transport}
 }
 
 // NewOchamiClient takes a serviceName and baseURI and returns a pointer to a
@@ -144,10 +154,10 @@ func (oc *OchamiClient) GetURI(endpoint, query string) (string, error) {
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query
 // is the raw query string (without the '?') to be added to the URI. It should
 // already be URL-encoded, e.g. generated using url.Values' Encode() function.
-func (oc *OchamiClient) GetData(endpoint, query string, headers *HTTPHeaders) (HTTPEnvelope, error) {
+func (oc *OchamiClient) GetData(ctx context.Context, endpoint, query string, headers *HTTPHeaders) (HTTPEnvelope, error) {
 	var he HTTPEnvelope
 
-	res, err := oc.MakeOchamiRequest(http.MethodGet, endpoint, query, headers, nil)
+	res, err := oc.MakeOchamiRequest(ctx, http.MethodGet, endpoint, query, headers, nil)
 	if err != nil {
 		return he, fmt.Errorf("error making GET request to %s: %w", oc.ServiceName, err)
 	}
@@ -166,10 +176,10 @@ func (oc *OchamiClient) GetData(endpoint, query string, headers *HTTPHeaders) (H
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query
 // is the raw query string (without the '?') to be added to the URI. It should
 // already be URL-encoded, e.g. generated using url.Values' Encode() function.
-func (oc *OchamiClient) PostData(endpoint, query string, headers *HTTPHeaders, body HTTPBody) (HTTPEnvelope, error) {
+func (oc *OchamiClient) PostData(ctx context.Context, endpoint, query string, headers *HTTPHeaders, body HTTPBody) (HTTPEnvelope, error) {
 	var he HTTPEnvelope
 
-	res, err := oc.MakeOchamiRequest(http.MethodPost, endpoint, query, headers, body)
+	res, err := oc.MakeOchamiRequest(ctx, http.MethodPost, endpoint, query, headers, body)
 	if err != nil {
 		return he, fmt.Errorf("error making POST request to %s, %w", oc.ServiceName, err)
 	}
@@ -188,10 +198,10 @@ func (oc *OchamiClient) PostData(endpoint, query string, headers *HTTPHeaders, b
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query
 // is the raw query string (without the '?') to be added to the URI. It should
 // already be URL-encoded, e.g. generated using url.Values' Encode() function.
-func (oc *OchamiClient) PutData(endpoint, query string, headers *HTTPHeaders, body HTTPBody) (HTTPEnvelope, error) {
+func (oc *OchamiClient) PutData(ctx context.Context, endpoint, query string, headers *HTTPHeaders, body HTTPBody) (HTTPEnvelope, error) {
 	var he HTTPEnvelope
 
-	res, err := oc.MakeOchamiRequest(http.MethodPut, endpoint, query, headers, body)
+	res, err := oc.MakeOchamiRequest(ctx, http.MethodPut, endpoint, query, headers, body)
 	if err != nil {
 		return he, fmt.Errorf("error making PUT request to %s, %w", oc.ServiceName, err)
 	}
@@ -210,10 +220,10 @@ func (oc *OchamiClient) PutData(endpoint, query string, headers *HTTPHeaders, bo
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query
 // is the raw query string (without the '?') to be added to the URI. It should
 // already be URL-encoded, e.g. generated using url.Values' Encode() function.
-func (oc *OchamiClient) PatchData(endpoint, query string, headers *HTTPHeaders, body HTTPBody) (HTTPEnvelope, error) {
+func (oc *OchamiClient) PatchData(ctx context.Context, endpoint, query string, headers *HTTPHeaders, body HTTPBody) (HTTPEnvelope, error) {
 	var he HTTPEnvelope
 
-	res, err := oc.MakeOchamiRequest(http.MethodPatch, endpoint, query, headers, body)
+	res, err := oc.MakeOchamiRequest(ctx, http.MethodPatch, endpoint, query, headers, body)
 	if err != nil {
 		return he, fmt.Errorf("error making PATCH request to %s, %w", oc.ServiceName, err)
 	}
@@ -232,10 +242,10 @@ func (oc *OchamiClient) PatchData(endpoint, query string, headers *HTTPHeaders, 
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query
 // is the raw query string (without the '?') to be added to the URI. It should
 // already be URL-encoded, e.g. generated using url.Values' Encode() function.
-func (oc *OchamiClient) DeleteData(endpoint, query string, headers *HTTPHeaders, body HTTPBody) (HTTPEnvelope, error) {
+func (oc *OchamiClient) DeleteData(ctx context.Context, endpoint, query string, headers *HTTPHeaders, body HTTPBody) (HTTPEnvelope, error) {
 	var he HTTPEnvelope
 
-	res, err := oc.MakeOchamiRequest(http.MethodDelete, endpoint, query, headers, body)
+	res, err := oc.MakeOchamiRequest(ctx, http.MethodDelete, endpoint, query, headers, body)
 	if err != nil {
 		return he, fmt.Errorf("error making DELETE request to %s, %w", oc.ServiceName, err)
 	}
@@ -248,7 +258,7 @@ func (oc *OchamiClient) DeleteData(endpoint, query string, headers *HTTPHeaders,
 
 // MakeOchamiRequest is a wrapper around MakeRequest that calls GetURI to form
 // the final URI to make the request with and pass to MakeRequest.
-func (oc *OchamiClient) MakeOchamiRequest(method, endpoint, query string, headers *HTTPHeaders, body HTTPBody) (*http.Response, error) {
+func (oc *OchamiClient) MakeOchamiRequest(ctx context.Context, method, endpoint, query string, headers *HTTPHeaders, body HTTPBody) (*http.Response, error) {
 	uri, err := oc.GetURI(endpoint, query)
 	if err != nil {
 		if query == "" {
@@ -258,16 +268,16 @@ func (oc *OchamiClient) MakeOchamiRequest(method, endpoint, query string, header
 		}
 	}
 
-	return oc.MakeRequest(method, uri, headers, body)
+	return oc.MakeRequest(ctx, method, uri, headers, body)
 }
 
 // MakeRequest is a convenience function that, using an OchamiClient as the HTTP
 // client, sends an HTTP request to the passed uri including optional headers
 // and body, and uses the passed HTTP method.
-func (oc *OchamiClient) MakeRequest(method, uri string, headers *HTTPHeaders, body HTTPBody) (*http.Response, error) {
+func (oc *OchamiClient) MakeRequest(ctx context.Context, method, uri string, headers *HTTPHeaders, body HTTPBody) (*http.Response, error) {
 	// Create request using function args
 	log.Logger.Debug().Msgf("%s: %s", method, uri)
-	req, err := http.NewRequest(method, uri, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, method, uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new HTTP request: %w", err)
 	}
@@ -322,22 +332,6 @@ func (oc *OchamiClient) MakeRequest(method, uri string, headers *HTTPHeaders, bo
 		} else {
 			log.Logger.Debug().Msg("No headers in response")
 		}
-		resBodyLen := res.ContentLength
-		if resBodyLen > 0 {
-			resBodyBytes, readErr := io.ReadAll(res.Body)
-			closeErr := res.Body.Close()
-			if readErr != nil {
-				return nil, fmt.Errorf("failed to read HTTP response body: %w", readErr)
-			}
-			if closeErr != nil {
-				return nil, fmt.Errorf("failed to close HTTP response body: %w", closeErr)
-			}
-			log.Logger.Debug().Msg("Response body:")
-			log.Logger.Debug().Msgf("%s", string(resBodyBytes))
-			res.Body = io.NopCloser(bytes.NewReader(resBodyBytes))
-		} else {
-			log.Logger.Debug().Msg("No body in response")
-		}
 	} else {
 		log.Logger.Debug().Msg("Response was nil")
 	}
@@ -361,15 +355,21 @@ func (oc *OchamiClient) UseCACert(caCertPath string) error {
 		return fmt.Errorf("failed to parse any CA certificates from %s", caCertPath)
 	}
 
-	(*oc).Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs:            certPool,
-			InsecureSkipVerify: false,
-		},
-		DisableKeepAlives:     true,
-		TLSHandshakeTimeout:   tlsHandshakeTimeout,
-		ResponseHeaderTimeout: responseHeaderTimeout,
+	transport := defaultTransport()
+	if existing, ok := oc.Transport.(*http.Transport); ok {
+		transport = existing.Clone()
 	}
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{}
+	} else {
+		transport.TLSClientConfig = transport.TLSClientConfig.Clone()
+	}
+	transport.TLSClientConfig.RootCAs = certPool
+	transport.TLSClientConfig.InsecureSkipVerify = false
+	transport.DisableKeepAlives = true
+	transport.TLSHandshakeTimeout = tlsHandshakeTimeout
+	transport.ResponseHeaderTimeout = responseHeaderTimeout
+	oc.Transport = transport
 
 	return nil
 }

@@ -6,6 +6,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -159,7 +160,7 @@ func TestMakeRequestRedactsAuthorizationInLogs(t *testing.T) {
 		if err := headers.SetAuthorization(fullToken); err != nil {
 			t.Fatalf("failed to set authorization: %v", err)
 		}
-		res, err := oc.MakeRequest(http.MethodGet, ts.URL, headers, nil)
+		res, err := oc.MakeRequest(context.Background(), http.MethodGet, ts.URL, headers, nil)
 		if err != nil {
 			t.Fatalf("MakeRequest failed: %v", err)
 		}

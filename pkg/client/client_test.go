@@ -6,6 +6,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -66,7 +67,7 @@ func TestGetData(t *testing.T) {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
 			hdrs := NewHTTPHeaders()
-			env, err := oc.GetData(tc.endpoint, "", hdrs)
+			env, err := oc.GetData(context.Background(), tc.endpoint, "", hdrs)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("GetData error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -135,7 +136,7 @@ func TestPostData(t *testing.T) {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
 			hdrs := NewHTTPHeaders()
-			env, err := oc.PostData(tc.endpoint, "", hdrs, tc.body)
+			env, err := oc.PostData(context.Background(), tc.endpoint, "", hdrs, tc.body)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("PostData error = %v, wantErr %v", err, tc.wantErr)
 			}

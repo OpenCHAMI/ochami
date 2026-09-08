@@ -6,6 +6,7 @@
 package cloud_init
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -96,7 +97,7 @@ func NewClient(baseURI string, opts ...client.Option) (*CloudInitClient, error) 
 // GetAPI sends a GET to cloud-init's /openapi.json endpoint to retrieve the
 // OpenAPI specification.
 func (cic *CloudInitClient) GetAPI() (client.HTTPEnvelope, error) {
-	henv, err := cic.GetData(CloudInitRelpathAPI, "", nil)
+	henv, err := cic.GetData(context.Background(), CloudInitRelpathAPI, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetAPI(): error getting cloud-init API: %w", err)
 	}
@@ -114,7 +115,7 @@ func (cic *CloudInitClient) GetDefaults(token string) (client.HTTPEnvelope, erro
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := cic.GetData(CloudInitRelpathDefaults, "", headers)
+	henv, err := cic.GetData(context.Background(), CloudInitRelpathDefaults, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetDefaults(): error getting cloud-init cluster-defaults: %w", err)
 	}
@@ -135,7 +136,7 @@ func (cic *CloudInitClient) GetGroups(token string, ids ...string) ([]client.HTT
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	if len(ids) == 0 {
-		henv, err := cic.GetData(CloudInitRelpathGroups, "", headers)
+		henv, err := cic.GetData(context.Background(), CloudInitRelpathGroups, "", headers)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("GetGroups(): failed to GET all groups from cloud-init: %w", err)
@@ -153,7 +154,7 @@ func (cic *CloudInitClient) GetGroups(token string, ids ...string) ([]client.HTT
 				henvs = append(henvs, henv)
 				continue
 			}
-			henv, err = cic.GetData(finalEP, "", headers)
+			henv, err = cic.GetData(context.Background(), finalEP, "", headers)
 			henvs = append(henvs, henv)
 			if err != nil {
 				newErr := fmt.Errorf("GetGroups(): failed to GET group from cloud-init: %w", err)
@@ -195,7 +196,7 @@ func (cic *CloudInitClient) GetNodeData(dataType CIDataType, token string, ids .
 			henvs = append(henvs, henv)
 			continue
 		}
-		henv, err = cic.GetData(finalEP, "", headers)
+		henv, err = cic.GetData(context.Background(), finalEP, "", headers)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("GetNodeData(): failed to GET node data from cloud-init: %w", err)
@@ -239,7 +240,7 @@ func (cic *CloudInitClient) GetNodeGroupData(token, id string, groups ...string)
 			henvs = append(henvs, henv)
 			continue
 		}
-		henv, err = cic.GetData(finalEP, "", headers)
+		henv, err = cic.GetData(context.Background(), finalEP, "", headers)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("GetNodeGroupData(): failed to GET node group data from cloud-init: %w", err)
@@ -255,7 +256,7 @@ func (cic *CloudInitClient) GetNodeGroupData(token, id string, groups ...string)
 
 // GetVersion sends a GET to cloud-init's /version endpoint.
 func (cic *CloudInitClient) GetVersion() (client.HTTPEnvelope, error) {
-	henv, err := cic.GetData(CloudInitRelpathVersion, "", nil)
+	henv, err := cic.GetData(context.Background(), CloudInitRelpathVersion, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetVersion(): error getting cloud-init version: %w", err)
 	}
@@ -280,7 +281,7 @@ func (cic *CloudInitClient) PostDefaults(ciDflts cistore.ClusterDefaults, token 
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = cic.PostData(CloudInitRelpathDefaults, "", headers, body)
+	henv, err = cic.PostData(context.Background(), CloudInitRelpathDefaults, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PostDefaults(): failed to POST cluster-defaults to cloud-init: %w", err)
 	}
@@ -311,7 +312,7 @@ func (cic *CloudInitClient) PostGroups(ciGroups []cistore.GroupData, token strin
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := cic.PostData(CloudInitRelpathGroups, "", headers, body)
+		henv, err := cic.PostData(context.Background(), CloudInitRelpathGroups, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PostGroups(): failed to POST group(s) to cloud-init: %w", err)
@@ -362,7 +363,7 @@ func (cic *CloudInitClient) PutGroups(ciGroups []cistore.GroupData, token string
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := cic.PutData(finalEP, "", headers, body)
+		henv, err := cic.PutData(context.Background(), finalEP, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PutGroups(): failed to PUT group(s) to cloud-init: %w", err)
@@ -414,7 +415,7 @@ func (cic *CloudInitClient) PutInstanceInfo(instanceInfoList []cistore.OpenCHAMI
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
 		}
-		henv, err := cic.PutData(finalEP, "", headers, body)
+		henv, err := cic.PutData(context.Background(), finalEP, "", headers, body)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("PutInstanceInfo(): failed to PUT instance info for %q to cloud-init: %w", instanceInfo.ID, err)
@@ -452,7 +453,7 @@ func (cic *CloudInitClient) DeleteGroups(token string, groups ...string) ([]clie
 			errors = append(errors, newErr)
 			continue
 		}
-		henv, err := cic.DeleteData(finalEP, "", headers, nil)
+		henv, err := cic.DeleteData(context.Background(), finalEP, "", headers, nil)
 		henvs = append(henvs, henv)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteGroups(): failed to DELETE group %s in cloud-init: %w", group, err)

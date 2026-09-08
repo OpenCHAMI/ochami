@@ -5,6 +5,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"os"
@@ -24,7 +25,7 @@ func TestDeleteDataErrorNamesDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.Client = &http.Client{Transport: errorTransport{}}
-	_, err = c.DeleteData("items", "", nil, nil)
+	_, err = c.DeleteData(context.Background(), "items", "", nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "DELETE") || strings.Contains(err.Error(), "PATCH") {
 		t.Fatalf("DeleteData error = %v", err)
 	}

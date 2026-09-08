@@ -149,7 +149,7 @@ func (c *RCSClient) GetStatus(token string) (*HealthResponse, error) {
 		return nil, err
 	}
 
-	he, err := c.GetData("/health", "", headers)
+	he, err := c.GetData(context.Background(), "/health", "", headers)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (c *RCSClient) ListConsoles(token string) ([]NodeConsoleInfo, error) {
 		return nil, err
 	}
 
-	he, err := c.GetData("/consoles", "", headers)
+	he, err := c.GetData(context.Background(), "/consoles", "", headers)
 	if err != nil {
 		return nil, err
 	}

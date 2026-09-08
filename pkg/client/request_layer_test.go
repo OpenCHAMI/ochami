@@ -5,6 +5,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -93,7 +94,7 @@ func TestMakeRequestFailurePaths(t *testing.T) {
 	}
 
 	t.Run("request creation", func(t *testing.T) {
-		if _, err := oc.MakeRequest("BAD\nMETHOD", "https://example.com", nil, nil); err == nil || !strings.Contains(err.Error(), "create new HTTP request") {
+		if _, err := oc.MakeRequest(context.Background(), "BAD\nMETHOD", "https://example.com", nil, nil); err == nil || !strings.Contains(err.Error(), "create new HTTP request") {
 			t.Fatalf("MakeRequest() error = %v, want request creation error", err)
 		}
 	})
@@ -103,7 +104,7 @@ func TestMakeRequestFailurePaths(t *testing.T) {
 		oc.Client = &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 			return nil, transportErr
 		})}
-		if _, err := oc.MakeRequest(http.MethodGet, "https://example.com", nil, nil); !errors.Is(err, transportErr) {
+		if _, err := oc.MakeRequest(context.Background(), http.MethodGet, "https://example.com", nil, nil); !errors.Is(err, transportErr) {
 			t.Fatalf("MakeRequest() error = %v, want wrapped transport error", err)
 		}
 	})
@@ -114,8 +115,12 @@ func TestMakeRequestFailurePaths(t *testing.T) {
 		oc.Client = &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{Status: "200 OK", StatusCode: http.StatusOK, Header: make(http.Header), Body: body, ContentLength: 1}, nil
 		})}
-		if _, err := oc.MakeRequest(http.MethodGet, "https://example.com", nil, nil); !errors.Is(err, readErr) {
-			t.Fatalf("MakeRequest() error = %v, want wrapped read error", err)
+		res, err := oc.MakeRequest(context.Background(), http.MethodGet, "https://example.com", nil, nil)
+		if err != nil {
+			t.Fatalf("MakeRequest() error = %v", err)
+		}
+		if _, err := NewHTTPEnvelopeFromResponse(res); !errors.Is(err, readErr) {
+			t.Fatalf("NewHTTPEnvelopeFromResponse() error = %v, want wrapped read error", err)
 		}
 		if !body.closed {
 			t.Error("response body was not closed after read failure")
@@ -128,10 +133,55 @@ func TestMakeRequestFailurePaths(t *testing.T) {
 		oc.Client = &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{Status: "200 OK", StatusCode: http.StatusOK, Header: make(http.Header), Body: body, ContentLength: 2}, nil
 		})}
-		if _, err := oc.MakeRequest(http.MethodGet, "https://example.com", nil, nil); !errors.Is(err, closeErr) {
-			t.Fatalf("MakeRequest() error = %v, want wrapped close error", err)
+		res, err := oc.MakeRequest(context.Background(), http.MethodGet, "https://example.com", nil, nil)
+		if err != nil {
+			t.Fatalf("MakeRequest() error = %v", err)
+		}
+		if _, err := NewHTTPEnvelopeFromResponse(res); !errors.Is(err, closeErr) {
+			t.Fatalf("NewHTTPEnvelopeFromResponse() error = %v, want wrapped close error", err)
 		}
 	})
+}
+
+func TestOchamiClientsOwnIndependentTransports(t *testing.T) {
+	secure, err := NewOchamiClient("secure", "https://example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	insecure, err := NewOchamiClient("insecure", "https://example.com", WithInsecure(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secure.Client == http.DefaultClient || insecure.Client == http.DefaultClient {
+		t.Fatal("OchamiClient reused process-global http.DefaultClient")
+	}
+	if secure.Transport == insecure.Transport {
+		t.Fatal("secure and insecure clients share a transport")
+	}
+	secureTransport := secure.Transport.(*http.Transport)
+	insecureTransport := insecure.Transport.(*http.Transport)
+	if secureTransport.TLSClientConfig != nil && secureTransport.TLSClientConfig.InsecureSkipVerify {
+		t.Error("secure client unexpectedly skips TLS verification")
+	}
+	if insecureTransport.TLSClientConfig == nil || !insecureTransport.TLSClientConfig.InsecureSkipVerify {
+		t.Error("insecure client does not skip TLS verification")
+	}
+}
+
+func TestMakeRequestPropagatesContextCancellation(t *testing.T) {
+	oc, err := NewOchamiClient("test", "https://example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oc.Client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	})}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := oc.MakeRequest(ctx, http.MethodGet, "https://example.com", nil, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("MakeRequest() error = %v, want context.Canceled", err)
+	}
 }
 
 func TestPayloadInputFailures(t *testing.T) {

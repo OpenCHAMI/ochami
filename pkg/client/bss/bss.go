@@ -6,6 +6,7 @@
 package bss
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -66,7 +67,7 @@ func (bc *BSSClient) PostBootParams(bp bssTypes.BootParams, token string) (clien
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = bc.PostData(BSSRelpathBootParams, "", headers, body)
+	henv, err = bc.PostData(context.Background(), BSSRelpathBootParams, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PostBootParams(): failed to POST boot parameters to BSS: %w", err)
 	}
@@ -92,7 +93,7 @@ func (bc *BSSClient) PutBootParams(bp bssTypes.BootParams, token string) (client
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = bc.PutData(BSSRelpathBootParams, "", headers, body)
+	henv, err = bc.PutData(context.Background(), BSSRelpathBootParams, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PutBootParams(): failed to PUT boot parameters to BSS: %w", err)
 	}
@@ -118,7 +119,7 @@ func (bc *BSSClient) PatchBootParams(bp bssTypes.BootParams, token string) (clie
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = bc.PatchData(BSSRelpathBootParams, "", headers, body)
+	henv, err = bc.PatchData(context.Background(), BSSRelpathBootParams, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PatchBootParams(): failed to PATCH boot parameters to BSS: %w", err)
 	}
@@ -144,7 +145,7 @@ func (bc *BSSClient) DeleteBootParams(bp bssTypes.BootParams, token string) (cli
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = bc.DeleteData(BSSRelpathBootParams, "", headers, body)
+	henv, err = bc.DeleteData(context.Background(), BSSRelpathBootParams, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("DeleteBootParams(): failed to DELETE boot parameters to BSS: %w", err)
 	}
@@ -166,7 +167,7 @@ func (bc *BSSClient) GetBootParams(query, token string) (client.HTTPEnvelope, er
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = bc.GetData(BSSRelpathBootParams, query, headers)
+	henv, err = bc.GetData(context.Background(), BSSRelpathBootParams, query, headers)
 	if err != nil {
 		err = fmt.Errorf("GetBootParams(): error getting boot parameters: %w", err)
 	}
@@ -178,7 +179,7 @@ func (bc *BSSClient) GetBootParams(query, token string) (client.HTTPEnvelope, er
 // query string (without the "?") and passes it to OchamiClient.GetData, using
 // /bootscript as the API endpoint.
 func (bc *BSSClient) GetBootScript(query string) (client.HTTPEnvelope, error) {
-	henv, err := bc.GetData(BSSRelpathBootScript, query, nil)
+	henv, err := bc.GetData(context.Background(), BSSRelpathBootScript, query, nil)
 	if err != nil {
 		err = fmt.Errorf("GetBootScript(): error getting boot script: %w", err)
 	}
@@ -221,7 +222,7 @@ func (bc *BSSClient) GetStatus(component string) (client.HTTPEnvelope, error) {
 		return henv, fmt.Errorf("GetStatus(): error creating BSS status endpoint: %w", err)
 	}
 
-	henv, err = bc.GetData(bssStatusEndpoint, "", nil)
+	henv, err = bc.GetData(context.Background(), bssStatusEndpoint, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetStatus(): error getting BSS all status: %w", err)
 	}
@@ -232,7 +233,7 @@ func (bc *BSSClient) GetStatus(component string) (client.HTTPEnvelope, error) {
 // GetDumpstate is a wrapper function around OchamiClient.GetData that queries the
 // /dumpstate endpoint and returns its response and an error, if one occurred.
 func (bc *BSSClient) GetDumpstate() (client.HTTPEnvelope, error) {
-	henv, err := bc.GetData(BSSRelpathDumpstate, "", nil)
+	henv, err := bc.GetData(context.Background(), BSSRelpathDumpstate, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetDumpstate(): error getting dump state: %w", err)
 	}
@@ -244,7 +245,7 @@ func (bc *BSSClient) GetDumpstate() (client.HTTPEnvelope, error) {
 // queries /endpoint-history and appends an optional query string (without the
 // "?").
 func (bc *BSSClient) GetEndpointHistory(query string) (client.HTTPEnvelope, error) {
-	henv, err := bc.GetData(BSSRelpathEndpointHistory, query, nil)
+	henv, err := bc.GetData(context.Background(), BSSRelpathEndpointHistory, query, nil)
 	if err != nil {
 		err = fmt.Errorf("GetEndpointHistory(): error getting endpoint history: %w", err)
 	}
@@ -255,7 +256,7 @@ func (bc *BSSClient) GetEndpointHistory(query string) (client.HTTPEnvelope, erro
 // GetHosts is a wrapper function around OchamiClient.GetData that queries /hosts
 // and appends an optional query string (without the "?").
 func (bc *BSSClient) GetHosts(query string) (client.HTTPEnvelope, error) {
-	henv, err := bc.GetData(BSSRelpathHosts, query, nil)
+	henv, err := bc.GetData(context.Background(), BSSRelpathHosts, query, nil)
 	if err != nil {
 		err = fmt.Errorf("GetHosts(): error getting hosts: %w", err)
 	}
