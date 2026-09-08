@@ -152,6 +152,13 @@ func TestPayloadReaderHelpers(t *testing.T) {
 		t.Fatalf("invalid payload error = %v, want CodePayload", err)
 	}
 	restore()
+
+	restore = SetIOStream(strings.NewReader(`{`), &bytes.Buffer{}, &bytes.Buffer{})
+	if err := HandlePayloadStdinSlice(&cobra.Command{}, &many); err == nil || ExitCode(err) != CodePayload {
+		restore()
+		t.Fatalf("invalid slice payload error = %v, want CodePayload", err)
+	}
+	restore()
 }
 
 func TestGetTimeoutAndCompletions(t *testing.T) {

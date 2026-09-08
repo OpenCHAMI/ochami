@@ -11,6 +11,12 @@ import (
 	"testing"
 )
 
+type testYAMLMarshalerError struct{}
+
+func (testYAMLMarshalerError) MarshalYAML() (interface{}, error) {
+	return nil, fmt.Errorf("intentional YAML marshal failure")
+}
+
 func TestDataFormat_String(t *testing.T) {
 	tests := []struct {
 		name string
@@ -139,6 +145,26 @@ arr:
 `),
 			wantErr: false,
 		},
+		{
+			name:    "json marshal error",
+			args:    args{data: make(chan int), outFormat: DataFormatJson},
+			wantErr: true,
+		},
+		{
+			name:    "pretty json marshal error",
+			args:    args{data: make(chan int), outFormat: DataFormatJsonPretty},
+			wantErr: true,
+		},
+		{
+			name:    "yaml marshal error",
+			args:    args{data: testYAMLMarshalerError{}, outFormat: DataFormatYaml},
+			wantErr: true,
+		},
+		{
+			name:    "unknown format",
+			args:    args{data: struct{}{}, outFormat: DataFormat("toml")},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -209,6 +235,21 @@ arr:
 				inFormat: DataFormatYaml,
 			},
 			wantErr: false,
+		},
+		{
+			name:    "malformed json",
+			args:    args{data: []byte(`{"key":`), inFormat: DataFormatJson},
+			wantErr: true,
+		},
+		{
+			name:    "malformed yaml",
+			args:    args{data: []byte("key: [\n"), inFormat: DataFormatYaml},
+			wantErr: true,
+		},
+		{
+			name:    "unknown format",
+			args:    args{data: []byte(`{}`), inFormat: DataFormat("toml")},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
