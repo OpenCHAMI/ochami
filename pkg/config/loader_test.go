@@ -152,6 +152,12 @@ func TestLoad_SourceErrors(t *testing.T) {
 			data:       "clusters:\n  - name: foo\n    cluster:\n      enable-auth: maybe\n",
 			want:       "unable to merge cluster 'foo' from config 'system'",
 		},
+		{
+			name:       "negative timeout",
+			sourceName: "user",
+			data:       "timeout: -1s\n",
+			want:       "invalid merged config",
+		},
 	}
 
 	for _, tt := range tests {

@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/configfile"
 )
 
 // TestConfigSetCreatesFileOnConfirm verifies "config set" offers to create a
@@ -44,6 +45,47 @@ func TestConfigSetDeclineCreate(t *testing.T) {
 		t.Errorf("expected no config file to be created at %s", path)
 	}
 	_ = res
+}
+
+func TestConfigUnsetUnknownKey(t *testing.T) {
+	cfg := writeTempConfig(t, "log:\n  format: json\n")
+
+	res := runOchami(t, "--config", cfg, "config", "unset", "log.does-not-exist")
+	if res.err == nil || res.exitCode != cli.CodeConfig {
+		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.err.Error(), "does not exist") {
+		t.Errorf("error = %q, want missing-key context", res.err)
+	}
+}
+
+func TestConfigClusterSetDeclineCreate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "new", "config.yaml")
+
+	res := runOchamiWithInput(t, "n\n", "--config", path, "config", "cluster", "set",
+		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
+	if res.err == nil || res.exitCode != cli.CodeConfig {
+		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("config path stat error = %v, want not-exist", err)
+	}
+}
+
+func TestConfigClusterUnsetUnknownKey(t *testing.T) {
+	cfg := writeTempConfig(t, `clusters:
+- name: foobar
+  cluster:
+    uri: https://foobar.openchami.cluster
+`)
+
+	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	if res.err == nil || res.exitCode != cli.CodeConfig {
+		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.err.Error(), "doesn't exist") {
+		t.Errorf("error = %q, want missing-key context", res.err)
+	}
 }
 
 // TestConfigClusterShowNonexistentCluster verifies showing a cluster that does
@@ -137,5 +179,12 @@ func TestConfigUnsetViaConfigFlag(t *testing.T) {
 	}
 	if strings.Contains(string(data), "warning") {
 		t.Errorf("config = %q, want log.level removed", string(data))
+	}
+	ko, err := configfile.ReadConfig(cfg)
+	if err != nil {
+		t.Fatalf("read semantic config: %v", err)
+	}
+	if ko.Exists("log.level") {
+		t.Error("log.level still exists after unset")
 	}
 }

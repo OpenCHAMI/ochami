@@ -94,11 +94,10 @@ func TestModifyConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("permission denied writing file", func(t *testing.T) {
-		// Assume non-root context; writing to /root should fail
-		err := ModifyConfig("/root/config.yaml", "default-cluster", "x")
+	t.Run("destination is a directory", func(t *testing.T) {
+		err := ModifyConfig(t.TempDir(), "default-cluster", "x")
 		if err == nil {
-			t.Fatal("ModifyConfig(): expected permission error, got nil")
+			t.Fatal("ModifyConfig(): expected directory read error, got nil")
 		}
 	})
 }
@@ -1085,11 +1084,18 @@ func TestWriteConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("permission denied", func(t *testing.T) {
-		// very likely to fail on non-root test environments
-		err := WriteConfig("/root/protected.yaml", ko)
+	t.Run("nonexistent parent directory", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "missing", "config.yaml")
+		err := WriteConfig(path, ko)
 		if err == nil {
-			t.Fatal("WriteConfig(): expected permission error, got nil")
+			t.Fatal("WriteConfig(): expected missing-parent error, got nil")
+		}
+	})
+
+	t.Run("destination is a directory", func(t *testing.T) {
+		err := WriteConfig(t.TempDir(), ko)
+		if err == nil {
+			t.Fatal("WriteConfig(): expected directory error, got nil")
 		}
 	})
 }
