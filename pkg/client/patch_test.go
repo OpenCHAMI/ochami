@@ -9,6 +9,30 @@ import (
 	"testing"
 )
 
+func TestPatchMethodContentType(t *testing.T) {
+	tests := []struct {
+		method PatchMethod
+		want   string
+		err    bool
+	}{
+		{method: PatchMethodRFC6902, want: "application/json-patch+json"},
+		{method: PatchMethodRFC7386, want: "application/merge-patch+json"},
+		{method: PatchMethodKeyVal, want: "application/merge-patch+json"},
+		{method: PatchMethod("invalid"), err: true},
+	}
+	for _, tc := range tests {
+		t.Run(string(tc.method), func(t *testing.T) {
+			got, err := tc.method.ContentType()
+			if (err != nil) != tc.err {
+				t.Fatalf("ContentType() error = %v, want error %v", err, tc.err)
+			}
+			if got != tc.want {
+				t.Errorf("ContentType() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestDotPathToJSONPointer(t *testing.T) {
 	tests := []struct {
 		name string

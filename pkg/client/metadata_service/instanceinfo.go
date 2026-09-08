@@ -130,16 +130,9 @@ func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat cl
 		return nil, fmt.Errorf("failed to convert data to JSON: %w", err)
 	}
 
-	var contentType string
-	switch patchFormat {
-	case client.PatchMethodRFC6902:
-		contentType = "application/json-patch+json"
-	case client.PatchMethodRFC7386:
-		contentType = "application/merge-patch+json"
-	case client.PatchMethodKeyVal:
-		contentType = "application/merge-patch+json"
-	default:
-		return nil, fmt.Errorf("unknown patch format: %s", patchFormat)
+	contentType, err := patchFormat.ContentType()
+	if err != nil {
+		return nil, err
 	}
 
 	item, err := msc.Client.WithBearerToken(token).PatchInstanceInfo(ctx, uid, outData, contentType)
