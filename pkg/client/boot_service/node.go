@@ -35,9 +35,9 @@ func (bsc *BootServiceClient) AddNodes(token string, nodes []boot_service_client
 	// TODO: Make concurrent
 	for _, node := range nodes {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
 		item, err := bsc.Client.WithBearerToken(token).CreateNode(ctx, node)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add node %+v: %w", node, err)
 			errors = append(errors, newErr)
@@ -61,9 +61,10 @@ func (bsc *BootServiceClient) DeleteNodes(token string, uids []string) (nodesDel
 	// TODO: Make concurrent
 	for _, nodeUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
-		if err := bsc.Client.WithBearerToken(token).DeleteNode(ctx, nodeUid); err != nil {
+		err := bsc.Client.WithBearerToken(token).DeleteNode(ctx, nodeUid)
+		cancel()
+		if err != nil {
 			newErr := fmt.Errorf("failed to delete node %s: %w", nodeUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -164,9 +165,9 @@ func (bsc *BootServiceClient) AddNodeSpecs(token string, nodes []NodeSpec) (node
 	// TODO: Make concurrent
 	for _, node := range nodes {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
 		item, err := bsc.Client.WithBearerToken(token).CreateNodeSimple(ctx, node.Name, node.NodeSpec)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add node %q (%+v): %w", node.Name, node.NodeSpec, err)
 			errors = append(errors, newErr)

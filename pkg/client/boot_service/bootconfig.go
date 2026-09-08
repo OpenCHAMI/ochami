@@ -36,9 +36,9 @@ func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_servi
 	// TODO: Make concurrent
 	for _, bootCfg := range bootCfgs {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBootConfiguration(ctx, bootCfg)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add boot configuration %+v: %w", bootCfg, err)
 			errors = append(errors, newErr)
@@ -62,9 +62,10 @@ func (bsc *BootServiceClient) DeleteBootConfigs(token string, uids []string) (bc
 	// TODO: Make concurrent
 	for _, bcfgUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
-		if err := bsc.Client.WithBearerToken(token).DeleteBootConfiguration(ctx, bcfgUid); err != nil {
+		err := bsc.Client.WithBearerToken(token).DeleteBootConfiguration(ctx, bcfgUid)
+		cancel()
+		if err != nil {
 			newErr := fmt.Errorf("failed to delete boot config %s: %w", bcfgUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -167,9 +168,9 @@ func (bsc *BootServiceClient) AddBootConfigSpecs(token string, bootCfgs []BootCo
 	// TODO: Make concurrent
 	for _, bootCfg := range bootCfgs {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBootConfigurationSimple(ctx, bootCfg.Name, bootCfg.BootConfigurationSpec)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add boot configuration %q (%+v): %w", bootCfg.Name, bootCfg.BootConfigurationSpec, err)
 			errors = append(errors, newErr)

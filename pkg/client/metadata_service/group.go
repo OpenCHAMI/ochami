@@ -35,9 +35,9 @@ func (msc *MetadataServiceClient) AddGroups(token string, groups []metadata_serv
 	// TODO: Make concurrent
 	for _, g := range groups {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
 		item, err := msc.Client.WithBearerToken(token).CreateGroup(ctx, g)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add group %+v: %w", g, err)
 			errors = append(errors, newErr)
@@ -61,9 +61,10 @@ func (msc *MetadataServiceClient) DeleteGroups(token string, uids []string) (gro
 	// TODO: Make concurrent
 	for _, groupUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
-		if err := msc.Client.WithBearerToken(token).DeleteGroup(ctx, groupUid); err != nil {
+		err := msc.Client.WithBearerToken(token).DeleteGroup(ctx, groupUid)
+		cancel()
+		if err != nil {
 			newErr := fmt.Errorf("failed to delete group %s: %w", groupUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -164,9 +165,9 @@ func (msc *MetadataServiceClient) AddGroupSpecs(token string, groups []GroupSpec
 	// TODO: Make concurrent
 	for _, g := range groups {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
 		item, err := msc.Client.WithBearerToken(token).CreateGroupSimple(ctx, g.Name, g.GroupSpec)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add group %q (%+v): %w", g.Name, g.GroupSpec, err)
 			errors = append(errors, newErr)

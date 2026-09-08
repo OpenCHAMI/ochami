@@ -35,9 +35,9 @@ func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.C
 	// TODO: Make concurrent
 	for _, bmc := range bmcs {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBMC(ctx, bmc)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add bmc %+v: %w", bmc, err)
 			errors = append(errors, newErr)
@@ -61,9 +61,10 @@ func (bsc *BootServiceClient) DeleteBMCs(token string, uids []string) (bmcsDelet
 	// TODO: Make concurrent
 	for _, bmcUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
-		if err := bsc.Client.WithBearerToken(token).DeleteBMC(ctx, bmcUid); err != nil {
+		err := bsc.Client.WithBearerToken(token).DeleteBMC(ctx, bmcUid)
+		cancel()
+		if err != nil {
 			newErr := fmt.Errorf("failed to delete BMC %s: %w", bmcUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -161,9 +162,9 @@ func (bsc *BootServiceClient) AddBMCSpecs(token string, bmcs []BMCSpec) (bmcsAdd
 	// TODO: Make concurrent
 	for _, bmc := range bmcs {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBMCSimple(ctx, bmc.Name, bmc.BMCSpec)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add bmc %q (%+v): %w", bmc.Name, bmc.BMCSpec, err)
 			errors = append(errors, newErr)

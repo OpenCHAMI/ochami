@@ -36,9 +36,9 @@ func (msc *MetadataServiceClient) AddInstanceInfos(token string, instances []met
 	// TODO: Make concurrent
 	for _, i := range instances {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
 		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfo(ctx, i)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add instance info %+v: %w", i, err)
 			errors = append(errors, newErr)
@@ -62,9 +62,10 @@ func (msc *MetadataServiceClient) DeleteInstanceInfos(token string, uids []strin
 	// TODO: Make concurrent
 	for _, instanceUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
-		if err := msc.Client.WithBearerToken(token).DeleteInstanceInfo(ctx, instanceUid); err != nil {
+		err := msc.Client.WithBearerToken(token).DeleteInstanceInfo(ctx, instanceUid)
+		cancel()
+		if err != nil {
 			newErr := fmt.Errorf("failed to delete instance info %s: %w", instanceUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -165,9 +166,9 @@ func (msc *MetadataServiceClient) AddInstanceInfoSpecs(token string, instances [
 	// TODO: Make concurrent
 	for _, i := range instances {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
 		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfoSimple(ctx, i.Name, i.InstanceInfoSpec)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add instance info %q (%+v): %w", i.Name, i.InstanceInfoSpec, err)
 			errors = append(errors, newErr)

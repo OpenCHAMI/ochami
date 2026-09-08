@@ -36,9 +36,9 @@ func (msc *MetadataServiceClient) AddDefaults(token string, defaults []metadata_
 	// TODO: Make concurrent
 	for _, d := range defaults {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
 		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaults(ctx, d)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add cluster defaults %+v: %w", d, err)
 			errors = append(errors, newErr)
@@ -62,9 +62,10 @@ func (msc *MetadataServiceClient) DeleteDefaults(token string, uids []string) (d
 	// TODO: Make concurrent
 	for _, defaultsUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
-		if err := msc.Client.WithBearerToken(token).DeleteClusterDefaults(ctx, defaultsUid); err != nil {
+		err := msc.Client.WithBearerToken(token).DeleteClusterDefaults(ctx, defaultsUid)
+		cancel()
+		if err != nil {
 			newErr := fmt.Errorf("failed to delete cluster defaults %s: %w", defaultsUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -165,9 +166,9 @@ func (msc *MetadataServiceClient) AddDefaultsSpecs(token string, defaults []Clus
 	// TODO: Make concurrent
 	for _, d := range defaults {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
 		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaultsSimple(ctx, d.Name, d.ClusterDefaultsSpec)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add cluster defaults %q (%+v): %w", d.Name, d.ClusterDefaultsSpec, err)
 			errors = append(errors, newErr)

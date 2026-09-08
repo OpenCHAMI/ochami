@@ -36,9 +36,9 @@ func (msc *MetadataServiceClient) AddWireGuardPeers(token string, peers []metada
 	// TODO: Make concurrent
 	for _, p := range peers {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
 		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeer(ctx, p)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add WireGuard peer %+v: %w", p, err)
 			errors = append(errors, newErr)
@@ -62,9 +62,10 @@ func (msc *MetadataServiceClient) DeleteWireGuardPeers(token string, uids []stri
 	// TODO: Make concurrent
 	for _, peerUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
-		if err := msc.Client.WithBearerToken(token).DeleteWireGuardPeer(ctx, peerUid); err != nil {
+		err := msc.Client.WithBearerToken(token).DeleteWireGuardPeer(ctx, peerUid)
+		cancel()
+		if err != nil {
 			newErr := fmt.Errorf("failed to delete WireGuard peer %s: %w", peerUid, err)
 			errors = append(errors, newErr)
 		} else {
@@ -165,9 +166,9 @@ func (msc *MetadataServiceClient) AddWireGuardPeerSpecs(token string, peers []Wi
 	// TODO: Make concurrent
 	for _, p := range peers {
 		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-		defer cancel()
 
 		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeerSimple(ctx, p.Name, p.WireGuardPeerSpec)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add WireGuard peer %q (%+v): %w", p.Name, p.WireGuardPeerSpec, err)
 			errors = append(errors, newErr)
