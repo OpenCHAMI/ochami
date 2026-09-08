@@ -6,7 +6,6 @@
 package group
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -67,10 +66,8 @@ See ochami-smd(1) for more details.`,
 			}
 			httpEnv, err := smdClient.GetGroups(qstr, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "SMD group request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request groups from SMD: %w", err)
+				return cli.ClassifyClientError(err, "SMD group request yielded unsuccessful HTTP response", "failed to request groups from SMD")
+
 			}
 
 			// Print output

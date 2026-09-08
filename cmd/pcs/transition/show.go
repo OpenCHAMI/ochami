@@ -7,13 +7,11 @@ package transition
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
@@ -47,10 +45,8 @@ See ochami-pcs(1) for more details.`,
 			// Get transition
 			transitionHttpEnv, err := pcsClient.GetTransition(transitionID, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "PCS transitions request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get PCS transition: %w", err)
+				return cli.ClassifyClientError(err, "PCS transitions request yielded unsuccessful HTTP response", "failed to get PCS transition")
+
 			}
 
 			// Unmarshal output

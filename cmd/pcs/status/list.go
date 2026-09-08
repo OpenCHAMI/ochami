@@ -7,7 +7,6 @@ package status
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -15,7 +14,6 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -126,10 +124,8 @@ See ochami-pcs(1) for more details.`,
 			// Get status
 			statusHttpEnv, err := pcsClient.GetStatus(xnames, string(powerFilter), string(mgmtFilter), cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "PCS status request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to list PCS transitions: %w", err)
+				return cli.ClassifyClientError(err, "PCS status request yielded unsuccessful HTTP response", "failed to list PCS transitions")
+
 			}
 
 			var output interface{}

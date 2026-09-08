@@ -112,10 +112,8 @@ See ochami-pcs(1) for more details.`,
 			if flagsProvided {
 				healthHttpEnv, err := pcsClient.GetHealth()
 				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						return cli.Errorf(cli.CodeHTTP, "PCS status (health) request yielded unsuccessful HTTP response: %w", err)
-					}
-					return cli.Errorf(cli.CodeNetwork, "failed to get PCS status (health): %w", err)
+					return cli.ClassifyClientError(err, "PCS status (health) request yielded unsuccessful HTTP response", "failed to get PCS status (health)")
+
 				}
 
 				// Unmarshall the health

@@ -6,7 +6,6 @@
 package component
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -64,10 +63,8 @@ See ochami-smd(1) for more details.`,
 				httpEnv, err = smdClient.GetComponentsAll()
 			}
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "SMD component request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request components from SMD: %w", err)
+				return cli.ClassifyClientError(err, "SMD component request yielded unsuccessful HTTP response", "failed to request components from SMD")
+
 			}
 
 			// Print output

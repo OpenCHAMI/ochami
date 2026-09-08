@@ -5,8 +5,6 @@
 package peer
 
 import (
-	"errors"
-
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataPeerSet() *cobra.Command {
@@ -118,10 +115,8 @@ See ochami-metadata(1) for more details.`,
 				peerSet, reqErr = metadataServiceClient.SetWireGuardPeerSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to set WireGuard peer: %w", reqErr)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to set WireGuard peer: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to set WireGuard peer", "failed to set WireGuard peer")
+
 			}
 
 			// Check that a modified item was returned

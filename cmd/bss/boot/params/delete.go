@@ -6,14 +6,11 @@
 package params
 
 import (
-	"errors"
-
 	"github.com/openchami/bss/pkg/bssTypes"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
@@ -147,10 +144,8 @@ See ochami-bss(1) for more details.`,
 			// Send 'em off
 			_, err = bssClient.DeleteBootParams(bp, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS boot parameter request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to set boot parameters in BSS: %w", err)
+				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to set boot parameters in BSS")
+
 			}
 
 			return nil

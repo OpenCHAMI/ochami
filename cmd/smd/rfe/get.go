@@ -6,7 +6,6 @@
 package rfe
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -87,10 +86,8 @@ See ochami-smd(1) for more details.`,
 			}
 			httpEnv, err := smdClient.GetRedfishEndpoints(qstr, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "SMD redfish endpoint request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request redfish endpoints from SMD: %w", err)
+				return cli.ClassifyClientError(err, "SMD redfish endpoint request yielded unsuccessful HTTP response", "failed to request redfish endpoints from SMD")
+
 			}
 
 			// Print output

@@ -5,14 +5,12 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
-	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdServiceStatus() *cobra.Command {
@@ -34,10 +32,8 @@ See ochami-metadata(1) for more details.`,
 			// Make request
 			outbytes, err := metadataServiceClient.GetHealth(cli.FormatOutput)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to get metadata-service health: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get metadata-service health: %w", err)
+				return cli.ClassifyClientError(err, "failed to get metadata-service health", "failed to get metadata-service health")
+
 			}
 
 			// Print output

@@ -6,14 +6,12 @@
 package script
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/pkg/client"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
@@ -79,10 +77,8 @@ See ochami-bss(1) for more details.`,
 
 			httpEnv, err := bssClient.GetBootScript(qstr)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS boot script request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request boot script from BSS: %w", err)
+				return cli.ClassifyClientError(err, "BSS boot script request yielded unsuccessful HTTP response", "failed to request boot script from BSS")
+
 			}
 			fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
 

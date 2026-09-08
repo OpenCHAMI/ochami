@@ -6,7 +6,6 @@
 package hosts
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -66,10 +65,8 @@ See ochami-bss(1) for more details.`,
 			}
 			httpEnv, err := bssClient.GetHosts(qstr)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS hosts request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request hosts from BSS: %w", err)
+				return cli.ClassifyClientError(err, "BSS hosts request yielded unsuccessful HTTP response", "failed to request hosts from BSS")
+
 			}
 
 			// Print output

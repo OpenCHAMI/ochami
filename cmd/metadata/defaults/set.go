@@ -5,8 +5,6 @@
 package defaults
 
 import (
-	"errors"
-
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataDefaultsSet() *cobra.Command {
@@ -113,10 +110,8 @@ See ochami-metadata(1) for more details.`,
 				defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to set cluster defaults: %w", reqErr)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to set cluster defaults: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to set cluster defaults", "failed to set cluster defaults")
+
 			}
 
 			// Check that a modified item was returned

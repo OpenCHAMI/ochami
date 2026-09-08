@@ -6,7 +6,6 @@
 package params
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -76,10 +75,8 @@ See ochami-bss(1) for more details.`,
 			}
 			httpEnv, err := bssClient.GetBootParams(qstr, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS boot parameter request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request boot parameters from BSS: %w", err)
+				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
+
 			}
 
 			// Print output

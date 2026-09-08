@@ -5,14 +5,12 @@
 package instance
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
-	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataInstanceList() *cobra.Command {
@@ -39,10 +37,8 @@ See ochami-metadata(1) for more details.`,
 			// Make request
 			outBytes, err := metadataServiceClient.ListInstanceInfos(cli.Token, cli.FormatOutput)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to list instance infos: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to list instance infos: %w", err)
+				return cli.ClassifyClientError(err, "failed to list instance infos", "failed to list instance infos")
+
 			}
 
 			// Print output

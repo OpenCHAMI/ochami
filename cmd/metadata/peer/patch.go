@@ -5,8 +5,6 @@
 package peer
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -100,10 +98,8 @@ See ochami-metadata(1) for more details.`,
 
 			peerPatched, err := metadataServiceClient.PatchWireGuardPeer(cli.Token, formatPatch, args[0], patchData)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to patch WireGuard peer: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to patch WireGuard peer: %w", err)
+				return cli.ClassifyClientError(err, "failed to patch WireGuard peer", "failed to patch WireGuard peer")
+
 			}
 
 			// Check that a modified item was returned

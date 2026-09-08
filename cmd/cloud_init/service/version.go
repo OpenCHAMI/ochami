@@ -6,7 +6,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -35,10 +34,8 @@ See ochami-cloud-init(1) for more details.`,
 
 			henv, err := cloudInitClient.GetVersion()
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "cloud-init version request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init version: %w", err)
+				return cli.ClassifyClientError(err, "cloud-init version request yielded unsuccessful HTTP response", "failed to get cloud-init version")
+
 			}
 
 			outBytes, err := client.FormatBody(henv.Body, cli.FormatOutput)

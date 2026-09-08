@@ -5,14 +5,11 @@
 package instance
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataInstanceDelete() *cobra.Command {
@@ -62,10 +59,8 @@ See ochami-metadata(1) for more details.`,
 			// Send off requests
 			instancesDeleted, errs, err := metadataServiceClient.DeleteInstanceInfos(cli.Token, args)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to delete instance infos: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to delete instance infos: %w", err)
+				return cli.ClassifyClientError(err, "failed to delete instance infos", "failed to delete instance infos")
+
 			}
 
 			// Deal with per-request errors

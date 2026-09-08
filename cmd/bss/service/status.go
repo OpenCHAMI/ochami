@@ -6,7 +6,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -69,10 +68,8 @@ See ochami-bss(1) for more details.`,
 				httpEnv, err = bssClient.GetStatus("")
 			}
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS status request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get BSS status: %w", err)
+				return cli.ClassifyClientError(err, "BSS status request yielded unsuccessful HTTP response", "failed to get BSS status")
+
 			}
 
 			// Print output

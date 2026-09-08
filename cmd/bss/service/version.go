@@ -6,7 +6,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -36,10 +35,8 @@ See ochami-bss(1) for more details.`,
 			// Determine which component to get status for and send request
 			httpEnv, err := bssClient.GetStatus("version")
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS version request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get BSS version: %w", err)
+				return cli.ClassifyClientError(err, "BSS version request yielded unsuccessful HTTP response", "failed to get BSS version")
+
 			}
 
 			// Print output

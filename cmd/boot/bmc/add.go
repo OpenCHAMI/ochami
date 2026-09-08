@@ -5,8 +5,6 @@
 package bmc
 
 import (
-	"errors"
-
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
@@ -144,10 +141,8 @@ See ochami-boot(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to add BMCs: %w", reqErr)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to add BMCs: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to add BMCs", "failed to add BMCs")
+
 			}
 
 			// Deal with per-request errors

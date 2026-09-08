@@ -6,7 +6,6 @@
 package iface
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -57,10 +56,8 @@ See ochami-smd(1) for more details.`,
 				}
 				httpEnv, err := smdClient.GetEthernetInterfaceByID(id, cli.Token, byIP)
 				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						return cli.Errorf(cli.CodeHTTP, "SMD ethernet interface request by ID yielded unsuccessful HTTP response: %w", err)
-					}
-					return cli.Errorf(cli.CodeNetwork, "failed to request ethernet interfaces by ID from SMD: %w", err)
+					return cli.ClassifyClientError(err, "SMD ethernet interface request by ID yielded unsuccessful HTTP response", "failed to request ethernet interfaces by ID from SMD")
+
 				}
 				fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
 				return nil
@@ -115,10 +112,8 @@ See ochami-smd(1) for more details.`,
 			}
 			httpEnv, err := smdClient.GetEthernetInterfaces(qstr)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "SMD ethernet interface request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request ethernet interfaces from SMD: %w", err)
+				return cli.ClassifyClientError(err, "SMD ethernet interface request yielded unsuccessful HTTP response", "failed to request ethernet interfaces from SMD")
+
 			}
 
 			// Print output
