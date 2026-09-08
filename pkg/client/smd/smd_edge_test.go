@@ -111,53 +111,107 @@ func TestPatchComponentsNIDHTTPError(t *testing.T) {
 	}
 }
 
-// TestIterativePostsPutsPerItemHTTPError verifies the iterative POST/PUT
-// helpers record a per-item error when the server returns a failure status.
-func TestIterativePostsPutsPerItemHTTPError(t *testing.T) {
+// TestIterativeWritesPreserveMixedResultAlignment verifies every iterative
+// writer keeps its envelope and error slices aligned when one request succeeds
+// and the next receives an unsuccessful HTTP response.
+func TestIterativeWritesPreserveMixedResultAlignment(t *testing.T) {
 	cases := []struct {
-		name string
-		call func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error)
+		name       string
+		wantMethod string
+		call       func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error)
 	}{
-		{"PostRedfishEndpoints", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostRedfishEndpoints(RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0c0s0b0"}}}, "tok")
+		{"PostRedfishEndpoints", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PostRedfishEndpoints(RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0c0s0b0"}, {ID: "x0c0s0b1"}}}, "tok")
 		}},
-		{"PostRedfishEndpointsV2", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostRedfishEndpointsV2(RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}}}}, "tok")
+		{"PostRedfishEndpointsV2", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PostRedfishEndpointsV2(RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}}, {RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b1"}}}}, "tok")
 		}},
-		{"PostEthernetInterfaces", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostEthernetInterfaces([]EthernetInterface{{ComponentID: "x0c0s0b0n0", MACAddress: "de:ad:be:ef:00:00"}}, "tok")
+		{"PostEthernetInterfaces", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PostEthernetInterfaces([]EthernetInterface{{ComponentID: "x0c0s0b0n0", MACAddress: "de:ad:be:ef:00:00"}, {ComponentID: "x0c0s0b0n1", MACAddress: "de:ad:be:ef:00:01"}}, "tok")
 		}},
-		{"PostGroups", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostGroups([]Group{{Label: "compute"}}, "tok")
+		{"PostGroups", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PostGroups([]Group{{Label: "compute"}, {Label: "storage"}}, "tok")
 		}},
-		{"PostGroupMembers", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostGroupMembers("tok", "compute", "x0c0s0b0n0")
+		{"PostGroupMembers", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PostGroupMembers("tok", "compute", "x0c0s0b0n0", "x0c0s0b0n1")
 		}},
-		{"PutRedfishEndpoints", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PutRedfishEndpoints(RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0c0s0b0"}}}, "tok")
+		{"PutComponents", http.MethodPut, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PutComponents(ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}, {ID: "x0c0s0b0n1"}}}, "tok")
 		}},
-		{"PutRedfishEndpointsV2", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PutRedfishEndpointsV2(RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}}}}, "tok")
+		{"PutRedfishEndpoints", http.MethodPut, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PutRedfishEndpoints(RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0c0s0b0"}, {ID: "x0c0s0b1"}}}, "tok")
 		}},
-		{"PatchGroups", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PatchGroups([]Group{{Label: "compute"}}, "tok")
+		{"PutRedfishEndpointsV2", http.MethodPut, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PutRedfishEndpointsV2(RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}}, {RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b1"}}}}, "tok")
+		}},
+		{"PatchEthernetInterfaces", http.MethodPatch, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PatchEthernetInterfaces([]EthernetInterface{{ID: "deadbeef0000"}, {ID: "deadbeef0001"}}, "tok")
+		}},
+		{"PatchGroups", http.MethodPatch, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.PatchGroups([]Group{{Label: "compute"}, {Label: "storage"}}, "tok")
 		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
 			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusInternalServerError)
+				requests++
+				if r.Method != tc.wantMethod {
+					t.Errorf("request method = %s, want %s", r.Method, tc.wantMethod)
+				}
+				if got := r.Header.Get("Authorization"); got != "Bearer tok" {
+					t.Errorf("Authorization = %q, want %q", got, "Bearer tok")
+				}
+				if requests == 1 {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+				http.Error(w, "boom", http.StatusInternalServerError)
 			})
 			defer srv.Close()
 
-			_, errs, err := tc.call(sc)
+			henvs, errs, err := tc.call(sc)
 			if err != nil {
 				t.Fatalf("%s: control-flow error = %v, want nil", tc.name, err)
 			}
-			if len(errs) != 1 || errs[0] == nil {
-				t.Errorf("%s: per-item errors = %v, want a single non-nil error", tc.name, errs)
+			if len(henvs) != 2 || len(errs) != 2 {
+				t.Fatalf("%s: result lengths = (%d, %d), want (2, 2)", tc.name, len(henvs), len(errs))
+			}
+			if errs[0] != nil || henvs[0].StatusCode != http.StatusOK {
+				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, henvs[0].StatusCode, errs[0])
+			}
+			if !errors.Is(errs[1], client.UnsuccessfulHTTPError) || henvs[1].StatusCode != http.StatusInternalServerError {
+				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, henvs[1].StatusCode, errs[1])
 			}
 		})
+	}
+}
+
+func TestDeleteGroupMembersGuards(t *testing.T) {
+	requests := 0
+	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusOK)
+	})
+	defer srv.Close()
+
+	tests := []struct {
+		name    string
+		group   string
+		members []string
+	}{
+		{name: "blank group", group: "", members: []string{"x0c0s0b0n0"}},
+		{name: "no members", group: "compute"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, _, err := sc.DeleteGroupMembers("tok", tc.group, tc.members...); err == nil {
+				t.Fatal("DeleteGroupMembers() error = nil, want argument error")
+			}
+		})
+	}
+	if requests != 0 {
+		t.Errorf("requests = %d, want no requests for rejected arguments", requests)
 	}
 }
 

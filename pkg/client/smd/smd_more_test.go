@@ -10,6 +10,7 @@ package smd
 // path against an httptest.Server.
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -205,10 +206,9 @@ func TestBulkDeletes(t *testing.T) {
 	}
 }
 
-// TestIterativeDeletesPerItemHTTPError verifies that each iterative delete
-// records a per-item error (and an envelope) when the server returns a
-// non-success status, while still returning nil for the control-flow error.
-func TestIterativeDeletesPerItemHTTPError(t *testing.T) {
+// TestIterativeDeletesPreserveMixedResultAlignment verifies that each iterative
+// delete keeps the success and failure results in input order.
+func TestIterativeDeletesPreserveMixedResultAlignment(t *testing.T) {
 	cases := []struct {
 		name string
 		call func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error)
@@ -234,9 +234,14 @@ func TestIterativeDeletesPerItemHTTPError(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
 			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte("boom")) //nolint:errcheck // test response writes are observed by the client
+				requests++
+				if requests == 1 {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+				http.Error(w, "boom", http.StatusInternalServerError)
 			})
 			defer srv.Close()
 
@@ -250,10 +255,11 @@ func TestIterativeDeletesPerItemHTTPError(t *testing.T) {
 			if len(henvs) != 2 {
 				t.Fatalf("%s: envelopes length = %d, want 2", tc.name, len(henvs))
 			}
-			for i, e := range errs {
-				if e == nil {
-					t.Errorf("%s: per-item error[%d] = nil, want non-nil", tc.name, i)
-				}
+			if errs[0] != nil || henvs[0].StatusCode != http.StatusOK {
+				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, henvs[0].StatusCode, errs[0])
+			}
+			if !errors.Is(errs[1], client.UnsuccessfulHTTPError) || henvs[1].StatusCode != http.StatusInternalServerError {
+				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, henvs[1].StatusCode, errs[1])
 			}
 		})
 	}

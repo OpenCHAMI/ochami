@@ -11,9 +11,12 @@ package cloud_init
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/openchami/cloud-init/pkg/cistore"
+
+	"github.com/openchami/ochami/pkg/client"
 )
 
 // TestGetNodeGroupDataGuards verifies the blank-id and empty-groups guards.
@@ -161,5 +164,49 @@ func TestGetNodeDataSuccess(t *testing.T) {
 
 	if _, errs, err := cic.GetNodeData(CloudInitMetaData, "tok", "x0c0s0b0n0"); err != nil || (len(errs) == 1 && errs[0] != nil) {
 		t.Errorf("GetNodeData success = (err=%v, errs=%v), want no errors", err, errs)
+	}
+}
+
+// TestCloudConfigGettersPreserveMalformedBodies verifies that successful GETs
+// return server data unchanged. Parsing remains the caller's responsibility,
+// so malformed cloud-config can be diagnosed without losing the response.
+func TestCloudConfigGettersPreserveMalformedBodies(t *testing.T) {
+	const malformed = "not-base64!"
+	tests := []struct {
+		name string
+		call func(*CloudInitClient) ([]client.HTTPEnvelope, []error, error)
+	}{
+		{name: "node data", call: func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.GetNodeData(CloudInitUserData, "tok", "x0c0s0b0n0")
+		}},
+		{name: "node group data", call: func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.GetNodeGroupData("tok", "x0c0s0b0n0", "compute")
+		}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+				if got := r.Header.Get("Authorization"); got != "Bearer tok" {
+					t.Errorf("Authorization = %q, want %q", got, "Bearer tok")
+				}
+				_, _ = w.Write([]byte(malformed)) //nolint:errcheck // test response writes are observed by the client
+			})
+			defer srv.Close()
+
+			henvs, errs, err := tc.call(cic)
+			if err != nil {
+				t.Fatalf("control-flow error = %v", err)
+			}
+			if len(henvs) != 1 || len(errs) != 1 || errs[0] != nil {
+				t.Fatalf("results = (%v, %v), want one successful response", henvs, errs)
+			}
+			if got := string(henvs[0].Body); got != malformed {
+				t.Errorf("body = %q, want %q", got, malformed)
+			}
+			if _, err := DecodeCloudConfig(cistore.CloudConfigFile{Content: []byte(malformed), Encoding: "base64"}); err == nil || !strings.Contains(err.Error(), "base64 decode") {
+				t.Errorf("DecodeCloudConfig() error = %v, want contextual base64 error", err)
+			}
+		})
 	}
 }

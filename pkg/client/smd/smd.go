@@ -1283,6 +1283,12 @@ func (sc *SMDClient) DeleteGroupMembers(token, group string, members ...string) 
 		henvs   []client.HTTPEnvelope
 		headers *client.HTTPHeaders
 	)
+	if group == "" {
+		return henvs, errors, fmt.Errorf("DeleteGroupMembers(): no group label specified to delete members from")
+	}
+	if len(members) == 0 {
+		return henvs, errors, fmt.Errorf("DeleteGroupMembers(): no members specified to delete from group")
+	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil

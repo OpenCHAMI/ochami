@@ -9,6 +9,7 @@ package cloud_init
 // failures.
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 
@@ -87,33 +88,56 @@ func TestPutInstanceInfoEdgeCases(t *testing.T) {
 	}
 }
 
-func TestCloudInitIterativeHTTPErrors(t *testing.T) {
+func TestCloudInitIterativeMixedResults(t *testing.T) {
 	cases := []struct {
-		name string
-		call func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error)
+		name       string
+		wantMethod string
+		call       func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error)
 	}{
-		{"PostGroups", func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.PostGroups([]cistore.GroupData{{Name: "compute"}}, "tok")
+		{"PostGroups", http.MethodPost, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.PostGroups([]cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
 		}},
-		{"DeleteGroups", func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+		{"PutGroups", http.MethodPut, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.PutGroups([]cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		}},
+		{"PutInstanceInfo", http.MethodPut, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.PutInstanceInfo([]cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}, {ID: "x0c0s0b0n1"}}, "tok")
+		}},
+		{"DeleteGroups", http.MethodDelete, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
 			return cic.DeleteGroups("tok", "compute", "storage")
 		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
 			cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusInternalServerError)
+				requests++
+				if r.Method != tc.wantMethod {
+					t.Errorf("request method = %s, want %s", r.Method, tc.wantMethod)
+				}
+				if got := r.Header.Get("Authorization"); got != "Bearer tok" {
+					t.Errorf("Authorization = %q, want %q", got, "Bearer tok")
+				}
+				if requests == 1 {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+				http.Error(w, "boom", http.StatusInternalServerError)
 			})
 			defer srv.Close()
 
-			_, errs, err := tc.call(cic)
+			henvs, errs, err := tc.call(cic)
 			if err != nil {
 				t.Fatalf("%s: control-flow error = %v", tc.name, err)
 			}
-			for i, e := range errs {
-				if e == nil {
-					t.Errorf("%s: per-item error[%d] = nil, want non-nil", tc.name, i)
-				}
+			if len(henvs) != 2 || len(errs) != 2 {
+				t.Fatalf("%s: result lengths = (%d, %d), want (2, 2)", tc.name, len(henvs), len(errs))
+			}
+			if errs[0] != nil || henvs[0].StatusCode != http.StatusOK {
+				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, henvs[0].StatusCode, errs[0])
+			}
+			if !errors.Is(errs[1], client.UnsuccessfulHTTPError) || henvs[1].StatusCode != http.StatusInternalServerError {
+				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, henvs[1].StatusCode, errs[1])
 			}
 		})
 	}
