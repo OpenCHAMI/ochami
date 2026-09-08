@@ -119,20 +119,21 @@ func NewOchamiClient(serviceName, baseURI string, opts ...Option) (*OchamiClient
 // a raw query string and appended onto the URL without URL encoding. query
 // should not contain the initial '?'.
 func (oc *OchamiClient) GetURI(endpoint, query string) (string, error) {
-	uri, err := url.Parse(oc.BaseURI.String())
-	if err != nil {
-		return "", fmt.Errorf("failed to parse base URI %s: %w", oc.BaseURI, err)
+	if oc == nil || oc.BaseURI == nil {
+		return "", fmt.Errorf("base URI is nil")
 	}
+	uri := *oc.BaseURI
 
-	uri.Path, err = url.JoinPath(uri.Path, endpoint)
+	path, err := url.JoinPath(uri.Path, endpoint)
 	if err != nil {
 		return "", fmt.Errorf("failed to join path %s with endpoint %s: %w", uri.Path, endpoint, err)
 	}
+	uri.Path = path
 
 	if query != "" {
 		uri.RawQuery = query
 	}
-	return uri.String(), err
+	return uri.String(), nil
 }
 
 // GetData is a wrapper around MakeOchamiRequest that sends a GET request to
@@ -323,11 +324,13 @@ func (oc *OchamiClient) MakeRequest(method, uri string, headers *HTTPHeaders, bo
 		}
 		resBodyLen := res.ContentLength
 		if resBodyLen > 0 {
-			var resBodyCopy bytes.Buffer
-			resBodyReader := io.TeeReader(res.Body, &resBodyCopy)
-			resBodyBytes, err := io.ReadAll(resBodyReader)
-			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to read body for debug message")
+			resBodyBytes, readErr := io.ReadAll(res.Body)
+			closeErr := res.Body.Close()
+			if readErr != nil {
+				return nil, fmt.Errorf("failed to read HTTP response body: %w", readErr)
+			}
+			if closeErr != nil {
+				return nil, fmt.Errorf("failed to close HTTP response body: %w", closeErr)
 			}
 			log.Logger.Debug().Msg("Response body:")
 			log.Logger.Debug().Msgf("%s", string(resBodyBytes))
