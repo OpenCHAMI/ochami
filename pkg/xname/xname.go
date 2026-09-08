@@ -38,6 +38,9 @@ func StringToXname(xname string) csm.XNameComponents {
 
 func NodeXnameToBMCXname(xname string) (string, error) {
 	bmcXname := StringToXname(xname)
+	if bmcXname.Type != "n" {
+		return "", fmt.Errorf("xname %s not a valid node xname", xname)
+	}
 	bmcXname.Type = "b"
 	bmcXnameStr := XNameComponentsToString(bmcXname)
 	if !csm.IsValidBMCXName(bmcXnameStr) {
