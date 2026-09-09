@@ -75,25 +75,18 @@ func buildGroupList(nodesCommon []nodeCommon) []smd.Group {
 	return groupList
 }
 
-func singleBatchResult(results client.BatchResult[client.HTTPEnvelope]) (client.HTTPEnvelope, error) {
-	if len(results) != 1 {
-		return client.HTTPEnvelope{}, fmt.Errorf("batch returned %d results, want one", len(results))
-	}
-	return results[0].Value, results[0].Err
-}
-
-func upsertOnConflict[T any](items []T, create, update func(T) (client.HTTPEnvelope, error)) []error {
+func upsertOnConflict[T any](items []T, create, update func(T) client.Result[client.HTTPEnvelope]) []error {
 	var errs []error
 	for _, item := range items {
-		henv, err := create(item)
-		if err == nil {
+		result := create(item)
+		if result.Err == nil {
 			continue
 		}
-		if errors.Is(err, client.UnsuccessfulHTTPError) && henv.StatusCode == 409 {
-			_, err = update(item)
+		if errors.Is(result.Err, client.UnsuccessfulHTTPError) && result.Value.StatusCode == 409 {
+			result = update(item)
 		}
-		if err != nil {
-			errs = append(errs, err)
+		if result.Err != nil {
+			errs = append(errs, result.Err)
 		}
 	}
 	return errs
@@ -327,11 +320,19 @@ See ochami-discover(1) for more details.`,
 				// normal PUT behavior, we have to first try to POST,
 				// then, if 409 is returned, try to PUT.
 				rfeErrs = upsertOnConflict(rfes.RedfishEndpoints,
-					func(rfe smd.RedfishEndpointV2) (client.HTTPEnvelope, error) {
-						return singleBatchResult(smdClient.PostRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token))
+					func(rfe smd.RedfishEndpointV2) client.Result[client.HTTPEnvelope] {
+						results := smdClient.PostRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token)
+						if len(results) != 1 {
+							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("posting redfish endpoint returned %d results, want one", len(results))}
+						}
+						return results[0]
 					},
-					func(rfe smd.RedfishEndpointV2) (client.HTTPEnvelope, error) {
-						return singleBatchResult(smdClient.PutRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token))
+					func(rfe smd.RedfishEndpointV2) client.Result[client.HTTPEnvelope] {
+						results := smdClient.PutRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token)
+						if len(results) != 1 {
+							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("updating redfish endpoint returned %d results, want one", len(results))}
+						}
+						return results[0]
 					})
 				for _, err := range rfeErrs {
 					log.Logger.Error().Err(err).Msg("failed to add or update redfish endpoint in SMD")
@@ -368,11 +369,19 @@ See ochami-discover(1) for more details.`,
 			if discoveryVersion == discover.DiscoveryMethodV1 {
 				if cmd.Flag("overwrite").Changed {
 					ifaceErrs = upsertOnConflict(ifaces,
-						func(iface smd.EthernetInterface) (client.HTTPEnvelope, error) {
-							return singleBatchResult(smdClient.PostEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, cli.Token))
+						func(iface smd.EthernetInterface) client.Result[client.HTTPEnvelope] {
+							results := smdClient.PostEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, cli.Token)
+							if len(results) != 1 {
+								return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("posting ethernet interface returned %d results, want one", len(results))}
+							}
+							return results[0]
 						},
-						func(iface smd.EthernetInterface) (client.HTTPEnvelope, error) {
-							return singleBatchResult(smdClient.PatchEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, cli.Token))
+						func(iface smd.EthernetInterface) client.Result[client.HTTPEnvelope] {
+							results := smdClient.PatchEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, cli.Token)
+							if len(results) != 1 {
+								return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("updating ethernet interface returned %d results, want one", len(results))}
+							}
+							return results[0]
 						})
 					for _, err := range ifaceErrs {
 						log.Logger.Error().Err(err).Msg("failed to add or update ethernet interface in SMD")
@@ -407,11 +416,19 @@ See ochami-discover(1) for more details.`,
 			)
 			if cmd.Flag("overwrite").Changed {
 				groupErrs = upsertOnConflict(groupList,
-					func(group smd.Group) (client.HTTPEnvelope, error) {
-						return singleBatchResult(smdClient.PostGroups(cmd.Context(), []smd.Group{group}, cli.Token))
+					func(group smd.Group) client.Result[client.HTTPEnvelope] {
+						results := smdClient.PostGroups(cmd.Context(), []smd.Group{group}, cli.Token)
+						if len(results) != 1 {
+							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("posting group returned %d results, want one", len(results))}
+						}
+						return results[0]
 					},
-					func(group smd.Group) (client.HTTPEnvelope, error) {
-						return singleBatchResult(smdClient.PatchGroups(cmd.Context(), []smd.Group{group}, cli.Token))
+					func(group smd.Group) client.Result[client.HTTPEnvelope] {
+						results := smdClient.PatchGroups(cmd.Context(), []smd.Group{group}, cli.Token)
+						if len(results) != 1 {
+							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("updating group returned %d results, want one", len(results))}
+						}
+						return results[0]
 					})
 				for _, err := range groupErrs {
 					log.Logger.Error().Err(err).Msg("failed to add or update group in SMD")
