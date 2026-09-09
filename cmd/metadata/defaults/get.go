@@ -41,7 +41,7 @@ See ochami-metadata(1) for more details.`,
 			uid := args[0]
 
 			// Make request
-			outBytes, err := metadataServiceClient.GetDefaults(cli.Token, cli.FormatOutput, uid)
+			outBytes, err := metadataServiceClient.GetDefaults(cmd.Context(), cli.Token, cli.FormatOutput, uid)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
 					return cli.Errorf(cli.CodeHTTP, "failed to get cluster defaults info for %s: %w", uid, err)

@@ -9,6 +9,7 @@ package metadata_service
 // and the format/marshal error arms of the getters.
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -35,90 +36,78 @@ func errServer(t *testing.T) (*MetadataServiceClient, *httptest.Server) {
 	return c, srv
 }
 
+// TestAddHelpersPerItemError verifies create failures are represented as item errors.
 func TestAddHelpersPerItemError(t *testing.T) {
 	c, srv := errServer(t)
 	defer srv.Close()
 
-	if _, errs, err := c.AddGroups("", []metadata_service_client.CreateGroupRequest{{}}); err != nil {
-		t.Fatalf("AddGroups: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.AddGroups(context.Background(), "", []metadata_service_client.CreateGroupRequest{{}}); !results.HasErrors() {
 		t.Error("AddGroups: expected a per-item error")
 	}
-	if _, errs, err := c.AddDefaults("", []metadata_service_client.CreateClusterDefaultsRequest{{}}); err != nil {
-		t.Fatalf("AddDefaults: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.AddDefaults(context.Background(), "", []metadata_service_client.CreateClusterDefaultsRequest{{}}); !results.HasErrors() {
 		t.Error("AddDefaults: expected a per-item error")
 	}
-	if _, errs, err := c.AddInstanceInfos("", []metadata_service_client.CreateInstanceInfoRequest{{}}); err != nil {
-		t.Fatalf("AddInstanceInfos: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.AddInstanceInfos(context.Background(), "", []metadata_service_client.CreateInstanceInfoRequest{{}}); !results.HasErrors() {
 		t.Error("AddInstanceInfos: expected a per-item error")
 	}
-	if _, errs, err := c.AddWireGuardPeers("", []metadata_service_client.CreateWireGuardPeerRequest{{}}); err != nil {
-		t.Fatalf("AddWireGuardPeers: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.AddWireGuardPeers(context.Background(), "", []metadata_service_client.CreateWireGuardPeerRequest{{}}); !results.HasErrors() {
 		t.Error("AddWireGuardPeers: expected a per-item error")
 	}
 }
 
+// TestDeleteHelpersPerItemError verifies delete failures are represented as item errors.
 func TestDeleteHelpersPerItemError(t *testing.T) {
 	c, srv := errServer(t)
 	defer srv.Close()
 
-	if _, errs, err := c.DeleteGroups("", []string{"uid"}); err != nil {
-		t.Fatalf("DeleteGroups: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.DeleteGroups(context.Background(), "", []string{"uid"}); !results.HasErrors() {
 		t.Error("DeleteGroups: expected a per-item error")
 	}
-	if _, errs, err := c.DeleteDefaults("", []string{"uid"}); err != nil {
-		t.Fatalf("DeleteDefaults: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.DeleteDefaults(context.Background(), "", []string{"uid"}); !results.HasErrors() {
 		t.Error("DeleteDefaults: expected a per-item error")
 	}
-	if _, errs, err := c.DeleteInstanceInfos("", []string{"uid"}); err != nil {
-		t.Fatalf("DeleteInstanceInfos: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.DeleteInstanceInfos(context.Background(), "", []string{"uid"}); !results.HasErrors() {
 		t.Error("DeleteInstanceInfos: expected a per-item error")
 	}
-	if _, errs, err := c.DeleteWireGuardPeers("", []string{"uid"}); err != nil {
-		t.Fatalf("DeleteWireGuardPeers: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.DeleteWireGuardPeers(context.Background(), "", []string{"uid"}); !results.HasErrors() {
 		t.Error("DeleteWireGuardPeers: expected a per-item error")
 	}
 }
 
+// TestGetHelpersErrorArm verifies individual read wrappers propagate unsuccessful responses.
 func TestGetHelpersErrorArm(t *testing.T) {
 	c, srv := errServer(t)
 	defer srv.Close()
 
-	if _, err := c.GetGroup("", format.DataFormatJson, "uid"); err == nil {
+	if _, err := c.GetGroup(context.Background(), "", format.DataFormatJson, "uid"); err == nil {
 		t.Error("GetGroup: expected an error")
 	}
-	if _, err := c.GetDefaults("", format.DataFormatJson, "uid"); err == nil {
+	if _, err := c.GetDefaults(context.Background(), "", format.DataFormatJson, "uid"); err == nil {
 		t.Error("GetDefaults: expected an error")
 	}
-	if _, err := c.GetInstanceInfo("", format.DataFormatJson, "uid"); err == nil {
+	if _, err := c.GetInstanceInfo(context.Background(), "", format.DataFormatJson, "uid"); err == nil {
 		t.Error("GetInstanceInfo: expected an error")
 	}
-	if _, err := c.GetWireGuardPeer("", format.DataFormatJson, "uid"); err == nil {
+	if _, err := c.GetWireGuardPeer(context.Background(), "", format.DataFormatJson, "uid"); err == nil {
 		t.Error("GetWireGuardPeer: expected an error")
 	}
 }
 
+// TestListHelpersErrorArm verifies collection read wrappers propagate unsuccessful responses.
 func TestListHelpersErrorArm(t *testing.T) {
 	c, srv := errServer(t)
 	defer srv.Close()
 
-	if _, err := c.ListGroups("", format.DataFormatJson); err == nil {
+	if _, err := c.ListGroups(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListGroups: expected an error")
 	}
-	if _, err := c.ListDefaults("", format.DataFormatJson); err == nil {
+	if _, err := c.ListDefaults(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListDefaults: expected an error")
 	}
-	if _, err := c.ListInstanceInfos("", format.DataFormatJson); err == nil {
+	if _, err := c.ListInstanceInfos(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListInstanceInfos: expected an error")
 	}
-	if _, err := c.ListWireGuardPeers("", format.DataFormatJson); err == nil {
+	if _, err := c.ListWireGuardPeers(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListWireGuardPeers: expected an error")
 	}
 }

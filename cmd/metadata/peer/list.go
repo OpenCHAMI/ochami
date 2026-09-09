@@ -35,7 +35,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Make request
-			outBytes, err := metadataServiceClient.ListWireGuardPeers(cli.Token, cli.FormatOutput)
+			outBytes, err := metadataServiceClient.ListWireGuardPeers(cmd.Context(), cli.Token, cli.FormatOutput)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to list WireGuard peers", "failed to list WireGuard peers")
 

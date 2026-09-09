@@ -57,15 +57,11 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			peersDeleted, errs, err := metadataServiceClient.DeleteWireGuardPeers(cli.Token, args)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to delete WireGuard peers", "failed to delete WireGuard peers")
-
-			}
+			results := metadataServiceClient.DeleteWireGuardPeers(cmd.Context(), cli.Token, args)
 
 			// Deal with per-request errors
 			var errorsOccurred = false
-			for _, err := range errs {
+			for _, err := range results.Errors() {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to delete WireGuard peer")
 					errorsOccurred = true
@@ -73,7 +69,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Print UIDs of deleted items
-			log.Logger.Info().Msgf("WireGuard peers deleted: %+v", peersDeleted)
+			log.Logger.Info().Msgf("WireGuard peers deleted: %+v", results.Values())
 
 			// Warn if any request errors occurred
 			if errorsOccurred {

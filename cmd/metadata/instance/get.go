@@ -44,7 +44,7 @@ See ochami-metadata(1) for more details.`,
 			uid := args[0]
 
 			// Make request
-			outBytes, err := metadataServiceClient.GetInstanceInfo(cli.Token, cli.FormatOutput, uid)
+			outBytes, err := metadataServiceClient.GetInstanceInfo(cmd.Context(), cli.Token, cli.FormatOutput, uid)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
 					return cli.Errorf(cli.CodeHTTP, "failed to get instance info for %s: %w", uid, err)

@@ -28,60 +28,37 @@ type ClusterDefaultsSpec struct {
 }
 
 // AddDefaults is a wrapper that calls the metadata-service client's
-// CreateClusterDefaults() function, passing it context. It returns a slice of
-// successfully created ClusterDefaults resources, a slice of per-request errors,
-// and an error that is populated if an error occurred in the function itself. A
-// nil resource returned without an error is reported as a per-request error.
-func (msc *MetadataServiceClient) AddDefaults(token string, defaults []metadata_service_client.CreateClusterDefaultsRequest) (defaultsAdded []api.ClusterDefaults, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, d := range defaults {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaults(ctx, d)
-		cancel()
+// CreateClusterDefaults() function, passing it context. It returns one result
+// per request in input order.
+func (msc *MetadataServiceClient) AddDefaults(ctx context.Context, token string, defaults []metadata_service_client.CreateClusterDefaultsRequest) client.BatchResult[api.ClusterDefaults] {
+	return runBatch(ctx, msc.Timeout, defaults, func(requestCtx context.Context, d metadata_service_client.CreateClusterDefaultsRequest) (api.ClusterDefaults, error) {
+		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaults(requestCtx, d)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add cluster defaults %+v: %w", d, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			defaultsAdded = append(defaultsAdded, *item)
-		} else {
-			newErr := fmt.Errorf("cluster defaults creation did not err, but was not created for: %+v", d)
-			errors = append(errors, newErr)
+			return api.ClusterDefaults{}, fmt.Errorf("failed to add cluster defaults %+v: %w", d, err)
 		}
-	}
-
-	return
+		return *item, nil
+	})
 }
 
 // DeleteDefaults is a wrapper that calls the metadata-service client's
 // DeleteClusterDefaults() function, passing it context and a list of cluster
-// defaults UIDs to delete. It returns a slice of successfully deleted cluster
-// defaults UIDs, a slice of per-request errors, and an error that is populated
-// if an error occurred in the function itself.
-func (msc *MetadataServiceClient) DeleteDefaults(token string, uids []string) (defaultsDeleted []string, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, defaultsUid := range uids {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		err := msc.Client.WithBearerToken(token).DeleteClusterDefaults(ctx, defaultsUid)
-		cancel()
+// defaults UIDs to delete. It returns one result per UID in input order.
+func (msc *MetadataServiceClient) DeleteDefaults(ctx context.Context, token string, uids []string) client.BatchResult[string] {
+	return runBatch(ctx, msc.Timeout, uids, func(requestCtx context.Context, defaultsUID string) (string, error) {
+		err := msc.Client.WithBearerToken(token).DeleteClusterDefaults(requestCtx, defaultsUID)
 		if err != nil {
-			newErr := fmt.Errorf("failed to delete cluster defaults %s: %w", defaultsUid, err)
-			errors = append(errors, newErr)
-		} else {
-			defaultsDeleted = append(defaultsDeleted, defaultsUid)
+			return "", fmt.Errorf("failed to delete cluster defaults %s: %w", defaultsUID, err)
 		}
-	}
-
-	return
+		return defaultsUID, nil
+	})
 }
 
 // GetDefaults is a wrapper that calls the metadata-service client's
 // GetClusterDefaults() function, passing it context and a UID. The output is a
 // []byte containing the entity's cluster defaults information, formatted as
 // outFormat.
-func (msc *MetadataServiceClient) GetDefaults(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) GetDefaults(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	defaults, err := msc.Client.WithBearerToken(token).GetClusterDefaults(ctx, uid)
@@ -100,8 +77,8 @@ func (msc *MetadataServiceClient) GetDefaults(token string, outFormat format.Dat
 // ListDefaults is a wrapper that calls the metadata-service client's
 // GetClusterDefaultss() function, passing it context. The output is a []byte
 // containing the cluster defaults formatted as outFormat.
-func (msc *MetadataServiceClient) ListDefaults(token string, outFormat format.DataFormat) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) ListDefaults(ctx context.Context, token string, outFormat format.DataFormat) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	defaults, err := msc.Client.WithBearerToken(token).GetClusterDefaultss(ctx)
@@ -122,8 +99,8 @@ func (msc *MetadataServiceClient) ListDefaults(token string, outFormat format.Da
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the cluster defaults identified by uid. It returns the
 // modified ClusterDefaults resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) PatchDefaults(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.ClusterDefaults, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) PatchDefaults(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.ClusterDefaults, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	outData, err := format.MarshalData(data, format.DataFormatJson)
@@ -147,8 +124,8 @@ func (msc *MetadataServiceClient) PatchDefaults(token string, patchFormat client
 // SetDefaults is a wrapper that calls the metadata-service client's
 // UpdateClusterDefaults() function, passing it context. It returns the modified
 // ClusterDefaults resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) SetDefaults(token string, uid string, defaults metadata_service_client.UpdateClusterDefaultsRequest) (*api.ClusterDefaults, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) SetDefaults(ctx context.Context, token string, uid string, defaults metadata_service_client.UpdateClusterDefaultsRequest) (*api.ClusterDefaults, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateClusterDefaults(ctx, uid, defaults)
@@ -162,32 +139,21 @@ func (msc *MetadataServiceClient) SetDefaults(token string, uid string, defaults
 // AddDefaultsSpecs is like AddDefaults but calls the metadata-service client's
 // simple CreateClusterDefaultsSimple() function, which only sends the resource
 // name and spec.
-func (msc *MetadataServiceClient) AddDefaultsSpecs(token string, defaults []ClusterDefaultsSpec) (defaultsAdded []api.ClusterDefaults, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, d := range defaults {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaultsSimple(ctx, d.Name, d.ClusterDefaultsSpec)
-		cancel()
+func (msc *MetadataServiceClient) AddDefaultsSpecs(ctx context.Context, token string, defaults []ClusterDefaultsSpec) client.BatchResult[api.ClusterDefaults] {
+	return runBatch(ctx, msc.Timeout, defaults, func(requestCtx context.Context, d ClusterDefaultsSpec) (api.ClusterDefaults, error) {
+		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaultsSimple(requestCtx, d.Name, d.ClusterDefaultsSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add cluster defaults %q (%+v): %w", d.Name, d.ClusterDefaultsSpec, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			defaultsAdded = append(defaultsAdded, *item)
-		} else {
-			newErr := fmt.Errorf("cluster defaults creation did not err, but was not created for: %+v", d)
-			errors = append(errors, newErr)
+			return api.ClusterDefaults{}, fmt.Errorf("failed to add cluster defaults %q (%+v): %w", d.Name, d.ClusterDefaultsSpec, err)
 		}
-	}
-
-	return
+		return *item, nil
+	})
 }
 
 // SetDefaultsSpec is like SetDefaults but calls the metadata-service client's
 // simple UpdateClusterDefaultsSimple() function, which only sends the resource
 // spec.
-func (msc *MetadataServiceClient) SetDefaultsSpec(token string, uid string, spec api.ClusterDefaultsSpec) (*api.ClusterDefaults, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) SetDefaultsSpec(ctx context.Context, token string, uid string, spec api.ClusterDefaultsSpec) (*api.ClusterDefaults, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateClusterDefaultsSimple(ctx, uid, spec)

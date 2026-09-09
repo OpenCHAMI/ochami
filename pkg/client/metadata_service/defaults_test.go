@@ -5,6 +5,7 @@
 package metadata_service
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -28,6 +29,7 @@ func encodeMetadataTestJSON(t *testing.T, w http.ResponseWriter, value any) {
 	}
 }
 
+// TestAddDefaultsSpecs_OmitsLabels verifies the simple API omits envelope labels.
 func TestAddDefaultsSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -47,11 +49,8 @@ func TestAddDefaultsSpecs_OmitsLabels(t *testing.T) {
 		},
 	}
 
-	_, errs, err := c.AddDefaultsSpecs("", defaults)
-	if err != nil {
-		t.Fatalf("AddDefaultsSpecs func error: %v", err)
-	}
-	for _, e := range errs {
+	results := c.AddDefaultsSpecs(context.Background(), "", defaults)
+	for _, e := range results.Errors() {
 		if e != nil {
 			t.Fatalf("AddDefaultsSpecs per-request error: %v", e)
 		}
@@ -72,6 +71,7 @@ func TestAddDefaultsSpecs_OmitsLabels(t *testing.T) {
 	}
 }
 
+// TestAddDefaults_EnvelopeIncludesLabels verifies the advanced API preserves resource labels.
 func TestAddDefaults_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -89,9 +89,8 @@ func TestAddDefaults_EnvelopeIncludesLabels(t *testing.T) {
 		},
 	}
 
-	_, _, err := c.AddDefaults("", defaults)
-	if err != nil {
-		t.Fatalf("AddDefaults func error: %v", err)
+	if results := c.AddDefaults(context.Background(), "", defaults); results.HasErrors() {
+		t.Fatalf("AddDefaults errors: %v", results.Errors())
 	}
 
 	labels, ok := gotBody["labels"].(map[string]interface{})
@@ -100,6 +99,7 @@ func TestAddDefaults_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestSetDefaultsSpec_UsesUIDEndpoint verifies simple updates target the requested resource UID.
 func TestSetDefaultsSpec_UsesUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +112,7 @@ func TestSetDefaultsSpec_UsesUIDEndpoint(t *testing.T) {
 
 	spec := api.ClusterDefaultsSpec{BaseURL: "https://demo.openchami.cluster:8443/cloud-init", ClusterName: "demo"}
 
-	_, err := c.SetDefaultsSpec("", "clusterdefaults-abc", spec)
+	_, err := c.SetDefaultsSpec(context.Background(), "", "clusterdefaults-abc", spec)
 	if err != nil {
 		t.Fatalf("SetDefaultsSpec error: %v", err)
 	}

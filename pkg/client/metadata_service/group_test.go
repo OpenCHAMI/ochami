@@ -5,6 +5,7 @@
 package metadata_service
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -28,6 +29,7 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) (*MetadataServiceClie
 	return c, srv
 }
 
+// TestAddGroupSpecs_OmitsLabels verifies the simple API omits envelope labels.
 func TestAddGroupSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -47,11 +49,8 @@ func TestAddGroupSpecs_OmitsLabels(t *testing.T) {
 		},
 	}
 
-	_, errs, err := c.AddGroupSpecs("", groups)
-	if err != nil {
-		t.Fatalf("AddGroupSpecs func error: %v", err)
-	}
-	for _, e := range errs {
+	results := c.AddGroupSpecs(context.Background(), "", groups)
+	for _, e := range results.Errors() {
 		if e != nil {
 			t.Fatalf("AddGroupSpecs per-request error: %v", e)
 		}
@@ -72,6 +71,7 @@ func TestAddGroupSpecs_OmitsLabels(t *testing.T) {
 	}
 }
 
+// TestAddGroups_EnvelopeIncludesLabels verifies the advanced API preserves resource labels.
 func TestAddGroups_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -89,9 +89,8 @@ func TestAddGroups_EnvelopeIncludesLabels(t *testing.T) {
 		},
 	}
 
-	_, _, err := c.AddGroups("", groups)
-	if err != nil {
-		t.Fatalf("AddGroups func error: %v", err)
+	if results := c.AddGroups(context.Background(), "", groups); results.HasErrors() {
+		t.Fatalf("AddGroups errors: %v", results.Errors())
 	}
 
 	labels, ok := gotBody["labels"].(map[string]interface{})
@@ -100,6 +99,7 @@ func TestAddGroups_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestSetGroupSpec_UsesUIDEndpoint verifies simple updates target the requested resource UID.
 func TestSetGroupSpec_UsesUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +112,7 @@ func TestSetGroupSpec_UsesUIDEndpoint(t *testing.T) {
 
 	spec := api.GroupSpec{}
 
-	_, err := c.SetGroupSpec("", "grp-abc", spec)
+	_, err := c.SetGroupSpec(context.Background(), "", "grp-abc", spec)
 	if err != nil {
 		t.Fatalf("SetGroupSpec error: %v", err)
 	}
@@ -124,6 +124,7 @@ func TestSetGroupSpec_UsesUIDEndpoint(t *testing.T) {
 	}
 }
 
+// TestEnvelopeSetMethods verifies advanced updates use the correct endpoint and bearer token.
 func TestEnvelopeSetMethods(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -131,19 +132,19 @@ func TestEnvelopeSetMethods(t *testing.T) {
 		call     func(*MetadataServiceClient) error
 	}{
 		{"defaults", "/clusterdefaultss/uid", func(c *MetadataServiceClient) error {
-			_, err := c.SetDefaults("tok", "uid", metadata_service_client.UpdateClusterDefaultsRequest{})
+			_, err := c.SetDefaults(context.Background(), "tok", "uid", metadata_service_client.UpdateClusterDefaultsRequest{})
 			return err
 		}},
 		{"group", "/groups/uid", func(c *MetadataServiceClient) error {
-			_, err := c.SetGroup("tok", "uid", metadata_service_client.UpdateGroupRequest{})
+			_, err := c.SetGroup(context.Background(), "tok", "uid", metadata_service_client.UpdateGroupRequest{})
 			return err
 		}},
 		{"instance", "/instanceinfos/uid", func(c *MetadataServiceClient) error {
-			_, err := c.SetInstanceInfo("tok", "uid", metadata_service_client.UpdateInstanceInfoRequest{})
+			_, err := c.SetInstanceInfo(context.Background(), "tok", "uid", metadata_service_client.UpdateInstanceInfoRequest{})
 			return err
 		}},
 		{"peer", "/wireguardpeers/uid", func(c *MetadataServiceClient) error {
-			_, err := c.SetWireGuardPeer("tok", "uid", metadata_service_client.UpdateWireGuardPeerRequest{})
+			_, err := c.SetWireGuardPeer(context.Background(), "tok", "uid", metadata_service_client.UpdateWireGuardPeerRequest{})
 			return err
 		}},
 	}

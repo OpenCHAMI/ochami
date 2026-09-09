@@ -28,60 +28,37 @@ type InstanceInfoSpec struct {
 }
 
 // AddInstanceInfos is a wrapper that calls the metadata-service client's
-// CreateInstanceInfo() function, passing it context. It returns a slice of
-// successfully created InstanceInfo resources, a slice of per-request errors,
-// and an error that is populated if an error occurred in the function itself. A
-// nil resource returned without an error is reported as a per-request error.
-func (msc *MetadataServiceClient) AddInstanceInfos(token string, instances []metadata_service_client.CreateInstanceInfoRequest) (instancesAdded []api.InstanceInfo, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, i := range instances {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfo(ctx, i)
-		cancel()
+// CreateInstanceInfo() function, passing it context. It returns one result per
+// request in input order.
+func (msc *MetadataServiceClient) AddInstanceInfos(ctx context.Context, token string, instances []metadata_service_client.CreateInstanceInfoRequest) client.BatchResult[api.InstanceInfo] {
+	return runBatch(ctx, msc.Timeout, instances, func(requestCtx context.Context, instance metadata_service_client.CreateInstanceInfoRequest) (api.InstanceInfo, error) {
+		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfo(requestCtx, instance)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add instance info %+v: %w", i, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			instancesAdded = append(instancesAdded, *item)
-		} else {
-			newErr := fmt.Errorf("instance info creation did not err, but was not created for: %+v", i)
-			errors = append(errors, newErr)
+			return api.InstanceInfo{}, fmt.Errorf("failed to add instance info %+v: %w", instance, err)
 		}
-	}
-
-	return
+		return *item, nil
+	})
 }
 
 // DeleteInstanceInfos is a wrapper that calls the metadata-service client's
 // DeleteInstanceInfo() function, passing it context and a list of InstanceInfo
-// UIDs to delete. It returns a slice of successfully deleted InstanceInfo UIDs,
-// a slice of per-request errors, and an error that is populated if an error
-// occurred in the function itself.
-func (msc *MetadataServiceClient) DeleteInstanceInfos(token string, uids []string) (instancesDeleted []string, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, instanceUid := range uids {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		err := msc.Client.WithBearerToken(token).DeleteInstanceInfo(ctx, instanceUid)
-		cancel()
+// UIDs to delete. It returns one result per UID in input order.
+func (msc *MetadataServiceClient) DeleteInstanceInfos(ctx context.Context, token string, uids []string) client.BatchResult[string] {
+	return runBatch(ctx, msc.Timeout, uids, func(requestCtx context.Context, instanceUID string) (string, error) {
+		err := msc.Client.WithBearerToken(token).DeleteInstanceInfo(requestCtx, instanceUID)
 		if err != nil {
-			newErr := fmt.Errorf("failed to delete instance info %s: %w", instanceUid, err)
-			errors = append(errors, newErr)
-		} else {
-			instancesDeleted = append(instancesDeleted, instanceUid)
+			return "", fmt.Errorf("failed to delete instance info %s: %w", instanceUID, err)
 		}
-	}
-
-	return
+		return instanceUID, nil
+	})
 }
 
 // GetInstanceInfo is a wrapper that calls the metadata-service client's
 // GetInstanceInfo() function, passing it context and a UID. The output is a
 // []byte containing the entity's instance info, formatted as
 // outFormat.
-func (msc *MetadataServiceClient) GetInstanceInfo(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) GetInstanceInfo(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	instance, err := msc.Client.WithBearerToken(token).GetInstanceInfo(ctx, uid)
@@ -100,8 +77,8 @@ func (msc *MetadataServiceClient) GetInstanceInfo(token string, outFormat format
 // ListInstanceInfos is a wrapper that calls the metadata-service client's
 // GetInstanceInfos() function, passing it context. The output is a []byte
 // containing the instance infos formatted as outFormat.
-func (msc *MetadataServiceClient) ListInstanceInfos(token string, outFormat format.DataFormat) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) ListInstanceInfos(ctx context.Context, token string, outFormat format.DataFormat) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	instances, err := msc.Client.WithBearerToken(token).GetInstanceInfos(ctx)
@@ -122,8 +99,8 @@ func (msc *MetadataServiceClient) ListInstanceInfos(token string, outFormat form
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the InstanceInfo identified by uid. It returns the modified
 // InstanceInfo resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.InstanceInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) PatchInstanceInfo(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.InstanceInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	outData, err := format.MarshalData(data, format.DataFormatJson)
@@ -147,8 +124,8 @@ func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat cl
 // SetInstanceInfo is a wrapper that calls the metadata-service client's
 // UpdateInstanceInfo() function, passing it context. It returns the modified
 // InstanceInfo resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) SetInstanceInfo(token string, uid string, instance metadata_service_client.UpdateInstanceInfoRequest) (*api.InstanceInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) SetInstanceInfo(ctx context.Context, token string, uid string, instance metadata_service_client.UpdateInstanceInfoRequest) (*api.InstanceInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateInstanceInfo(ctx, uid, instance)
@@ -162,32 +139,21 @@ func (msc *MetadataServiceClient) SetInstanceInfo(token string, uid string, inst
 // AddInstanceInfoSpecs is like AddInstanceInfos but calls the metadata-service
 // client's simple CreateInstanceInfoSimple() function, which only sends the
 // resource name and spec.
-func (msc *MetadataServiceClient) AddInstanceInfoSpecs(token string, instances []InstanceInfoSpec) (instancesAdded []api.InstanceInfo, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, i := range instances {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfoSimple(ctx, i.Name, i.InstanceInfoSpec)
-		cancel()
+func (msc *MetadataServiceClient) AddInstanceInfoSpecs(ctx context.Context, token string, instances []InstanceInfoSpec) client.BatchResult[api.InstanceInfo] {
+	return runBatch(ctx, msc.Timeout, instances, func(requestCtx context.Context, instance InstanceInfoSpec) (api.InstanceInfo, error) {
+		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfoSimple(requestCtx, instance.Name, instance.InstanceInfoSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add instance info %q (%+v): %w", i.Name, i.InstanceInfoSpec, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			instancesAdded = append(instancesAdded, *item)
-		} else {
-			newErr := fmt.Errorf("instance info creation did not err, but was not created for: %+v", i)
-			errors = append(errors, newErr)
+			return api.InstanceInfo{}, fmt.Errorf("failed to add instance info %q (%+v): %w", instance.Name, instance.InstanceInfoSpec, err)
 		}
-	}
-
-	return
+		return *item, nil
+	})
 }
 
 // SetInstanceInfoSpec is like SetInstanceInfo but calls the metadata-service
 // client's simple UpdateInstanceInfoSimple() function, which only sends the
 // resource spec.
-func (msc *MetadataServiceClient) SetInstanceInfoSpec(token string, uid string, spec api.InstanceInfoSpec) (*api.InstanceInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) SetInstanceInfoSpec(ctx context.Context, token string, uid string, spec api.InstanceInfoSpec) (*api.InstanceInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateInstanceInfoSimple(ctx, uid, spec)

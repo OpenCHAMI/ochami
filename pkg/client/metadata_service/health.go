@@ -14,8 +14,8 @@ import (
 // GetHealth is a wrapper that calls the metadata-service client's GetHealth()
 // function, passing it context. The output is a []byte containing the response
 // from the health endpoint formatted as outFormat.
-func (msc *MetadataServiceClient) GetHealth(outFormat format.DataFormat) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) GetHealth(ctx context.Context, outFormat format.DataFormat) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	health, err := msc.Client.GetHealth(ctx)

@@ -5,6 +5,7 @@
 package metadata_service
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 )
 
+// TestAddInstanceInfoSpecs_OmitsLabels verifies the simple API omits envelope labels.
 func TestAddInstanceInfoSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -32,11 +34,8 @@ func TestAddInstanceInfoSpecs_OmitsLabels(t *testing.T) {
 		},
 	}
 
-	_, errs, err := c.AddInstanceInfoSpecs("", instances)
-	if err != nil {
-		t.Fatalf("AddInstanceInfoSpecs func error: %v", err)
-	}
-	for _, e := range errs {
+	results := c.AddInstanceInfoSpecs(context.Background(), "", instances)
+	for _, e := range results.Errors() {
 		if e != nil {
 			t.Fatalf("AddInstanceInfoSpecs per-request error: %v", e)
 		}
@@ -57,6 +56,7 @@ func TestAddInstanceInfoSpecs_OmitsLabels(t *testing.T) {
 	}
 }
 
+// TestAddInstanceInfos_EnvelopeIncludesLabels verifies the advanced API preserves resource labels.
 func TestAddInstanceInfos_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -74,9 +74,8 @@ func TestAddInstanceInfos_EnvelopeIncludesLabels(t *testing.T) {
 		},
 	}
 
-	_, _, err := c.AddInstanceInfos("", instances)
-	if err != nil {
-		t.Fatalf("AddInstanceInfos func error: %v", err)
+	if results := c.AddInstanceInfos(context.Background(), "", instances); results.HasErrors() {
+		t.Fatalf("AddInstanceInfos errors: %v", results.Errors())
 	}
 
 	labels, ok := gotBody["labels"].(map[string]interface{})
@@ -85,6 +84,7 @@ func TestAddInstanceInfos_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestSetInstanceInfoSpec_UsesUIDEndpoint verifies simple updates target the requested resource UID.
 func TestSetInstanceInfoSpec_UsesUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +97,7 @@ func TestSetInstanceInfoSpec_UsesUIDEndpoint(t *testing.T) {
 
 	spec := api.InstanceInfoSpec{InstanceID: "x1000c0s0b0n0"}
 
-	_, err := c.SetInstanceInfoSpec("", "instanceinfo-abc", spec)
+	_, err := c.SetInstanceInfoSpec(context.Background(), "", "instanceinfo-abc", spec)
 	if err != nil {
 		t.Fatalf("SetInstanceInfoSpec error: %v", err)
 	}

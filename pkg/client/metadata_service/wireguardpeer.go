@@ -28,60 +28,37 @@ type WireGuardPeerSpec struct {
 }
 
 // AddWireGuardPeers is a wrapper that calls the metadata-service client's
-// CreateWireGuardPeer() function, passing it context. It returns a slice of
-// successfully created WireGuardPeer resources, a slice of per-request errors,
-// and an error that is populated if an error occurred in the function itself. A
-// nil resource returned without an error is reported as a per-request error.
-func (msc *MetadataServiceClient) AddWireGuardPeers(token string, peers []metadata_service_client.CreateWireGuardPeerRequest) (peersAdded []api.WireGuardPeer, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, p := range peers {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeer(ctx, p)
-		cancel()
+// CreateWireGuardPeer() function, passing it context. It returns one result per
+// request in input order.
+func (msc *MetadataServiceClient) AddWireGuardPeers(ctx context.Context, token string, peers []metadata_service_client.CreateWireGuardPeerRequest) client.BatchResult[api.WireGuardPeer] {
+	return runBatch(ctx, msc.Timeout, peers, func(requestCtx context.Context, peer metadata_service_client.CreateWireGuardPeerRequest) (api.WireGuardPeer, error) {
+		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeer(requestCtx, peer)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add WireGuard peer %+v: %w", p, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			peersAdded = append(peersAdded, *item)
-		} else {
-			newErr := fmt.Errorf("WireGuard peer creation did not err, but was not created for: %+v", p)
-			errors = append(errors, newErr)
+			return api.WireGuardPeer{}, fmt.Errorf("failed to add WireGuard peer %+v: %w", peer, err)
 		}
-	}
-
-	return
+		return *item, nil
+	})
 }
 
 // DeleteWireGuardPeers is a wrapper that calls the metadata-service client's
 // DeleteWireGuardPeer() function, passing it context and a list of
-// WireGuardPeer UIDs to delete. It returns a slice of successfully deleted
-// WireGuardPeer UIDs, a slice of per-request errors, and an error that is
-// populated if an error occurred in the function itself.
-func (msc *MetadataServiceClient) DeleteWireGuardPeers(token string, uids []string) (peersDeleted []string, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, peerUid := range uids {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		err := msc.Client.WithBearerToken(token).DeleteWireGuardPeer(ctx, peerUid)
-		cancel()
+// WireGuardPeer UIDs to delete. It returns one result per UID in input order.
+func (msc *MetadataServiceClient) DeleteWireGuardPeers(ctx context.Context, token string, uids []string) client.BatchResult[string] {
+	return runBatch(ctx, msc.Timeout, uids, func(requestCtx context.Context, peerUID string) (string, error) {
+		err := msc.Client.WithBearerToken(token).DeleteWireGuardPeer(requestCtx, peerUID)
 		if err != nil {
-			newErr := fmt.Errorf("failed to delete WireGuard peer %s: %w", peerUid, err)
-			errors = append(errors, newErr)
-		} else {
-			peersDeleted = append(peersDeleted, peerUid)
+			return "", fmt.Errorf("failed to delete WireGuard peer %s: %w", peerUID, err)
 		}
-	}
-
-	return
+		return peerUID, nil
+	})
 }
 
 // GetWireGuardPeer is a wrapper that calls the metadata-service client's
 // GetWireGuardPeer() function, passing it context and a UID. The output is a
 // []byte containing the entity's WireGuard peer information, formatted as
 // outFormat.
-func (msc *MetadataServiceClient) GetWireGuardPeer(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) GetWireGuardPeer(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	peer, err := msc.Client.WithBearerToken(token).GetWireGuardPeer(ctx, uid)
@@ -100,8 +77,8 @@ func (msc *MetadataServiceClient) GetWireGuardPeer(token string, outFormat forma
 // ListWireGuardPeers is a wrapper that calls the metadata-service client's
 // GetWireGuardPeers() function, passing it context. The output is a []byte
 // containing the WireGuard peers formatted as outFormat.
-func (msc *MetadataServiceClient) ListWireGuardPeers(token string, outFormat format.DataFormat) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) ListWireGuardPeers(ctx context.Context, token string, outFormat format.DataFormat) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	peers, err := msc.Client.WithBearerToken(token).GetWireGuardPeers(ctx)
@@ -122,8 +99,8 @@ func (msc *MetadataServiceClient) ListWireGuardPeers(token string, outFormat for
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the WireGuardPeer identified by uid. It returns the modified
 // WireGuardPeer resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.WireGuardPeer, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) PatchWireGuardPeer(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.WireGuardPeer, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	outData, err := format.MarshalData(data, format.DataFormatJson)
@@ -147,8 +124,8 @@ func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat c
 // SetWireGuardPeer is a wrapper that calls the metadata-service client's
 // UpdateWireGuardPeer() function, passing it context. It returns the modified
 // WireGuardPeer resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) SetWireGuardPeer(token string, uid string, peer metadata_service_client.UpdateWireGuardPeerRequest) (*api.WireGuardPeer, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) SetWireGuardPeer(ctx context.Context, token string, uid string, peer metadata_service_client.UpdateWireGuardPeerRequest) (*api.WireGuardPeer, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateWireGuardPeer(ctx, uid, peer)
@@ -162,32 +139,21 @@ func (msc *MetadataServiceClient) SetWireGuardPeer(token string, uid string, pee
 // AddWireGuardPeerSpecs is like AddWireGuardPeers but calls the
 // metadata-service client's simple CreateWireGuardPeerSimple() function, which
 // only sends the resource name and spec.
-func (msc *MetadataServiceClient) AddWireGuardPeerSpecs(token string, peers []WireGuardPeerSpec) (peersAdded []api.WireGuardPeer, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, p := range peers {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeerSimple(ctx, p.Name, p.WireGuardPeerSpec)
-		cancel()
+func (msc *MetadataServiceClient) AddWireGuardPeerSpecs(ctx context.Context, token string, peers []WireGuardPeerSpec) client.BatchResult[api.WireGuardPeer] {
+	return runBatch(ctx, msc.Timeout, peers, func(requestCtx context.Context, peer WireGuardPeerSpec) (api.WireGuardPeer, error) {
+		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeerSimple(requestCtx, peer.Name, peer.WireGuardPeerSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add WireGuard peer %q (%+v): %w", p.Name, p.WireGuardPeerSpec, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			peersAdded = append(peersAdded, *item)
-		} else {
-			newErr := fmt.Errorf("WireGuard peer creation did not err, but was not created for: %+v", p)
-			errors = append(errors, newErr)
+			return api.WireGuardPeer{}, fmt.Errorf("failed to add WireGuard peer %q (%+v): %w", peer.Name, peer.WireGuardPeerSpec, err)
 		}
-	}
-
-	return
+		return *item, nil
+	})
 }
 
 // SetWireGuardPeerSpec is like SetWireGuardPeer but calls the metadata-service
 // client's simple UpdateWireGuardPeerSimple() function, which only sends the
 // resource spec.
-func (msc *MetadataServiceClient) SetWireGuardPeerSpec(token string, uid string, spec api.WireGuardPeerSpec) (*api.WireGuardPeer, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) SetWireGuardPeerSpec(ctx context.Context, token string, uid string, spec api.WireGuardPeerSpec) (*api.WireGuardPeer, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateWireGuardPeerSimple(ctx, uid, spec)
