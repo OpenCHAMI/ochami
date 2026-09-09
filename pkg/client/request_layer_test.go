@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/openchami/ochami/pkg/format"
 )
@@ -181,6 +182,22 @@ func TestMakeRequestPropagatesContextCancellation(t *testing.T) {
 	cancel()
 	if _, err := oc.MakeRequest(ctx, http.MethodGet, "https://example.com", nil, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("MakeRequest() error = %v, want context.Canceled", err)
+	}
+}
+
+func TestMakeRequestPreservesCallerDeadline(t *testing.T) {
+	oc, err := NewOchamiClient("test", "https://example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oc.Client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	})}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
+	if _, err := oc.MakeRequest(ctx, http.MethodGet, "https://example.com", nil, nil); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("MakeRequest() error = %v, want context.DeadlineExceeded", err)
 	}
 }
 
