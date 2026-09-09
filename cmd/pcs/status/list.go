@@ -122,7 +122,7 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Get status
-			statusHttpEnv, err := pcsClient.GetStatus(xnames, string(powerFilter), string(mgmtFilter), cli.Token)
+			statusHttpEnv, err := pcsClient.GetStatus(cmd.Context(), xnames, string(powerFilter), string(mgmtFilter), cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "PCS status request yielded unsuccessful HTTP response", "failed to list PCS transitions")
 

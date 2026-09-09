@@ -48,13 +48,13 @@ func NewClient(baseURI string, opts ...client.Option) (*PCSClient, error) {
 
 // GetLiveness is a wrapper function around OchamiClient.GetData to
 // hit the /liveness endpoint
-func (pc *PCSClient) GetLiveness() (client.HTTPEnvelope, error) {
+func (pc *PCSClient) GetLiveness(ctx context.Context) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
 		err  error
 	)
 
-	henv, err = pc.GetData(context.Background(), PCSRelpathLiveness, "", nil)
+	henv, err = pc.GetData(ctx, PCSRelpathLiveness, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetLiveness(): error getting PCS liveness: %w", err)
 	}
@@ -64,13 +64,13 @@ func (pc *PCSClient) GetLiveness() (client.HTTPEnvelope, error) {
 
 // GetReadiness is a wrapper function around OchamiClient.GetData to
 // hit the /readiness endpoint
-func (pc *PCSClient) GetReadiness() (client.HTTPEnvelope, error) {
+func (pc *PCSClient) GetReadiness(ctx context.Context) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
 		err  error
 	)
 
-	henv, err = pc.GetData(context.Background(), PCSRelpathReadiness, "", nil)
+	henv, err = pc.GetData(ctx, PCSRelpathReadiness, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetReadiness(): error getting PCS liveness: %w", err)
 	}
@@ -80,13 +80,13 @@ func (pc *PCSClient) GetReadiness() (client.HTTPEnvelope, error) {
 
 // GetHealth is a wrapper function around OchamiClient.GetData to
 // hit the /health endpoint
-func (pc *PCSClient) GetHealth() (client.HTTPEnvelope, error) {
+func (pc *PCSClient) GetHealth(ctx context.Context) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
 		err  error
 	)
 
-	henv, err = pc.GetData(context.Background(), PCSRelpathHealth, "", nil)
+	henv, err = pc.GetData(ctx, PCSRelpathHealth, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetHealth(): error getting PCS health: %w", err)
 	}
@@ -106,7 +106,7 @@ type locationEntry struct {
 
 // CreateTransition is a wrapper function around OchamiClient.PostData to
 // hit the /transitions endpoint
-func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xnames []string, token string) (client.HTTPEnvelope, error) {
+func (pc *PCSClient) CreateTransition(ctx context.Context, operation string, taskDeadline *int, xnames []string, token string) (client.HTTPEnvelope, error) {
 	var henv client.HTTPEnvelope
 
 	headers := client.NewHTTPHeaders()
@@ -138,7 +138,7 @@ func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xname
 		return henv, fmt.Errorf("CreateTransition(): failed to create HTTPBody: %w", err)
 	}
 
-	henv, err = pc.PostData(context.Background(), PCSTransitions, "", headers, httpBody)
+	henv, err = pc.PostData(ctx, PCSTransitions, "", headers, httpBody)
 	if err != nil {
 		err = fmt.Errorf("CreateTransition(): error creating PCS health: %w", err)
 	}
@@ -148,7 +148,7 @@ func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xname
 
 // GetTransitions is a wrapper function around OchamiClient.GetData to
 // hit the /transitions endpoint
-func (pc *PCSClient) GetTransitions(token string) (client.HTTPEnvelope, error) {
+func (pc *PCSClient) GetTransitions(ctx context.Context, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
 		err  error
@@ -159,7 +159,7 @@ func (pc *PCSClient) GetTransitions(token string) (client.HTTPEnvelope, error) {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
-	henv, err = pc.GetData(context.Background(), PCSTransitions, "", headers)
+	henv, err = pc.GetData(ctx, PCSTransitions, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetTransitions(): error getting PCS transitions: %w", err)
 	}
@@ -169,7 +169,7 @@ func (pc *PCSClient) GetTransitions(token string) (client.HTTPEnvelope, error) {
 
 // GetTransitions is a wrapper function around OchamiClient.GetData to
 // hit the /transitions/{transitionID} endpoint
-func (pc *PCSClient) GetTransition(id string, token string) (client.HTTPEnvelope, error) {
+func (pc *PCSClient) GetTransition(ctx context.Context, id string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv                   client.HTTPEnvelope
 		err                    error
@@ -187,7 +187,7 @@ func (pc *PCSClient) GetTransition(id string, token string) (client.HTTPEnvelope
 		return henv, err
 	}
 
-	henv, err = pc.GetData(context.Background(), pcsTransitionsEndpoint, "", headers)
+	henv, err = pc.GetData(ctx, pcsTransitionsEndpoint, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetTransition(): error getting PCS transition: %w", err)
 	}
@@ -197,7 +197,7 @@ func (pc *PCSClient) GetTransition(id string, token string) (client.HTTPEnvelope
 
 // DeleteTransitions is a wrapper function around OchamiClient.DeleteData to
 // hit the /transitions/{transitionID} endpoint
-func (pc *PCSClient) DeleteTransition(id string, token string) (client.HTTPEnvelope, error) {
+func (pc *PCSClient) DeleteTransition(ctx context.Context, id string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv                  client.HTTPEnvelope
 		err                   error
@@ -215,7 +215,7 @@ func (pc *PCSClient) DeleteTransition(id string, token string) (client.HTTPEnvel
 		return henv, err
 	}
 
-	henv, err = pc.DeleteData(context.Background(), pcsTransitionEndpoint, "", headers, nil)
+	henv, err = pc.DeleteData(ctx, pcsTransitionEndpoint, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteTransition(): error deleting PCS transition: %w", err)
 	}
@@ -225,7 +225,7 @@ func (pc *PCSClient) DeleteTransition(id string, token string) (client.HTTPEnvel
 
 // GetStatus is a wrapper function around OchamiClient.GetData to
 // hit the /power-status endpoint
-func (pc *PCSClient) GetStatus(xnames []string, powerStateFilter string, mgmtStateFilter string, token string) (client.HTTPEnvelope, error) {
+func (pc *PCSClient) GetStatus(ctx context.Context, xnames []string, powerStateFilter string, mgmtStateFilter string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
 		err  error
@@ -251,7 +251,7 @@ func (pc *PCSClient) GetStatus(xnames []string, powerStateFilter string, mgmtSta
 
 	query := values.Encode()
 
-	henv, err = pc.GetData(context.Background(), PCSStatus, query, headers)
+	henv, err = pc.GetData(ctx, PCSStatus, query, headers)
 	if err != nil {
 		err = fmt.Errorf("GetStatus(): error getting power state: %w", err)
 	}

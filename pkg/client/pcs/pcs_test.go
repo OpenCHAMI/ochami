@@ -10,6 +10,7 @@ package pcs
 // UnsuccessfulHTTPError propagation.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -40,9 +41,9 @@ func TestReadinessLivenessHealth(t *testing.T) {
 		call     func(pc *PCSClient) error
 		wantPath string
 	}{
-		{"liveness", func(pc *PCSClient) error { _, e := pc.GetLiveness(); return e }, "/liveness"},
-		{"readiness", func(pc *PCSClient) error { _, e := pc.GetReadiness(); return e }, "/readiness"},
-		{"health", func(pc *PCSClient) error { _, e := pc.GetHealth(); return e }, "/health"},
+		{"liveness", func(pc *PCSClient) error { _, e := pc.GetLiveness(context.Background()); return e }, "/liveness"},
+		{"readiness", func(pc *PCSClient) error { _, e := pc.GetReadiness(context.Background()); return e }, "/readiness"},
+		{"health", func(pc *PCSClient) error { _, e := pc.GetHealth(context.Background()); return e }, "/health"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -71,7 +72,7 @@ func TestGetTransitions(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.GetTransitions("tok"); err != nil {
+	if _, err := pc.GetTransitions(context.Background(), "tok"); err != nil {
 		t.Fatalf("GetTransitions: %v", err)
 	}
 	if gotMethod != http.MethodGet || gotPath != "/transitions" {
@@ -91,7 +92,7 @@ func TestGetTransitionByID(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.GetTransition("abc-123", "tok"); err != nil {
+	if _, err := pc.GetTransition(context.Background(), "abc-123", "tok"); err != nil {
 		t.Fatalf("GetTransition: %v", err)
 	}
 	if gotPath != "/transitions/abc-123" {
@@ -108,7 +109,7 @@ func TestDeleteTransition(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.DeleteTransition("abc-123", "tok"); err != nil {
+	if _, err := pc.DeleteTransition(context.Background(), "abc-123", "tok"); err != nil {
 		t.Fatalf("DeleteTransition: %v", err)
 	}
 	if gotMethod != http.MethodDelete || gotPath != "/transitions/abc-123" {
@@ -133,7 +134,7 @@ func TestCreateTransition(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.CreateTransition("on", nil, []string{"x0c0s0b0n0", "x0c0s0b0n1"}, "tok"); err != nil {
+	if _, err := pc.CreateTransition(context.Background(), "on", nil, []string{"x0c0s0b0n0", "x0c0s0b0n1"}, "tok"); err != nil {
 		t.Fatalf("CreateTransition: %v", err)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/transitions" {
@@ -164,7 +165,7 @@ func TestGetStatusQuery(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.GetStatus([]string{"x0c0s0b0"}, "on", "available", "tok"); err != nil {
+	if _, err := pc.GetStatus(context.Background(), []string{"x0c0s0b0"}, "on", "available", "tok"); err != nil {
 		t.Fatalf("GetStatus: %v", err)
 	}
 	if gotPath != "/power-status" {
@@ -185,11 +186,30 @@ func TestPCSUnsuccessfulHTTP(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, err := pc.GetTransitions("tok")
+	_, err := pc.GetTransitions(context.Background(), "tok")
 	if err == nil {
 		t.Fatal("expected an error, got nil")
 	}
 	if !errors.Is(err, client.UnsuccessfulHTTPError) {
 		t.Errorf("error = %v, want it to wrap client.UnsuccessfulHTTPError", err)
+	}
+}
+
+// TestPCSClientPropagatesCancellation verifies caller cancellation reaches the HTTP request.
+func TestPCSClientPropagatesCancellation(t *testing.T) {
+	requestMade := false
+	pc, srv := newTestPCS(t, func(w http.ResponseWriter, r *http.Request) {
+		requestMade = true
+	})
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := pc.GetHealth(ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("GetHealth() error = %v, want context.Canceled", err)
+	}
+	if requestMade {
+		t.Fatal("request was made after context cancellation")
 	}
 }

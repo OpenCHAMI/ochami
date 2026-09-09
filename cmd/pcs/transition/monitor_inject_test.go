@@ -5,6 +5,7 @@
 package transition
 
 import (
+	"context"
 	"errors"
 	"io"
 	"testing"
@@ -24,7 +25,7 @@ type scriptedTransitionClient struct {
 	calls     int
 }
 
-func (s *scriptedTransitionClient) GetTransition(transitionID, token string) (client.HTTPEnvelope, error) {
+func (s *scriptedTransitionClient) GetTransition(_ context.Context, transitionID, token string) (client.HTTPEnvelope, error) {
 	i := s.calls
 	if i >= len(s.responses) {
 		i = len(s.responses) - 1
@@ -63,6 +64,7 @@ func runMonitor(t *testing.T, provider pcsTransitionClientProvider, args ...stri
 	return cmd.Execute()
 }
 
+// TestTransitionMonitor_CompletesOnCompletedStatus verifies monitoring stops after a completed transition.
 func TestTransitionMonitor_CompletesOnCompletedStatus(t *testing.T) {
 	fake := &scriptedTransitionClient{
 		responses: []client.HTTPEnvelope{
@@ -79,6 +81,7 @@ func TestTransitionMonitor_CompletesOnCompletedStatus(t *testing.T) {
 	}
 }
 
+// TestTransitionMonitor_CompletesOnAbortedStatus verifies monitoring stops after an aborted transition.
 func TestTransitionMonitor_CompletesOnAbortedStatus(t *testing.T) {
 	fake := &scriptedTransitionClient{
 		responses: []client.HTTPEnvelope{
@@ -93,6 +96,7 @@ func TestTransitionMonitor_CompletesOnAbortedStatus(t *testing.T) {
 	}
 }
 
+// TestTransitionMonitor_ClientConstructionError verifies client setup failures are propagated.
 func TestTransitionMonitor_ClientConstructionError(t *testing.T) {
 	wantErr := errors.New("no client")
 	err := runMonitor(t, transitionProvider(nil, wantErr), "abc-123")
@@ -101,6 +105,7 @@ func TestTransitionMonitor_ClientConstructionError(t *testing.T) {
 	}
 }
 
+// TestTransitionMonitor_GetTransitionError verifies polling failures are classified and returned.
 func TestTransitionMonitor_GetTransitionError(t *testing.T) {
 	fake := &scriptedTransitionClient{
 		responses: []client.HTTPEnvelope{{}},
@@ -115,6 +120,7 @@ func TestTransitionMonitor_GetTransitionError(t *testing.T) {
 	}
 }
 
+// TestTransitionMonitor_MalformedResponse verifies invalid transition payloads produce a payload error.
 func TestTransitionMonitor_MalformedResponse(t *testing.T) {
 	fake := &scriptedTransitionClient{
 		responses: []client.HTTPEnvelope{{Body: []byte(`not json`)}},
