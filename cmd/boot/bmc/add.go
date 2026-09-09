@@ -13,6 +13,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
@@ -100,9 +101,7 @@ See ochami-boot(1) for more details.`,
 			// Determine how to read payload (simple versus advanced API)
 			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
 
-			var bmcsCreated []*api.BMC
-			var reqErrs []error
-			var reqErr error
+			var results client.BatchResult[*api.BMC]
 			if envelope {
 				// Use advanced API (spec, metadata, annotations)
 
@@ -119,7 +118,7 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off requests
-				bmcsCreated, reqErrs, reqErr = bootServiceClient.AddBMCs(cli.Token, bmcs)
+				results = bootServiceClient.AddBMCs(cmd.Context(), cli.Token, bmcs)
 			} else {
 				// Use simple API (spec)
 
@@ -136,25 +135,19 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off requests
-				bmcsCreated, reqErrs, reqErr = bootServiceClient.AddBMCSpecs(cli.Token, bmcs)
-			}
-
-			// Handle any non-request error
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to add BMCs", "failed to add BMCs")
-
+				results = bootServiceClient.AddBMCSpecs(cmd.Context(), cli.Token, bmcs)
 			}
 
 			// Deal with per-request errors
 			var reqErrorsOccurred = false
-			for _, err := range reqErrs {
+			for _, err := range results.Errors() {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to add BMC")
 					reqErrorsOccurred = true
 				}
 			}
 			var names []string
-			for _, bmc := range bmcsCreated {
+			for _, bmc := range results.Values() {
 				names = append(names, bmc.Metadata.Name)
 			}
 			log.Logger.Debug().Msgf("BMCs created: %q", names)

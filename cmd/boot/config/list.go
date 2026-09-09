@@ -35,7 +35,7 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Make request
-			outBytes, err := bootServiceClient.ListBootConfigs(cli.Token, cli.FormatOutput)
+			outBytes, err := bootServiceClient.ListBootConfigs(cmd.Context(), cli.Token, cli.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to list boot configurations: %w", err)
 			}

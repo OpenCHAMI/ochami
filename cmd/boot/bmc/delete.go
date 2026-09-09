@@ -57,21 +57,17 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Send off requests
-			bmcsDeleted, errs, err := bootServiceClient.DeleteBMCs(cli.Token, args)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to delete BMCs", "failed to delete BMCs")
-
-			}
+			results := bootServiceClient.DeleteBMCs(cmd.Context(), cli.Token, args)
 
 			// Deal with per-request errors
 			var errorsOccurred = false
-			for _, err := range errs {
+			for _, err := range results.Errors() {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to delete BMC")
 					errorsOccurred = true
 				}
 			}
-			log.Logger.Debug().Msgf("BMCs deleted: %+v", bmcsDeleted)
+			log.Logger.Debug().Msgf("BMCs deleted: %+v", results.Values())
 			if errorsOccurred {
 				return cli.Errorf(cli.CodeHTTP, "BMC deletion completed with errors")
 			}

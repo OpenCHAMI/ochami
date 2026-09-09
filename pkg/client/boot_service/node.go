@@ -27,59 +27,36 @@ type NodeSpec struct {
 }
 
 // AddNodes is a wrapper that calls the boot-service client's CreateNode()
-// function, passing it context. It returns a slice of successfully created
-// nodes, a slice of per-request errors, and an error that is populated if an
-// error occurred in the function itself. A nil resource returned without an
-// error is reported as a per-request error.
-func (bsc *BootServiceClient) AddNodes(token string, nodes []boot_service_client.CreateNodeRequest) (nodesAdded []*api.Node, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, node := range nodes {
-		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-
-		item, err := bsc.Client.WithBearerToken(token).CreateNode(ctx, node)
-		cancel()
+// function, passing it context. It returns one result per request in input
+// order.
+func (bsc *BootServiceClient) AddNodes(ctx context.Context, token string, nodes []boot_service_client.CreateNodeRequest) client.BatchResult[*api.Node] {
+	return runBatch(ctx, bsc.Timeout, nodes, func(requestCtx context.Context, node boot_service_client.CreateNodeRequest) (*api.Node, error) {
+		item, err := bsc.Client.WithBearerToken(token).CreateNode(requestCtx, node)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add node %+v: %w", node, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			nodesAdded = append(nodesAdded, item)
-		} else {
-			newErr := fmt.Errorf("node creation did not err, but was not created for: %+v", node)
-			errors = append(errors, newErr)
+			return nil, fmt.Errorf("failed to add node %+v: %w", node, err)
 		}
-	}
-
-	return
+		return item, nil
+	})
 }
 
 // DeleteNodes is a wrapper that calls the boot-service client's DeleteNode()
-// function, passing it context and a list of node UIDs to delete. The output is
-// a slice of node UIDs that got deleted, a slice of errors containing any
-// errors deleting nodes, and an error that is populated if an error in the
-// function itself occurred.
-func (bsc *BootServiceClient) DeleteNodes(token string, uids []string) (nodesDeleted []string, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, nodeUid := range uids {
-		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-
-		err := bsc.Client.WithBearerToken(token).DeleteNode(ctx, nodeUid)
-		cancel()
+// function, passing it context and a list of node UIDs to delete. It returns one
+// result per UID in input order.
+func (bsc *BootServiceClient) DeleteNodes(ctx context.Context, token string, uids []string) client.BatchResult[string] {
+	return runBatch(ctx, bsc.Timeout, uids, func(requestCtx context.Context, nodeUID string) (string, error) {
+		err := bsc.Client.WithBearerToken(token).DeleteNode(requestCtx, nodeUID)
 		if err != nil {
-			newErr := fmt.Errorf("failed to delete node %s: %w", nodeUid, err)
-			errors = append(errors, newErr)
-		} else {
-			nodesDeleted = append(nodesDeleted, nodeUid)
+			return "", fmt.Errorf("failed to delete node %s: %w", nodeUID, err)
 		}
-	}
-
-	return
+		return nodeUID, nil
+	})
 }
 
 // GetNode is a wrapper that calls the boot-service client's GetNode() function,
 // passing it context and a UID. The output is a []byte containing the entity's
 // node information, formatted as outFormat.
-func (bsc *BootServiceClient) GetNode(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) GetNode(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	bcfg, err := bsc.Client.WithBearerToken(token).GetNode(ctx, uid)
@@ -98,8 +75,8 @@ func (bsc *BootServiceClient) GetNode(token string, outFormat format.DataFormat,
 // ListNodes is a wrapper that calls the boot-service client's GetNodes()
 // function, passing it context. The output is a []byte containing a list of
 // nodes formatted as outFormat.
-func (bsc *BootServiceClient) ListNodes(token string, outFormat format.DataFormat) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) ListNodes(ctx context.Context, token string, outFormat format.DataFormat) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	nodes, err := bsc.Client.WithBearerToken(token).GetNodes(ctx)
@@ -119,11 +96,11 @@ func (bsc *BootServiceClient) ListNodes(token string, outFormat format.DataForma
 // function. It accepts data that represents a patch formatted as patchFormat
 // and sends it as JSON to the boot-service via a PATCH request for the node
 // identified by uid.
-func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.Node, error) {
+func (bsc *BootServiceClient) PatchNode(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.Node, error) {
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	outData, err := format.MarshalData(data, format.DataFormatJson)
@@ -147,8 +124,8 @@ func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMe
 // SetNode is a wrapper that calls the boot-service client's UpdateNode()
 // function, passing it context. The output is a pointer to the node
 // details that got updated, along with an error if one occurred.
-func (bsc *BootServiceClient) SetNode(token string, uid string, node boot_service_client.UpdateNodeRequest) (*api.Node, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) SetNode(ctx context.Context, token string, uid string, node boot_service_client.UpdateNodeRequest) (*api.Node, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateNode(ctx, uid, node)
@@ -161,31 +138,20 @@ func (bsc *BootServiceClient) SetNode(token string, uid string, node boot_servic
 
 // AddNodeSpecs is like AddNodes but calls the boot-service client's simple
 // CreateNodeSimple() function, which only sends the resource name and spec.
-func (bsc *BootServiceClient) AddNodeSpecs(token string, nodes []NodeSpec) (nodesAdded []*api.Node, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, node := range nodes {
-		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-
-		item, err := bsc.Client.WithBearerToken(token).CreateNodeSimple(ctx, node.Name, node.NodeSpec)
-		cancel()
+func (bsc *BootServiceClient) AddNodeSpecs(ctx context.Context, token string, nodes []NodeSpec) client.BatchResult[*api.Node] {
+	return runBatch(ctx, bsc.Timeout, nodes, func(requestCtx context.Context, node NodeSpec) (*api.Node, error) {
+		item, err := bsc.Client.WithBearerToken(token).CreateNodeSimple(requestCtx, node.Name, node.NodeSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add node %q (%+v): %w", node.Name, node.NodeSpec, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			nodesAdded = append(nodesAdded, item)
-		} else {
-			newErr := fmt.Errorf("node creation did not err, but was not created for: %+v", node)
-			errors = append(errors, newErr)
+			return nil, fmt.Errorf("failed to add node %q (%+v): %w", node.Name, node.NodeSpec, err)
 		}
-	}
-
-	return
+		return item, nil
+	})
 }
 
 // SetNodeSpec is like SetNode but calls the boot-service client's simple
 // UpdateNodeSimple() function, which only sends the resource spec.
-func (bsc *BootServiceClient) SetNodeSpec(token string, uid string, spec api.NodeSpec) (*api.Node, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) SetNodeSpec(ctx context.Context, token string, uid string, spec api.NodeSpec) (*api.Node, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateNodeSimple(ctx, uid, spec)

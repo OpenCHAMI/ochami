@@ -100,7 +100,7 @@ See ochami-boot(1) for more details.`,
 				}
 			}
 
-			cfgPatched, err := bootServiceClient.PatchBootConfig(cli.Token, patchMethod, args[0], patchData)
+			cfgPatched, err := bootServiceClient.PatchBootConfig(cmd.Context(), cli.Token, patchMethod, args[0], patchData)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to patch boot configuration: %w", err)
 			}

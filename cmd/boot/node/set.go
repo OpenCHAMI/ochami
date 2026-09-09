@@ -102,7 +102,7 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off request
-				nodeSet, reqErr = bootServiceClient.SetNode(cli.Token, args[0], node)
+				nodeSet, reqErr = bootServiceClient.SetNode(cmd.Context(), cli.Token, args[0], node)
 			} else {
 				// Use simple API (spec)
 
@@ -119,7 +119,7 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off request
-				nodeSet, reqErr = bootServiceClient.SetNodeSpec(cli.Token, args[0], spec)
+				nodeSet, reqErr = bootServiceClient.SetNodeSpec(cmd.Context(), cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to set node: %w", reqErr)

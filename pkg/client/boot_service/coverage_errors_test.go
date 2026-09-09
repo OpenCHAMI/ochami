@@ -9,6 +9,7 @@ package boot_service
 // error status from the mock server.
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -34,68 +35,59 @@ func errClient(t *testing.T) (*BootServiceClient, *httptest.Server) {
 	return c, srv
 }
 
+// TestBootAddHelpersPerItemError verifies create failures are represented as item errors.
 func TestBootAddHelpersPerItemError(t *testing.T) {
 	c, srv := errClient(t)
 	defer srv.Close()
 
-	if _, errs, err := c.AddBMCs("", []boot_service_client.CreateBMCRequest{{}}); err != nil {
-		t.Fatalf("AddBMCs: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.AddBMCs(context.Background(), "", []boot_service_client.CreateBMCRequest{{}}); !results.HasErrors() {
 		t.Error("AddBMCs: expected a per-item error")
 	}
-	if _, errs, err := c.AddNodes("", []boot_service_client.CreateNodeRequest{{}}); err != nil {
-		t.Fatalf("AddNodes: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.AddNodes(context.Background(), "", []boot_service_client.CreateNodeRequest{{}}); !results.HasErrors() {
 		t.Error("AddNodes: expected a per-item error")
 	}
-	if _, errs, err := c.AddBootConfigs("", []boot_service_client.CreateBootConfigurationRequest{{}}); err != nil {
-		t.Fatalf("AddBootConfigs: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.AddBootConfigs(context.Background(), "", []boot_service_client.CreateBootConfigurationRequest{{}}); !results.HasErrors() {
 		t.Error("AddBootConfigs: expected a per-item error")
 	}
 }
 
+// TestBootDeleteHelpersPerItemError verifies delete failures are represented as item errors.
 func TestBootDeleteHelpersPerItemError(t *testing.T) {
 	c, srv := errClient(t)
 	defer srv.Close()
 
-	if _, errs, err := c.DeleteBMCs("", []string{"uid"}); err != nil {
-		t.Fatalf("DeleteBMCs: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.DeleteBMCs(context.Background(), "", []string{"uid"}); !results.HasErrors() {
 		t.Error("DeleteBMCs: expected a per-item error")
 	}
-	if _, errs, err := c.DeleteNodes("", []string{"uid"}); err != nil {
-		t.Fatalf("DeleteNodes: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.DeleteNodes(context.Background(), "", []string{"uid"}); !results.HasErrors() {
 		t.Error("DeleteNodes: expected a per-item error")
 	}
-	if _, errs, err := c.DeleteBootConfigs("", []string{"uid"}); err != nil {
-		t.Fatalf("DeleteBootConfigs: unexpected common error: %v", err)
-	} else if len(errs) == 0 {
+	if results := c.DeleteBootConfigs(context.Background(), "", []string{"uid"}); !results.HasErrors() {
 		t.Error("DeleteBootConfigs: expected a per-item error")
 	}
 }
 
+// TestBootGetListHelpersErrorArm verifies read wrappers propagate unsuccessful responses.
 func TestBootGetListHelpersErrorArm(t *testing.T) {
 	c, srv := errClient(t)
 	defer srv.Close()
 
-	if _, err := c.GetBMC("", format.DataFormatJson, "uid"); err == nil {
+	if _, err := c.GetBMC(context.Background(), "", format.DataFormatJson, "uid"); err == nil {
 		t.Error("GetBMC: expected an error")
 	}
-	if _, err := c.GetNode("", format.DataFormatJson, "uid"); err == nil {
+	if _, err := c.GetNode(context.Background(), "", format.DataFormatJson, "uid"); err == nil {
 		t.Error("GetNode: expected an error")
 	}
-	if _, err := c.GetBootConfig("", format.DataFormatJson, "uid"); err == nil {
+	if _, err := c.GetBootConfig(context.Background(), "", format.DataFormatJson, "uid"); err == nil {
 		t.Error("GetBootConfig: expected an error")
 	}
-	if _, err := c.ListBMCs("", format.DataFormatJson); err == nil {
+	if _, err := c.ListBMCs(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListBMCs: expected an error")
 	}
-	if _, err := c.ListNodes("", format.DataFormatJson); err == nil {
+	if _, err := c.ListNodes(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListNodes: expected an error")
 	}
-	if _, err := c.ListBootConfigs("", format.DataFormatJson); err == nil {
+	if _, err := c.ListBootConfigs(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListBootConfigs: expected an error")
 	}
 }

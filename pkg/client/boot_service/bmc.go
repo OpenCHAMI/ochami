@@ -27,59 +27,36 @@ type BMCSpec struct {
 }
 
 // AddBMCs is a wrapper that calls the boot-service client's CreateBMC()
-// function, passing it context. It returns a slice of successfully created
-// BMCs, a slice of per-request errors, and an error that is populated if an
-// error occurred in the function itself. A nil resource returned without an
-// error is reported as a per-request error.
-func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.CreateBMCRequest) (bmcsAdded []*api.BMC, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, bmc := range bmcs {
-		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-
-		item, err := bsc.Client.WithBearerToken(token).CreateBMC(ctx, bmc)
-		cancel()
+// function, passing it context. It returns one result per request in input
+// order.
+func (bsc *BootServiceClient) AddBMCs(ctx context.Context, token string, bmcs []boot_service_client.CreateBMCRequest) client.BatchResult[*api.BMC] {
+	return runBatch(ctx, bsc.Timeout, bmcs, func(requestCtx context.Context, bmc boot_service_client.CreateBMCRequest) (*api.BMC, error) {
+		item, err := bsc.Client.WithBearerToken(token).CreateBMC(requestCtx, bmc)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add bmc %+v: %w", bmc, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			bmcsAdded = append(bmcsAdded, item)
-		} else {
-			newErr := fmt.Errorf("BMC creation did not err, but was not created for: %+v", bmc)
-			errors = append(errors, newErr)
+			return nil, fmt.Errorf("failed to add bmc %+v: %w", bmc, err)
 		}
-	}
-
-	return
+		return item, nil
+	})
 }
 
 // DeleteBMCs is a wrapper that calls the boot-service client's DeleteBMC()
-// function, passing it context and a list of bmc UIDs to delete. The output is
-// a slice of BMC UIDs that got deleted, a slice of errors containing any
-// errors deleting BMCs, and an error that is populated if an error in the
-// function itself occurred.
-func (bsc *BootServiceClient) DeleteBMCs(token string, uids []string) (bmcsDeleted []string, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, bmcUid := range uids {
-		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-
-		err := bsc.Client.WithBearerToken(token).DeleteBMC(ctx, bmcUid)
-		cancel()
+// function, passing it context and a list of BMC UIDs to delete. It returns one
+// result per UID in input order.
+func (bsc *BootServiceClient) DeleteBMCs(ctx context.Context, token string, uids []string) client.BatchResult[string] {
+	return runBatch(ctx, bsc.Timeout, uids, func(requestCtx context.Context, bmcUid string) (string, error) {
+		err := bsc.Client.WithBearerToken(token).DeleteBMC(requestCtx, bmcUid)
 		if err != nil {
-			newErr := fmt.Errorf("failed to delete BMC %s: %w", bmcUid, err)
-			errors = append(errors, newErr)
-		} else {
-			bmcsDeleted = append(bmcsDeleted, bmcUid)
+			return "", fmt.Errorf("failed to delete BMC %s: %w", bmcUid, err)
 		}
-	}
-
-	return
+		return bmcUid, nil
+	})
 }
 
 // GetBMC is a wrapper that calls the boot-service client's GetBMC() function,
 // passing it context and a UID. The output is a []byte containing the entity's
 // BMC information, formatted as outFormat.
-func (bsc *BootServiceClient) GetBMC(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) GetBMC(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	bcfg, err := bsc.Client.WithBearerToken(token).GetBMC(ctx, uid)
@@ -98,8 +75,8 @@ func (bsc *BootServiceClient) GetBMC(token string, outFormat format.DataFormat, 
 // ListBMCs is a wrapper that calls the boot-service client's GetBMCs()
 // function, passing it context. The output is a []byte containing a list of
 // BMC formatted as outFormat.
-func (bsc *BootServiceClient) ListBMCs(token string, outFormat format.DataFormat) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) ListBMCs(ctx context.Context, token string, outFormat format.DataFormat) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	nodes, err := bsc.Client.WithBearerToken(token).GetBMCs(ctx)
@@ -119,8 +96,8 @@ func (bsc *BootServiceClient) ListBMCs(token string, outFormat format.DataFormat
 // function. It accepts data that represents a patch formatted as patchFormat
 // and sends it as JSON to the boot-service via a PATCH request for the BMC
 // identified by uid.
-func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.BMC, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) PatchBMC(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.BMC, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	outData, err := format.MarshalData(data, format.DataFormatJson)
@@ -144,8 +121,8 @@ func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMet
 // SetBMC is a wrapper that calls the boot-service client's UpdateBMC()
 // function, passing it context. The output is a pointer to the BMC details that
 // got updated, along with an error if one occurred.
-func (bsc *BootServiceClient) SetBMC(token string, uid string, bmc boot_service_client.UpdateBMCRequest) (*api.BMC, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) SetBMC(ctx context.Context, token string, uid string, bmc boot_service_client.UpdateBMCRequest) (*api.BMC, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateBMC(ctx, uid, bmc)
@@ -158,31 +135,20 @@ func (bsc *BootServiceClient) SetBMC(token string, uid string, bmc boot_service_
 
 // AddBMCSpecs is like AddBMCs but calls the boot-service client's simple
 // CreateBMCSimple() function, which only sends the resource name and spec.
-func (bsc *BootServiceClient) AddBMCSpecs(token string, bmcs []BMCSpec) (bmcsAdded []*api.BMC, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, bmc := range bmcs {
-		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-
-		item, err := bsc.Client.WithBearerToken(token).CreateBMCSimple(ctx, bmc.Name, bmc.BMCSpec)
-		cancel()
+func (bsc *BootServiceClient) AddBMCSpecs(ctx context.Context, token string, bmcs []BMCSpec) client.BatchResult[*api.BMC] {
+	return runBatch(ctx, bsc.Timeout, bmcs, func(requestCtx context.Context, bmc BMCSpec) (*api.BMC, error) {
+		item, err := bsc.Client.WithBearerToken(token).CreateBMCSimple(requestCtx, bmc.Name, bmc.BMCSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add bmc %q (%+v): %w", bmc.Name, bmc.BMCSpec, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			bmcsAdded = append(bmcsAdded, item)
-		} else {
-			newErr := fmt.Errorf("BMC creation did not err, but was not created for: %+v", bmc)
-			errors = append(errors, newErr)
+			return nil, fmt.Errorf("failed to add bmc %q (%+v): %w", bmc.Name, bmc.BMCSpec, err)
 		}
-	}
-
-	return
+		return item, nil
+	})
 }
 
 // SetBMCSpec is like SetBMC but calls the boot-service client's simple
 // UpdateBMCSimple() function, which only sends the resource spec.
-func (bsc *BootServiceClient) SetBMCSpec(token string, uid string, spec api.BMCSpec) (*api.BMC, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) SetBMCSpec(ctx context.Context, token string, uid string, spec api.BMCSpec) (*api.BMC, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateBMCSimple(ctx, uid, spec)

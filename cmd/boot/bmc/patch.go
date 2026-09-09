@@ -99,7 +99,7 @@ See ochami-boot(1) for more details.`,
 				}
 			}
 
-			bmcPatched, err := bootServiceClient.PatchBMC(cli.Token, patchMethod, args[0], patchData)
+			bmcPatched, err := bootServiceClient.PatchBMC(cmd.Context(), cli.Token, patchMethod, args[0], patchData)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to patch BMC: %w", err)
 			}
