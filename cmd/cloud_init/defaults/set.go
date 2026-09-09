@@ -81,7 +81,7 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Send data
-			if _, err := cloudInitClient.PostDefaults(ciDflts, cli.Token); err != nil {
+			if _, err := cloudInitClient.PostDefaults(cmd.Context(), ciDflts, cli.Token); err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to set defaults: %w", err)
 			}
 

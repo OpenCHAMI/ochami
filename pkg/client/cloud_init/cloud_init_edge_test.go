@@ -9,6 +9,7 @@ package cloud_init
 // failures.
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"testing"
@@ -18,6 +19,7 @@ import (
 	"github.com/openchami/ochami/pkg/client"
 )
 
+// TestPutGroupsEdgeCases verifies validation and request failures remain aligned with group inputs.
 func TestPutGroupsEdgeCases(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -37,24 +39,22 @@ func TestPutGroupsEdgeCases(t *testing.T) {
 			})
 			defer srv.Close()
 
-			_, errs, err := cic.PutGroups(tc.groups, "tok")
-			if err != nil {
-				t.Fatalf("PutGroups: control-flow error = %v", err)
-			}
-			if len(errs) != 1 || (errs[0] != nil) != tc.wantErr {
-				t.Errorf("per-item errors = %v, wantErr %v", errs, tc.wantErr)
+			results := cic.PutGroups(context.Background(), tc.groups, "tok")
+			if len(results) != 1 || (results[0].Err != nil) != tc.wantErr {
+				t.Errorf("results = %v, wantErr %v", results, tc.wantErr)
 			}
 		})
 	}
 }
 
+// TestPutInstanceInfoEdgeCases verifies validation and request failures for instance updates.
 func TestPutInstanceInfoEdgeCases(t *testing.T) {
 	t.Run("empty list", func(t *testing.T) {
 		cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
 		defer srv.Close()
-		if _, _, err := cic.PutInstanceInfo(nil, "tok"); err == nil {
+		if _, err := cic.PutInstanceInfo(context.Background(), nil, "tok"); err == nil {
 			t.Fatal("expected control-flow error for empty list, got nil")
 		}
 	})
@@ -77,34 +77,35 @@ func TestPutInstanceInfoEdgeCases(t *testing.T) {
 			})
 			defer srv.Close()
 
-			_, errs, err := cic.PutInstanceInfo(tc.infos, "tok")
+			results, err := cic.PutInstanceInfo(context.Background(), tc.infos, "tok")
 			if err != nil {
 				t.Fatalf("PutInstanceInfo: control-flow error = %v", err)
 			}
-			if len(errs) != 1 || (errs[0] != nil) != tc.wantErr {
-				t.Errorf("per-item errors = %v, wantErr %v", errs, tc.wantErr)
+			if len(results) != 1 || (results[0].Err != nil) != tc.wantErr {
+				t.Errorf("results = %v, wantErr %v", results, tc.wantErr)
 			}
 		})
 	}
 }
 
+// TestCloudInitIterativeMixedResults verifies mixed successes and failures preserve batch ordering.
 func TestCloudInitIterativeMixedResults(t *testing.T) {
 	cases := []struct {
 		name       string
 		wantMethod string
-		call       func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error)
+		call       func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error)
 	}{
-		{"PostGroups", http.MethodPost, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.PostGroups([]cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		{"PostGroups", http.MethodPost, func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PostGroups(context.Background(), []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok"), nil
 		}},
-		{"PutGroups", http.MethodPut, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.PutGroups([]cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		{"PutGroups", http.MethodPut, func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PutGroups(context.Background(), []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok"), nil
 		}},
-		{"PutInstanceInfo", http.MethodPut, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.PutInstanceInfo([]cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}, {ID: "x0c0s0b0n1"}}, "tok")
+		{"PutInstanceInfo", http.MethodPut, func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PutInstanceInfo(context.Background(), []cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}, {ID: "x0c0s0b0n1"}}, "tok")
 		}},
-		{"DeleteGroups", http.MethodDelete, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.DeleteGroups("tok", "compute", "storage")
+		{"DeleteGroups", http.MethodDelete, func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.DeleteGroups(context.Background(), "tok", "compute", "storage"), nil
 		}},
 	}
 	for _, tc := range cases {
@@ -126,19 +127,43 @@ func TestCloudInitIterativeMixedResults(t *testing.T) {
 			})
 			defer srv.Close()
 
-			henvs, errs, err := tc.call(cic)
+			results, err := tc.call(cic)
 			if err != nil {
 				t.Fatalf("%s: control-flow error = %v", tc.name, err)
 			}
-			if len(henvs) != 2 || len(errs) != 2 {
-				t.Fatalf("%s: result lengths = (%d, %d), want (2, 2)", tc.name, len(henvs), len(errs))
+			if len(results) != 2 {
+				t.Fatalf("%s: result length = %d, want 2", tc.name, len(results))
 			}
-			if errs[0] != nil || henvs[0].StatusCode != http.StatusOK {
-				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, henvs[0].StatusCode, errs[0])
+			if results[0].Err != nil || results[0].Value.StatusCode != http.StatusOK {
+				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, results[0].Value.StatusCode, results[0].Err)
 			}
-			if !errors.Is(errs[1], client.UnsuccessfulHTTPError) || henvs[1].StatusCode != http.StatusInternalServerError {
-				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, henvs[1].StatusCode, errs[1])
+			if !errors.Is(results[1].Err, client.UnsuccessfulHTTPError) || results[1].Value.StatusCode != http.StatusInternalServerError {
+				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, results[1].Value.StatusCode, results[1].Err)
 			}
 		})
+	}
+}
+
+// TestCloudInitBatchCancellationPreservesAlignment verifies cancellation produces one error per input.
+func TestCloudInitBatchCancellationPreservesAlignment(t *testing.T) {
+	requests := 0
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+	})
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	results := cic.PostGroups(ctx, []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+	if len(results) != 2 {
+		t.Fatalf("result length = %d, want 2", len(results))
+	}
+	for i, result := range results {
+		if !errors.Is(result.Err, context.Canceled) {
+			t.Errorf("result[%d].Err = %v, want context.Canceled", i, result.Err)
+		}
+	}
+	if requests != 0 {
+		t.Errorf("requests = %d, want 0", requests)
 	}
 }

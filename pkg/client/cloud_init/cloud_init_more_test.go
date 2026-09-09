@@ -10,6 +10,7 @@ package cloud_init
 // complementing cloud_init_test.go.
 
 import (
+	"context"
 	"encoding/base64"
 	"net/http"
 	"strings"
@@ -26,7 +27,7 @@ func TestPostDefaults(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	if _, err := cic.PostDefaults(cistore.ClusterDefaults{ClusterName: "demo"}, "tok"); err != nil {
+	if _, err := cic.PostDefaults(context.Background(), cistore.ClusterDefaults{ClusterName: "demo"}, "tok"); err != nil {
 		t.Fatalf("PostDefaults: %v", err)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/admin/cluster-defaults" {
@@ -43,12 +44,9 @@ func TestPostGroups(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 	})
 	defer srv.Close()
-	_, errs, err := cic.PostGroups([]cistore.GroupData{{Name: "compute"}}, "tok")
-	if err != nil {
-		t.Fatalf("PostGroups: %v", err)
-	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	results := cic.PostGroups(context.Background(), []cistore.GroupData{{Name: "compute"}}, "tok")
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single success", results)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/admin/groups" {
 		t.Errorf("request = %s %s, want POST /admin/groups", gotMethod, gotPath)
@@ -63,12 +61,9 @@ func TestPutGroups(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	_, errs, err := cic.PutGroups([]cistore.GroupData{{Name: "compute"}}, "tok")
-	if err != nil {
-		t.Fatalf("PutGroups: %v", err)
-	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	results := cic.PutGroups(context.Background(), []cistore.GroupData{{Name: "compute"}}, "tok")
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single success", results)
 	}
 	if gotMethod != http.MethodPut || !strings.HasPrefix(gotPath, "/admin/groups/compute") {
 		t.Errorf("request = %s %s, want PUT /admin/groups/compute", gotMethod, gotPath)
@@ -84,12 +79,12 @@ func TestPutInstanceInfo(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	_, errs, err := cic.PutInstanceInfo([]cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}}, "tok")
+	results, err := cic.PutInstanceInfo(context.Background(), []cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}}, "tok")
 	if err != nil {
 		t.Fatalf("PutInstanceInfo: %v", err)
 	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single success", results)
 	}
 	if gotMethod != http.MethodPut || !strings.HasPrefix(gotPath, "/admin/instance-info/x0c0s0b0n0") {
 		t.Errorf("request = %s %s, want PUT /admin/instance-info/x0c0s0b0n0", gotMethod, gotPath)
@@ -107,12 +102,9 @@ func TestDeleteGroups(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	_, errs, err := cic.DeleteGroups("tok", "compute", "storage")
-	if err != nil {
-		t.Fatalf("DeleteGroups: %v", err)
-	}
-	if len(errs) != 2 {
-		t.Fatalf("per-item errors length = %d, want 2", len(errs))
+	results := cic.DeleteGroups(context.Background(), "tok", "compute", "storage")
+	if len(results) != 2 {
+		t.Fatalf("results length = %d, want 2", len(results))
 	}
 	want := []string{"/admin/groups/compute", "/admin/groups/storage"}
 	if len(paths) != 2 || paths[0] != want[0] || paths[1] != want[1] {

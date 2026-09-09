@@ -35,7 +35,7 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			if !cmd.Flag("api").Changed {
-				if _, err := cloudInitClient.GetVersion(); err != nil {
+				if _, err := cloudInitClient.GetVersion(cmd.Context()); err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
 						if !cmd.Flag("quiet").Changed {
 							fmt.Fprintln(cli.Ios.Out(), "cloud-init is running, but not normally")
@@ -56,7 +56,7 @@ See ochami-cloud-init(1) for more details.`,
 			var respArr []client.HTTPEnvelope
 			errOccurred := false
 			if cmd.Flag("api").Changed {
-				if henv, err := cloudInitClient.GetAPI(); err != nil {
+				if henv, err := cloudInitClient.GetAPI(cmd.Context()); err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(err).Msg("cloud-init API spec request yielded unsuccessful HTTP response")
 					} else {

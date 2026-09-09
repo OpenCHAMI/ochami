@@ -10,6 +10,7 @@ package cloud_init
 // error slices and path construction, and UnsuccessfulHTTPError propagation.
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -36,9 +37,9 @@ func TestSimpleGetters(t *testing.T) {
 		call     func(cic *CloudInitClient) error
 		wantPath string
 	}{
-		{"version", func(cic *CloudInitClient) error { _, e := cic.GetVersion(); return e }, "/version"},
-		{"api", func(cic *CloudInitClient) error { _, e := cic.GetAPI(); return e }, "/openapi.json"},
-		{"defaults", func(cic *CloudInitClient) error { _, e := cic.GetDefaults("tok"); return e }, "/admin/cluster-defaults"},
+		{"version", func(cic *CloudInitClient) error { _, e := cic.GetVersion(context.Background()); return e }, "/version"},
+		{"api", func(cic *CloudInitClient) error { _, e := cic.GetAPI(context.Background()); return e }, "/openapi.json"},
+		{"defaults", func(cic *CloudInitClient) error { _, e := cic.GetDefaults(context.Background(), "tok"); return e }, "/admin/cluster-defaults"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -69,15 +70,12 @@ func TestGetGroupsAll(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, errs, err := cic.GetGroups("tok")
-	if err != nil {
-		t.Fatalf("GetGroups func error: %v", err)
-	}
+	results := cic.GetGroups(context.Background(), "tok")
 	if gotPath != "/admin/groups" {
 		t.Errorf("path = %q, want /admin/groups", gotPath)
 	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single success", results)
 	}
 }
 
@@ -91,12 +89,9 @@ func TestGetGroupsByID(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, errs, err := cic.GetGroups("tok", "compute", "storage")
-	if err != nil {
-		t.Fatalf("GetGroups func error: %v", err)
-	}
-	if len(errs) != 2 {
-		t.Fatalf("per-item errors length = %d, want 2", len(errs))
+	results := cic.GetGroups(context.Background(), "tok", "compute", "storage")
+	if len(results) != 2 {
+		t.Fatalf("results length = %d, want 2", len(results))
 	}
 	want := []string{"/admin/groups/compute", "/admin/groups/storage"}
 	if len(paths) != 2 || paths[0] != want[0] || paths[1] != want[1] {
@@ -114,12 +109,12 @@ func TestGetNodeData(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, errs, err := cic.GetNodeData(CloudInitUserData, "tok", "x0c0s0b0n0")
+	results, err := cic.GetNodeData(context.Background(), CloudInitUserData, "tok", "x0c0s0b0n0")
 	if err != nil {
 		t.Fatalf("GetNodeData func error: %v", err)
 	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single success", results)
 	}
 	if gotPath != "/admin/impersonation/x0c0s0b0n0/user-data" {
 		t.Errorf("path = %q, want /admin/impersonation/x0c0s0b0n0/user-data", gotPath)
@@ -133,7 +128,7 @@ func TestGetNodeDataRequiresID(t *testing.T) {
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) { requestMade = true })
 	defer srv.Close()
 
-	if _, _, err := cic.GetNodeData(CloudInitMetaData, "tok"); err == nil {
+	if _, err := cic.GetNodeData(context.Background(), CloudInitMetaData, "tok"); err == nil {
 		t.Fatal("expected an error when no IDs are supplied, got nil")
 	}
 	if requestMade {
@@ -149,7 +144,7 @@ func TestGetDefaultsUnsuccessfulHTTP(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, err := cic.GetDefaults("tok")
+	_, err := cic.GetDefaults(context.Background(), "tok")
 	if err == nil {
 		t.Fatal("expected an error, got nil")
 	}
