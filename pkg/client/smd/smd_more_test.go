@@ -10,6 +10,7 @@ package smd
 // path against an httptest.Server.
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -37,7 +38,7 @@ func TestGetStatus(t *testing.T) {
 				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
-			if _, err := sc.GetStatus(tc.component); err != nil {
+			if _, err := sc.GetStatus(context.Background(), tc.component); err != nil {
 				t.Fatalf("GetStatus(%q): %v", tc.component, err)
 			}
 			if gotPath != tc.wantPath {
@@ -57,7 +58,7 @@ func TestGetEthernetInterfaceByID(t *testing.T) {
 			_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 		})
 		defer srv.Close()
-		if _, err := sc.GetEthernetInterfaceByID("deadbeef", "tok", false); err != nil {
+		if _, err := sc.GetEthernetInterfaceByID(context.Background(), "deadbeef", "tok", false); err != nil {
 			t.Fatalf("GetEthernetInterfaceByID: %v", err)
 		}
 		if gotPath != "/Inventory/EthernetInterfaces/deadbeef" {
@@ -71,7 +72,7 @@ func TestGetEthernetInterfaceByID(t *testing.T) {
 			_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 		})
 		defer srv.Close()
-		if _, err := sc.GetEthernetInterfaceByID("deadbeef", "tok", true); err != nil {
+		if _, err := sc.GetEthernetInterfaceByID(context.Background(), "deadbeef", "tok", true); err != nil {
 			t.Fatalf("GetEthernetInterfaceByID: %v", err)
 		}
 		if gotPath != "/Inventory/EthernetInterfaces/deadbeef/IPAddresses" {
@@ -88,7 +89,7 @@ func TestGetGroupMembership(t *testing.T) {
 		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
-	if _, err := sc.GetGroupMembership("id=x0", "tok"); err != nil {
+	if _, err := sc.GetGroupMembership(context.Background(), "id=x0", "tok"); err != nil {
 		t.Fatalf("GetGroupMembership: %v", err)
 	}
 	if gotPath != "/memberships" {
@@ -104,12 +105,9 @@ func TestPutComponents(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	_, errs, err := sc.PutComponents(ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}}}, "tok")
-	if err != nil {
-		t.Fatalf("PutComponents: %v", err)
-	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	results := sc.PutComponents(context.Background(), ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}}}, "tok")
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single success", results)
 	}
 	if gotMethod != http.MethodPut || !strings.HasPrefix(gotPath, "/State/Components") {
 		t.Errorf("request = %s %s, want PUT under /State/Components", gotMethod, gotPath)
@@ -126,12 +124,9 @@ func TestPostEthernetInterfaces(t *testing.T) {
 	})
 	defer srv.Close()
 	eis := []EthernetInterface{{ComponentID: "x0c0s0b0n0", MACAddress: "de:ad:be:ef:00:00"}}
-	_, errs, err := sc.PostEthernetInterfaces(eis, "tok")
-	if err != nil {
-		t.Fatalf("PostEthernetInterfaces: %v", err)
-	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	results := sc.PostEthernetInterfaces(context.Background(), eis, "tok")
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single success", results)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/Inventory/EthernetInterfaces" {
 		t.Errorf("request = %s %s, want POST /Inventory/EthernetInterfaces", gotMethod, gotPath)
@@ -147,12 +142,12 @@ func TestPostGroupMembers(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 	})
 	defer srv.Close()
-	_, errs, err := sc.PostGroupMembers("tok", "compute", "x0c0s0b0n0")
+	results, err := sc.PostGroupMembers(context.Background(), "tok", "compute", "x0c0s0b0n0")
 	if err != nil {
 		t.Fatalf("PostGroupMembers: %v", err)
 	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single success", results)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/groups/compute/members" {
 		t.Errorf("request = %s %s, want POST /groups/compute/members", gotMethod, gotPath)
@@ -168,7 +163,7 @@ func TestPutGroupMembers(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	if _, err := sc.PutGroupMembers("tok", "compute", "x0c0s0b0n0"); err != nil {
+	if _, err := sc.PutGroupMembers(context.Background(), "tok", "compute", "x0c0s0b0n0"); err != nil {
 		t.Fatalf("PutGroupMembers: %v", err)
 	}
 	if gotMethod != http.MethodPut || gotPath != "/groups/compute/members" {
@@ -184,9 +179,12 @@ func TestBulkDeletes(t *testing.T) {
 		call     func(sc *SMDClient) error
 		wantPath string
 	}{
-		{"components", func(sc *SMDClient) error { _, e := sc.DeleteComponentsAll("tok"); return e }, "/State/Components"},
-		{"rfe", func(sc *SMDClient) error { _, e := sc.DeleteRedfishEndpointsAll("tok"); return e }, "/Inventory/RedfishEndpoints"},
-		{"iface", func(sc *SMDClient) error { _, e := sc.DeleteEthernetInterfacesAll("tok"); return e }, "/Inventory/EthernetInterfaces"},
+		{"components", func(sc *SMDClient) error { _, e := sc.DeleteComponentsAll(context.Background(), "tok"); return e }, "/State/Components"},
+		{"rfe", func(sc *SMDClient) error { _, e := sc.DeleteRedfishEndpointsAll(context.Background(), "tok"); return e }, "/Inventory/RedfishEndpoints"},
+		{"iface", func(sc *SMDClient) error {
+			_, e := sc.DeleteEthernetInterfacesAll(context.Background(), "tok")
+			return e
+		}, "/Inventory/EthernetInterfaces"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -211,25 +209,25 @@ func TestBulkDeletes(t *testing.T) {
 func TestIterativeDeletesPreserveMixedResultAlignment(t *testing.T) {
 	cases := []struct {
 		name string
-		call func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error)
+		call func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error)
 	}{
-		{"components", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.DeleteComponents("tok", "x0c0s0b0n0", "x0c0s0b0n1")
+		{"components", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.DeleteComponents(context.Background(), "tok", "x0c0s0b0n0", "x0c0s0b0n1"), nil
 		}},
-		{"rfe", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.DeleteRedfishEndpoints("tok", "x0c0s0b0", "x0c0s0b1")
+		{"rfe", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.DeleteRedfishEndpoints(context.Background(), "tok", "x0c0s0b0", "x0c0s0b1"), nil
 		}},
-		{"iface", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.DeleteEthernetInterfaces("tok", "de:ad:be:ef:00:01", "de:ad:be:ef:00:02")
+		{"iface", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.DeleteEthernetInterfaces(context.Background(), "tok", "de:ad:be:ef:00:01", "de:ad:be:ef:00:02"), nil
 		}},
-		{"compendpoints", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.DeleteComponentEndpoints("tok", "x0c0s0b0n0", "x0c0s0b0n1")
+		{"compendpoints", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.DeleteComponentEndpoints(context.Background(), "tok", "x0c0s0b0n0", "x0c0s0b0n1"), nil
 		}},
-		{"groups", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.DeleteGroups("tok", "compute", "storage")
+		{"groups", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.DeleteGroups(context.Background(), "tok", "compute", "storage"), nil
 		}},
-		{"groupmembers", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.DeleteGroupMembers("tok", "compute", "x0c0s0b0n0", "x0c0s0b0n1")
+		{"groupmembers", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.DeleteGroupMembers(context.Background(), "tok", "compute", "x0c0s0b0n0", "x0c0s0b0n1")
 		}},
 	}
 	for _, tc := range cases {
@@ -245,21 +243,18 @@ func TestIterativeDeletesPreserveMixedResultAlignment(t *testing.T) {
 			})
 			defer srv.Close()
 
-			henvs, errs, err := tc.call(sc)
+			results, err := tc.call(sc)
 			if err != nil {
 				t.Fatalf("%s: control-flow error = %v, want nil", tc.name, err)
 			}
-			if len(errs) != 2 {
-				t.Fatalf("%s: per-item errors length = %d, want 2", tc.name, len(errs))
+			if len(results) != 2 {
+				t.Fatalf("%s: results length = %d, want 2", tc.name, len(results))
 			}
-			if len(henvs) != 2 {
-				t.Fatalf("%s: envelopes length = %d, want 2", tc.name, len(henvs))
+			if results[0].Err != nil || results[0].Value.StatusCode != http.StatusOK {
+				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, results[0].Value.StatusCode, results[0].Err)
 			}
-			if errs[0] != nil || henvs[0].StatusCode != http.StatusOK {
-				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, henvs[0].StatusCode, errs[0])
-			}
-			if !errors.Is(errs[1], client.UnsuccessfulHTTPError) || henvs[1].StatusCode != http.StatusInternalServerError {
-				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, henvs[1].StatusCode, errs[1])
+			if !errors.Is(results[1].Err, client.UnsuccessfulHTTPError) || results[1].Value.StatusCode != http.StatusInternalServerError {
+				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, results[1].Value.StatusCode, results[1].Err)
 			}
 		})
 	}
@@ -276,12 +271,12 @@ func TestDeleteGroupMembersIterative(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	_, errs, err := sc.DeleteGroupMembers("tok", "compute", "x0c0s0b0n0", "x0c0s0b0n1")
+	results, err := sc.DeleteGroupMembers(context.Background(), "tok", "compute", "x0c0s0b0n0", "x0c0s0b0n1")
 	if err != nil {
 		t.Fatalf("DeleteGroupMembers: %v", err)
 	}
-	if len(errs) != 2 {
-		t.Fatalf("per-item errors length = %d, want 2", len(errs))
+	if len(results) != 2 {
+		t.Fatalf("results length = %d, want 2", len(results))
 	}
 	for _, p := range paths {
 		if !strings.HasPrefix(p, "/groups/compute/members") {

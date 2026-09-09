@@ -105,14 +105,11 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send off request
-			_, errs, err := smdClient.PostEthernetInterfaces(eis, cli.Token)
-			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add ethernet interface in SMD: %w", err)
-			}
+			results := smdClient.PostEthernetInterfaces(cmd.Context(), eis, cli.Token)
 			// Since smdClient.PostEthernetInterfaces does the addition iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, e := range errs {
+			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(e).Msg("SMD ethernet interface request yielded unsuccessful HTTP response")

@@ -9,6 +9,7 @@ package smd
 // complement the happy-path assertions in smd_test.go and smd_more_test.go.
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"testing"
@@ -18,36 +19,33 @@ import (
 	"github.com/openchami/ochami/pkg/client"
 )
 
+// TestPutComponentsBlankID verifies component updates reject missing identifiers.
 func TestPutComponentsBlankID(t *testing.T) {
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
 
-	_, errs, err := sc.PutComponents(ComponentSlice{Components: []Component{{ID: ""}}}, "tok")
-	if err != nil {
-		t.Fatalf("PutComponents: control-flow error = %v", err)
-	}
-	if len(errs) != 1 || errs[0] == nil {
-		t.Errorf("per-item errors = %v, want a single non-nil error for blank ID", errs)
+	results := sc.PutComponents(context.Background(), ComponentSlice{Components: []Component{{ID: ""}}}, "tok")
+	if len(results) != 1 || results[0].Err == nil {
+		t.Errorf("results = %v, want a single non-nil error for blank ID", results)
 	}
 }
 
+// TestPutComponentsHTTPError verifies component update HTTP failures are retained per item.
 func TestPutComponentsHTTPError(t *testing.T) {
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 	defer srv.Close()
 
-	_, errs, err := sc.PutComponents(ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}}}, "tok")
-	if err != nil {
-		t.Fatalf("PutComponents: control-flow error = %v", err)
-	}
-	if len(errs) != 1 || errs[0] == nil {
-		t.Errorf("per-item errors = %v, want a single non-nil error for HTTP failure", errs)
+	results := sc.PutComponents(context.Background(), ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}}}, "tok")
+	if len(results) != 1 || results[0].Err == nil {
+		t.Errorf("results = %v, want a single non-nil error for HTTP failure", results)
 	}
 }
 
+// TestPatchEthernetInterfacesEdgeCases verifies interface patch validation and HTTP error handling.
 func TestPatchEthernetInterfacesEdgeCases(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -83,29 +81,27 @@ func TestPatchEthernetInterfacesEdgeCases(t *testing.T) {
 			})
 			defer srv.Close()
 
-			_, errs, err := sc.PatchEthernetInterfaces(tc.eis, "tok")
-			if err != nil {
-				t.Fatalf("PatchEthernetInterfaces: control-flow error = %v", err)
-			}
-			if len(errs) != len(tc.wantErrIdx) {
-				t.Fatalf("per-item errors length = %d, want %d", len(errs), len(tc.wantErrIdx))
+			results := sc.PatchEthernetInterfaces(context.Background(), tc.eis, "tok")
+			if len(results) != len(tc.wantErrIdx) {
+				t.Fatalf("results length = %d, want %d", len(results), len(tc.wantErrIdx))
 			}
 			for i, wantErr := range tc.wantErrIdx {
-				if (errs[i] != nil) != wantErr {
-					t.Errorf("per-item error[%d] = %v, wantErr %v", i, errs[i], wantErr)
+				if (results[i].Err != nil) != wantErr {
+					t.Errorf("result[%d].Err = %v, wantErr %v", i, results[i].Err, wantErr)
 				}
 			}
 		})
 	}
 }
 
+// TestPatchComponentsNIDHTTPError verifies NID patch failures are propagated.
 func TestPatchComponentsNIDHTTPError(t *testing.T) {
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 	defer srv.Close()
 
-	_, err := sc.PatchComponentsNID(ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0", NID: 1}}}, "tok")
+	_, err := sc.PatchComponentsNID(context.Background(), ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0", NID: 1}}}, "tok")
 	if err == nil {
 		t.Fatal("PatchComponentsNID: expected error on HTTP failure, got nil")
 	}
@@ -118,37 +114,37 @@ func TestIterativeWritesPreserveMixedResultAlignment(t *testing.T) {
 	cases := []struct {
 		name       string
 		wantMethod string
-		call       func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error)
+		call       func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error)
 	}{
-		{"PostRedfishEndpoints", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostRedfishEndpoints(RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0c0s0b0"}, {ID: "x0c0s0b1"}}}, "tok")
+		{"PostRedfishEndpoints", http.MethodPost, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PostRedfishEndpoints(context.Background(), RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0c0s0b0"}, {ID: "x0c0s0b1"}}}, "tok"), nil
 		}},
-		{"PostRedfishEndpointsV2", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostRedfishEndpointsV2(RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}}, {RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b1"}}}}, "tok")
+		{"PostRedfishEndpointsV2", http.MethodPost, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PostRedfishEndpointsV2(context.Background(), RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}}, {RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b1"}}}}, "tok"), nil
 		}},
-		{"PostEthernetInterfaces", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostEthernetInterfaces([]EthernetInterface{{ComponentID: "x0c0s0b0n0", MACAddress: "de:ad:be:ef:00:00"}, {ComponentID: "x0c0s0b0n1", MACAddress: "de:ad:be:ef:00:01"}}, "tok")
+		{"PostEthernetInterfaces", http.MethodPost, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PostEthernetInterfaces(context.Background(), []EthernetInterface{{ComponentID: "x0c0s0b0n0", MACAddress: "de:ad:be:ef:00:00"}, {ComponentID: "x0c0s0b0n1", MACAddress: "de:ad:be:ef:00:01"}}, "tok"), nil
 		}},
-		{"PostGroups", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostGroups([]Group{{Label: "compute"}, {Label: "storage"}}, "tok")
+		{"PostGroups", http.MethodPost, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PostGroups(context.Background(), []Group{{Label: "compute"}, {Label: "storage"}}, "tok"), nil
 		}},
-		{"PostGroupMembers", http.MethodPost, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PostGroupMembers("tok", "compute", "x0c0s0b0n0", "x0c0s0b0n1")
+		{"PostGroupMembers", http.MethodPost, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PostGroupMembers(context.Background(), "tok", "compute", "x0c0s0b0n0", "x0c0s0b0n1")
 		}},
-		{"PutComponents", http.MethodPut, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PutComponents(ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}, {ID: "x0c0s0b0n1"}}}, "tok")
+		{"PutComponents", http.MethodPut, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PutComponents(context.Background(), ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}, {ID: "x0c0s0b0n1"}}}, "tok"), nil
 		}},
-		{"PutRedfishEndpoints", http.MethodPut, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PutRedfishEndpoints(RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0c0s0b0"}, {ID: "x0c0s0b1"}}}, "tok")
+		{"PutRedfishEndpoints", http.MethodPut, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PutRedfishEndpoints(context.Background(), RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0c0s0b0"}, {ID: "x0c0s0b1"}}}, "tok"), nil
 		}},
-		{"PutRedfishEndpointsV2", http.MethodPut, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PutRedfishEndpointsV2(RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}}, {RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b1"}}}}, "tok")
+		{"PutRedfishEndpointsV2", http.MethodPut, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PutRedfishEndpointsV2(context.Background(), RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}}, {RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b1"}}}}, "tok"), nil
 		}},
-		{"PatchEthernetInterfaces", http.MethodPatch, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PatchEthernetInterfaces([]EthernetInterface{{ID: "deadbeef0000"}, {ID: "deadbeef0001"}}, "tok")
+		{"PatchEthernetInterfaces", http.MethodPatch, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PatchEthernetInterfaces(context.Background(), []EthernetInterface{{ID: "deadbeef0000"}, {ID: "deadbeef0001"}}, "tok"), nil
 		}},
-		{"PatchGroups", http.MethodPatch, func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
-			return sc.PatchGroups([]Group{{Label: "compute"}, {Label: "storage"}}, "tok")
+		{"PatchGroups", http.MethodPatch, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PatchGroups(context.Background(), []Group{{Label: "compute"}, {Label: "storage"}}, "tok"), nil
 		}},
 	}
 	for _, tc := range cases {
@@ -170,23 +166,24 @@ func TestIterativeWritesPreserveMixedResultAlignment(t *testing.T) {
 			})
 			defer srv.Close()
 
-			henvs, errs, err := tc.call(sc)
+			results, err := tc.call(sc)
 			if err != nil {
 				t.Fatalf("%s: control-flow error = %v, want nil", tc.name, err)
 			}
-			if len(henvs) != 2 || len(errs) != 2 {
-				t.Fatalf("%s: result lengths = (%d, %d), want (2, 2)", tc.name, len(henvs), len(errs))
+			if len(results) != 2 {
+				t.Fatalf("%s: result length = %d, want 2", tc.name, len(results))
 			}
-			if errs[0] != nil || henvs[0].StatusCode != http.StatusOK {
-				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, henvs[0].StatusCode, errs[0])
+			if results[0].Err != nil || results[0].Value.StatusCode != http.StatusOK {
+				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, results[0].Value.StatusCode, results[0].Err)
 			}
-			if !errors.Is(errs[1], client.UnsuccessfulHTTPError) || henvs[1].StatusCode != http.StatusInternalServerError {
-				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, henvs[1].StatusCode, errs[1])
+			if !errors.Is(results[1].Err, client.UnsuccessfulHTTPError) || results[1].Value.StatusCode != http.StatusInternalServerError {
+				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, results[1].Value.StatusCode, results[1].Err)
 			}
 		})
 	}
 }
 
+// TestDeleteGroupMembersGuards verifies group and member identifiers are required for deletion.
 func TestDeleteGroupMembersGuards(t *testing.T) {
 	requests := 0
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +202,7 @@ func TestDeleteGroupMembersGuards(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, _, err := sc.DeleteGroupMembers("tok", tc.group, tc.members...); err == nil {
+			if _, err := sc.DeleteGroupMembers(context.Background(), "tok", tc.group, tc.members...); err == nil {
 				t.Fatal("DeleteGroupMembers() error = nil, want argument error")
 			}
 		})
@@ -223,7 +220,7 @@ func TestPostComponentsHTTPError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := sc.PostComponents(ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}}}, "tok"); err == nil {
+	if _, err := sc.PostComponents(context.Background(), ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}}}, "tok"); err == nil {
 		t.Fatal("PostComponents: expected error on HTTP failure, got nil")
 	}
 }
@@ -236,23 +233,23 @@ func TestSingleEnvelopeHTTPErrorWrappers(t *testing.T) {
 		call func(*SMDClient) error
 	}{
 		{name: "status", call: func(sc *SMDClient) error {
-			_, err := sc.GetStatus("")
+			_, err := sc.GetStatus(context.Background(), "")
 			return err
 		}},
 		{name: "group members", call: func(sc *SMDClient) error {
-			_, err := sc.GetGroupMembers("compute", "tok")
+			_, err := sc.GetGroupMembers(context.Background(), "compute", "tok")
 			return err
 		}},
 		{name: "put group members", call: func(sc *SMDClient) error {
-			_, err := sc.PutGroupMembers("tok", "compute", "x0c0s0b0n0")
+			_, err := sc.PutGroupMembers(context.Background(), "tok", "compute", "x0c0s0b0n0")
 			return err
 		}},
 		{name: "ethernet interface", call: func(sc *SMDClient) error {
-			_, err := sc.GetEthernetInterfaceByID("deadbeef", "tok", false)
+			_, err := sc.GetEthernetInterfaceByID(context.Background(), "deadbeef", "tok", false)
 			return err
 		}},
 		{name: "ethernet interface IPs", call: func(sc *SMDClient) error {
-			_, err := sc.GetEthernetInterfaceByID("deadbeef", "tok", true)
+			_, err := sc.GetEthernetInterfaceByID(context.Background(), "deadbeef", "tok", true)
 			return err
 		}},
 	}
@@ -272,5 +269,29 @@ func TestSingleEnvelopeHTTPErrorWrappers(t *testing.T) {
 				t.Errorf("error = %v, want wrapped UnsuccessfulHTTPError", err)
 			}
 		})
+	}
+}
+
+// TestSMDBatchCancellationPreservesAlignment verifies cancellation produces one error per input.
+func TestSMDBatchCancellationPreservesAlignment(t *testing.T) {
+	requests := 0
+	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+	})
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	results := sc.PostGroups(ctx, []Group{{Label: "compute"}, {Label: "storage"}}, "tok")
+	if len(results) != 2 {
+		t.Fatalf("results length = %d, want 2", len(results))
+	}
+	for i, result := range results {
+		if !errors.Is(result.Err, context.Canceled) {
+			t.Errorf("result[%d].Err = %v, want context.Canceled", i, result.Err)
+		}
+	}
+	if requests != 0 {
+		t.Errorf("requests = %d, want 0", requests)
 	}
 }

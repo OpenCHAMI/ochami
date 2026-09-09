@@ -21,21 +21,23 @@ import (
 	"github.com/openchami/ochami/pkg/client/smd"
 )
 
+// TestSingleBatchResult verifies one value or error is represented as a single aligned batch result.
 func TestSingleBatchResult(t *testing.T) {
 	want := errors.New("batch failed")
-	if _, err := singleBatchResult(nil, nil, want); !errors.Is(err, want) {
-		t.Fatalf("singleBatchResult() error = %v, want batch error", err)
+	if _, err := singleBatchResult(client.BatchResult[client.HTTPEnvelope]{{Err: want}}); !errors.Is(err, want) {
+		t.Fatalf("singleBatchResult() error = %v, want item error", err)
 	}
-	if _, err := singleBatchResult(nil, nil, nil); err == nil {
-		t.Fatal("singleBatchResult() accepted misaligned empty results")
+	if _, err := singleBatchResult(nil); err == nil {
+		t.Fatal("singleBatchResult() accepted empty results")
 	}
 	henv := client.HTTPEnvelope{StatusCode: http.StatusCreated}
-	got, err := singleBatchResult([]client.HTTPEnvelope{henv}, []error{nil}, nil)
+	got, err := singleBatchResult(client.BatchResult[client.HTTPEnvelope]{{Value: henv}})
 	if err != nil || got.StatusCode != http.StatusCreated {
 		t.Fatalf("singleBatchResult() = (%v, %v)", got, err)
 	}
 }
 
+// TestUpsertOnConflict verifies conflicts trigger updates while other outcomes are preserved.
 func TestUpsertOnConflict(t *testing.T) {
 	conflict := fmt.Errorf("%w: conflict", client.UnsuccessfulHTTPError)
 	wantUpdateErr := errors.New("update failed")
@@ -71,6 +73,7 @@ func groupByLabel(groups []smd.Group) map[string]smd.Group {
 	return m
 }
 
+// TestBuildGroupList verifies discovered groups are normalized into SMD group payloads.
 func TestBuildGroupList(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -156,6 +159,7 @@ func TestBuildGroupList(t *testing.T) {
 	}
 }
 
+// TestDiscoverStaticDeprecatedFormat verifies legacy discovery input remains supported.
 func TestDiscoverStaticDeprecatedFormat(t *testing.T) {
 	tests := []struct {
 		name string

@@ -123,14 +123,11 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send off request
-			_, errs, err := smdClient.PostRedfishEndpoints(rfes, cli.Token)
-			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add redfish endpoint in SMD: %w", err)
-			}
+			results := smdClient.PostRedfishEndpoints(cmd.Context(), rfes, cli.Token)
 			// Since smdClient.PostRedfishEndpoints does the addition iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, e := range errs {
+			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(e).Msg("SMD redfish endpoint request yielded unsuccessful HTTP response")

@@ -40,7 +40,7 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send request
-			httpEnv, err := smdClient.GetGroupMembers(args[0], cli.Token)
+			httpEnv, err := smdClient.GetGroupMembers(cmd.Context(), args[0], cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "SMD group member request yielded unsuccessful HTTP response", "failed to request group members from SMD")
 

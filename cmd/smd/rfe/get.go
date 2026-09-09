@@ -84,7 +84,7 @@ See ochami-smd(1) for more details.`,
 				}
 				qstr = values.Encode()
 			}
-			httpEnv, err := smdClient.GetRedfishEndpoints(qstr, cli.Token)
+			httpEnv, err := smdClient.GetRedfishEndpoints(cmd.Context(), qstr, cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "SMD redfish endpoint request yielded unsuccessful HTTP response", "failed to request redfish endpoints from SMD")
 

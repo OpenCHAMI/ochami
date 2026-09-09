@@ -107,7 +107,7 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send off request
-			_, err = smdClient.PostComponents(compSlice, cli.Token)
+			_, err = smdClient.PostComponents(cmd.Context(), compSlice, cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "SMD component request yielded unsuccessful HTTP response", "failed to add component(s) to SMD")
 
