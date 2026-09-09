@@ -16,6 +16,12 @@ import (
 func runBatch[T, R any](ctx context.Context, timeout time.Duration, items []T, operation func(context.Context, T) (R, error)) client.BatchResult[R] {
 	results := make(client.BatchResult[R], len(items))
 	for i, item := range items {
+		if err := ctx.Err(); err != nil {
+			for ; i < len(results); i++ {
+				results[i].Err = err
+			}
+			break
+		}
 		requestCtx, cancel := context.WithTimeout(ctx, timeout)
 		results[i].Value, results[i].Err = operation(requestCtx, item)
 		cancel()

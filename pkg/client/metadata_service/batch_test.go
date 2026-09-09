@@ -7,6 +7,8 @@ package metadata_service
 import (
 	"context"
 	"errors"
+	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -28,9 +30,36 @@ func TestRunBatchPreservesOrder(t *testing.T) {
 	}
 }
 
+// TestRunBatchStopsAfterCancellation verifies unattempted items are aligned
+// with the parent cancellation error and their operations are not invoked.
+func TestRunBatchStopsAfterCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	results := runBatch(ctx, time.Second, []int{1, 2, 3}, func(_ context.Context, item int) (int, error) {
+		calls++
+		cancel()
+		return item * 10, nil
+	})
+
+	if calls != 1 {
+		t.Fatalf("operation calls = %d, want 1", calls)
+	}
+	if results[0].Value != 10 || results[0].Err != nil {
+		t.Fatalf("results[0] = %#v, want successful first result", results[0])
+	}
+	for i := 1; i < len(results); i++ {
+		if !errors.Is(results[i].Err, context.Canceled) {
+			t.Errorf("results[%d].Err = %v, want context.Canceled", i, results[i].Err)
+		}
+	}
+}
+
 // TestMetadataServiceBatchPropagatesCancellation verifies caller cancellation reaches every item request.
 func TestMetadataServiceBatchPropagatesCancellation(t *testing.T) {
-	c, srv := newTestClient(t, nil)
+	var requests atomic.Int32
+	c, srv := newTestClient(t, func(http.ResponseWriter, *http.Request) {
+		requests.Add(1)
+	})
 	defer srv.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -44,5 +73,8 @@ func TestMetadataServiceBatchPropagatesCancellation(t *testing.T) {
 		if !errors.Is(result.Err, context.Canceled) {
 			t.Errorf("results[%d].Err = %v, want context.Canceled", i, result.Err)
 		}
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf("server requests = %d, want 0", got)
 	}
 }
