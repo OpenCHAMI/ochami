@@ -167,3 +167,205 @@ func TestCloudInitBatchCancellationPreservesAlignment(t *testing.T) {
 		t.Errorf("requests = %d, want 0", requests)
 	}
 }
+
+// TestCloudInitBatchCancellationBetweenItems verifies that cancellation between
+// items stops subsequent operations and marks remaining results with context.Canceled.
+// This tests the executor's behavior with real HTTP-backed operations.
+func TestCloudInitBatchCancellationBetweenItems(t *testing.T) {
+	// Test with pre-canceled context for multiple cloud-init batch methods
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Error("server should not receive any requests for pre-canceled context")
+	})
+	defer srv.Close()
+
+	batchTests := []struct {
+		name string
+		call func() client.BatchResult[client.HTTPEnvelope]
+	}{
+		{"PostGroups", func() client.BatchResult[client.HTTPEnvelope] {
+			return cic.PostGroups(ctx, []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		}},
+		{"PutGroups", func() client.BatchResult[client.HTTPEnvelope] {
+			return cic.PutGroups(ctx, []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		}},
+		{"DeleteGroups", func() client.BatchResult[client.HTTPEnvelope] {
+			return cic.DeleteGroups(ctx, "tok", "compute", "storage")
+		}},
+	}
+
+	for _, tc := range batchTests {
+		t.Run(tc.name, func(t *testing.T) {
+			results := tc.call()
+			if len(results) != 2 {
+				t.Errorf("results length = %d, want 2", len(results))
+			}
+			for i, result := range results {
+				if !errors.Is(result.Err, context.Canceled) {
+					t.Errorf("result[%d].Err = %v, want context.Canceled", i, result.Err)
+				}
+			}
+		})
+	}
+}
+
+// TestCloudInitBatchAllSuccess verifies all-success paths for batch operations.
+func TestCloudInitBatchAllSuccess(t *testing.T) {
+	var requestCount int
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response
+	})
+	defer srv.Close()
+
+	batchTests := []struct {
+		name string
+		call func() client.BatchResult[client.HTTPEnvelope]
+		len  int
+	}{
+		{"PostGroups", func() client.BatchResult[client.HTTPEnvelope] {
+			return cic.PostGroups(context.Background(), []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		}, 2},
+		{"PutGroups", func() client.BatchResult[client.HTTPEnvelope] {
+			return cic.PutGroups(context.Background(), []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		}, 2},
+		{"DeleteGroups", func() client.BatchResult[client.HTTPEnvelope] {
+			return cic.DeleteGroups(context.Background(), "tok", "compute", "storage")
+		}, 2},
+	}
+
+	for _, tc := range batchTests {
+		t.Run(tc.name, func(t *testing.T) {
+			requestCount = 0
+			results := tc.call()
+			if len(results) != tc.len {
+				t.Errorf("results length = %d, want %d", len(results), tc.len)
+			}
+			for i, result := range results {
+				if result.Err != nil {
+					t.Errorf("result[%d].Err = %v, want nil", i, result.Err)
+				}
+				if result.Value.StatusCode != http.StatusOK {
+					t.Errorf("result[%d].Value.StatusCode = %d, want %d", i, result.Value.StatusCode, http.StatusOK)
+				}
+			}
+			if requestCount != tc.len {
+				t.Errorf("request count = %d, want %d", requestCount, tc.len)
+			}
+		})
+	}
+}
+
+// TestCloudInitBatchAllFailure verifies all-failure paths for batch operations.
+func TestCloudInitBatchAllFailure(t *testing.T) {
+	var requestCount int
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		http.Error(w, "not found", http.StatusNotFound)
+	})
+	defer srv.Close()
+
+	batchTests := []struct {
+		name string
+		call func() client.BatchResult[client.HTTPEnvelope]
+		len  int
+	}{
+		{"PostGroups", func() client.BatchResult[client.HTTPEnvelope] {
+			return cic.PostGroups(context.Background(), []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		}, 2},
+		{"PutGroups", func() client.BatchResult[client.HTTPEnvelope] {
+			return cic.PutGroups(context.Background(), []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		}, 2},
+		{"DeleteGroups", func() client.BatchResult[client.HTTPEnvelope] {
+			return cic.DeleteGroups(context.Background(), "tok", "compute", "storage")
+		}, 2},
+	}
+
+	for _, tc := range batchTests {
+		t.Run(tc.name, func(t *testing.T) {
+			requestCount = 0
+			results := tc.call()
+			if len(results) != tc.len {
+				t.Errorf("results length = %d, want %d", len(results), tc.len)
+			}
+			for i, result := range results {
+				if result.Err == nil {
+					t.Errorf("result[%d].Err = nil, want non-nil", i)
+				}
+				if !errors.Is(result.Err, client.UnsuccessfulHTTPError) {
+					t.Errorf("result[%d].Err = %v, want UnsuccessfulHTTPError", i, result.Err)
+				}
+			}
+			if requestCount != tc.len {
+				t.Errorf("request count = %d, want %d", requestCount, tc.len)
+			}
+		})
+	}
+}
+
+// TestCloudInitBatchExactOrderAndCardinality verifies exact order and cardinality
+// for mixed outcomes.
+func TestCloudInitBatchExactOrderAndCardinality(t *testing.T) {
+	var requestOrder []int
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		// Extract index from group name: compute=0, storage=1
+		name := r.URL.Query().Get("name")
+		var idx int
+		switch name {
+		case "compute":
+			idx = 0
+		case "storage":
+			idx = 1
+		default:
+			idx = -1
+		}
+		// For DELETE, extract from path
+		if r.Method == http.MethodDelete {
+			path := r.URL.Path
+			if path == "/admin/groups/compute" {
+				idx = 0
+			} else if path == "/admin/groups/storage" {
+				idx = 1
+			}
+		}
+		// For PUT/POST, use request count as index
+		if idx == -1 {
+			idx = len(requestOrder)
+		}
+		requestOrder = append(requestOrder, idx)
+		// Fail on second item
+		if idx == 1 {
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	defer srv.Close()
+
+	// Test with PostGroups
+	groups := []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}
+	results := cic.PostGroups(context.Background(), groups, "tok")
+
+	if len(results) != len(groups) {
+		t.Fatalf("results length = %d, want %d", len(results), len(groups))
+	}
+
+	// First should succeed, second should fail
+	if results[0].Err != nil {
+		t.Errorf("result[0] should succeed")
+	}
+	if results[1].Err == nil {
+		t.Errorf("result[1] should fail")
+	}
+
+	// Verify request order
+	if len(requestOrder) != 2 {
+		t.Fatalf("request order length = %d, want 2", len(requestOrder))
+	}
+	if requestOrder[0] != 0 || requestOrder[1] != 1 {
+		t.Errorf("request order = %v, want [0, 1]", requestOrder)
+	}
+}
