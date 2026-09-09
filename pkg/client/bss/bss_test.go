@@ -10,6 +10,7 @@ package bss
 // on non-2XX responses).
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -46,7 +47,7 @@ func TestGetBootParams(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := bc.GetBootParams("name=x0c0s0b0n0", "tok"); err != nil {
+	if _, err := bc.GetBootParams(context.Background(), "name=x0c0s0b0n0", "tok"); err != nil {
 		t.Fatalf("GetBootParams: %v", err)
 	}
 	if gotMethod != http.MethodGet {
@@ -80,7 +81,7 @@ func TestPostBootParams(t *testing.T) {
 	defer srv.Close()
 
 	bp := bssTypes.BootParams{Kernel: "https://example/vmlinuz", Macs: []string{"de:ad:be:ef:00:00"}}
-	if _, err := bc.PostBootParams(bp, "tok"); err != nil {
+	if _, err := bc.PostBootParams(context.Background(), bp, "tok"); err != nil {
 		t.Fatalf("PostBootParams: %v", err)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/bootparameters" {
@@ -103,9 +104,18 @@ func TestPutPatchDeleteBootParams(t *testing.T) {
 		call       func(bc *BSSClient) error
 		wantMethod string
 	}{
-		{"put", func(bc *BSSClient) error { _, e := bc.PutBootParams(bssTypes.BootParams{}, "tok"); return e }, http.MethodPut},
-		{"patch", func(bc *BSSClient) error { _, e := bc.PatchBootParams(bssTypes.BootParams{}, "tok"); return e }, http.MethodPatch},
-		{"delete", func(bc *BSSClient) error { _, e := bc.DeleteBootParams(bssTypes.BootParams{}, "tok"); return e }, http.MethodDelete},
+		{"put", func(bc *BSSClient) error {
+			_, e := bc.PutBootParams(context.Background(), bssTypes.BootParams{}, "tok")
+			return e
+		}, http.MethodPut},
+		{"patch", func(bc *BSSClient) error {
+			_, e := bc.PatchBootParams(context.Background(), bssTypes.BootParams{}, "tok")
+			return e
+		}, http.MethodPatch},
+		{"delete", func(bc *BSSClient) error {
+			_, e := bc.DeleteBootParams(context.Background(), bssTypes.BootParams{}, "tok")
+			return e
+		}, http.MethodDelete},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -151,7 +161,7 @@ func TestGetStatusComponents(t *testing.T) {
 			})
 			defer srv.Close()
 
-			if _, err := bc.GetStatus(tc.component); err != nil {
+			if _, err := bc.GetStatus(context.Background(), tc.component); err != nil {
 				t.Fatalf("GetStatus(%q): %v", tc.component, err)
 			}
 			if gotPath != tc.wantPath {
@@ -168,7 +178,7 @@ func TestGetStatusUnknownComponent(t *testing.T) {
 	bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) { requestMade = true })
 	defer srv.Close()
 
-	if _, err := bc.GetStatus("bogus"); err == nil {
+	if _, err := bc.GetStatus(context.Background(), "bogus"); err == nil {
 		t.Fatal("expected an error for unknown component, got nil")
 	}
 	if requestMade {
@@ -183,10 +193,10 @@ func TestSimpleGetters(t *testing.T) {
 		call     func(bc *BSSClient) error
 		wantPath string
 	}{
-		{"dumpstate", func(bc *BSSClient) error { _, e := bc.GetDumpstate(); return e }, "/dumpstate"},
-		{"hosts", func(bc *BSSClient) error { _, e := bc.GetHosts(""); return e }, "/hosts"},
-		{"bootscript", func(bc *BSSClient) error { _, e := bc.GetBootScript(""); return e }, "/bootscript"},
-		{"endpoint-history", func(bc *BSSClient) error { _, e := bc.GetEndpointHistory(""); return e }, "/endpoint-history"},
+		{"dumpstate", func(bc *BSSClient) error { _, e := bc.GetDumpstate(context.Background()); return e }, "/dumpstate"},
+		{"hosts", func(bc *BSSClient) error { _, e := bc.GetHosts(context.Background(), ""); return e }, "/hosts"},
+		{"bootscript", func(bc *BSSClient) error { _, e := bc.GetBootScript(context.Background(), ""); return e }, "/bootscript"},
+		{"endpoint-history", func(bc *BSSClient) error { _, e := bc.GetEndpointHistory(context.Background(), ""); return e }, "/endpoint-history"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -215,7 +225,7 @@ func TestUnsuccessfulHTTPError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, err := bc.GetBootParams("", "")
+	_, err := bc.GetBootParams(context.Background(), "", "")
 	if err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -227,4 +237,23 @@ func TestUnsuccessfulHTTPError(t *testing.T) {
 // isUnsuccessfulHTTP reports whether err wraps client.UnsuccessfulHTTPError.
 func isUnsuccessfulHTTP(err error) bool {
 	return err != nil && errors.Is(err, client.UnsuccessfulHTTPError)
+}
+
+// TestBSSClientPropagatesCancellation verifies caller cancellation reaches the HTTP request.
+func TestBSSClientPropagatesCancellation(t *testing.T) {
+	requestMade := false
+	bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
+		requestMade = true
+	})
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := bc.GetBootParams(ctx, "", "tok")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("GetBootParams() error = %v, want context.Canceled", err)
+	}
+	if requestMade {
+		t.Fatal("request was made after context cancellation")
+	}
 }

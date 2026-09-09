@@ -126,7 +126,7 @@ See ochami-bss(1) for more details.`,
 			}
 
 			// Send 'em off
-			_, err = bssClient.PostBootParams(bp, cli.Token)
+			_, err = bssClient.PostBootParams(cmd.Context(), bp, cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to add boot parameters to BSS")
 

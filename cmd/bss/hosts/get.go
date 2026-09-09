@@ -63,7 +63,7 @@ See ochami-bss(1) for more details.`,
 				}
 				qstr = values.Encode()
 			}
-			httpEnv, err := bssClient.GetHosts(qstr)
+			httpEnv, err := bssClient.GetHosts(cmd.Context(), qstr)
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS hosts request yielded unsuccessful HTTP response", "failed to request hosts from BSS")
 

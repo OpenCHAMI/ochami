@@ -79,7 +79,7 @@ See ochami-bss(1) for more details.`,
 				}
 			}
 			qstr := values.Encode()
-			httpEnv, err := bssClient.GetBootParams(qstr, cli.Token)
+			httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
 
@@ -153,7 +153,7 @@ See ochami-bss(1) for more details.`,
 				bps[bpIdx].Params = k.String()
 
 				// Send modified params back to BSS
-				_, err = bssClient.PutBootParams(bps[bpIdx], cli.Token)
+				_, err = bssClient.PutBootParams(cmd.Context(), bps[bpIdx], cli.Token)
 				if err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(err).Msg("BSS boot parameter PUT request yielded unsuccessful HTTP response")

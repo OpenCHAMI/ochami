@@ -73,7 +73,7 @@ See ochami-bss(1) for more details.`,
 				}
 				qstr = values.Encode()
 			}
-			httpEnv, err := bssClient.GetBootParams(qstr, cli.Token)
+			httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
 

@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -21,7 +22,7 @@ type fakeBSSStatusClient struct {
 	err          error
 }
 
-func (f *fakeBSSStatusClient) GetStatus(component string) (client.HTTPEnvelope, error) {
+func (f *fakeBSSStatusClient) GetStatus(_ context.Context, component string) (client.HTTPEnvelope, error) {
 	f.gotComponent = component
 	return f.env, f.err
 }
@@ -32,6 +33,7 @@ func providerFor(c bssStatusClient, err error) bssStatusClientProvider {
 	return func(*cobra.Command) (bssStatusClient, error) { return c, err }
 }
 
+// TestServiceStatus_ComponentSelection verifies each component flag selects the expected status endpoint.
 func TestServiceStatus_ComponentSelection(t *testing.T) {
 	tests := []struct {
 		name string
@@ -64,6 +66,7 @@ func TestServiceStatus_ComponentSelection(t *testing.T) {
 	}
 }
 
+// TestServiceStatus_ClientConstructionError verifies client setup failures are returned unchanged.
 func TestServiceStatus_ClientConstructionError(t *testing.T) {
 	wantErr := errors.New("boom")
 	cmd := newCmdServiceStatusWithClient(providerFor(nil, wantErr))
@@ -75,6 +78,7 @@ func TestServiceStatus_ClientConstructionError(t *testing.T) {
 	}
 }
 
+// TestServiceStatus_HTTPErrorMapping verifies service response failures map to the HTTP exit code.
 func TestServiceStatus_HTTPErrorMapping(t *testing.T) {
 	fake := &fakeBSSStatusClient{err: client.UnsuccessfulHTTPError}
 	cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))
@@ -89,6 +93,7 @@ func TestServiceStatus_HTTPErrorMapping(t *testing.T) {
 	}
 }
 
+// TestServiceStatus_NetworkErrorMapping verifies transport failures map to the network exit code.
 func TestServiceStatus_NetworkErrorMapping(t *testing.T) {
 	fake := &fakeBSSStatusClient{err: errors.New("connection refused")}
 	cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))
