@@ -103,22 +103,22 @@ See ochami-smd(1) for more details.`,
 			// these Get* calls cannot fail, so we ignore errors with explicit comments
 			opts := &rfeGetOptions{}
 			if cmd.Flag("xname").Changed {
-				opts.Xname, _ = cmd.Flags().GetStringSlice("xname") // Flag registered with matching type, error impossible
+				opts.Xname, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("mac").Changed {
-				opts.Mac, _ = cmd.Flags().GetStringSlice("mac") // Flag registered with matching type, error impossible
+				opts.Mac, _ = cmd.Flags().GetStringSlice("mac") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("ip").Changed {
-				opts.IP, _ = cmd.Flags().GetStringSlice("ip") // Flag registered with matching type, error impossible
+				opts.IP, _ = cmd.Flags().GetStringSlice("ip") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("fqdn").Changed {
-				opts.FQDN, _ = cmd.Flags().GetStringSlice("fqdn") // Flag registered with matching type, error impossible
+				opts.FQDN, _ = cmd.Flags().GetStringSlice("fqdn") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("type").Changed {
-				opts.Type, _ = cmd.Flags().GetStringSlice("type") // Flag registered with matching type, error impossible
+				opts.Type, _ = cmd.Flags().GetStringSlice("type") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("uuid").Changed {
-				opts.UUID, _ = cmd.Flags().GetStringSlice("uuid") // Flag registered with matching type, error impossible
+				opts.UUID, _ = cmd.Flags().GetStringSlice("uuid") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
 			return runCoreRfeGet(cmd, opts, smdClient)

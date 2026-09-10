@@ -15,7 +15,52 @@ import (
 	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
+	"github.com/openchami/ochami/pkg/client/smd"
 )
+
+// groupGetOptions holds the flag values for the smd group get command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type groupGetOptions struct {
+	Names []string
+	Tags  []string
+}
+
+// runCoreGroupGet contains the core logic for the smd group get command.
+// It takes the parsed options and performs the actual work of getting groups.
+func runCoreGroupGet(cmd *cobra.Command, opts *groupGetOptions, smdClient *smd.SMDClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// If no ID flags are specified, get all groups
+	qstr := ""
+	if len(opts.Names) > 0 || len(opts.Tags) > 0 {
+		values := url.Values{}
+		for _, n := range opts.Names {
+			values.Add("group", n)
+		}
+		for _, t := range opts.Tags {
+			values.Add("tag", t)
+		}
+		qstr = values.Encode()
+	}
+
+	httpEnv, err := smdClient.GetGroups(cmd.Context(), qstr, cli.Token)
+	if err != nil {
+		return cli.ClassifyClientError(err, "SMD group request yielded unsuccessful HTTP response", "failed to request groups from SMD")
+	}
+
+	// Print output
+	outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+	}
+	fmt.Fprint(cli.Ios.Out(), string(outBytes))
+
+	return nil
+}
 
 func newCmdGroupGet() *cobra.Command {
 	// groupGetCmd represents the "smd group get" command
@@ -41,43 +86,18 @@ See ochami-smd(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &groupGetOptions{}
+			if cmd.Flag("name").Changed {
+				opts.Names, _ = cmd.Flags().GetStringSlice("name") //nolint:errcheck // Flag registered with matching type, error impossible
+			}
+			if cmd.Flag("tag").Changed {
+				opts.Tags, _ = cmd.Flags().GetStringSlice("tag") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// If no ID flags are specified, get all groups
-			qstr := ""
-			if cmd.Flag("name").Changed || cmd.Flag("tag").Changed {
-				values := url.Values{}
-				if cmd.Flag("name").Changed {
-					s, _ := cmd.Flags().GetStringSlice("name") //nolint:errcheck // flag is registered with the matching type on this command
-					for _, n := range s {
-						values.Add("group", n)
-					}
-				}
-				if cmd.Flag("tag").Changed {
-					s, _ := cmd.Flags().GetStringSlice("tag") //nolint:errcheck // flag is registered with the matching type on this command
-					for _, t := range s {
-						values.Add("tag", t)
-					}
-				}
-				qstr = values.Encode()
-			}
-			httpEnv, err := smdClient.GetGroups(cmd.Context(), qstr, cli.Token)
-			if err != nil {
-				return cli.ClassifyClientError(err, "SMD group request yielded unsuccessful HTTP response", "failed to request groups from SMD")
-
-			}
-
-			// Print output
-			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
-			if err != nil {
-				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
-			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
-
-			return nil
+			return runCoreGroupGet(cmd, opts, smdClient)
 		},
 	}
 

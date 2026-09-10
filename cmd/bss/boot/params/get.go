@@ -96,13 +96,13 @@ See ochami-bss(1) for more details.`,
 			// these Get* calls cannot fail, so we ignore errors with explicit comments
 			opts := &bootParamsGetOptions{}
 			if cmd.Flag("xname").Changed {
-				opts.Xname, _ = cmd.Flags().GetStringSlice("xname") // Flag registered with matching type, error impossible
+				opts.Xname, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("mac").Changed {
-				opts.Mac, _ = cmd.Flags().GetStringSlice("mac") // Flag registered with matching type, error impossible
+				opts.Mac, _ = cmd.Flags().GetStringSlice("mac") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("nid").Changed {
-				opts.Nid, _ = cmd.Flags().GetInt32Slice("nid") // Flag registered with matching type, error impossible
+				opts.Nid, _ = cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
 			return runCoreBootParamsGet(cmd, opts, bssClient)

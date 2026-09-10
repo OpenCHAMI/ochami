@@ -155,16 +155,16 @@ See ochami-smd(1) for more details.`,
 			// these Get* calls cannot fail, so we ignore errors with explicit comments
 			opts := &groupAddOptions{}
 			if cmd.Flag("description").Changed {
-				opts.Description, _ = cmd.Flags().GetString("description") // Flag registered with matching type, error impossible
+				opts.Description, _ = cmd.Flags().GetString("description") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("tag").Changed {
-				opts.Tags, _ = cmd.Flags().GetStringSlice("tag") // Flag registered with matching type, error impossible
+				opts.Tags, _ = cmd.Flags().GetStringSlice("tag") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("exclusive-group").Changed {
-				opts.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group") // Flag registered with matching type, error impossible
+				opts.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("member").Changed {
-				opts.Members, _ = cmd.Flags().GetStringSlice("member") // Flag registered with matching type, error impossible
+				opts.Members, _ = cmd.Flags().GetStringSlice("member") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
 			return runCoreGroupAdd(cmd, opts, args, smdClient)

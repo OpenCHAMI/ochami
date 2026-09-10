@@ -154,22 +154,22 @@ See ochami-bss(1) for more details.`,
 			// these Get* calls cannot fail, so we ignore errors with explicit comments
 			opts := &bootParamsSetOptions{}
 			if cmd.Flag("xname").Changed {
-				opts.Xname, _ = cmd.Flags().GetStringSlice("xname") // Flag registered with matching type, error impossible
+				opts.Xname, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("mac").Changed {
-				opts.Mac, _ = cmd.Flags().GetStringSlice("mac") // Flag registered with matching type, error impossible
+				opts.Mac, _ = cmd.Flags().GetStringSlice("mac") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("nid").Changed {
-				opts.Nid, _ = cmd.Flags().GetInt32Slice("nid") // Flag registered with matching type, error impossible
+				opts.Nid, _ = cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("kernel").Changed {
-				opts.Kernel, _ = cmd.Flags().GetString("kernel") // Flag registered with matching type, error impossible
+				opts.Kernel, _ = cmd.Flags().GetString("kernel") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("initrd").Changed {
-				opts.Initrd, _ = cmd.Flags().GetString("initrd") // Flag registered with matching type, error impossible
+				opts.Initrd, _ = cmd.Flags().GetString("initrd") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 			if cmd.Flag("params").Changed {
-				opts.Params, _ = cmd.Flags().GetString("params") // Flag registered with matching type, error impossible
+				opts.Params, _ = cmd.Flags().GetString("params") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
 			return runCoreBootParamsSet(cmd, opts, bssClient)
