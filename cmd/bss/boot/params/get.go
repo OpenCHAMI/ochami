@@ -15,7 +15,56 @@ import (
 	"github.com/openchami/ochami/pkg/client"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
+	"github.com/openchami/ochami/pkg/client/bss"
 )
+
+// bootParamsGetOptions holds the flag values for the bss boot params get command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type bootParamsGetOptions struct {
+	Xname []string
+	Mac   []string
+	Nid   []int32
+}
+
+// runCoreBootParamsGet contains the core logic for the bss boot params get command.
+// It takes the parsed options and performs the actual work of getting boot parameters.
+func runCoreBootParamsGet(cmd *cobra.Command, opts *bootParamsGetOptions, bssClient *bss.BSSClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// If no ID flags are specified, get all boot parameters
+	qstr := ""
+	if len(opts.Xname) > 0 || len(opts.Mac) > 0 || len(opts.Nid) > 0 {
+		values := url.Values{}
+		for _, x := range opts.Xname {
+			values.Add("name", x)
+		}
+		for _, m := range opts.Mac {
+			values.Add("mac", m)
+		}
+		for _, n := range opts.Nid {
+			values.Add("nid", fmt.Sprintf("%d", n))
+		}
+		qstr = values.Encode()
+	}
+
+	httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, cli.Token)
+	if err != nil {
+		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
+	}
+
+	// Print output
+	outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+	}
+	fmt.Fprint(cli.Ios.Out(), string(outBytes))
+
+	return nil
+}
 
 func newCmdBootParamsGet() *cobra.Command {
 	// bootParamsGetCmd represents the "bss boot params get" command
@@ -42,51 +91,21 @@ See ochami-bss(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &bootParamsGetOptions{}
+			if cmd.Flag("xname").Changed {
+				opts.Xname, _ = cmd.Flags().GetStringSlice("xname") // Flag registered with matching type, error impossible
+			}
+			if cmd.Flag("mac").Changed {
+				opts.Mac, _ = cmd.Flags().GetStringSlice("mac") // Flag registered with matching type, error impossible
+			}
+			if cmd.Flag("nid").Changed {
+				opts.Nid, _ = cmd.Flags().GetInt32Slice("nid") // Flag registered with matching type, error impossible
 			}
 
-			// If no ID flags are specified, get all boot parameters
-			qstr := ""
-			if cmd.Flag("xname").Changed ||
-				cmd.Flag("mac").Changed ||
-				cmd.Flag("nid").Changed {
-				values := url.Values{}
-				if cmd.Flag("xname").Changed {
-					s, _ := cmd.Flags().GetStringSlice("xname") //nolint:errcheck // flag is registered with the matching type on this command
-					for _, x := range s {
-						values.Add("name", x)
-					}
-				}
-				if cmd.Flag("mac").Changed {
-					s, _ := cmd.Flags().GetStringSlice("mac") //nolint:errcheck // flag is registered with the matching type on this command
-					for _, m := range s {
-						values.Add("mac", m)
-					}
-				}
-				if cmd.Flag("nid").Changed {
-					s, _ := cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // flag is registered with the matching type on this command
-					for _, n := range s {
-						values.Add("nid", fmt.Sprintf("%d", n))
-					}
-				}
-				qstr = values.Encode()
-			}
-			httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, cli.Token)
-			if err != nil {
-				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
-
-			}
-
-			// Print output
-			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
-			if err != nil {
-				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
-			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
-
-			return nil
+			return runCoreBootParamsGet(cmd, opts, bssClient)
 		},
 	}
 
