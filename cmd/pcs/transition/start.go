@@ -47,9 +47,46 @@ type createOutput struct {
 	Operation    string
 }
 
-// runCoreTransitionStart contains the core logic for the pcs transition start command.
+// runCoreTransitionStartWithRuntime contains the core logic for the pcs transition start command using runtime.
 // It takes the parsed options and performs the actual work of starting a transition.
-// This version supports both runtime (new approach) and global state (fallback during transition).
+func runCoreTransitionStartWithRuntime(cmd *cobra.Command, opts *transitionStartOptions, args []string, pcsClient *pcs.PCSClient, rt *cli.Runtime) error {
+	operation := args[0]
+
+	if !isValidOperation(operation) {
+		// Include invalid operation in error message
+		return cli.Errorf(cli.CodeUsage, "invalid operation: %s", operation)
+	}
+
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Create transition
+	transitionHttpEnv, err := pcsClient.CreateTransition(cmd.Context(), operation, nil, opts.Xnames, rt.Token)
+	if err != nil {
+		return cli.ClassifyClientError(err, "PCS transition create request yielded unsuccessful HTTP response", "failed to create transition")
+	}
+
+	// Unmarshall the transition
+	var output createOutput
+	err = json.Unmarshal(transitionHttpEnv.Body, &output)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to unmarshal output: %w", err)
+	}
+
+	// Print output
+	outBytes, err := format.MarshalData(output, rt.FormatOutput)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+	}
+	fmt.Fprintln(rt.Ios.Out(), string(outBytes))
+
+	return nil
+}
+
+// runCoreTransitionStart contains the core logic for the pcs transition start command using global state.
+// This is the fallback during migration.
 func runCoreTransitionStart(cmd *cobra.Command, opts *transitionStartOptions, args []string, pcsClient *pcs.PCSClient) error {
 	operation := args[0]
 
@@ -58,37 +95,6 @@ func runCoreTransitionStart(cmd *cobra.Command, opts *transitionStartOptions, ar
 		return cli.Errorf(cli.CodeUsage, "invalid operation: %s", operation)
 	}
 
-	// Try to use runtime from context (new approach)
-	if rt, ok := cli.FromContext(cmd.Context()); ok {
-		// Handle token for this command
-		if err := rt.HandleToken(cmd); err != nil {
-			return err
-		}
-
-		// Create transition
-		transitionHttpEnv, err := pcsClient.CreateTransition(cmd.Context(), operation, nil, opts.Xnames, rt.Token)
-		if err != nil {
-			return cli.ClassifyClientError(err, "PCS transition create request yielded unsuccessful HTTP response", "failed to create transition")
-		}
-
-		// Unmarshall the transition
-		var output createOutput
-		err = json.Unmarshal(transitionHttpEnv.Body, &output)
-		if err != nil {
-			return cli.Errorf(cli.CodePayload, "failed to unmarshal output: %w", err)
-		}
-
-		// Print output
-		outBytes, err := format.MarshalData(output, rt.FormatOutput)
-		if err != nil {
-			return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
-		}
-		fmt.Fprintln(rt.Ios.Out(), string(outBytes))
-
-		return nil
-	}
-
-	// Fallback to global state (old approach) during transition
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
 		return err
@@ -145,7 +151,7 @@ See ochami-pcs(1) for more details.`,
 					opts.Xnames, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // Flag registered with matching type, error impossible
 				}
 
-				return runCoreTransitionStart(cmd, opts, args, pcsClient)
+				return runCoreTransitionStartWithRuntime(cmd, opts, args, pcsClient, rt)
 			}
 
 			// Fallback to old approach during transition

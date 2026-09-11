@@ -24,6 +24,33 @@ See ochami-rcs(1) for more details.`,
 		Example: `  # Get console service status
   ochami rcs service status`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				rcsClient, err := rcs.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				status, err := rcsClient.GetStatus(cmd.Context(), rt.Token)
+				if err != nil {
+					return cli.Errorf(cli.CodeNetwork, "failed to get console service status: %w", err)
+				}
+
+				outBytes, err := format.MarshalData(status, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprintln(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			if err := cli.HandleToken(cmd); err != nil {
 				return err
 			}

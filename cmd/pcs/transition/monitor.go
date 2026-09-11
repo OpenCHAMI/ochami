@@ -68,6 +68,11 @@ type pcsTransitionClientProvider func(cmd *cobra.Command) (pcsTransitionClient, 
 // realPCSTransitionClient is the production provider used by
 // newCmdTransitionMonitor.
 func realPCSTransitionClient(cmd *cobra.Command) (pcsTransitionClient, error) {
+	// Try to get runtime from context first (new approach)
+	if rt, ok := cli.FromContext(cmd.Context()); ok {
+		return pcs_lib.GetClientWithRuntime(cmd, rt)
+	}
+	// Fallback to old approach during transition
 	return pcs_lib.GetClient(cmd)
 }
 
@@ -105,14 +110,26 @@ See ochami-pcs(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			transitionID := args[0]
 
+			// Try to get runtime from context (new approach)
+			var token string
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+				token = rt.Token
+			} else {
+				// Fallback to old approach during transition
+				// Handle token for this command
+				if err := cli.HandleToken(cmd); err != nil {
+					return err
+				}
+				token = cli.Token
+			}
+
 			// Create client to use for requests
 			pcsClient, err := getClient(cmd)
 			if err != nil {
-				return err
-			}
-
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -125,7 +142,7 @@ See ochami-pcs(1) for more details.`,
 
 			// Poll transition state until it is complete or aborted
 			for {
-				transitionHttpEnv, err := pcsClient.GetTransition(cmd.Context(), transitionID, cli.Token)
+				transitionHttpEnv, err := pcsClient.GetTransition(cmd.Context(), transitionID, token)
 				if err != nil {
 					return cli.Errorf(cli.CodeNetwork, "failed to get transition: %w", err)
 				}

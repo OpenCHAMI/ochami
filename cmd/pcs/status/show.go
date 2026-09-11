@@ -35,6 +35,48 @@ See ochami-pcs(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			xname := args[0]
 
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				pcsClient, err := pcs_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Get status
+				statusHttpEnv, err := pcsClient.GetStatus(cmd.Context(), []string{xname}, "", "", rt.Token)
+				if err != nil {
+					return cli.ClassifyClientError(err, "PCS status request yielded unsuccessful HTTP response", "failed to get power status")
+				}
+
+				var output statusResponse
+
+				err = json.Unmarshal(statusHttpEnv.Body, &output)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to unmarshal status: %w", err)
+				}
+
+				// Check if status array is empty
+				if len(output.Status) == 0 {
+					return cli.Errorf(cli.CodeGeneric, "no status found for the specified component")
+				}
+
+				// Print output just for first element in status array
+				outBytes, err := format.MarshalData(output.Status[0], rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprintln(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			pcsClient, err := pcs_lib.GetClient(cmd)
 			if err != nil {

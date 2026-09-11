@@ -96,6 +96,79 @@ See ochami-pcs(1) for more details.`,
 		Example: `  # Get status of PCS
   ochami pcs service status`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				pcsClient, err := pcs_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Figure out if we need to hit the /health endpoint (only if a flag has been provided)
+				flagsProvided := false
+				flags := flags()
+				for i := 0; i < len(flags); i++ {
+					flagsProvided = flagsProvided || cmd.Flag(flags[i]).Changed
+				}
+
+				var health healthOutput
+				if flagsProvided {
+					healthHttpEnv, err := pcsClient.GetHealth(cmd.Context())
+					if err != nil {
+						return cli.ClassifyClientError(err, "PCS status (health) request yielded unsuccessful HTTP response", "failed to get PCS status (health)")
+					}
+
+					// Unmarshall the health
+					err = json.Unmarshal(healthHttpEnv.Body, &health)
+					if err != nil {
+						return cli.Errorf(cli.CodePayload, "failed to unmarshal health: %w", err)
+					}
+				}
+
+				var output commandOutput
+				reportPCSState := !flagsProvided
+
+				// Process the flags and copy the parts we need from the /health
+				// endpoint response
+				if cmd.Flag("all").Changed {
+					output = commandOutput{
+						KvStore:      health.KvStore,
+						StateManager: health.StateManager,
+						Vault:        health.Vault,
+					}
+					reportPCSState = true
+				}
+				if cmd.Flag("storage").Changed {
+					output.KvStore = health.KvStore
+				}
+				if cmd.Flag("smd").Changed {
+					output.StateManager = health.StateManager
+				}
+				if cmd.Flag("vault").Changed {
+					output.Vault = health.Vault
+				}
+
+				// Now deal with the PCS status
+				if reportPCSState {
+					status, err := getStatus(cmd.Context(), pcsClient)
+					if err != nil {
+						return err
+					}
+
+					output.Status = status
+				}
+
+				// Print output
+				outBytes, err := format.MarshalData(output, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprintln(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			pcsClient, err := pcs_lib.GetClient(cmd)
 			if err != nil {

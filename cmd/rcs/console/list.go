@@ -24,6 +24,31 @@ See ochami-rcs(1) for more details.`,
 		Example: `  # List available consoles
   ochami rcs console list`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				rcsClient, err := rcs.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+				consoles, err := rcsClient.ListConsoles(cmd.Context(), rt.Token)
+				if err != nil {
+					return cli.Errorf(cli.CodeNetwork, "failed to list consoles: %w", err)
+				}
+				outBytes, err := format.MarshalData(consoles, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprintln(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			if err := cli.HandleToken(cmd); err != nil {
 				return err
 			}

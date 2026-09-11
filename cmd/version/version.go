@@ -23,6 +23,22 @@ func NewCmd() *cobra.Command {
 		Short:   "Print detailed version to stdout and exit",
 		Example: `  ochami version`,
 		Run: func(cmd *cobra.Command, args []string) {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				fmt.Fprintf(rt.Ios.Out(), "Version:    %s\n", version.Version)
+				fmt.Fprintf(rt.Ios.Out(), "Tag:        %s\n", version.Tag)
+				fmt.Fprintf(rt.Ios.Out(), "Branch:     %s\n", version.Branch)
+				fmt.Fprintf(rt.Ios.Out(), "Commit:     %s\n", version.Commit)
+				fmt.Fprintf(rt.Ios.Out(), "Git State:  %s\n", version.GitState)
+				fmt.Fprintf(rt.Ios.Out(), "Date:       %s\n", version.Date)
+				fmt.Fprintf(rt.Ios.Out(), "Go:         %s\n", version.GoVersion)
+				fmt.Fprintf(rt.Ios.Out(), "Compiler:   %s\n", runtime.Compiler)
+				fmt.Fprintf(rt.Ios.Out(), "Build Host: %s\n", version.BuildHost)
+				fmt.Fprintf(rt.Ios.Out(), "Build User: %s\n", version.BuildUser)
+				return
+			}
+
+			// Fallback to old approach during transition
 			fmt.Fprintf(cli.Ios.Out(), "Version:    %s\n", version.Version)
 			fmt.Fprintf(cli.Ios.Out(), "Tag:        %s\n", version.Tag)
 			fmt.Fprintf(cli.Ios.Out(), "Branch:     %s\n", version.Branch)

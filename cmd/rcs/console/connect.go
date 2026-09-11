@@ -22,6 +22,27 @@ See ochami-rcs(1) for more details.`,
   ochami rcs console connect x0c0s1b0n0`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				nodeID := args[0]
+				rcsClient, err := rcs.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+				err = rcsClient.ConnectConsole(cmd.Context(), nodeID, rt.Token, rt.Ios.In(), rt.Ios.Out())
+				if err != nil {
+					return cli.Errorf(cli.CodeNetwork, "failed to connect to console: %w", err)
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			if err := cli.HandleToken(cmd); err != nil {
 				return err
 			}

@@ -31,6 +31,43 @@ See ochami-pcs(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			transitionID := args[0]
 
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				pcsClient, err := pcs_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Get transition
+				transitionHttpEnv, err := pcsClient.GetTransition(cmd.Context(), transitionID, rt.Token)
+				if err != nil {
+					return cli.ClassifyClientError(err, "PCS transitions request yielded unsuccessful HTTP response", "failed to get PCS transition")
+				}
+
+				// Unmarshal output
+				var output interface{}
+				err = json.Unmarshal(transitionHttpEnv.Body, &output)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to unmarshal transitions: %w", err)
+				}
+
+				// Print output
+				outBytes, err := format.MarshalData(output, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprintln(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			pcsClient, err := pcs_lib.GetClient(cmd)
 			if err != nil {
