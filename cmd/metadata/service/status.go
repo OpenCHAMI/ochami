@@ -23,6 +23,28 @@ func newCmdServiceStatus() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Make request
+				outbytes, err := metadataServiceClient.GetHealth(cmd.Context(), rt.FormatOutput)
+				if err != nil {
+					return cli.ClassifyClientError(err, "failed to get metadata-service health", "failed to get metadata-service health")
+
+				}
+
+				// Print output
+				fmt.Fprint(rt.Ios.Out(), string(outbytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

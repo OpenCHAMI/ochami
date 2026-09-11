@@ -388,6 +388,30 @@ func (rt *Runtime) HandlePayloadStdin(cmd *cobra.Command, v any) error {
 	return nil
 }
 
+// HandlePayloadSliceWithRuntime is similar to Runtime.HandlePayload except that
+// it unmarshals the payload data into a typed slice. It is a package function
+// (rather than a method) because Go does not permit type parameters on methods.
+func HandlePayloadSliceWithRuntime[T any](rt *Runtime, cmd *cobra.Command, v *[]T) error {
+	if cmd.Flag("data").Changed {
+		data := cmd.Flag("data").Value.String()
+		if err := client.ReadPayloadSlice[T](data, rt.FormatInput, v); err != nil {
+			return Errorf(CodePayload, "unable to read payload data or file into slice: %w", err)
+		}
+	}
+	return nil
+}
+
+// HandlePayloadStdinSliceWithRuntime is similar to Runtime.HandlePayloadStdin
+// except that it unmarshals the payload data into a typed slice. It is a package
+// function (rather than a method) because Go does not permit type parameters on
+// methods.
+func HandlePayloadStdinSliceWithRuntime[T any](rt *Runtime, cmd *cobra.Command, v *[]T) error {
+	if err := client.ReadPayloadReaderSlice[T](rt.Ios.In(), rt.FormatInput, v); err != nil {
+		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
+	}
+	return nil
+}
+
 // GetBaseURI returns base URI for a service.
 func (rt *Runtime) GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, error) {
 	// Precedence of getting base URI for requests (higher numbers override

@@ -61,6 +61,61 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | odami metadata peer patch wireguardpeer-d614b918 -f yaml -d @-
   echo '<yaml_data>' | odami metadata peer patch wireguardpeer-d614b918 -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				var patchData interface{}
+				if cmd.Flag("set").Changed || cmd.Flag("unset").Changed || cmd.Flag("add").Changed || cmd.Flag("remove").Changed {
+					if cmd.Flag("patch-method").Changed && formatPatch != client.PatchMethodKeyVal {
+						log.Logger.Warn().Msg("overriding --patch-method since --set/--unset/--add/--remove was passed")
+					}
+
+					newPatchMethod, pd, err := client.NewKeyValPatchData(setList, unsetList, addList, removeList)
+					if err != nil {
+						return err
+					}
+					formatPatch = newPatchMethod
+					patchData = pd
+				} else {
+					if cmd.Flag("data").Changed {
+						if err := rt.HandlePayload(cmd, &patchData); err != nil {
+							return err
+						}
+					} else {
+						if err := rt.HandlePayloadStdin(cmd, &patchData); err != nil {
+							return err
+						}
+					}
+				}
+
+				peerPatched, err := metadataServiceClient.PatchWireGuardPeer(cmd.Context(), rt.Token, formatPatch, args[0], patchData)
+				if err != nil {
+					return cli.ClassifyClientError(err, "failed to patch WireGuard peer", "failed to patch WireGuard peer")
+
+				}
+
+				// Check that a modified item was returned
+				if peerPatched == nil {
+					return cli.Errorf(cli.CodeGeneric, "WireGuard peer patch returned no resource")
+				}
+
+				// Print UIDs of modified items
+				log.Logger.Info().Msgf("WireGuard peers patched: %+v", []string{peerPatched.Metadata.UID})
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

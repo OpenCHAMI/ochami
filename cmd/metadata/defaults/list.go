@@ -23,6 +23,33 @@ func newCmdMetadataDefaultsList() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Make request
+				outBytes, err := metadataServiceClient.ListDefaults(cmd.Context(), rt.Token, rt.FormatOutput)
+				if err != nil {
+					return cli.ClassifyClientError(err, "failed to list cluster defaults", "failed to list cluster defaults")
+
+				}
+
+				// Print output
+				fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

@@ -28,6 +28,64 @@ func newCmdServiceStatus() *cobra.Command {
 
 See ochami-cloud-init(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				if !cmd.Flag("api").Changed {
+					if _, err := cloudInitClient.GetVersion(cmd.Context()); err != nil {
+						if errors.Is(err, client.UnsuccessfulHTTPError) {
+							if !cmd.Flag("quiet").Changed {
+								fmt.Fprintln(rt.Ios.Out(), "cloud-init is running, but not normally")
+							}
+							return cli.Errorf(cli.CodeHTTP, "cloud-init status request yielded unsuccessful HTTP response: %w", err)
+						}
+						if !cmd.Flag("quiet").Changed {
+							fmt.Fprintln(rt.Ios.Out(), "cloud-init is not running")
+						}
+						return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init status: %w", err)
+					}
+					if !cmd.Flag("quiet").Changed {
+						fmt.Fprintln(rt.Ios.Out(), "cloud-init is running")
+					}
+					return nil
+				}
+
+				var respArr []client.HTTPEnvelope
+				errOccurred := false
+				if cmd.Flag("api").Changed {
+					if henv, err := cloudInitClient.GetAPI(cmd.Context()); err != nil {
+						if errors.Is(err, client.UnsuccessfulHTTPError) {
+							log.Logger.Error().Err(err).Msg("cloud-init API spec request yielded unsuccessful HTTP response")
+						} else {
+							log.Logger.Error().Err(err).Msg("failed to get cloud-init API spec")
+						}
+						errOccurred = true
+					} else {
+						respArr = append(respArr, henv)
+					}
+				}
+
+				for _, henv := range respArr {
+					outBytes, err := client.FormatBody(henv.Body, rt.FormatOutput)
+					if err != nil {
+						return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+					}
+					fmt.Fprint(rt.Ios.Out(), string(outBytes))
+				}
+
+				if errOccurred {
+					return cli.Errorf(cli.CodeHTTP, "one or more requests to cloud-init failed")
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
 			if err != nil {

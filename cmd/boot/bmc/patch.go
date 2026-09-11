@@ -63,6 +63,55 @@ See ochami-boot(1) for more details.`,
   echo '<yaml_data>' | ochami boot bmc patch bmc-773d99bf -d @- -f yaml
   echo '<yaml_data>' | ochami boot bmc patch bmc-773d99bf -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				var patchData interface{}
+				patchMethod := formatPatch
+				if cmd.Flag("set").Changed || cmd.Flag("unset").Changed || cmd.Flag("add").Changed || cmd.Flag("remove").Changed {
+					oldFormatPatch := patchMethod
+					newPatchMethod, pd, err := client.NewKeyValPatchData(setList, unsetList, addList, removeList)
+					if err != nil {
+						return cli.Errorf(cli.CodeUsage, "error creating key-value patch data: %w", err)
+					}
+					patchMethod = newPatchMethod
+					if cmd.Flag("patch-method").Changed && oldFormatPatch != patchMethod {
+						log.Logger.Warn().Msg("overriding --patch-method since --set/--unset/--add/--remove was passed")
+					}
+					patchData = pd
+				} else {
+					if cmd.Flag("data").Changed {
+						if err := rt.HandlePayload(cmd, &patchData); err != nil {
+							return err
+						}
+					} else {
+						if err := rt.HandlePayloadStdin(cmd, &patchData); err != nil {
+							return err
+						}
+					}
+				}
+
+				bmcPatched, err := bootServiceClient.PatchBMC(cmd.Context(), rt.Token, patchMethod, args[0], patchData)
+				if err != nil {
+					return cli.Errorf(cli.CodeNetwork, "failed to patch BMC: %w", err)
+				}
+
+				log.Logger.Debug().Msgf("BMC patched: %+v", bmcPatched)
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bootServiceClient, err := boot_service_lib.GetClient(cmd)
 			if err != nil {

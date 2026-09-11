@@ -58,6 +58,56 @@ See ochami-cloud-init(1) for more details.`,
   echo '<yaml_data>' | ochami cloud-init group add -f yaml
   echo '<yaml_data>' | ochami cloud-init group add -d @- -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// The group data we will send
+				ciGroups := []cistore.GroupData{}
+
+				// Read payload from file or stdin.
+				if cmd.Flag("data").Changed {
+					if err := rt.HandlePayload(cmd, &ciGroups); err != nil {
+						return err
+					}
+				} else {
+					if err := rt.HandlePayloadStdin(cmd, &ciGroups); err != nil {
+						return err
+					}
+				}
+
+				// Send data
+				results := cloudInitClient.PostGroups(cmd.Context(), ciGroups, rt.Token)
+				// Since the requests are done iteratively, we need to deal with
+				// each error that might have occurred.
+				var errorsOccurred = false
+				for _, e := range results.Errors() {
+					if e != nil {
+						if errors.Is(e, client.UnsuccessfulHTTPError) {
+							log.Logger.Error().Err(e).Msg("cloud-init group request yielded unsuccessful HTTP response")
+						} else {
+							log.Logger.Error().Err(e).Msg("failed to add new group to cloud-init")
+						}
+						errorsOccurred = true
+					}
+				}
+				if errorsOccurred {
+					return cli.Errorf(cli.CodeHTTP, "cloud-init group addition completed with errors")
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
 			if err != nil {

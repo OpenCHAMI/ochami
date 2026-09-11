@@ -62,6 +62,45 @@ func runCoreBootConfigDelete(cmd *cobra.Command, opts *bootConfigDeleteOptions, 
 	return nil
 }
 
+func runCoreBootConfigDeleteWithRuntime(cmd *cobra.Command, opts *bootConfigDeleteOptions, args []string, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "failed to fetch user input: %w", err)
+		} else if !respDelete {
+			log.Logger.Info().Msg("user aborted boot config deletion")
+			return nil
+		} else {
+			log.Logger.Debug().Msg("user answered affirmatively to delete boot config(s)")
+		}
+	}
+
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Send off requests
+	results := bootServiceClient.DeleteBootConfigs(cmd.Context(), rt.Token, args)
+
+	// Deal with per-request errors
+	var errorsOccurred = false
+	for _, e := range results.Errors() {
+		if e != nil {
+			log.Logger.Error().Err(e).Msg("failed to delete boot config")
+			errorsOccurred = true
+		}
+	}
+	log.Logger.Debug().Msgf("boot configs deleted: %+v", results.Values())
+	if errorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "boot config deletion completed with errors")
+	}
+
+	return nil
+}
+
 func newCmdBootConfigDelete() *cobra.Command {
 	// bootConfigDeleteCmd represents the "boot config delete" command
 	var bootConfigDeleteCmd = &cobra.Command{
@@ -80,6 +119,26 @@ See ochami-boot(1) for more details.`,
   # Don't confirm deletion
   ochami boot config delete --no-confirm boo-ebf2a27a`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &bootConfigDeleteOptions{}
+				if cmd.Flag("no-confirm").Changed {
+					opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreBootConfigDeleteWithRuntime(cmd, opts, args, bootServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bootServiceClient, err := boot_service_lib.GetClient(cmd)
 			if err != nil {

@@ -23,6 +23,32 @@ func newCmdBootBmcList() *cobra.Command {
 
 See ochami-boot(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Make request
+				outBytes, err := bootServiceClient.ListBMCs(cmd.Context(), rt.Token, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodeNetwork, "failed to list BMCs: %w", err)
+				}
+
+				// Print output
+				fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bootServiceClient, err := boot_service_lib.GetClient(cmd)
 			if err != nil {

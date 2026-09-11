@@ -94,6 +94,74 @@ func runCoreMetadataDefaultsAdd(cmd *cobra.Command, opts *metadataDefaultsAddOpt
 	return nil
 }
 
+func runCoreMetadataDefaultsAddWithRuntime(cmd *cobra.Command, opts *metadataDefaultsAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var results client.BatchResult[api.ClusterDefaults]
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read cluster defaults data
+		defaults := []metadata_service_client.CreateClusterDefaultsRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service_client.CreateClusterDefaultsRequest](rt, cmd, &defaults); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service_client.CreateClusterDefaultsRequest](rt, cmd, &defaults); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddDefaults(cmd.Context(), rt.Token, defaults)
+	} else {
+		// Use simple API (spec)
+
+		// Read cluster defaults data
+		defaults := []metadata_service.ClusterDefaultsSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service.ClusterDefaultsSpec](rt, cmd, &defaults); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service.ClusterDefaultsSpec](rt, cmd, &defaults); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddDefaultsSpecs(cmd.Context(), rt.Token, defaults)
+	}
+
+	// Deal with per-request errors
+	var reqErrorsOccurred = false
+	for _, err := range results.Errors() {
+		if err != nil {
+			log.Logger.Error().Err(err).Msg("failed to add cluster defaults")
+			reqErrorsOccurred = true
+		}
+	}
+
+	// Print names of created items
+	var names []string
+	for _, defaults := range results.Values() {
+		names = append(names, defaults.Metadata.Name)
+	}
+	log.Logger.Info().Msgf("Cluster defaults created: %q", names)
+
+	// Warn if any request errors occurred
+	if reqErrorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "Cluster defaults addition completed with errors")
+	}
+
+	return nil
+}
+
 func newCmdMetadataDefaultsAdd() *cobra.Command {
 	// metadataDefaultsAddCmd represents the "metadata defaults add" command
 	var metadataDefaultsAddCmd = &cobra.Command{
@@ -170,6 +238,26 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | ochami metadata defaults add -f yaml -d @-
   echo '<yaml_data>' | ochami metadata defaults add -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &metadataDefaultsAddOptions{}
+				if cmd.Flag("envelope").Changed {
+					opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreMetadataDefaultsAddWithRuntime(cmd, opts, metadataServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

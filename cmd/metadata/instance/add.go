@@ -91,6 +91,70 @@ func runCoreMetadataInstanceAdd(cmd *cobra.Command, opts *metadataInstanceAddOpt
 	return nil
 }
 
+func runCoreMetadataInstanceAddWithRuntime(cmd *cobra.Command, opts *metadataInstanceAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var results client.BatchResult[api.InstanceInfo]
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read instance data
+		instances := []metadata_service_client.CreateInstanceInfoRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service_client.CreateInstanceInfoRequest](rt, cmd, &instances); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service_client.CreateInstanceInfoRequest](rt, cmd, &instances); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddInstanceInfos(cmd.Context(), rt.Token, instances)
+	} else {
+		// Use simple API (spec)
+
+		// Read instance data
+		instances := []metadata_service.InstanceInfoSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service.InstanceInfoSpec](rt, cmd, &instances); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service.InstanceInfoSpec](rt, cmd, &instances); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddInstanceInfoSpecs(cmd.Context(), rt.Token, instances)
+	}
+
+	// Deal with per-request errors
+	var reqErrorsOccurred = false
+	for _, err := range results.Errors() {
+		if err != nil {
+			log.Logger.Error().Err(err).Msg("failed to add instance info")
+			reqErrorsOccurred = true
+		}
+	}
+	var names []string
+	for _, instance := range results.Values() {
+		names = append(names, instance.Metadata.Name)
+	}
+	log.Logger.Debug().Msgf("instance infos created: %q", names)
+	if reqErrorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "instance info addition completed with errors")
+	}
+
+	return nil
+}
+
 func newCmdMetadataInstanceAdd() *cobra.Command {
 	// metadataInstanceAddCmd represents the "metadata instance add" command
 	var metadataInstanceAddCmd = &cobra.Command{
@@ -153,6 +217,26 @@ See ochami-metadata(1) for more details.`,
   echo '<json_data>' | ochami metadata instance add -d @-
   echo '<yaml_data>' | ochami metadata instance add -d @- -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &metadataInstanceAddOptions{}
+				if cmd.Flag("envelope").Changed {
+					opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreMetadataInstanceAddWithRuntime(cmd, opts, metadataServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

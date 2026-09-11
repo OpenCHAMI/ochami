@@ -85,6 +85,65 @@ func runCoreMetadataDefaultsSet(cmd *cobra.Command, opts *metadataDefaultsSetOpt
 	return nil
 }
 
+func runCoreMetadataDefaultsSetWithRuntime(cmd *cobra.Command, opts *metadataDefaultsSetOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var defaultsSet *api.ClusterDefaults
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read cluster defaults data
+		defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &defaults); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &defaults); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		defaultsSet, reqErr = metadataServiceClient.SetDefaults(cmd.Context(), rt.Token, args[0], defaults)
+	} else {
+		// Use simple API (spec)
+
+		// Read cluster defaults data
+		spec := api.ClusterDefaultsSpec{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cmd.Context(), rt.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.ClassifyClientError(reqErr, "failed to set cluster defaults", "failed to set cluster defaults")
+
+	}
+
+	// Check that a modified item was returned
+	if defaultsSet == nil {
+		return cli.Errorf(cli.CodeGeneric, "cluster defaults set returned no resource")
+	}
+
+	log.Logger.Debug().Msgf("cluster defaults set: %+v", defaultsSet)
+
+	return nil
+}
+
 func newCmdMetadataDefaultsSet() *cobra.Command {
 	// metadataDefaultsSetCmd represents the "metadata defaults set" command
 	var metadataDefaultsSetCmd = &cobra.Command{
@@ -128,6 +187,26 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | ochami metadata defaults set clusterdefaults-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata defaults set clusterdefaults-d614b918 -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &metadataDefaultsSetOptions{}
+				if cmd.Flag("envelope").Changed {
+					opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreMetadataDefaultsSetWithRuntime(cmd, opts, args, metadataServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

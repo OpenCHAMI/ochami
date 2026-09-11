@@ -29,6 +29,36 @@ func newCmdDefaultsGet() *cobra.Command {
 See ochami-cloud-init(1) for more details.`,
 		Example: `  ochami cloud-init defaults get`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Get data
+				henv, err := cloudInitClient.GetDefaults(cmd.Context(), rt.Token)
+				if err != nil {
+					return cli.Errorf(cli.CodeNetwork, "failed to get defaults: %w", err)
+				}
+
+				// Print in desired format
+				outBytes, err := client.FormatBody(henv.Body, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
 			if err != nil {

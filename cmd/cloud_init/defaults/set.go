@@ -55,6 +55,42 @@ See ochami-cloud-init(1) for more details.`,
   echo '<yaml_data>' | ochami cloud-init defaults set -f yaml
   echo '<yaml_data>' | ochami cloud-init defaults set -d @- -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// The ClusterDefaults data we will send
+				ciDflts := cistore.ClusterDefaults{}
+
+				// Read payload from file or stdin.
+				if cmd.Flag("data").Changed {
+					if err := rt.HandlePayload(cmd, &ciDflts); err != nil {
+						return err
+					}
+				} else {
+					if err := rt.HandlePayloadStdin(cmd, &ciDflts); err != nil {
+						return err
+					}
+				}
+
+				// Send data
+				if _, err := cloudInitClient.PostDefaults(cmd.Context(), ciDflts, rt.Token); err != nil {
+					return cli.Errorf(cli.CodeNetwork, "failed to set defaults: %w", err)
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
 			if err != nil {

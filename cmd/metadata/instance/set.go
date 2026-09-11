@@ -85,6 +85,65 @@ func runCoreMetadataInstanceSet(cmd *cobra.Command, opts *metadataInstanceSetOpt
 	return nil
 }
 
+func runCoreMetadataInstanceSetWithRuntime(cmd *cobra.Command, opts *metadataInstanceSetOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var instanceSet *api.InstanceInfo
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read instance data
+		instance := metadata_service_client.UpdateInstanceInfoRequest{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &instance); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &instance); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		instanceSet, reqErr = metadataServiceClient.SetInstanceInfo(cmd.Context(), rt.Token, args[0], instance)
+	} else {
+		// Use simple API (spec)
+
+		// Read instance data
+		spec := api.InstanceInfoSpec{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		instanceSet, reqErr = metadataServiceClient.SetInstanceInfoSpec(cmd.Context(), rt.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.ClassifyClientError(reqErr, "failed to set instance info", "failed to set instance info")
+
+	}
+
+	// Check that a modified item was returned
+	if instanceSet == nil {
+		return cli.Errorf(cli.CodeGeneric, "instance info set returned no resource")
+	}
+
+	log.Logger.Debug().Msgf("instance info set: %+v", instanceSet)
+
+	return nil
+}
+
 func newCmdMetadataInstanceSet() *cobra.Command {
 	// metadataInstanceSetCmd represents the "metadata instance set" command
 	var metadataInstanceSetCmd = &cobra.Command{
@@ -125,6 +184,26 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | ochami metadata instance set instanceinfo-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata instance set instanceinfo-d614b918 -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &metadataInstanceSetOptions{}
+				if cmd.Flag("envelope").Changed {
+					opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreMetadataInstanceSetWithRuntime(cmd, opts, args, metadataServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

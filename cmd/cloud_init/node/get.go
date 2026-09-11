@@ -58,6 +58,73 @@ See ochami-cloud-init(1) for more details.`,
 		Example: `  # Get data from compute and slurm groups for node x3000c0s0b0n0
   ochami cloud-init node get group x3000c0s0b1n0 compute slurm`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Get node group data
+				results, err := cloudInitClient.GetNodeGroupData(cmd.Context(), rt.Token, args[0], args[1:]...)
+				if err != nil {
+					return cli.Errorf(cli.CodeNetwork, "failed to get node group data: %w", err)
+				}
+				// Since the requests are done iteratively, we need to
+				// deal with each error that might have occurred.
+				var errorsOccurred = false
+				for _, e := range results.Errors() {
+					if e != nil {
+						if errors.Is(e, client.UnsuccessfulHTTPError) {
+							log.Logger.Error().Err(e).Msg("cloud-init node group request yielded unsuccessful HTTP response")
+						} else {
+							log.Logger.Error().Err(e).Msg("failed to get cloud-init node group data")
+						}
+						errorsOccurred = true
+					}
+				}
+				if errorsOccurred {
+					return cli.Errorf(cli.CodeHTTP, "cloud-init node group data retrieval completed with errors")
+				}
+
+				// Collect node group data into string array
+				var gSlice []string
+				for idx, henv := range results.Values() {
+					// Warn and don't add to list if cloud-config is empty for group
+					if len(henv.Body) == 0 {
+						log.Logger.Warn().Msgf("cloud-config for group %s was empty, not printing for node %s", args[1+idx], args[0])
+						continue
+					}
+					gSlice = append(gSlice, string(henv.Body))
+				}
+
+				// Print each datum
+				for idx, g := range gSlice {
+					if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
+						fmt.Fprintln(rt.Ios.Out(), g)
+					} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
+						fmt.Fprintf(rt.Ios.Out(), "--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
+						fmt.Fprintln(rt.Ios.Out(), g)
+					} else {
+						if len(gSlice) == 1 {
+							fmt.Fprintln(rt.Ios.Out(), g)
+						} else {
+							fmt.Fprintf(rt.Ios.Out(), "--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
+							fmt.Fprintln(rt.Ios.Out(), g)
+						}
+					}
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
 			if err != nil {

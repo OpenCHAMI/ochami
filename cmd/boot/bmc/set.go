@@ -79,6 +79,59 @@ func runCoreBootBmcSet(cmd *cobra.Command, opts *bootBmcSetOptions, args []strin
 	return nil
 }
 
+func runCoreBootBmcSetWithRuntime(cmd *cobra.Command, opts *bootBmcSetOptions, args []string, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var bmcSet *api.BMC
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read BMC data
+		bmc := boot_service_client.UpdateBMCRequest{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &bmc); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &bmc); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		bmcSet, reqErr = bootServiceClient.SetBMC(cmd.Context(), rt.Token, args[0], bmc)
+	} else {
+		// Use simple API (spec)
+
+		// Read BMC data
+		spec := api.BMCSpec{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		bmcSet, reqErr = bootServiceClient.SetBMCSpec(cmd.Context(), rt.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.Errorf(cli.CodeNetwork, "failed to set bmc: %w", reqErr)
+	}
+
+	log.Logger.Debug().Msgf("bmc set: %+v", bmcSet)
+
+	return nil
+}
+
 func newCmdBootBmcSet() *cobra.Command {
 	// bootBmcSetCmd represents the "boot bmc set" command
 	var bootBmcSetCmd = &cobra.Command{
@@ -123,6 +176,26 @@ See ochami-boot(1) for more details.`,
   echo '<yaml_data>' | ochami boot bmc set -d @- -f yaml bmc-773d99bf
   echo '<yaml_data>' | ochami boot bmc set -f yaml bmc-773d99bf`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &bootBmcSetOptions{}
+				if cmd.Flag("envelope").Changed {
+					opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreBootBmcSetWithRuntime(cmd, opts, args, bootServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bootServiceClient, err := boot_service_lib.GetClient(cmd)
 			if err != nil {

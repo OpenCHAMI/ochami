@@ -79,6 +79,59 @@ func runCoreBootConfigSet(cmd *cobra.Command, opts *bootConfigSetOptions, args [
 	return nil
 }
 
+func runCoreBootConfigSetWithRuntime(cmd *cobra.Command, opts *bootConfigSetOptions, args []string, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var cfgSet *api.BootConfiguration
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read boot configuration data
+		bcs := boot_service_client.UpdateBootConfigurationRequest{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &bcs); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &bcs); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		cfgSet, reqErr = bootServiceClient.SetBootConfig(cmd.Context(), rt.Token, args[0], bcs)
+	} else {
+		// Use simple API (spec)
+
+		// Read boot configuration data
+		spec := api.BootConfigurationSpec{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cmd.Context(), rt.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.Errorf(cli.CodeNetwork, "failed to set boot configuration: %w", reqErr)
+	}
+
+	log.Logger.Debug().Msgf("boot config set: %+v", cfgSet)
+
+	return nil
+}
+
 func newCmdBootConfigSet() *cobra.Command {
 	// bootConfigSetCmd represents the "boot config set" command
 	var bootConfigSetCmd = &cobra.Command{
@@ -137,6 +190,26 @@ See ochami-boot(1) for more details.`,
   echo '<yaml_data>' | ochami boot config set -d @- -f yaml boo-914afad2
   echo '<yaml_data>' | ochami boot config set -f yaml boo-914afad2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &bootConfigSetOptions{}
+				if cmd.Flag("envelope").Changed {
+					opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreBootConfigSetWithRuntime(cmd, opts, args, bootServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bootServiceClient, err := boot_service_lib.GetClient(cmd)
 			if err != nil {

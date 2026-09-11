@@ -62,6 +62,45 @@ func runCoreBootNodeDelete(cmd *cobra.Command, opts *bootNodeDeleteOptions, args
 	return nil
 }
 
+func runCoreBootNodeDeleteWithRuntime(cmd *cobra.Command, opts *bootNodeDeleteOptions, args []string, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "failed to fetch user input: %w", err)
+		} else if !respDelete {
+			log.Logger.Info().Msg("user aborted node deletion")
+			return nil
+		} else {
+			log.Logger.Debug().Msg("user answered affirmatively to delete node(s)")
+		}
+	}
+
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Send off requests
+	results := bootServiceClient.DeleteNodes(cmd.Context(), rt.Token, args)
+
+	// Deal with per-request errors
+	var errorsOccurred = false
+	for _, e := range results.Errors() {
+		if e != nil {
+			log.Logger.Error().Err(e).Msg("failed to delete node")
+			errorsOccurred = true
+		}
+	}
+	log.Logger.Debug().Msgf("nodes deleted: %+v", results.Values())
+	if errorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "node deletion completed with errors")
+	}
+
+	return nil
+}
+
 func newCmdBootNodeDelete() *cobra.Command {
 	// bootNodeDeleteCmd represents the "boot node delete" command
 	var bootNodeDeleteCmd = &cobra.Command{
@@ -80,6 +119,26 @@ See ochami-boot(1) for more details.`,
   # Don't confirm deletion
   ochami boot node delete --no-confirm nod-bc76f7f2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &bootNodeDeleteOptions{}
+				if cmd.Flag("no-confirm").Changed {
+					opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreBootNodeDeleteWithRuntime(cmd, opts, args, bootServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bootServiceClient, err := boot_service_lib.GetClient(cmd)
 			if err != nil {

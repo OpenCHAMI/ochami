@@ -66,6 +66,52 @@ func runCoreMetadataGroupDelete(cmd *cobra.Command, opts *metadataGroupDeleteOpt
 	return nil
 }
 
+// runCoreMetadataGroupDelete contains the core logic for the metadata group delete command.
+// It takes the parsed options and performs the actual work of deleting groups.
+// Runtime-aware version.
+func runCoreMetadataGroupDeleteWithRuntime(cmd *cobra.Command, opts *metadataGroupDeleteOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+		} else if !respDelete {
+			log.Logger.Info().Msg("user aborted group deletion")
+			return nil
+		} else {
+			log.Logger.Debug().Msg("user answered affirmatively to delete groups")
+		}
+	}
+
+	// Send off requests
+	results := metadataServiceClient.DeleteGroups(cmd.Context(), rt.Token, args)
+
+	// Deal with per-request errors
+	var errorsOccurred = false
+	for _, err := range results.Errors() {
+		if err != nil {
+			log.Logger.Error().Err(err).Msg("failed to delete group")
+			errorsOccurred = true
+		}
+	}
+
+	// Print UIDs of deleted items
+	log.Logger.Info().Msgf("Groups deleted: %+v", results.Values())
+
+	// Warn if any request errors occurred
+	if errorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "Group deletion completed with errors")
+	}
+
+	return nil
+}
+
 func newCmdMetadataGroupDelete() *cobra.Command {
 	// metadataGroupDeleteCmd represents the "metadata group delete" command
 	var metadataGroupDeleteCmd = &cobra.Command{
@@ -84,6 +130,26 @@ See ochami-metadata(1) for more details.`,
   # Don't confirm deletion
   ochami metadata group delete --no-confirm group-d614b918`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &metadataGroupDeleteOptions{}
+				if cmd.Flag("no-confirm").Changed {
+					opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreMetadataGroupDeleteWithRuntime(cmd, opts, args, metadataServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

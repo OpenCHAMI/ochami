@@ -85,6 +85,65 @@ func runCoreMetadataPeerSet(cmd *cobra.Command, opts *metadataPeerSetOptions, ar
 	return nil
 }
 
+func runCoreMetadataPeerSetWithRuntime(cmd *cobra.Command, opts *metadataPeerSetOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var peerSet *api.WireGuardPeer
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read peer data
+		peer := metadata_service_client.UpdateWireGuardPeerRequest{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &peer); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &peer); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		peerSet, reqErr = metadataServiceClient.SetWireGuardPeer(cmd.Context(), rt.Token, args[0], peer)
+	} else {
+		// Use simple API (spec)
+
+		// Read peer data
+		spec := api.WireGuardPeerSpec{}
+		if cmd.Flag("data").Changed {
+			if err := rt.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := rt.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		peerSet, reqErr = metadataServiceClient.SetWireGuardPeerSpec(cmd.Context(), rt.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.ClassifyClientError(reqErr, "failed to set WireGuard peer", "failed to set WireGuard peer")
+
+	}
+
+	// Check that a modified item was returned
+	if peerSet == nil {
+		return cli.Errorf(cli.CodeGeneric, "WireGuard peer set returned no resource")
+	}
+
+	log.Logger.Debug().Msgf("WireGuard peer set: %+v", peerSet)
+
+	return nil
+}
+
 func newCmdMetadataPeerSet() *cobra.Command {
 	// metadataPeerSetCmd represents the "metadata peer set" command
 	var metadataPeerSetCmd = &cobra.Command{
@@ -133,6 +192,26 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | odami metadata peer set wireguardpeer-d614b918 -f yaml -d @-
   echo '<yaml_data>' | odami metadata peer set wireguardpeer-d614b918 -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &metadataPeerSetOptions{}
+				if cmd.Flag("envelope").Changed {
+					opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreMetadataPeerSetWithRuntime(cmd, opts, args, metadataServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

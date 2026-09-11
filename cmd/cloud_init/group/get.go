@@ -128,6 +128,71 @@ See ochami-cloud-init(1) for more details.`,
   ochami cloud-init group get config
   ochami cloud-init group get config compute`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Get all data for specified (or unspecified) groups
+				groupSlice, err := getGroupData(cmd, args)
+				if err != nil {
+					return err
+				}
+
+				// Extract cloud-config for each group
+				type configGroup struct {
+					Name     string                 `json:"name" yaml:"name"`
+					Data     map[string]interface{} `json:"meta-data" yaml:"meta-data"`
+					Content  []byte                 `json:"content" yaml:"content"`
+					Encoding string                 `json:"encoding" enums:"base64,plain"`
+				}
+				var configSlice []configGroup
+				for _, config := range groupSlice {
+					if len(config.File.Content) == 0 {
+						log.Logger.Warn().Msgf("cloud-config for group %s was empty, not printing", config.Name)
+						continue
+					}
+					newCfg := configGroup{
+						Name:     config.Name,
+						Data:     config.Data,
+						Content:  config.File.Content,
+						Encoding: config.File.Encoding,
+					}
+
+					// Base64 decode any base64-decoded cloud configs
+					ccf := cistore.CloudConfigFile{
+						Content:  newCfg.Content,
+						Encoding: newCfg.Encoding,
+					}
+					cBytes, err := cloud_init.DecodeCloudConfig(ccf)
+					if err != nil {
+						return cli.Errorf(cli.CodePayload, "failed to decode cloud-config for %s: %w", newCfg.Name, err)
+					}
+					newCfg.Content = cBytes
+					newCfg.Encoding = "plain"
+
+					configSlice = append(configSlice, newCfg)
+				}
+
+				// Print cloud-init config(s)
+				for cidx, cfg := range configSlice {
+					if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
+						fmt.Fprintln(rt.Ios.Out(), string(configSlice[cidx].Content))
+					} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
+						fmt.Fprintf(rt.Ios.Out(), "--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
+						fmt.Fprintln(rt.Ios.Out(), string(configSlice[cidx].Content))
+						fmt.Fprintln(rt.Ios.Out())
+					} else {
+						if len(configSlice) == 1 {
+							fmt.Fprintln(rt.Ios.Out(), string(configSlice[cidx].Content))
+						} else {
+							fmt.Fprintf(rt.Ios.Out(), "--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
+							fmt.Fprintln(rt.Ios.Out(), string(configSlice[cidx].Content))
+						}
+					}
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Get all data for specified (or unspecified) groups
 			groupSlice, err := getGroupData(cmd, args)
 			if err != nil {

@@ -66,6 +66,49 @@ func runCoreMetadataInstanceDelete(cmd *cobra.Command, opts *metadataInstanceDel
 	return nil
 }
 
+func runCoreMetadataInstanceDeleteWithRuntime(cmd *cobra.Command, opts *metadataInstanceDeleteOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+		} else if !respDelete {
+			log.Logger.Info().Msg("user aborted instance info deletion")
+			return nil
+		} else {
+			log.Logger.Debug().Msg("user answered affirmatively to delete instance infos")
+		}
+	}
+
+	// Send off requests
+	results := metadataServiceClient.DeleteInstanceInfos(cmd.Context(), rt.Token, args)
+
+	// Deal with per-request errors
+	var errorsOccurred = false
+	for _, err := range results.Errors() {
+		if err != nil {
+			log.Logger.Error().Err(err).Msg("failed to delete instance info")
+			errorsOccurred = true
+		}
+	}
+
+	// Print UIDs of deleted items
+	log.Logger.Info().Msgf("Instance infos deleted: %+v", results.Values())
+
+	// Warn if any request errors occurred
+	if errorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "Instance info deletion completed with errors")
+	}
+
+	return nil
+}
+
 func newCmdMetadataInstanceDelete() *cobra.Command {
 	// metadataInstanceDeleteCmd represents the "metadata instance delete" command
 	var metadataInstanceDeleteCmd = &cobra.Command{
@@ -84,6 +127,26 @@ See ochami-metadata(1) for more details.`,
   # Don't confirm deletion
   ochami metadata instance delete --no-confirm instanceinfo-d614b918`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &metadataInstanceDeleteOptions{}
+				if cmd.Flag("no-confirm").Changed {
+					opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreMetadataInstanceDeleteWithRuntime(cmd, opts, args, metadataServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {

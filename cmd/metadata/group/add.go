@@ -27,6 +27,7 @@ type metadataGroupAddOptions struct {
 
 // runCoreMetadataGroupAdd contains the core logic for the metadata group add command.
 // It takes the parsed options and performs the actual work of adding groups.
+// Legacy version using global state.
 func runCoreMetadataGroupAdd(cmd *cobra.Command, opts *metadataGroupAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient) error {
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
@@ -91,6 +92,73 @@ func runCoreMetadataGroupAdd(cmd *cobra.Command, opts *metadataGroupAddOptions, 
 	return nil
 }
 
+// runCoreMetadataGroupAddWithRuntime contains the core logic for the metadata group add command.
+// It takes the parsed options and performs the actual work of adding groups.
+// Runtime-aware version.
+func runCoreMetadataGroupAddWithRuntime(cmd *cobra.Command, opts *metadataGroupAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var results client.BatchResult[api.Group]
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read group data
+		groups := []metadata_service_client.CreateGroupRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service_client.CreateGroupRequest](rt, cmd, &groups); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service_client.CreateGroupRequest](rt, cmd, &groups); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddGroups(cmd.Context(), rt.Token, groups)
+	} else {
+		// Use simple API (spec)
+
+		// Read group data
+		groups := []metadata_service.GroupSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service.GroupSpec](rt, cmd, &groups); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service.GroupSpec](rt, cmd, &groups); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddGroupSpecs(cmd.Context(), rt.Token, groups)
+	}
+
+	// Deal with per-request errors
+	var reqErrorsOccurred = false
+	for _, err := range results.Errors() {
+		if err != nil {
+			log.Logger.Error().Err(err).Msg("failed to add group")
+			reqErrorsOccurred = true
+		}
+	}
+	var names []string
+	for _, group := range results.Values() {
+		names = append(names, group.Metadata.Name)
+	}
+	log.Logger.Debug().Msgf("groups created: %q", names)
+	if reqErrorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "group addition completed with errors")
+	}
+
+	return nil
+}
+
 func newCmdMetadataGroupAdd() *cobra.Command {
 	// metadataGroupAddCmd represents the "metadata group add" command
 	var metadataGroupAddCmd = &cobra.Command{
@@ -101,77 +169,97 @@ func newCmdMetadataGroupAdd() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Add group with inline multi-line template (YAML via stdin)
-   ochami metadata group add -f yaml <<'EOF'
-    name: compute-group
-    template: |
-      #cloud-config
-      package_update: true
-      packages:
-        - nfs-common
-        - chrony
-    metaData:
-      role: compute
-    EOF'
-
-  # Add group using JSON (single line template)
-  ochami metadata group add -d \
-     '{
-        "name": "storage-group",
-        "template":"#cloud-config\npackages:\n  - vim\n",
-        "metaData":{"role":"storage"}
-      }'
-
-  # Add multiple groups using JSON array of specs
-  ochami metadata group add -d \
-     '[
-        {
-          "name": "nfs-client-group",
-          "template":"#cloud-config\npackages:\n  - nfs-common\n"
-        },
-        {
-          "name": "nfs-server-group",
-          "template":"#cloud-config\npackages:\n  - nfs-server\n"
-        }
-      ]'
-
-  # Add multiple groups using YAML array of specs
-  ochami metadata group add -f yaml <<'EOF'
-   - name: nfs-client-group
+    ochami metadata group add -f yaml <<'EOF'
+     name: compute-group
      template: |
        #cloud-config
+       package_update: true
        packages:
          - nfs-common
-   - name: nfs-server-group
-     template: |
-       #cloud-config
-       packages:
-         - nfs-server
-   EOF'
+         - chrony
+     metaData:
+       role: compute
+     EOF'
 
-  # Add group preserving labels/annotations (envelope API)
-  ochami metadata group add -e -d \
-     '{
-        "metadata": {
-          "name": "storage-group",
-          "labels": {
-            "role": "storage"
-          }
-        },
-        "spec": {
-          "template":"#cloud-config\npackages:\n  - vim\n"
-        }
-      }'
+   # Add group using JSON (single line template)
+   ochami metadata group add -d \
+      '{
+         "name": "storage-group",
+         "template":"#cloud-config\npackages:\n  - vim\n",
+         "metaData":{"role":"storage"}
+       }'
 
-  # Add multiple groups from file
-  ochami metadata group add -d @groups.json
-  ochami metadata group add -d @groups.yaml -f yaml
+   # Add multiple groups using JSON array of specs
+   ochami metadata group add -d \
+      '[
+         {
+           "name": "nfs-client-group",
+           "template":"#cloud-config\npackages:\n  - nfs-common\n"
+         },
+         {
+           "name": "nfs-server-group",
+           "template":"#cloud-config\npackages:\n  - nfs-server\n"
+         }
+       ]'
 
-  # Add groups using data from stdin
-  echo '<json_data>' | ochami metadata group add -d @-
-  echo '<json_data>' | ochami metadata group add
-  echo '<yaml_data>' | ochami metadata group add -f yaml -d @-
-  echo '<yaml_data>' | ochami metadata group add -f yaml`,
+   # Add multiple groups using YAML array of specs
+   ochami metadata group add -f yaml <<'EOF'
+    - name: nfs-client-group
+      template: |
+        #cloud-config
+        packages:
+          - nfs-common
+    - name: nfs-server-group
+      template: |
+        #cloud-config
+        packages:
+          - nfs-server
+    EOF'
+
+   # Add group preserving labels/annotations (envelope API)
+   ochami metadata group add -e -d \
+      '{
+         "metadata": {
+           "name": "storage-group",
+           "labels": {
+             "role": "storage"
+           }
+         },
+         "spec": {
+           "template":"#cloud-config\npackages:\n  - vim\n"
+         }
+       }'
+
+   # Add multiple groups from file
+   ochami metadata group add -d @groups.json
+   ochami metadata group add -d @groups.yaml -f yaml
+
+   # Add groups using data from stdin
+   echo '<json_data>' | ochami metadata group add -d @-
+   echo '<json_data>' | ochami metadata group add
+   echo '<yaml_data>' | ochami metadata group add -f yaml -d @-
+   echo '<yaml_data>' | ochami metadata group add -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &metadataGroupAddOptions{}
+				if cmd.Flag("envelope").Changed {
+					opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreMetadataGroupAddWithRuntime(cmd, opts, metadataServiceClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
 			if err != nil {
