@@ -73,6 +73,52 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				var compSlice smd.ComponentSlice
+				if cmd.Flag("data").Changed {
+					if err := rt.HandlePayload(cmd, &compSlice); err != nil {
+						return err
+					}
+				} else {
+					// ...otherwise use CLI options
+					comp := smd.Component{
+						ID:    args[0],
+						State: cmd.Flag("state").Value.String(),
+						Role:  cmd.Flag("role").Value.String(),
+						Arch:  cmd.Flag("arch").Value.String(),
+					}
+					comp.Enabled, err = cmd.Flags().GetBool("enabled")
+					if err != nil {
+						log.Logger.Error().Err(err).Msg("failed to retrieve flag 'enabled', defaulting to true")
+						comp.Enabled = true
+					}
+
+					compSlice.Components = append(compSlice.Components, comp)
+				}
+
+				// Send off request
+				_, err = smdClient.PostComponents(cmd.Context(), compSlice, rt.Token)
+				if err != nil {
+					return cli.ClassifyClientError(err, "SMD component request yielded unsuccessful HTTP response", "failed to add component(s) to SMD")
+
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

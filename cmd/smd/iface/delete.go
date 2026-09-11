@@ -23,8 +23,79 @@ type ifaceDeleteOptions struct {
 	NoConfirm bool
 }
 
+// runCoreIfaceDeleteWithRuntime contains the core logic for the smd iface delete command.
+// It takes the parsed options and performs the actual work of deleting ethernet interfaces.
+// Runtime-aware version.
+func runCoreIfaceDeleteWithRuntime(cmd *cobra.Command, opts *ifaceDeleteOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		var respDelete bool
+		var err error
+		if opts.All {
+			respDelete, err = rt.Ios.LoopYesNo("Really delete ALL ETHERNET INTERFACES?")
+		} else {
+			respDelete, err = rt.Ios.LoopYesNo("Really delete?")
+		}
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+		} else if !respDelete {
+			log.Logger.Info().Msg("User aborted ethernet interface deletion")
+			return nil
+		} else {
+			log.Logger.Debug().Msg("User answered affirmatively to delete ethernet interfaces")
+		}
+	}
+
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Create list of ethernet interface IDs to delete
+	var eiSlice []smd.EthernetInterface
+	var eIdSlice []string
+	if cmd.Flag("data").Changed {
+		// Use payload file if passed
+		if err := rt.HandlePayload(cmd, &eiSlice); err != nil {
+			return err
+		}
+		for _, ei := range eiSlice {
+			eIdSlice = append(eIdSlice, ei.ID)
+		}
+		if len(eIdSlice) == 0 {
+			return cli.Errorf(cli.CodeUsage, "payload contained no ethernet interfaces to delete")
+		}
+	} else {
+		// ...otherwise, use passed CLI arguments
+		eIdSlice = args
+	}
+
+	// Perform deletion
+	if opts.All {
+		// If --all passed, we don't care about any passed arguments
+		_, err := smdClient.DeleteEthernetInterfacesAll(cmd.Context(), rt.Token)
+		if err != nil {
+			return cli.ClassifyClientError(err,
+				"SMD ethernet interface deletion yielded unsuccessful HTTP response",
+				"failed to delete ethernet interfaces in SMD")
+		}
+	} else {
+		// If --all not passed, pass argument list to deletion logic
+		results := smdClient.DeleteEthernetInterfaces(cmd.Context(), rt.Token, eIdSlice...)
+		// Since smdClient.DeleteEthernetInterfaces does the deletion iteratively, we need to deal
+		// with each error that might have occurred.
+		if err := cli.AggregateItemErrors(results.Errors(), "SMD ethernet interface deletion"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // runCoreIfaceDelete contains the core logic for the smd iface delete command.
 // It takes the parsed options and performs the actual work of deleting ethernet interfaces.
+// Legacy version using global state.
 func runCoreIfaceDelete(cmd *cobra.Command, opts *ifaceDeleteOptions, args []string, smdClient *smd.SMDClient) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
@@ -140,6 +211,29 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &ifaceDeleteOptions{}
+				if cmd.Flag("all").Changed {
+					opts.All = true
+				}
+				if cmd.Flag("no-confirm").Changed {
+					opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreIfaceDeleteWithRuntime(cmd, opts, args, smdClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

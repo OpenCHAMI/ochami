@@ -27,6 +27,53 @@ func newCmdComponentGet() *cobra.Command {
 
 See ochami-smd(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				var httpEnv client.HTTPEnvelope
+				if cmd.Flag("xname").Changed {
+					// This endpoint requires authentication, so a token is needed
+					if err := rt.HandleToken(cmd); err != nil {
+						return err
+					}
+
+					httpEnv, err = smdClient.GetComponentsXname(cmd.Context(), cmd.Flag("xname").Value.String(), rt.Token)
+				} else if cmd.Flag("nid").Changed {
+					// This endpoint requires authentication, so a token is needed
+					if err := rt.HandleToken(cmd); err != nil {
+						return err
+					}
+
+					var nid int32
+					nid, err = cmd.Flags().GetInt32("nid")
+					if err != nil {
+						return cli.Errorf(cli.CodeUsage, "error getting nid from flag: %w", err)
+					}
+					httpEnv, err = smdClient.GetComponentsNid(cmd.Context(), nid, rt.Token)
+				} else {
+					httpEnv, err = smdClient.GetComponentsAll(cmd.Context())
+				}
+				if err != nil {
+					return cli.ClassifyClientError(err, "SMD component request yielded unsuccessful HTTP response", "failed to request components from SMD")
+
+				}
+
+				// Print output
+				outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

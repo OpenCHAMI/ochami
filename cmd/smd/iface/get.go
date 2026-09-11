@@ -33,8 +33,74 @@ type ifaceGetOptions struct {
 	NewerThan string
 }
 
+// runCoreIfaceGetWithRuntime contains the core logic for the smd iface get command.
+// It takes the parsed options and performs the actual work of getting ethernet interfaces.
+// Runtime-aware version.
+func runCoreIfaceGetWithRuntime(cmd *cobra.Command, opts *ifaceGetOptions, smdClient *smd.SMDClient, rt *cli.Runtime) error {
+	// Deal with --id
+	if opts.ID != "" {
+		// This endpoint requires authentication, so a token is needed
+		if err := rt.HandleToken(cmd); err != nil {
+			return err
+		}
+
+		httpEnv, err := smdClient.GetEthernetInterfaceByID(cmd.Context(), opts.ID, rt.Token, opts.ByIP)
+		if err != nil {
+			return cli.ClassifyClientError(err, "SMD ethernet interface request by ID yielded unsuccessful HTTP response", "failed to request ethernet interfaces by ID from SMD")
+		}
+		fmt.Fprintln(rt.Ios.Out(), string(httpEnv.Body))
+		return nil
+	} else if opts.ByIP {
+		return cli.Errorf(cli.CodeUsage, "--by-ip can only be used with --id")
+	}
+
+	// All other cases
+	qstr := ""
+	if len(opts.Mac) > 0 || len(opts.IP) > 0 || len(opts.Net) > 0 || len(opts.CompID) > 0 ||
+		len(opts.Type) > 0 || opts.OlderThan != "" || opts.NewerThan != "" {
+		values := url.Values{}
+		for _, m := range opts.Mac {
+			values.Add("MACAddress", m)
+		}
+		for _, i := range opts.IP {
+			values.Add("IPAddress", i)
+		}
+		for _, n := range opts.Net {
+			values.Add("Network", n)
+		}
+		for _, c := range opts.CompID {
+			values.Add("ComponentID", c)
+		}
+		for _, t := range opts.Type {
+			values.Add("Type", t)
+		}
+		if opts.OlderThan != "" {
+			values.Add("OlderThan", opts.OlderThan)
+		}
+		if opts.NewerThan != "" {
+			values.Add("NewerThan", opts.NewerThan)
+		}
+		qstr = values.Encode()
+	}
+
+	httpEnv, err := smdClient.GetEthernetInterfaces(cmd.Context(), qstr)
+	if err != nil {
+		return cli.ClassifyClientError(err, "SMD ethernet interface request yielded unsuccessful HTTP response", "failed to request ethernet interfaces from SMD")
+	}
+
+	// Print output
+	outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+	}
+	fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+	return nil
+}
+
 // runCoreIfaceGet contains the core logic for the smd iface get command.
 // It takes the parsed options and performs the actual work of getting ethernet interfaces.
+// Legacy version using global state.
 func runCoreIfaceGet(cmd *cobra.Command, opts *ifaceGetOptions, smdClient *smd.SMDClient) error {
 	// Deal with --id
 	if opts.ID != "" {
@@ -113,6 +179,50 @@ ethernet interfaces returned.
 
 See ochami-smd(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &ifaceGetOptions{}
+				if cmd.Flag("id").Changed {
+					opts.ID, _ = cmd.Flags().GetString("id") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("by-ip").Changed {
+					opts.ByIP = true
+				}
+				if cmd.Flag("mac").Changed {
+					opts.Mac, _ = cmd.Flags().GetStringSlice("mac") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("ip").Changed {
+					opts.IP, _ = cmd.Flags().GetStringSlice("ip") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("net").Changed {
+					opts.Net, _ = cmd.Flags().GetStringSlice("net") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("comp-id").Changed {
+					opts.CompID, _ = cmd.Flags().GetStringSlice("comp-id") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("type").Changed {
+					opts.Type, _ = cmd.Flags().GetStringSlice("type") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("older-than").Changed {
+					opts.OlderThan, _ = cmd.Flags().GetString("older-than") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("newer-than").Changed {
+					opts.NewerThan, _ = cmd.Flags().GetString("newer-than") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreIfaceGetWithRuntime(cmd, opts, smdClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

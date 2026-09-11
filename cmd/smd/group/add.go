@@ -28,8 +28,61 @@ type groupAddOptions struct {
 	Members        []string
 }
 
+// runCoreGroupAddWithRuntime contains the core logic for the smd group add command.
+// It takes the parsed options and performs the actual work of adding groups.
+// Runtime-aware version.
+func runCoreGroupAddWithRuntime(cmd *cobra.Command, opts *groupAddOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Check if a CA certificate was passed and load it into client if valid
+	if err := rt.UseCACert(smdClient.OchamiClient); err != nil {
+		return err
+	}
+
+	var groups []smd.Group
+	if cmd.Flag("data").Changed {
+		// Use payload file if passed
+		if err := rt.HandlePayload(cmd, &groups); err != nil {
+			return err
+		}
+	} else {
+		// ...otherwise use CLI options/args
+		group := smd.Group{Label: args[0]}
+		group.Description = opts.Description
+		group.Tags = opts.Tags
+		group.ExclusiveGroup = opts.ExclusiveGroup
+		group.Members.IDs = opts.Members
+		groups = append(groups, group)
+	}
+
+	// Send off request
+	results := smdClient.PostGroups(cmd.Context(), groups, rt.Token)
+	// Since smdClient.PostGroups does the addition iteratively, we need to deal with
+	// each error that might have occurred.
+	var errorsOccurred = false
+	for _, e := range results.Errors() {
+		if e != nil {
+			if errors.Is(e, client.UnsuccessfulHTTPError) {
+				log.Logger.Error().Err(e).Msg("SMD group request yielded unsuccessful HTTP response")
+			} else {
+				log.Logger.Error().Err(e).Msg("failed to add group(s) to SMD")
+			}
+			errorsOccurred = true
+		}
+	}
+	if errorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "SMD group addition completed with errors")
+	}
+
+	return nil
+}
+
 // runCoreGroupAdd contains the core logic for the smd group add command.
 // It takes the parsed options and performs the actual work of adding groups.
+// Legacy version using global state.
 func runCoreGroupAdd(cmd *cobra.Command, opts *groupAddOptions, args []string, smdClient *smd.SMDClient) error {
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
@@ -144,6 +197,35 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &groupAddOptions{}
+				if cmd.Flag("description").Changed {
+					opts.Description, _ = cmd.Flags().GetString("description") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("tag").Changed {
+					opts.Tags, _ = cmd.Flags().GetStringSlice("tag") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("exclusive-group").Changed {
+					opts.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("member").Changed {
+					opts.Members, _ = cmd.Flags().GetStringSlice("member") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreGroupAddWithRuntime(cmd, opts, args, smdClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {
