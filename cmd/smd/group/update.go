@@ -26,8 +26,67 @@ type groupUpdateOptions struct {
 	Tags        []string
 }
 
+// runCoreGroupUpdateWithRuntime contains the core logic for the smd group update command.
+// It takes the parsed options and performs the actual work of updating groups.
+// Runtime-aware version.
+func runCoreGroupUpdateWithRuntime(cmd *cobra.Command, opts *groupUpdateOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// The group list we will send
+	var groups []smd.Group
+
+	// Read payload from file first, allowing overwrites from flags
+	if cmd.Flag("data").Changed {
+		if err := rt.HandlePayload(cmd, &groups); err != nil {
+			return err
+		}
+	} else {
+		// ...otherwise use CLI options/args
+		group := smd.Group{Label: args[0]}
+		group.Description = opts.Description
+		group.Tags = opts.Tags
+		groups = append(groups, group)
+	}
+
+	// Send 'em off
+	results := smdClient.PatchGroups(cmd.Context(), groups, rt.Token)
+	// Since smdClient.PatchGroups does the edition iteratively, we need to deal with
+	// each error that might have occurred.
+	var errorsOccurred = false
+	for i, result := range results {
+		if result.Err != nil {
+			if errors.Is(result.Err, client.UnsuccessfulHTTPError) {
+				log.Logger.Error().Err(result.Err).
+					Str("group", groups[i].Label).
+					Msg("SMD group update request yielded unsuccessful HTTP response")
+				log.Logger.Info().Msg("  - Group may not exist")
+				log.Logger.Info().Msg("  - Invalid field values")
+			} else {
+				log.Logger.Error().Err(result.Err).
+					Str("group", groups[i].Label).
+					Msg("failed to update group in SMD")
+			}
+			errorsOccurred = true
+		}
+	}
+	if errorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "SMD group update completed with errors")
+	}
+
+	// Success, log confirmation
+	log.Logger.Info().
+		Int("group_count", len(groups)).
+		Msg("Successfully updated group(s)")
+
+	return nil
+}
+
 // runCoreGroupUpdate contains the core logic for the smd group update command.
 // It takes the parsed options and performs the actual work of updating groups.
+// Legacy version using global state.
 func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []string, smdClient *smd.SMDClient) error {
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
@@ -140,6 +199,29 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &groupUpdateOptions{}
+				if cmd.Flag("description").Changed {
+					opts.Description, _ = cmd.Flags().GetString("description") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("tag").Changed {
+					opts.Tags, _ = cmd.Flags().GetStringSlice("tag") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreGroupUpdateWithRuntime(cmd, opts, args, smdClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

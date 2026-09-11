@@ -30,8 +30,59 @@ type rfeGetOptions struct {
 	UUID  []string
 }
 
+// runCoreRfeGetWithRuntime contains the core logic for the smd rfe get command.
+// It takes the parsed options and performs the actual work of getting redfish endpoints.
+// Runtime-aware version.
+func runCoreRfeGetWithRuntime(cmd *cobra.Command, opts *rfeGetOptions, smdClient *smd.SMDClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// If no ID flags are specified, get all redfish endpoints
+	qstr := ""
+	if len(opts.Xname) > 0 || len(opts.Mac) > 0 || len(opts.IP) > 0 ||
+		len(opts.FQDN) > 0 || len(opts.Type) > 0 || len(opts.UUID) > 0 {
+		values := url.Values{}
+		for _, x := range opts.Xname {
+			values.Add("id", x)
+		}
+		for _, m := range opts.Mac {
+			values.Add("macaddr", m)
+		}
+		for _, i := range opts.IP {
+			values.Add("ipaddress", i)
+		}
+		for _, f := range opts.FQDN {
+			values.Add("fqdn", f)
+		}
+		for _, t := range opts.Type {
+			values.Add("type", t)
+		}
+		for _, u := range opts.UUID {
+			values.Add("uuid", u)
+		}
+		qstr = values.Encode()
+	}
+
+	httpEnv, err := smdClient.GetRedfishEndpoints(cmd.Context(), qstr, rt.Token)
+	if err != nil {
+		return cli.ClassifyClientError(err, "SMD redfish endpoint request yielded unsuccessful HTTP response", "failed to request redfish endpoints from SMD")
+	}
+
+	// Print output
+	outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+	}
+	fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+	return nil
+}
+
 // runCoreRfeGet contains the core logic for the smd rfe get command.
 // It takes the parsed options and performs the actual work of getting redfish endpoints.
+// Legacy version using global state.
 func runCoreRfeGet(cmd *cobra.Command, opts *rfeGetOptions, smdClient *smd.SMDClient) error {
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
@@ -92,6 +143,41 @@ endpoints returned.
 
 See ochami-smd(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &rfeGetOptions{}
+				if cmd.Flag("xname").Changed {
+					opts.Xname, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("mac").Changed {
+					opts.Mac, _ = cmd.Flags().GetStringSlice("mac") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("ip").Changed {
+					opts.IP, _ = cmd.Flags().GetStringSlice("ip") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("fqdn").Changed {
+					opts.FQDN, _ = cmd.Flags().GetStringSlice("fqdn") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("type").Changed {
+					opts.Type, _ = cmd.Flags().GetStringSlice("type") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("uuid").Changed {
+					opts.UUID, _ = cmd.Flags().GetStringSlice("uuid") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreRfeGetWithRuntime(cmd, opts, smdClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

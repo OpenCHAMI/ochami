@@ -38,7 +38,75 @@ See ochami-smd(1) for more details.`,
   # and 2000 and are of x86 architecture
   ochami smd group membership --nid-start 1000 --nid-end 2000 --arch X86`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				params := url.Values{}
+				for _, flag := range []string{
+					"id",
+					"type",
+					"state",
+					"flag",
+					"role",
+					"subrole",
+					"softwarestatus",
+					"subtype",
+					"arch",
+					"class",
+					"nid",
+				} {
+					values, err := cmd.Flags().GetStringSlice(flag)
+					if err != nil {
+						return cli.Errorf(cli.CodeUsage, "failed to parse flags: %w", err)
+					}
+					for _, v := range values {
+						params.Add(strings.ReplaceAll(flag, "-", "_"), v)
+					}
+				}
 
+				for _, flag := range []string{
+					"enabled",
+					"nid-start",
+					"nid-end",
+					"partition",
+					"group",
+				} {
+					if cmd.Flags().Changed(flag) {
+						value, err := cmd.Flags().GetString(flag)
+						if err != nil {
+							return cli.Errorf(cli.CodeUsage, "failed to parse flags: %w", err)
+						}
+						params.Add(strings.ReplaceAll(flag, "-", "_"), value)
+					}
+				}
+
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				httpEnv, err := smdClient.GetGroupMembership(cmd.Context(), params.Encode(), rt.Token)
+				if err != nil {
+					return cli.ClassifyClientError(err, "SMD membership request yielded unsuccessful HTTP response", "failed to request membership from SMD")
+
+				}
+
+				// Print output
+				outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			params := url.Values{}
 			for _, flag := range []string{
 				"id",

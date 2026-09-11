@@ -22,8 +22,62 @@ type groupDeleteOptions struct {
 	NoConfirm bool
 }
 
+// runCoreGroupDeleteWithRuntime contains the core logic for the smd group delete command.
+// It takes the parsed options and performs the actual work of deleting groups.
+// Runtime-aware version.
+func runCoreGroupDeleteWithRuntime(cmd *cobra.Command, opts *groupDeleteOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+		} else if !respDelete {
+			log.Logger.Info().Msg("User aborted group deletion")
+			return nil
+		} else {
+			log.Logger.Debug().Msg("User answered affirmatively to delete groups")
+		}
+	}
+
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Create list of group labels to delete
+	var groups []smd.Group
+	var gLabelSlice []string
+	if cmd.Flag("data").Changed {
+		// Use payload file if passed
+		if err := rt.HandlePayload(cmd, &groups); err != nil {
+			return err
+		}
+		for _, group := range groups {
+			gLabelSlice = append(gLabelSlice, group.Label)
+		}
+		if len(gLabelSlice) == 0 {
+			return cli.Errorf(cli.CodeUsage, "payload contained no groups to delete")
+		}
+	} else {
+		// ...otherwise, use passed CLI arguments
+		gLabelSlice = args
+	}
+
+	// Perform deletion
+	results := smdClient.DeleteGroups(cmd.Context(), rt.Token, gLabelSlice...)
+	// Since smdClient.DeleteGroups does the deletion iteratively, we need to deal with
+	// each error that might have occurred.
+	if err := cli.AggregateItemErrors(results.Errors(), "SMD group deletion"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // runCoreGroupDelete contains the core logic for the smd group delete command.
 // It takes the parsed options and performs the actual work of deleting groups.
+// Legacy version using global state.
 func runCoreGroupDelete(cmd *cobra.Command, opts *groupDeleteOptions, args []string, smdClient *smd.SMDClient) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
@@ -121,6 +175,26 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &groupDeleteOptions{}
+				if cmd.Flag("no-confirm").Changed {
+					opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreGroupDeleteWithRuntime(cmd, opts, args, smdClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

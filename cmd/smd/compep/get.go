@@ -29,6 +29,90 @@ func newCmdCompepGet() *cobra.Command {
 
 See ochami-smd(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				var httpEnv client.HTTPEnvelope
+				if len(args) == 0 {
+					// Get all ComponentEndpoints if no args passed
+					httpEnv, err = smdClient.GetComponentEndpointsAll(cmd.Context(), rt.Token)
+					if err != nil {
+						return cli.ClassifyClientError(err, "SMD component endpoint request yielded unsuccessful HTTP response", "failed to request component endpoints from SMD")
+
+					}
+
+					// Print output
+					outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+					if err != nil {
+						return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+					}
+					fmt.Fprint(rt.Ios.Out(), string(outBytes))
+				} else {
+					results := smdClient.GetComponentEndpoints(cmd.Context(), rt.Token, args...)
+					// Since smdClient.GetComponentEndpoints does the fetching iteratively, we need to
+					// deal with each error that might have occurred.
+					var errorsOccurred = false
+					for _, e := range results.Errors() {
+						if e != nil {
+							if errors.Is(e, client.UnsuccessfulHTTPError) {
+								log.Logger.Error().Err(e).Msg("SMD component endpoint request yielded unsuccessful HTTP response")
+							} else {
+								log.Logger.Error().Err(e).Msg("failed to get component endpoint")
+							}
+							errorsOccurred = true
+						}
+					}
+
+					// Put selected ComponentEndpoints into array and marshal
+					type compEp struct {
+						ComponentEndpoints []interface{} `json:"ComponentEndpoints" yaml:"ComponentEndpoints"`
+					}
+					var ceArr []interface{}
+					for _, result := range results {
+						if result.Err == nil {
+							var ce interface{}
+							err := json.Unmarshal(result.Value.Body, &ce)
+							if err != nil {
+								log.Logger.Warn().Err(err).Msg("failed to unmarshal component endpoint")
+								continue
+							}
+							ceArr = append(ceArr, ce)
+						}
+					}
+
+					// Warn the user if any errors occurred during fetch iterations
+					if errorsOccurred {
+						return cli.Errorf(cli.CodeHTTP, "SMD component endpoint request completed with errors")
+					}
+
+					ces := compEp{ComponentEndpoints: ceArr}
+					cesBytes, err := json.Marshal(ces)
+					if err != nil {
+						return cli.Errorf(cli.CodePayload, "failed to marshal list of component endpoints: %w", err)
+					}
+
+					// Print output
+					outBytes, err := client.FormatBody(cesBytes, rt.FormatOutput)
+					if err != nil {
+						return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+					}
+					fmt.Fprint(rt.Ios.Out(), string(outBytes))
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

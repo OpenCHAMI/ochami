@@ -30,8 +30,66 @@ type rfeAddOptions struct {
 	Password string
 }
 
+// runCoreRfeAddWithRuntime contains the core logic for the smd rfe add command.
+// It takes the parsed options and performs the actual work of adding redfish endpoints.
+// Runtime-aware version.
+func runCoreRfeAddWithRuntime(cmd *cobra.Command, opts *rfeAddOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Check if a CA certificate was passed and load it into client if valid
+	if err := rt.UseCACert(smdClient.OchamiClient); err != nil {
+		return err
+	}
+
+	var rfes smd.RedfishEndpointSlice
+	if cmd.Flag("data").Changed {
+		// Use payload file if passed
+		if err := rt.HandlePayload(cmd, &rfes); err != nil {
+			return err
+		}
+	} else {
+		// ...otherwise use CLI options/args
+		rfe := csm.RedfishEndpoint{
+			ID:        args[0],
+			Name:      args[1],
+			IPAddress: args[2],
+			MACAddr:   args[3],
+		}
+		rfe.Domain = opts.Domain
+		rfe.Hostname = opts.Hostname
+		rfe.User = opts.Username
+		rfe.Password = opts.Password
+		rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
+	}
+
+	// Send off request
+	results := smdClient.PostRedfishEndpoints(cmd.Context(), rfes, rt.Token)
+	// Since smdClient.PostRedfishEndpoints does the addition iteratively, we need to deal with
+	// each error that might have occurred.
+	var errorsOccurred = false
+	for _, e := range results.Errors() {
+		if e != nil {
+			if errors.Is(e, client.UnsuccessfulHTTPError) {
+				log.Logger.Error().Err(e).Msg("SMD redfish endpoint request yielded unsuccessful HTTP response")
+			} else {
+				log.Logger.Error().Err(e).Msg("failed to add redfish endpoint(s) to SMD")
+			}
+			errorsOccurred = true
+		}
+	}
+	if errorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "SMD redfish endpoint addition completed with errors")
+	}
+
+	return nil
+}
+
 // runCoreRfeAdd contains the core logic for the smd rfe add command.
 // It takes the parsed options and performs the actual work of adding redfish endpoints.
+// Legacy version using global state.
 func runCoreRfeAdd(cmd *cobra.Command, opts *rfeAddOptions, args []string, smdClient *smd.SMDClient) error {
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
@@ -143,6 +201,35 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &rfeAddOptions{}
+				if cmd.Flag("domain").Changed {
+					opts.Domain, _ = cmd.Flags().GetString("domain") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("hostname").Changed {
+					opts.Hostname, _ = cmd.Flags().GetString("hostname") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("username").Changed {
+					opts.Username, _ = cmd.Flags().GetString("username") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("password").Changed {
+					opts.Password, _ = cmd.Flags().GetString("password") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreRfeAddWithRuntime(cmd, opts, args, smdClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

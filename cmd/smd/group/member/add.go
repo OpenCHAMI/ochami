@@ -28,6 +28,45 @@ func newCmdGroupMemberAdd() *cobra.Command {
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member add compute x3000c1s7b56n0`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Send off request
+				results, err := smdClient.PostGroupMembers(cmd.Context(), rt.Token, args[0], args[1:]...)
+				if err != nil {
+					return cli.Errorf(cli.CodeNetwork, "failed to add group member(s) to group %s in SMD: %w", args[0], err)
+				}
+				// Since smdClient.PostGroupMembers does the addition iteratively, we need to deal with
+				// each error that might have occurred.
+				var errorsOccurred = false
+				for _, e := range results.Errors() {
+					if e != nil {
+						if errors.Is(e, client.UnsuccessfulHTTPError) {
+							log.Logger.Error().Err(e).Msgf("SMD group member request for group %s yielded unsuccessful HTTP response", args[0])
+						} else {
+							log.Logger.Error().Err(e).Msgf("failed to add group member(s) to group %s in SMD", args[0])
+						}
+						errorsOccurred = true
+					}
+				}
+				if errorsOccurred {
+					return cli.Errorf(cli.CodeHTTP, "SMD group member addition completed with errors")
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

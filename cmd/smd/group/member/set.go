@@ -33,6 +33,48 @@ removed from the group.
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member set compute x1000c1s7b1n0 x1000c1s7b2n0`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Send off request
+				henv, err := smdClient.PutGroupMembers(cmd.Context(), rt.Token, args[0], args[1:]...)
+				if err != nil {
+					if errors.Is(err, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(err).
+							Str("group", args[0]).
+							Int("member_count", len(args)-1).
+							Str("status", henv.Status).
+							Msg("SMD group member set request failed with HTTP error")
+						log.Logger.Info().Msg("Common causes:")
+						log.Logger.Info().Msg("  - Group does not exist (create it first with 'ochami smd group add')")
+						log.Logger.Info().Msg("  - Invalid component xnames")
+						log.Logger.Info().Msg("  - Authentication/authorization failure (check token)")
+						log.Logger.Info().Msg("  - SMD base URI misconfiguration (should include /hsm/v2)")
+						return cli.Errorf(cli.CodeHTTP, "SMD group member set request failed with HTTP error: %w", err)
+					}
+					return cli.Errorf(cli.CodeNetwork, "failed to set group membership in SMD: %w", err)
+				}
+
+				// Success, log confirmation
+				log.Logger.Info().
+					Str("group", args[0]).
+					Int("member_count", len(args)-1).
+					Msg("Successfully set group membership")
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {
