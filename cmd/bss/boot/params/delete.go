@@ -41,8 +41,63 @@ func (opts *bootParamsDeleteOptions) toBootParams() bssTypes.BootParams {
 	}
 }
 
+// runCoreBootParamsDeleteWithRuntime contains the core logic for the bss boot params delete command.
+// It takes the parsed options and performs the actual work of deleting boot parameters.
+// Runtime-aware version.
+func runCoreBootParamsDeleteWithRuntime(cmd *cobra.Command, opts *bootParamsDeleteOptions, bssClient *bss.BSSClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// The BSS BootParams struct we will send
+	bp := opts.toBootParams()
+
+	// Read payload from file first, allowing overwrites from flags
+	if cmd.Flag("data").Changed {
+		if err := rt.HandlePayload(cmd, &bp); err != nil {
+			return err
+		}
+	}
+
+	// If we are deleting by component (xname/mac/nid), validate MAC addresses if any were provided
+	if len(opts.Mac) > 0 {
+		if err := bp.CheckMacs(); err != nil {
+			return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
+		}
+	}
+
+	// If not in no-confirm mode, ask for confirmation
+	if !opts.NoConfirm {
+		// Check if any selector flags are set
+		if cmd.Flag("xname").Changed || cmd.Flag("mac").Changed || cmd.Flag("nid").Changed ||
+			cmd.Flag("kernel").Changed || cmd.Flag("initrd").Changed || cmd.Flag("params").Changed {
+			// Ask for confirmation using the same approach as original code
+			log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+			respDelete, err := rt.Ios.LoopYesNo("Really delete?")
+			if err != nil {
+				return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+			} else if !respDelete {
+				log.Logger.Info().Msg("User aborted boot parameter deletion")
+				return nil
+			} else {
+				log.Logger.Debug().Msg("User answered affirmatively to delete boot parameters")
+			}
+		}
+	}
+
+	// Send 'em off
+	_, err := bssClient.DeleteBootParams(cmd.Context(), bp, rt.Token)
+	if err != nil {
+		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to delete boot parameters from BSS")
+	}
+
+	return nil
+}
+
 // runCoreBootParamsDelete contains the core logic for the bss boot params delete command.
 // It takes the parsed options and performs the actual work of deleting boot parameters.
+// Legacy version using global state.
 func runCoreBootParamsDelete(cmd *cobra.Command, opts *bootParamsDeleteOptions, bssClient *bss.BSSClient) error {
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
@@ -158,6 +213,44 @@ See ochami-bss(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &bootParamsDeleteOptions{}
+				if cmd.Flag("xname").Changed {
+					opts.Xname, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("mac").Changed {
+					opts.Mac, _ = cmd.Flags().GetStringSlice("mac") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("nid").Changed {
+					opts.Nid, _ = cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("kernel").Changed {
+					opts.Kernel, _ = cmd.Flags().GetString("kernel") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("initrd").Changed {
+					opts.Initrd, _ = cmd.Flags().GetString("initrd") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("params").Changed {
+					opts.Params, _ = cmd.Flags().GetString("params") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("no-confirm").Changed {
+					opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreBootParamsDeleteWithRuntime(cmd, opts, bssClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bssClient, err := bss_lib.GetClient(cmd)
 			if err != nil {

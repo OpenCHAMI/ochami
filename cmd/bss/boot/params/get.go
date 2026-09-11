@@ -27,8 +27,49 @@ type bootParamsGetOptions struct {
 	Nid   []int32
 }
 
+// runCoreBootParamsGetWithRuntime contains the core logic for the bss boot params get command.
+// It takes the parsed options and performs the actual work of getting boot parameters.
+// Runtime-aware version.
+func runCoreBootParamsGetWithRuntime(cmd *cobra.Command, opts *bootParamsGetOptions, bssClient *bss.BSSClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// If no ID flags are specified, get all boot parameters
+	qstr := ""
+	if len(opts.Xname) > 0 || len(opts.Mac) > 0 || len(opts.Nid) > 0 {
+		values := url.Values{}
+		for _, x := range opts.Xname {
+			values.Add("name", x)
+		}
+		for _, m := range opts.Mac {
+			values.Add("mac", m)
+		}
+		for _, n := range opts.Nid {
+			values.Add("nid", fmt.Sprintf("%d", n))
+		}
+		qstr = values.Encode()
+	}
+
+	httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, rt.Token)
+	if err != nil {
+		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
+	}
+
+	// Print output
+	outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+	}
+	fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+	return nil
+}
+
 // runCoreBootParamsGet contains the core logic for the bss boot params get command.
 // It takes the parsed options and performs the actual work of getting boot parameters.
+// Legacy version using global state.
 func runCoreBootParamsGet(cmd *cobra.Command, opts *bootParamsGetOptions, bssClient *bss.BSSClient) error {
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
@@ -85,6 +126,32 @@ See ochami-bss(1) for more details.`,
   ochami bss boot params get --mac 00:de:ad:be:ef:00,00:c0:ff:ee:00:00
   ochami bss boot params get --mac 00:de:ad:be:ef:00 --mac 00:c0:ff:ee:00:00`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &bootParamsGetOptions{}
+				if cmd.Flag("xname").Changed {
+					opts.Xname, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("mac").Changed {
+					opts.Mac, _ = cmd.Flags().GetStringSlice("mac") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("nid").Changed {
+					opts.Nid, _ = cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreBootParamsGetWithRuntime(cmd, opts, bssClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bssClient, err := bss_lib.GetClient(cmd)
 			if err != nil {

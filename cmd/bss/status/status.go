@@ -27,6 +27,47 @@ func NewCmd() *cobra.Command {
 
 See ochami-bss(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Determine which component to get status for and send request
+				var httpEnv client.HTTPEnvelope
+				if cmd.Flag("all").Changed {
+					httpEnv, err = bssClient.GetStatus(cmd.Context(), "all")
+				} else if cmd.Flag("storage").Changed {
+					httpEnv, err = bssClient.GetStatus(cmd.Context(), "storage")
+				} else if cmd.Flag("smd").Changed {
+					httpEnv, err = bssClient.GetStatus(cmd.Context(), "smd")
+				} else if cmd.Flag("version").Changed {
+					httpEnv, err = bssClient.GetStatus(cmd.Context(), "version")
+				} else {
+					httpEnv, err = bssClient.GetStatus(cmd.Context(), "")
+				}
+				if err != nil {
+					return cli.ClassifyClientError(err, "BSS status request yielded unsuccessful HTTP response", "failed to get BSS status")
+				}
+
+				// Print output
+				outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bssClient, err := bss_lib.GetClient(cmd)
 			if err != nil {

@@ -28,6 +28,64 @@ func newCmdHostsGet() *cobra.Command {
 
 See ochami-bss(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// If no ID flags are specified, get all boot parameters
+				qstr := ""
+				if cmd.Flag("xname").Changed ||
+					cmd.Flag("mac").Changed ||
+					cmd.Flag("nid").Changed {
+					values := url.Values{}
+					if cmd.Flag("xname").Changed {
+						x, err := cmd.Flags().GetString("xname")
+						if err != nil {
+							return cli.Errorf(cli.CodeUsage, "unable to fetch xname: %w", err)
+						}
+						values.Add("name", x)
+					}
+					if cmd.Flag("mac").Changed {
+						m, err := cmd.Flags().GetString("mac")
+						if err != nil {
+							return cli.Errorf(cli.CodeUsage, "unable to fetch mac: %w", err)
+						}
+						values.Add("mac", m)
+					}
+					if cmd.Flag("nid").Changed {
+						n, err := cmd.Flags().GetInt32("nid")
+						if err != nil {
+							return cli.Errorf(cli.CodeUsage, "unable to fetch nid: %w", err)
+						}
+						values.Add("nid", fmt.Sprintf("%d", n))
+					}
+					qstr = values.Encode()
+				}
+				httpEnv, err := bssClient.GetHosts(cmd.Context(), qstr)
+				if err != nil {
+					return cli.ClassifyClientError(err, "BSS hosts request yielded unsuccessful HTTP response", "failed to request hosts from BSS")
+				}
+
+				// Print output
+				outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bssClient, err := bss_lib.GetClient(cmd)
 			if err != nil {

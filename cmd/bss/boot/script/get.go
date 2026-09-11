@@ -31,6 +31,68 @@ This command sends a GET to BSS. An access token is not required.
 See ochami-bss(1) for more details.`,
 		Example: `  ochami boot script get --mac 00:c0:ff:ee:00:00`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command (though not required for this endpoint)
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Structure representing the boot script query string
+				values := url.Values{}
+
+				// At least one of these required
+				if cmd.Flag("xname").Changed {
+					s, _ := cmd.Flags().GetStringSlice("xname") //nolint:errcheck // xname is a registered StringSlice flag
+					for _, x := range s {
+						values.Add("name", x)
+					}
+				}
+				if cmd.Flag("mac").Changed {
+					s, _ := cmd.Flags().GetStringSlice("mac") //nolint:errcheck // mac is a registered StringSlice flag
+					for _, m := range s {
+						values.Add("mac", m)
+					}
+				}
+				if cmd.Flag("nid").Changed {
+					s, _ := cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // nid is a registered Int32Slice flag
+					for _, n := range s {
+						values.Add("nid", fmt.Sprintf("%d", n))
+					}
+				}
+
+				// These are optional
+				if cmd.Flag("retry").Changed {
+					s, _ := cmd.Flags().GetInt("retry") //nolint:errcheck // retry is a registered Int flag
+					values.Add("retry", fmt.Sprintf("%d", s))
+				}
+				if cmd.Flag("arch").Changed {
+					s, _ := cmd.Flags().GetString("arch") //nolint:errcheck // arch is a registered String flag
+					values.Add("arch", s)
+				}
+				if cmd.Flag("timestamp").Changed {
+					s, _ := cmd.Flags().GetInt("timestamp") //nolint:errcheck // timestamp is a registered Int flag
+					values.Add("timestamp", fmt.Sprintf("%d", s))
+				}
+				qstr := values.Encode()
+
+				httpEnv, err := bssClient.GetBootScript(cmd.Context(), qstr)
+				if err != nil {
+					return cli.ClassifyClientError(err, "BSS boot script request yielded unsuccessful HTTP response", "failed to request boot script from BSS")
+
+				}
+				fmt.Fprintln(rt.Ios.Out(), string(httpEnv.Body))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bssClient, err := bss_lib.GetClient(cmd)
 			if err != nil {

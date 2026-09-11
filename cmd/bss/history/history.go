@@ -27,6 +27,57 @@ func NewCmd() *cobra.Command {
 
 See ochami-bss(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// If no ID flags are specified, get all boot parameters
+				qstr := ""
+				if cmd.Flag("xname").Changed || cmd.Flag("endpoint").Changed {
+					values := url.Values{}
+					if cmd.Flag("xname").Changed {
+						x, err := cmd.Flags().GetString("xname")
+						if err != nil {
+							return cli.Errorf(cli.CodeUsage, "unable to fetch xname: %w", err)
+						}
+						values.Add("name", x)
+					}
+					if cmd.Flag("endpoint").Changed {
+						e, err := cmd.Flags().GetString("endpoint")
+						if err != nil {
+							return cli.Errorf(cli.CodeUsage, "unable to fetch endpoint: %w", err)
+						}
+						values.Add("endpoint", e)
+					}
+					qstr = values.Encode()
+				}
+
+				// Send request
+				httpEnv, err := bssClient.GetEndpointHistory(cmd.Context(), qstr)
+				if err != nil {
+					return cli.ClassifyClientError(err, "BSS endpoint history request yielded unsuccessful HTTP response", "failed to request endpoint history from BSS")
+				}
+
+				// Print output
+				outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			bssClient, err := bss_lib.GetClient(cmd)
 			if err != nil {
