@@ -45,6 +45,52 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Get the config from the relevant file depending on the flag,
+				// or the merged config if none.
+				var ko *koanf.Koanf
+				var err error
+				if cmd.Flags().Changed("system") {
+					ko, err = configfile.ReadConfigWithDefaults(config.SystemConfigFile)
+					if err != nil {
+						return cli.Errorf(cli.CodeConfig, "failed to read system config file: %w", err)
+					}
+				} else if cmd.Flags().Changed("user") {
+					ko, err = configfile.ReadConfigWithDefaults(cli.UserConfigFile)
+					if err != nil {
+						return cli.Errorf(cli.CodeConfig, "failed to read user config file: %w", err)
+					}
+				} else if cmd.Flags().Changed("config") {
+					ko, err = configfile.ReadConfigWithDefaults(cmd.Flag("config").Value.String())
+					if err != nil {
+						return cli.Errorf(cli.CodeConfig, "failed to read config file %s: %w", cmd.Flag("config").Value.String(), err)
+					}
+				} else {
+					ko = rt.Koanf
+				}
+
+				// Individual key was requested, print value directly
+				var key string
+				var val string
+				if len(args) == 1 {
+					key = args[0]
+				}
+				val, err = configfile.GetConfigString(ko, key)
+				if err != nil {
+					if key == "" {
+						return cli.Errorf(cli.CodeConfig, "failed to get full config: %w", err)
+					}
+					return cli.Errorf(cli.CodeConfig, "failed to get config for key %q: %w", key, err)
+				}
+				if val != "" {
+					fmt.Fprint(rt.Ios.Out(), val)
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Get the config from the relevant file depending on the flag,
 			// or the merged config if none.
 			var ko *koanf.Koanf

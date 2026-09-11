@@ -46,6 +46,47 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// We must have a config file in order to write config
+				var fileToModify string
+				if cmd.Flags().Changed("config") {
+					fileToModify = rt.ConfigFile
+				} else if cmd.Parent().PersistentFlags().Lookup("system").Changed {
+					// Check if --system was passed to 'config' command
+					fileToModify = config.SystemConfigFile
+				} else {
+					fileToModify = cli.UserConfigFile
+				}
+
+				// Refuse to modify config if user tries to modify cluster config
+				if strings.HasPrefix(args[0], "clusters") {
+					return cli.Errorf(cli.CodeUsage, "`ochami config set` is meant for modifying general config, use `ochami config cluster set` for modifying cluster config")
+				}
+
+				// Ask to create file if it doesn't exist.
+				if create, err := rt.Ios.AskToCreate(fileToModify); err != nil {
+					if err != cli.FileExistsError {
+						return cli.Errorf(cli.CodeConfig, "error asking to create file: %w", err)
+					}
+				} else if create {
+					if err := rt.CreateIfNotExists(fileToModify); err != nil {
+						return cli.Errorf(cli.CodeConfig, "error creating file: %w", err)
+					}
+				} else {
+					log.Logger.Info().Msg("user declined to create file, not modifying")
+					return nil
+				}
+
+				// Perform modification
+				if err := configfile.ModifyConfig(fileToModify, args[0], configfile.StringToType(args[1])); err != nil {
+					return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
+				}
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// We must have a config file in order to write config
 			var fileToModify string
 			if cmd.Flags().Changed("config") {
