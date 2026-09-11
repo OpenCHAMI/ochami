@@ -13,6 +13,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/cloud_init"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 type CIFlagHeaderWhen string
@@ -64,10 +65,41 @@ func CompletionHeaderWhen(cmd *cobra.Command, args []string, toComplete string) 
 	return helpSlice, cobra.ShellCompDirectiveDefault
 }
 
+// GetClientWithRuntime sets up the cloud-init client with the cloud-init base URI
+// and certificates (if necessary) and returns it. This function uses the provided runtime for configuration.
+func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*cloud_init.CloudInitClient, error) {
+	// Without a base URI, we cannot do anything
+	cloudInitbaseURI, err := rt.GetBaseURI(cmd, config.ServiceCloudInit)
+	if err != nil {
+		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for cloud-init: %w", err)
+	}
+
+	// Create client to make request to cloud-init
+	cloudInitClient, err := cloud_init.NewClient(cloudInitbaseURI, client.WithInsecure(rt.Insecure), client.WithShowToken(rt.ShowToken(cmd)))
+	if err != nil {
+		return nil, cli.Errorf(cli.CodeGeneric, "error creating new cloud-init client: %w", err)
+	}
+
+	// Check if a CA certificate was passed and load it into client if valid
+	if err := rt.UseCACert(cloudInitClient.OchamiClient); err != nil {
+		return nil, err
+	}
+
+	return cloudInitClient, nil
+}
+
 // GetClient sets up the cloud-init client with the cloud-init base URI
 // and certificates (if necessary) and returns it. This function is used by
 // each subcommand.
+// During the transition to runtime, this function attempts to use runtime from context
+// and falls back to global state if runtime is not available.
 func GetClient(cmd *cobra.Command) (*cloud_init.CloudInitClient, error) {
+	// Try to get runtime from context first (new approach)
+	if rt, ok := cli.FromContext(cmd.Context()); ok {
+		return GetClientWithRuntime(cmd, rt)
+	}
+
+	// Fallback to global state (old approach) during transition
 	// Without a base URI, we cannot do anything
 	cloudInitbaseURI, err := cli.GetBaseURICloudInit(cmd)
 	if err != nil {

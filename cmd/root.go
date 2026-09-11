@@ -28,6 +28,9 @@ import (
 )
 
 func NewRootCmd() *cobra.Command {
+	// Create runtime instance for this command tree
+	rt := cli.NewRuntime()
+
 	// rootCmd represents the base command when called without any subcommands
 	var rootCmd = &cobra.Command{
 		Use:   version.ProgName,
@@ -46,28 +49,42 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// Ask the user in any child commands to create the config file
-			// if missing. If this is undesired, define PersistentPreRunE in
-			// the child command with this line overridden with:
-			//
-			//   cli.InitConfigAndLogging(cmd, false)
-			//
+			// Sync runtime from global state (flags are bound to global variables)
+			// This ensures that if tests have set global state via SetIOStream() or
+			// flag parsing, the runtime picks it up.
+			rt.Ios = cli.NewIOStreams(cli.Ios.In(), cli.Ios.Out(), cli.Ios.Err())
+			rt.ConfigFile = cli.ConfigFile
+			rt.CACertPath = cli.CACertPath
+			rt.Token = cli.Token
+			rt.Insecure = cli.Insecure
+
+			// Initialize config and logging using global functions (for backward compatibility)
+			// This will populate the global activeConfig, which runtime can access
 			if err := cli.InitConfigAndLogging(cmd, true); err != nil {
 				return err
 			}
+
+			// Sync runtime config from global state after initialization
+			rt.Config = cli.ActiveConfig()
+			rt.Koanf = cli.ActiveKoanf()
 
 			// Apply the default formats (if the flags aren't changed and the config option is present)
 			// Note that this doesn't cover the case where the variable is checked without the corresponding
 			// flag being defined.
 			inputFormatFlag := cmd.Flag("format-input")
-			if cli.ActiveConfig().DefaultInputFormat != "" && inputFormatFlag != nil && !inputFormatFlag.Changed {
-				cli.FormatInput = cli.ActiveConfig().DefaultInputFormat
+			if rt.Config.DefaultInputFormat != "" && inputFormatFlag != nil && !inputFormatFlag.Changed {
+				rt.FormatInput = rt.Config.DefaultInputFormat
+				cli.FormatInput = rt.Config.DefaultInputFormat // Keep global in sync
 			}
 
 			outputFormatFlag := cmd.Flag("format-output")
-			if cli.ActiveConfig().DefaultOutputFormat != "" && outputFormatFlag != nil && !outputFormatFlag.Changed {
-				cli.FormatOutput = cli.ActiveConfig().DefaultOutputFormat
+			if rt.Config.DefaultOutputFormat != "" && outputFormatFlag != nil && !outputFormatFlag.Changed {
+				rt.FormatOutput = rt.Config.DefaultOutputFormat
+				cli.FormatOutput = rt.Config.DefaultOutputFormat // Keep global in sync
 			}
+
+			// Store runtime in command context for child commands to access
+			cmd.SetContext(rt.WithContext(cmd.Context()))
 
 			return nil
 		},
@@ -76,6 +93,7 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 	}
 
 	// Create root command flags
+	// Note: Flags are bound to global variables for backward compatibility during transition
 	rootCmd.PersistentFlags().StringVarP(&cli.ConfigFile, "config", "c", "", "path to configuration file to use")
 	rootCmd.PersistentFlags().StringP("log-format", "L", "", "log format (json,rfc3339,basic)")
 	rootCmd.PersistentFlags().StringP("log-level", "l", "", "set verbosity of logs (info,warning,debug)")
@@ -83,8 +101,8 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 	rootCmd.PersistentFlags().StringP("cluster", "C", "", "name of cluster whose config to use for this command")
 	rootCmd.PersistentFlags().StringP("cluster-uri", "u", "", "base URI for OpenCHAMI services, excluding service base path (overrides cluster.uri in config file)")
 	rootCmd.PersistentFlags().StringVar(&cli.CACertPath, "cacert", "", "path to root CA certificate in PEM format")
-	rootCmd.PersistentFlags().StringVarP(&cli.Token, "token", "t", "", "access cli.Token to present for authentication")
-	rootCmd.PersistentFlags().Bool("no-token", false, "do not check for or use an access cli.Token")
+	rootCmd.PersistentFlags().StringVarP(&cli.Token, "token", "t", "", "access token to present for authentication")
+	rootCmd.PersistentFlags().Bool("no-token", false, "do not check for or use an access token")
 	rootCmd.PersistentFlags().Bool("show-token", false, "show full access token in debug logs instead of a truncated value")
 	rootCmd.PersistentFlags().BoolVarP(&cli.Insecure, "insecure", "k", false, "do not verify TLS certificates")
 	rootCmd.PersistentFlags().Bool("ignore-config", false, "do not use any config file")

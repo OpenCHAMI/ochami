@@ -28,6 +28,44 @@ type groupGetOptions struct {
 
 // runCoreGroupGet contains the core logic for the smd group get command.
 // It takes the parsed options and performs the actual work of getting groups.
+// Runtime-aware version.
+func runCoreGroupGetWithRuntime(cmd *cobra.Command, opts *groupGetOptions, smdClient *smd.SMDClient, rt *cli.Runtime) error {
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// If no ID flags are specified, get all groups
+	qstr := ""
+	if len(opts.Names) > 0 || len(opts.Tags) > 0 {
+		values := url.Values{}
+		for _, n := range opts.Names {
+			values.Add("group", n)
+		}
+		for _, t := range opts.Tags {
+			values.Add("tag", t)
+		}
+		qstr = values.Encode()
+	}
+
+	httpEnv, err := smdClient.GetGroups(cmd.Context(), qstr, rt.Token)
+	if err != nil {
+		return cli.ClassifyClientError(err, "SMD group request yielded unsuccessful HTTP response", "failed to request groups from SMD")
+	}
+
+	// Print output
+	outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+	}
+	fmt.Fprint(rt.Ios.Out(), string(outBytes))
+
+	return nil
+}
+
+// runCoreGroupGet contains the core logic for the smd group get command.
+// It takes the parsed options and performs the actual work of getting groups.
+// Legacy version using global state.
 func runCoreGroupGet(cmd *cobra.Command, opts *groupGetOptions, smdClient *smd.SMDClient) error {
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
@@ -80,6 +118,29 @@ See ochami-smd(1) for more details.`,
   ochami smd group get --name group1,group2 --tag tag1,tag2
   ochami smd group get --name group1 --name group2 --tag tag1 --tag tag2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &groupGetOptions{}
+				if cmd.Flag("name").Changed {
+					opts.Names, _ = cmd.Flags().GetStringSlice("name") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+				if cmd.Flag("tag").Changed {
+					opts.Tags, _ = cmd.Flags().GetStringSlice("tag") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreGroupGetWithRuntime(cmd, opts, smdClient, rt)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {

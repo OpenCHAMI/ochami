@@ -10,11 +10,42 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/rcs"
+	"github.com/openchami/ochami/pkg/config"
 )
+
+// GetClientWithRuntime sets up the remote-console client with the base URI and certificates
+// (if necessary) and returns it. This function uses the provided runtime for configuration.
+func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*rcs.RCSClient, error) {
+	rcsBaseURI, err := rt.GetBaseURI(cmd, config.ServiceRCS)
+	if err != nil {
+		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for remote-console: %w", err)
+	}
+
+	insecure, _ := cmd.Flags().GetBool("insecure") //nolint:errcheck // insecure is registered by the RCS parent command
+
+	rcsClient, err := rcs.NewClient(rcsBaseURI, client.WithInsecure(insecure), client.WithShowToken(rt.ShowToken(cmd)))
+	if err != nil {
+		return nil, cli.Errorf(cli.CodeGeneric, "error creating new remote-console client: %w", err)
+	}
+
+	if err := rt.UseCACert(rcsClient.OchamiClient); err != nil {
+		return nil, err
+	}
+
+	return rcsClient, nil
+}
 
 // GetClient sets up the remote-console client with the base URI and certificates
 // (if necessary) and returns it. This function is used by each subcommand.
+// During the transition to runtime, this function attempts to use runtime from context
+// and falls back to global state if runtime is not available.
 func GetClient(cmd *cobra.Command) (*rcs.RCSClient, error) {
+	// Try to get runtime from context first (new approach)
+	if rt, ok := cli.FromContext(cmd.Context()); ok {
+		return GetClientWithRuntime(cmd, rt)
+	}
+
+	// Fallback to global state (old approach) during transition
 	rcsBaseURI, err := cli.GetBaseURIRCS(cmd)
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for remote-console: %w", err)

@@ -110,6 +110,42 @@ See ochami-pcs(1) for more details.`,
 		Example: `  # List status
   ochami pcs status list`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				pcsClient, err := pcs_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Handle token for this command
+				if err := rt.HandleToken(cmd); err != nil {
+					return err
+				}
+
+				// Get status
+				statusHttpEnv, err := pcsClient.GetStatus(cmd.Context(), xnames, string(powerFilter), string(mgmtFilter), rt.Token)
+				if err != nil {
+					return cli.ClassifyClientError(err, "PCS status request yielded unsuccessful HTTP response", "failed to list PCS transitions")
+				}
+
+				var output interface{}
+				err = json.Unmarshal(statusHttpEnv.Body, &output)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to unmarshal status response: %w", err)
+				}
+
+				// Print output
+				outBytes, err := format.MarshalData(output, rt.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+				}
+				fmt.Fprintln(rt.Ios.Out(), string(outBytes))
+
+				return nil
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			pcsClient, err := pcs_lib.GetClient(cmd)
 			if err != nil {

@@ -62,6 +62,10 @@ var testStdin io.Reader
 func runOchami(t *testing.T, args ...string) cmdResult {
 	t.Helper()
 
+	// Reset the token global between runs so a token set by a previous test
+	// does not leak into this one.
+	cli.Token = ""
+
 	stdoutMu.Lock()
 	defer stdoutMu.Unlock()
 
@@ -83,10 +87,6 @@ func runOchami(t *testing.T, args ...string) cmdResult {
 		}
 		outCh <- buf.String()
 	}()
-
-	// Reset the token global between runs so a token set by a previous test
-	// does not leak into this one.
-	cli.Token = ""
 
 	// Redirect the interactive I/O stream to the same capture pipe so output
 	// written via cli.Ios.Out() (e.g. "rcs console show") and any interactive

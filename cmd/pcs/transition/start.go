@@ -49,6 +49,7 @@ type createOutput struct {
 
 // runCoreTransitionStart contains the core logic for the pcs transition start command.
 // It takes the parsed options and performs the actual work of starting a transition.
+// This version supports both runtime (new approach) and global state (fallback during transition).
 func runCoreTransitionStart(cmd *cobra.Command, opts *transitionStartOptions, args []string, pcsClient *pcs.PCSClient) error {
 	operation := args[0]
 
@@ -57,6 +58,37 @@ func runCoreTransitionStart(cmd *cobra.Command, opts *transitionStartOptions, ar
 		return cli.Errorf(cli.CodeUsage, "invalid operation: %s", operation)
 	}
 
+	// Try to use runtime from context (new approach)
+	if rt, ok := cli.FromContext(cmd.Context()); ok {
+		// Handle token for this command
+		if err := rt.HandleToken(cmd); err != nil {
+			return err
+		}
+
+		// Create transition
+		transitionHttpEnv, err := pcsClient.CreateTransition(cmd.Context(), operation, nil, opts.Xnames, rt.Token)
+		if err != nil {
+			return cli.ClassifyClientError(err, "PCS transition create request yielded unsuccessful HTTP response", "failed to create transition")
+		}
+
+		// Unmarshall the transition
+		var output createOutput
+		err = json.Unmarshal(transitionHttpEnv.Body, &output)
+		if err != nil {
+			return cli.Errorf(cli.CodePayload, "failed to unmarshal output: %w", err)
+		}
+
+		// Print output
+		outBytes, err := format.MarshalData(output, rt.FormatOutput)
+		if err != nil {
+			return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+		}
+		fmt.Fprintln(rt.Ios.Out(), string(outBytes))
+
+		return nil
+	}
+
+	// Fallback to global state (old approach) during transition
 	// Handle token for this command
 	if err := cli.HandleToken(cmd); err != nil {
 		return err
@@ -97,6 +129,26 @@ See ochami-pcs(1) for more details.`,
 		Example: `  # Turn on a set of nodes
   ochami pcs transition start --xname "x0c0s7b0n1,x0c0s7b0n0,x0c0s4b0n1" on`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to get runtime from context first (new approach)
+			if rt, ok := cli.FromContext(cmd.Context()); ok {
+				// Create client to use for requests with runtime
+				pcsClient, err := pcs_lib.GetClientWithRuntime(cmd, rt)
+				if err != nil {
+					return err
+				}
+
+				// Extract options from flags
+				// Since flags are registered with the correct types on this command,
+				// these Get* calls cannot fail, so we ignore errors with explicit comments
+				opts := &transitionStartOptions{}
+				if cmd.Flag("xname").Changed {
+					opts.Xnames, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // Flag registered with matching type, error impossible
+				}
+
+				return runCoreTransitionStart(cmd, opts, args, pcsClient)
+			}
+
+			// Fallback to old approach during transition
 			// Create client to use for requests
 			pcsClient, err := pcs_lib.GetClient(cmd)
 			if err != nil {
