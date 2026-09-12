@@ -289,8 +289,10 @@ func TestSMDIfaceDeleteAllConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "iface", "delete", "--uri", srv.URL, "--token", "t", "--all")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithInputAndRuntime(t, "y\n",
+		"smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t", "--all")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -313,8 +315,10 @@ func TestSMDIfaceDeleteAbort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"smd", "iface", "delete", "--uri", srv.URL, "--token", "t", "decafc0ffeee")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithInputAndRuntime(t, "n\n",
+		"smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t", "decafc0ffeee")
 	if res.err != nil {
 		t.Fatalf("unexpected error on abort: %v (exit %d)", res.err, res.exitCode)
 	}

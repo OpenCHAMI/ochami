@@ -68,8 +68,8 @@ func TestCloudInitGroupGetRemainingPaths(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "cloud-init", "group", "get", subcommand,
-				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", subcommand,
+				"--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
