@@ -43,8 +43,10 @@ func TestMetadataAddSuccess(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "add",
-				"--ignore-config", "--uri", srv.URL, "--token", "t",
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "add",
+				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -64,8 +66,10 @@ func TestMetadataAddHTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "add",
-				"--ignore-config", "--uri", srv.URL, "--token", "t",
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "add",
+				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -86,8 +90,10 @@ func TestMetadataSetSuccess(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "set", "some-uid",
-				"--ignore-config", "--uri", srv.URL, "--token", "t",
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "set", "some-uid",
+				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -108,8 +114,10 @@ func TestMetadataDeleteNoConfirm(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "delete", "some-uid",
-				"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "delete", "some-uid",
+				"--uri", srv.URL, "--token", "t", "--no-confirm")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -150,8 +158,10 @@ func TestMetadataDeleteHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "metadata", "group", "delete", "some-uid",
-		"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "metadata", "--ignore-config", "group", "delete", "some-uid",
+		"--uri", srv.URL, "--token", "t", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
