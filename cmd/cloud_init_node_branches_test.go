@@ -27,7 +27,7 @@ func TestCloudInitNodeGetMetadataFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		res := runOchami(t, "cloud-init", "node", "get", "meta-data", "--ignore-config",
+		res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "meta-data",
 			"--uri", srv.URL, "--token", "t", "-F", f, "x0c0s0b0n0")
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
@@ -46,7 +46,7 @@ func TestCloudInitNodeGetUserdata(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "user-data", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "user-data",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -64,7 +64,7 @@ func TestCloudInitNodeGetVendordata(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "vendor-data", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "vendor-data",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -82,7 +82,7 @@ func TestCloudInitNodeGetMetadataHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "meta-data", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "meta-data",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -100,7 +100,7 @@ func TestCloudInitNodeGetUserdataHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "user-data", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "user-data",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -118,7 +118,7 @@ func TestCloudInitNodeGetGroupHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "group", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "group",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -138,8 +138,8 @@ func TestCloudInitNodeSetStdin(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, `[{"id":"x0c0s0b0n0"}]`,
-		"cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithInputAndRuntime(t, `[{"id":"x0c0s0b0n0"}]`,
+		"--ignore-config", "cloud-init", "node", "set", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -156,7 +156,7 @@ func TestCloudInitNodeSetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "set", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"id":"x0c0s0b0n0"}]`)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -174,7 +174,7 @@ func TestCloudInitNodeSetMalformedPayload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "set", "--uri", srv.URL, "--token", "t",
 		"-d", `not json`)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -195,7 +195,7 @@ func TestCloudInitNodeGetDataHeaderModes(t *testing.T) {
 
 	for _, sub := range []string{"user-data", "vendor-data"} {
 		for _, mode := range []string{"always", "never", "multiple"} {
-			res := runOchami(t, "cloud-init", "node", "get", sub, "--ignore-config",
+			res := runOchamiWithRuntime(t, "cloud-init", "node", "get", sub,
 				"--uri", srv.URL, "--token", "t", "--headers", mode, "x0c0s0b0n0", "x0c0s0b0n1")
 			if res.err != nil {
 				t.Fatalf("%s headers=%s: unexpected error: %v (exit %d)", sub, mode, res.err, res.exitCode)
@@ -213,7 +213,7 @@ func TestCloudInitNodeGetGroupHeaderModes(t *testing.T) {
 	defer srv.Close()
 
 	for _, mode := range []string{"always", "never", "multiple"} {
-		res := runOchami(t, "cloud-init", "node", "get", "group", "--ignore-config",
+		res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "group",
 			"--uri", srv.URL, "--token", "t", "--headers", mode, "x0c0s0b0n0", "compute", "storage")
 		if res.err != nil {
 			t.Fatalf("headers=%s: unexpected error: %v (exit %d)", mode, res.err, res.exitCode)

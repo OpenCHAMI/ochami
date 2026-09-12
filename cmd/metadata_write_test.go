@@ -142,8 +142,8 @@ func TestMetadataDeleteAbortsOnNo(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n", "metadata", "group", "delete", "some-uid",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--ignore-config", "metadata", "group", "delete", "some-uid",
+		"--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}

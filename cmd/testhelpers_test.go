@@ -159,6 +159,12 @@ func runOchamiWithRuntime(t *testing.T, args ...string) cmdResult {
 	// Create runtime with both stdout and stderr pointing to the same buffer
 	rt := cli.NewTestRuntime(stdinReader, &combinedBuf, &combinedBuf)
 
+	// Temporarily redirect global I/O streams to the runtime streams for backward compatibility
+	// This ensures that commands that still use cli.Ios.Out() instead of rt.Ios.Out() will
+	// have their output captured correctly during the transition period.
+	restoreIos := cli.SetIOStream(rt.Ios.In(), rt.Ios.Out(), rt.Ios.Err())
+	defer restoreIos()
+
 	// Create root command with runtime in context
 	rootCmd := NewRootCmd()
 	rootCmd.SetContext(rt.WithContext(context.Background()))
@@ -194,6 +200,12 @@ func runOchamiWithInputAndRuntime(t *testing.T, input string, args ...string) cm
 
 	// Create runtime with both stdout and stderr pointing to the same buffer
 	rt := cli.NewTestRuntime(stdinReader, &combinedBuf, &combinedBuf)
+
+	// Temporarily redirect global I/O streams to the runtime streams for backward compatibility
+	// This ensures that commands that still use cli.Ios.Out() instead of rt.Ios.Out() will
+	// have their output captured correctly during the transition period.
+	restoreIos := cli.SetIOStream(rt.Ios.In(), rt.Ios.Out(), rt.Ios.Err())
+	defer restoreIos()
 
 	// Create root command with runtime in context
 	rootCmd := NewRootCmd()

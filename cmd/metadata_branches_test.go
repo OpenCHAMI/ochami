@@ -38,7 +38,7 @@ func TestMetadataListFormats(t *testing.T) {
 				srv := okJSONServer(t)
 				defer srv.Close()
 
-				res := runOchami(t, "metadata", typ, "list", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+				res := runOchamiWithRuntime(t, "metadata", typ, "list", "--uri", srv.URL, "--token", "t", "-F", f)
 				if res.err != nil {
 					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 				}
@@ -58,7 +58,7 @@ func TestMetadataGetFormats(t *testing.T) {
 				}))
 				defer srv.Close()
 
-				res := runOchami(t, "metadata", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+				res := runOchamiWithRuntime(t, "metadata", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t", "-F", f)
 				if res.err != nil {
 					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 				}
@@ -76,7 +76,7 @@ func TestMetadataListNetworkError(t *testing.T) {
 			url := srv.URL
 			srv.Close()
 
-			res := runOchami(t, "metadata", typ, "list", "--ignore-config", "--uri", url, "--token", "t")
+			res := runOchamiWithRuntime(t, "metadata", typ, "list", "--uri", url, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -99,7 +99,7 @@ func TestMetadataAddEnvelope(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "add", "-e",
+			res := runOchamiWithRuntime(t, "metadata", typ, "add", "-e",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", envelopePayloadFor(typ))
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -120,8 +120,8 @@ func TestMetadataAddStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, addPayloadFor(typ),
-				"metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, addPayloadFor(typ),
+				"--ignore-config", "metadata", typ, "add", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -140,7 +140,7 @@ func TestMetadataSetEnvelope(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "set", "some-uid", "-e",
+			res := runOchamiWithRuntime(t, "metadata", typ, "set", "some-uid", "-e",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", envelopePayloadFor(typ))
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -159,7 +159,7 @@ func TestMetadataSetHTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "set", "some-uid",
+			res := runOchamiWithRuntime(t, "metadata", typ, "set", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -181,7 +181,7 @@ func TestMetadataPatchSuccess(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "patch", "some-uid",
+			res := runOchamiWithRuntime(t, "metadata", typ, "patch", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -200,7 +200,7 @@ func TestMetadataPatchHTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "patch", "some-uid",
+			res := runOchamiWithRuntime(t, "metadata", typ, "patch", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -222,7 +222,7 @@ func TestMetadataAddMalformedPayload(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "metadata", typ, "add", "--uri", srv.URL, "--token", "t",
 				"-d", `not json`)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -245,7 +245,7 @@ func TestMetadataAddMultiItemAggregate(t *testing.T) {
 			defer srv.Close()
 
 			payload := "[" + addPayloadFor(typ) + "," + addPayloadFor(typ) + "]"
-			res := runOchami(t, "metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "metadata", typ, "add", "--uri", srv.URL, "--token", "t",
 				"-d", payload)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -268,7 +268,7 @@ func TestMetadataDeleteConfirmYes(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, "y\n", "metadata", typ, "delete", "some-uid",
+			res := runOchamiWithInputAndRuntime(t, "y\n", "--ignore-config", "metadata", typ, "delete", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -287,7 +287,7 @@ func TestMetadataDeleteHTTPErrorAllTypes(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "delete", "some-uid",
+			res := runOchamiWithRuntime(t, "metadata", typ, "delete", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -313,7 +313,7 @@ func TestMetadataDeleteAbortAllTypes(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, "n\n", "metadata", typ, "delete", "some-uid",
+			res := runOchamiWithInputAndRuntime(t, "n\n", "--ignore-config", "metadata", typ, "delete", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error on abort: %v (exit %d)", res.err, res.exitCode)
@@ -336,8 +336,8 @@ func TestMetadataSetStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, addPayloadFor(typ),
-				"metadata", typ, "set", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, addPayloadFor(typ),
+				"--ignore-config", "metadata", typ, "set", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -356,8 +356,8 @@ func TestMetadataPatchStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, addPayloadFor(typ),
-				"metadata", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, addPayloadFor(typ),
+				"--ignore-config", "metadata", typ, "patch", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -377,8 +377,8 @@ func TestMetadataAddEnvelopeStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, envelopePayloadFor(typ),
-				"metadata", typ, "add", "-e", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, envelopePayloadFor(typ),
+				"--ignore-config", "metadata", typ, "add", "-e", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -397,8 +397,8 @@ func TestMetadataSetEnvelopeStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, envelopePayloadFor(typ),
-				"metadata", typ, "set", "some-uid", "-e", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, envelopePayloadFor(typ),
+				"--ignore-config", "metadata", typ, "set", "some-uid", "-e", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -417,7 +417,7 @@ func TestMetadataPatchKeyval(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "metadata", typ, "patch", "some-uid", "--uri", srv.URL, "--token", "t",
 				"--set", "description=new")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -436,7 +436,7 @@ func TestMetadataPatchRFC6902(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "metadata", typ, "patch", "some-uid", "--uri", srv.URL, "--token", "t",
 				"--patch-method", "rfc6902", "-d", `[{"op":"replace","path":"/description","value":"new"}]`)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -456,7 +456,7 @@ func TestMetadataSetNilResource(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "set", "some-uid",
+			res := runOchamiWithRuntime(t, "metadata", typ, "set", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
 			// Either a clean success or the "no resource" generic error is
 			// acceptable depending on how the upstream client decodes null.

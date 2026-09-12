@@ -41,7 +41,7 @@ func TestMetacommandPathsPrintUsage(t *testing.T) {
 			// TODO: Enable t.Parallel() once race conditions are resolved
 			// t.Parallel()
 
-			args := append(append([]string{}, path...), "--ignore-config")
+			args := append([]string{"--ignore-config"}, path...)
 			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v", res.err)
@@ -107,7 +107,7 @@ func TestRemainingServicePaths(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append(append([]string{}, tc.args...), "--ignore-config", "--uri", srv.URL)
+			args := append([]string{"--ignore-config"}, append(tc.args, "--uri", srv.URL)...)
 			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
