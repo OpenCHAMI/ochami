@@ -22,6 +22,9 @@ import (
 // TestBSSBootParamsGetAll verifies "bss boot params get" issues GET
 // /bootparameters and prints the response body.
 func TestBSSBootParamsGetAll(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -30,7 +33,7 @@ func TestBSSBootParamsGetAll(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "params", "get",
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "get",
 		"--ignore-config", "--uri", srv.URL, "--token", "faketoken")
 
 	if res.err != nil {
@@ -50,6 +53,9 @@ func TestBSSBootParamsGetAll(t *testing.T) {
 // TestBSSBootParamsGetWithMAC verifies that --mac is encoded into the query
 // string sent to /bootparameters.
 func TestBSSBootParamsGetWithMAC(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
@@ -57,7 +63,7 @@ func TestBSSBootParamsGetWithMAC(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "params", "get",
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "get",
 		"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 		"--mac", "de:ad:be:ef:00:00")
 
@@ -72,6 +78,9 @@ func TestBSSBootParamsGetWithMAC(t *testing.T) {
 // TestBSSBootParamsAddViaFlags verifies "bss boot params add" issues POST
 // /bootparameters with the kernel and macs encoded in the body.
 func TestBSSBootParamsAddViaFlags(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod, gotPath string
 	var gotBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +95,7 @@ func TestBSSBootParamsAddViaFlags(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "params", "add",
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "add",
 		"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 		"--mac", "de:ad:be:ef:00:00",
 		"--kernel", "https://example.com/vmlinuz")
@@ -112,7 +121,10 @@ func TestBSSBootParamsAddViaFlags(t *testing.T) {
 // TestBSSBootParamsAddMissingSelectors verifies that add without -d and without
 // any of --xname/--nid/--mac is a usage error.
 func TestBSSBootParamsAddMissingSelectors(t *testing.T) {
-	res := runOchami(t, "bss", "boot", "params", "add",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "add",
 		"--ignore-config", "--uri", "http://127.0.0.1:0", "--token", "faketoken",
 		"--kernel", "https://example.com/vmlinuz")
 
@@ -127,6 +139,9 @@ func TestBSSBootParamsAddMissingSelectors(t *testing.T) {
 // TestBSSBootParamsDeleteNoConfirm verifies "bss boot params delete --no-confirm"
 // issues DELETE /bootparameters.
 func TestBSSBootParamsDeleteNoConfirm(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -135,7 +150,7 @@ func TestBSSBootParamsDeleteNoConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "params", "delete",
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "delete",
 		"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 		"--no-confirm", "--mac", "de:ad:be:ef:00:00",
 		"--kernel", "https://example.com/vmlinuz")
@@ -153,6 +168,9 @@ func TestBSSBootParamsDeleteNoConfirm(t *testing.T) {
 
 // TestBSSDumpstate verifies "bss dumpstate" issues GET /dumpstate.
 func TestBSSDumpstate(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -160,7 +178,7 @@ func TestBSSDumpstate(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "dumpstate", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "bss", "dumpstate", "--ignore-config", "--uri", srv.URL)
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -172,6 +190,9 @@ func TestBSSDumpstate(t *testing.T) {
 
 // TestBSSHostsGet verifies "bss hosts get" issues GET /hosts.
 func TestBSSHostsGet(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -179,7 +200,7 @@ func TestBSSHostsGet(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "hosts", "get", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "bss", "hosts", "get", "--ignore-config", "--uri", srv.URL)
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -191,6 +212,9 @@ func TestBSSHostsGet(t *testing.T) {
 
 // TestBSSServiceStatus verifies "bss service status" issues GET /service/status.
 func TestBSSServiceStatus(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -198,7 +222,7 @@ func TestBSSServiceStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "bss", "service", "status", "--ignore-config", "--uri", srv.URL)
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -211,12 +235,15 @@ func TestBSSServiceStatus(t *testing.T) {
 // TestBSSServiceStatusHTTPError verifies an unsuccessful HTTP response from the
 // status endpoint resolves to CodeHTTP.
 func TestBSSServiceStatusHTTPError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "bss", "service", "status", "--ignore-config", "--uri", srv.URL)
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -229,6 +256,9 @@ func TestBSSServiceStatusHTTPError(t *testing.T) {
 // TestBSSBootScriptGet verifies "bss boot script get" issues GET /bootscript
 // with the selector encoded in the query string.
 func TestBSSBootScriptGet(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotPath, gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
@@ -236,7 +266,7 @@ func TestBSSBootScriptGet(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "script", "get",
+	res := runOchamiWithRuntime(t, "bss", "boot", "script", "get",
 		"--ignore-config", "--uri", srv.URL, "--mac", "de:ad:be:ef:00:00")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -251,6 +281,9 @@ func TestBSSBootScriptGet(t *testing.T) {
 
 // TestBSSHistoryGet verifies "bss history" issues GET /endpoint-history.
 func TestBSSHistoryGet(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -258,7 +291,7 @@ func TestBSSHistoryGet(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "history", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "bss", "history", "--ignore-config", "--uri", srv.URL)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -270,6 +303,9 @@ func TestBSSHistoryGet(t *testing.T) {
 // TestBSSStatusDeprecated verifies the deprecated top-level "bss status" command
 // still issues a GET under /service.
 func TestBSSStatusDeprecated(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -277,7 +313,7 @@ func TestBSSStatusDeprecated(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "bss", "status", "--ignore-config", "--uri", srv.URL)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -290,6 +326,9 @@ func TestBSSStatusDeprecated(t *testing.T) {
 // parameters (GET /bootparameters) and writes the updated root back
 // (PUT /bootparameters).
 func TestBSSBootImageSet(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var methods []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		methods = append(methods, r.Method)
@@ -303,7 +342,7 @@ func TestBSSBootImageSet(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "image", "set",
+	res := runOchamiWithRuntime(t, "bss", "boot", "image", "set",
 		"--ignore-config", "--uri", srv.URL, "--token", "t",
 		"--mac", "de:ad:be:ef:00:00", "/dev/sda1")
 	if res.err != nil {

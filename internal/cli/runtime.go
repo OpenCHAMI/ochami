@@ -135,10 +135,16 @@ func NewRuntime() *Runtime {
 // NewTestRuntime creates a new Runtime instance for testing.
 // It accepts custom I/O streams and allows setting formats, token, and config explicitly.
 func NewTestRuntime(stdin io.Reader, stdout, stderr io.Writer) *Runtime {
+	// Set a reasonable timeout for tests (30 seconds) to match the default config.
+	// This prevents context deadline errors when clients use rt.Config.Timeout.
+	cfg := config.Config{
+		Timeout: 30 * time.Second,
+	}
 	return &Runtime{
 		Ios:          NewIOStreams(stdin, stdout, stderr),
 		FormatInput:  format.DataFormatJson,
 		FormatOutput: format.DataFormatJson,
+		Config:       cfg,
 	}
 }
 

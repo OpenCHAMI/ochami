@@ -49,36 +49,84 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Check if a runtime was already injected into the context (e.g., by tests)
+			// If so, use that runtime but still sync flag values to it
+			useGlobalSync := true
+			if existingRt, ok := cli.FromContext(cmd.Context()); ok {
+				rt = existingRt
+				useGlobalSync = false
+			}
+
 			// Sync runtime from global state (flags are bound to global variables)
 			// This ensures that if tests have set global state via SetIOStream() or
 			// flag parsing, the runtime picks it up.
-			rt.Ios = cli.NewIOStreams(cli.Ios.In(), cli.Ios.Out(), cli.Ios.Err())
-			rt.ConfigFile = cli.ConfigFile
-			rt.CACertPath = cli.CACertPath
-			rt.Token = cli.Token
-			rt.Insecure = cli.Insecure
+			// For test-injected runtimes, we only sync the flag values (ConfigFile, CACertPath, Token, Insecure)
+			// to the runtime, but skip the I/O streams and config initialization to preserve test isolation.
+			if useGlobalSync {
+				rt.Ios = cli.NewIOStreams(cli.Ios.In(), cli.Ios.Out(), cli.Ios.Err())
+				rt.ConfigFile = cli.ConfigFile
+				rt.CACertPath = cli.CACertPath
+				rt.Token = cli.Token
+				rt.Insecure = cli.Insecure
+			} else {
+				// For test-injected runtimes, only sync flag values that were explicitly set
+				// This allows tests to use --config, --token, etc. flags while maintaining isolation
+				if cli.ConfigFile != "" {
+					rt.ConfigFile = cli.ConfigFile
+				}
+				if cli.CACertPath != "" {
+					rt.CACertPath = cli.CACertPath
+				}
+				if cli.Token != "" {
+					rt.Token = cli.Token
+				}
+				if cli.Insecure {
+					rt.Insecure = cli.Insecure
+				}
+			}
 
 			// Initialize config and logging using global functions (for backward compatibility)
 			// This will populate the global activeConfig, which runtime can access
-			if err := cli.InitConfigAndLogging(cmd, true); err != nil {
-				return err
-			}
+			// For test-injected runtimes, we only load config if a config file was explicitly provided
+			// (via --config flag), to support tests that need config loading while maintaining isolation
+			if useGlobalSync {
+				if err := cli.InitConfigAndLogging(cmd, true); err != nil {
+					return err
+				}
 
-			// Sync runtime config from global state after initialization
-			rt.Config = cli.ActiveConfig()
-			rt.Koanf = cli.ActiveKoanf()
+				// Sync runtime config from global state after initialization
+				rt.Config = cli.ActiveConfig()
+				rt.Koanf = cli.ActiveKoanf()
+			} else if rt.ConfigFile != "" {
+				// For test-injected runtimes with an explicit config file, load the config
+				// This allows tests to use --config flag while maintaining isolation for other state
+				if err := cli.InitConfigAndLogging(cmd, true); err != nil {
+					return err
+				}
+
+				// Sync runtime config from global state after initialization
+				rt.Config = cli.ActiveConfig()
+				rt.Koanf = cli.ActiveKoanf()
+			}
 
 			// Apply the default formats (if the flags aren't changed and the config option is present)
 			// Note that this doesn't cover the case where the variable is checked without the corresponding
 			// flag being defined.
+			// For test-injected runtimes, we still apply default formats from the runtime's config if available
 			inputFormatFlag := cmd.Flag("format-input")
-			if rt.Config.DefaultInputFormat != "" && inputFormatFlag != nil && !inputFormatFlag.Changed {
+			if !useGlobalSync && rt.Config.DefaultInputFormat != "" && inputFormatFlag != nil && !inputFormatFlag.Changed {
+				rt.FormatInput = rt.Config.DefaultInputFormat
+				// Don't update global for test-injected runtime
+			} else if useGlobalSync && rt.Config.DefaultInputFormat != "" && inputFormatFlag != nil && !inputFormatFlag.Changed {
 				rt.FormatInput = rt.Config.DefaultInputFormat
 				cli.FormatInput = rt.Config.DefaultInputFormat // Keep global in sync
 			}
 
 			outputFormatFlag := cmd.Flag("format-output")
-			if rt.Config.DefaultOutputFormat != "" && outputFormatFlag != nil && !outputFormatFlag.Changed {
+			if !useGlobalSync && rt.Config.DefaultOutputFormat != "" && outputFormatFlag != nil && !outputFormatFlag.Changed {
+				rt.FormatOutput = rt.Config.DefaultOutputFormat
+				// Don't update global for test-injected runtime
+			} else if useGlobalSync && rt.Config.DefaultOutputFormat != "" && outputFormatFlag != nil && !outputFormatFlag.Changed {
 				rt.FormatOutput = rt.Config.DefaultOutputFormat
 				cli.FormatOutput = rt.Config.DefaultOutputFormat // Keep global in sync
 			}
