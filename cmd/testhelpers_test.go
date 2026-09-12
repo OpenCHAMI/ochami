@@ -123,6 +123,18 @@ func runOchami(t *testing.T, args ...string) cmdResult {
 	}
 }
 
+// runOchamiWithInput runs the CLI with a scripted interactive stdin. The prompt
+// text the command writes is captured in the returned cmdResult's stdout (the
+// harness routes cli.Ios output into the same capture buffer).
+//
+// DEPRECATED: Use runOchamiWithInputAndRuntime() instead for test isolation.
+// This function is kept for backward compatibility during migration.
+func runOchamiWithInput(t *testing.T, input string, args ...string) cmdResult {
+	t.Helper()
+	testStdin = strings.NewReader(input)
+	return runOchami(t, args...)
+}
+
 // runOchamiWithRuntime executes the ochami root command with an isolated Runtime,
 // enabling test isolation and parallel test execution. Each test gets its own Runtime
 // instance with isolated I/O streams, eliminating the need for global state manipulation.
