@@ -304,8 +304,10 @@ func CreateIfNotExists(path string) error {
 // the command context if available, falling back to global state for backward compatibility.
 func CheckToken(cmd *cobra.Command) error {
 	// Try to use runtime from context first (new approach)
-	if rt, ok := FromContext(cmd.Context()); ok {
-		return rt.CheckToken()
+	if ctx := cmd.Context(); ctx != nil {
+		if rt, ok := FromContext(ctx); ok {
+			return rt.CheckToken()
+		}
 	}
 
 	// Fallback to global state (old approach) during transition
@@ -563,8 +565,10 @@ func GetTimeout(cmd *cobra.Command) time.Duration {
 // the command context if available, falling back to global state for backward compatibility.
 func HandleToken(cmd *cobra.Command) error {
 	// Try to use runtime from context first (new approach)
-	if rt, ok := FromContext(cmd.Context()); ok {
-		return rt.HandleToken(cmd)
+	if ctx := cmd.Context(); ctx != nil {
+		if rt, ok := FromContext(ctx); ok {
+			return rt.HandleToken(cmd)
+		}
 	}
 
 	// Fallback to global state (old approach) during transition
@@ -621,12 +625,14 @@ func HandleToken(cmd *cobra.Command) error {
 // the command context if available, falling back to global state for backward compatibility.
 func SetToken(cmd *cobra.Command) error {
 	// Try to use runtime from context first (new approach)
-	if rt, ok := FromContext(cmd.Context()); ok {
-		// Use runtime-based token handling
-		if cmd.Flag("token").Changed {
-			return rt.SetTokenFromFlag(cmd)
+	if ctx := cmd.Context(); ctx != nil {
+		if rt, ok := FromContext(ctx); ok {
+			// Use runtime-based token handling
+			if cmd.Flag("token").Changed {
+				return rt.SetTokenFromFlag(cmd)
+			}
+			return rt.SetTokenFromEnv(cmd)
 		}
-		return rt.SetTokenFromEnv(cmd)
 	}
 
 	// Fallback to global state (old approach) during transition
