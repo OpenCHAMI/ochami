@@ -22,7 +22,7 @@ import (
 // the returned console list.
 func TestRCSConsoleList(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +47,7 @@ func TestRCSConsoleList(t *testing.T) {
 // a non-zero exit code.
 func TestRCSConsoleListHTTPError(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
@@ -68,7 +68,7 @@ func TestRCSConsoleListHTTPError(t *testing.T) {
 // nil on a normal websocket close.
 func TestRCSConsoleShow(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	var gotPath string
 	upgrader := websocket.Upgrader{}
