@@ -128,7 +128,7 @@ func runOchamiWithInputAndRuntime(t *testing.T, input string, args ...string) cm
 // works correctly for basic command execution.
 func TestRunOchamiWithRuntime_Basic(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	// Test version command which should work without any special setup
 	res := runOchamiWithRuntime(t, "--ignore-config", "version")
@@ -153,7 +153,7 @@ func TestRunOchamiWithRuntime_Basic(t *testing.T) {
 // helper with input works correctly.
 func TestRunOchamiWithInputAndRuntime_Basic(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	// Test version command with custom input (should be ignored by version)
 	res := runOchamiWithInputAndRuntime(t, "some input", "--ignore-config", "version")

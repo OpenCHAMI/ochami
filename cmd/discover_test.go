@@ -41,7 +41,7 @@ const discoveryPayload = `{
 // when the server accepts them.
 func TestDiscoverStatic(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	sawPost := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +68,7 @@ func TestDiscoverStatic(t *testing.T) {
 // existing structures instead of only POSTing.
 func TestDiscoverStaticOverwrite(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -91,7 +91,7 @@ func TestDiscoverStaticOverwrite(t *testing.T) {
 // with errors" aggregate).
 func TestDiscoverStaticHTTPError(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
