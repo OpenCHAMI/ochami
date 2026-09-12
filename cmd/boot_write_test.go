@@ -32,6 +32,9 @@ func bootAddPayload(typ string) string {
 }
 
 func TestBootAddSuccess(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +44,7 @@ func TestBootAddSuccess(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "add",
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "add",
 				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 				"-d", bootAddPayload(typ))
 			if res.err != nil {
@@ -55,6 +58,9 @@ func TestBootAddSuccess(t *testing.T) {
 }
 
 func TestBootAddHTTPError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +68,7 @@ func TestBootAddHTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "add",
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "add",
 				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 				"-d", bootAddPayload(typ))
 			if res.err == nil {
@@ -76,6 +82,9 @@ func TestBootAddHTTPError(t *testing.T) {
 }
 
 func TestBootSetSuccess(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +93,7 @@ func TestBootSetSuccess(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "set", "some-uid",
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "set", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 				"-d", bootAddPayload(typ))
 			if res.err != nil {
@@ -98,6 +107,9 @@ func TestBootSetSuccess(t *testing.T) {
 }
 
 func TestBootPatchSuccess(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +118,7 @@ func TestBootPatchSuccess(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "patch", "some-uid",
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "patch", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 				"-d", bootAddPayload(typ))
 			if res.err != nil {

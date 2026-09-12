@@ -17,6 +17,9 @@ import (
 
 // TestBSSBootParamsSet verifies "bss boot params set" issues PUT /bootparameters.
 func TestBSSBootParamsSet(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -24,7 +27,7 @@ func TestBSSBootParamsSet(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "params", "set",
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "params", "set",
 		"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 		"--mac", "de:ad:be:ef:00:00", "--kernel", "https://example.com/vmlinuz")
 	if res.err != nil {
@@ -41,6 +44,9 @@ func TestBSSBootParamsSet(t *testing.T) {
 // TestBSSBootParamsUpdate verifies "bss boot params update" issues PATCH
 // /bootparameters.
 func TestBSSBootParamsUpdate(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -48,7 +54,7 @@ func TestBSSBootParamsUpdate(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "params", "update",
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "params", "update",
 		"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 		"--mac", "de:ad:be:ef:00:00", "--kernel", "https://example.com/vmlinuz")
 	if res.err != nil {
@@ -65,12 +71,15 @@ func TestBSSBootParamsUpdate(t *testing.T) {
 // TestBSSBootParamsSetHTTPError verifies an unsuccessful HTTP response resolves
 // to CodeHTTP.
 func TestBSSBootParamsSetHTTPError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "params", "set",
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "params", "set",
 		"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 		"--mac", "de:ad:be:ef:00:00", "--kernel", "https://example.com/vmlinuz")
 	if res.err == nil {
