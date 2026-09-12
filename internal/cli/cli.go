@@ -299,7 +299,16 @@ func CreateIfNotExists(path string) error {
 // CheckToken takes a pointer to a Cobra command and checks to see if --token
 // was set. If not, or if the token is invalid or expired, a CodeAuth CodedError
 // is returned.
+//
+// During the runtime transition, this function first tries to use a runtime from
+// the command context if available, falling back to global state for backward compatibility.
 func CheckToken(cmd *cobra.Command) error {
+	// Try to use runtime from context first (new approach)
+	if rt, ok := FromContext(cmd.Context()); ok {
+		return rt.CheckToken()
+	}
+
+	// Fallback to global state (old approach) during transition
 	if Token == "" {
 		return Errorf(CodeAuth, "no token set")
 	}
@@ -549,7 +558,16 @@ func GetTimeout(cmd *cobra.Command) time.Duration {
 // HandleToken is a wrapper function around code that reads, checks, and
 // performs any other setup tasks for tokens. It is called by all commands that
 // require a token.
+//
+// During the runtime transition, this function first tries to use a runtime from
+// the command context if available, falling back to global state for backward compatibility.
 func HandleToken(cmd *cobra.Command) error {
+	// Try to use runtime from context first (new approach)
+	if rt, ok := FromContext(cmd.Context()); ok {
+		return rt.HandleToken(cmd)
+	}
+
+	// Fallback to global state (old approach) during transition
 	if f := cmd.Flag("no-token"); f != nil && f.Value.String() == "true" {
 		// --no-token overrides any cluster settings
 		log.Logger.Debug().Msg("--no-token passed, not reading or checking for token")
@@ -598,7 +616,20 @@ func HandleToken(cmd *cobra.Command) error {
 // former preceding the latter), replacing spaces and dashes (-) with
 // underscores, and making the letters uppercase. If no config file is set or
 // the environment variable is not set, a CodeAuth CodedError is returned.
+//
+// During the runtime transition, this function first tries to use a runtime from
+// the command context if available, falling back to global state for backward compatibility.
 func SetToken(cmd *cobra.Command) error {
+	// Try to use runtime from context first (new approach)
+	if rt, ok := FromContext(cmd.Context()); ok {
+		// Use runtime-based token handling
+		if cmd.Flag("token").Changed {
+			return rt.SetTokenFromFlag(cmd)
+		}
+		return rt.SetTokenFromEnv(cmd)
+	}
+
+	// Fallback to global state (old approach) during transition
 	var (
 		clusterName string
 		varPrefix   string
