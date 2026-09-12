@@ -49,10 +49,11 @@ See ochami-config(5) for details on the configuration options.`,
 			// Try to get runtime from context (new approach)
 			if rt, ok := cli.FromContext(cmd.Context()); ok {
 				// We must have a config file in order to write config
+				// For runtime-based approach, prefer rt.ConfigFile if it was set via --config flag
 				var fileToModify string
-				if cmd.Flags().Changed("config") {
+				if rt.ConfigFile != "" {
 					fileToModify = rt.ConfigFile
-				} else if cmd.Parent().PersistentFlags().Lookup("system").Changed {
+				} else if f := cmd.PersistentFlags().Lookup("system"); f != nil && f.Changed {
 					// Check if --system was passed to 'config' command
 					fileToModify = config.SystemConfigFile
 				} else {
@@ -89,7 +90,7 @@ See ochami-config(5) for details on the configuration options.`,
 			// Fallback to old approach during transition
 			// We must have a config file in order to write config
 			var fileToModify string
-			if cmd.Flags().Changed("config") {
+			if cli.ConfigFile != "" {
 				fileToModify = cli.ConfigFile
 			} else if cmd.Parent().PersistentFlags().Lookup("system").Changed {
 				// Check if --system was passed to 'config' command

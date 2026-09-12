@@ -20,15 +20,18 @@ import (
 // TestConfigClusterSetDefault verifies "config cluster set --default" marks the
 // cluster as the default in the config file.
 func TestConfigClusterSetDefault(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "set", "--default",
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "set", "--default",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
 
-	showRes := runOchami(t, "--config", cfg, "config", "show")
+	showRes := runOchamiWithRuntime(t, "--config", cfg, "config", "show")
 	if showRes.err != nil {
 		t.Fatalf("config show: unexpected error: %v (exit %d)", showRes.err, showRes.exitCode)
 	}
@@ -46,15 +49,18 @@ func TestConfigClusterSetDefault(t *testing.T) {
 
 // TestConfigClusterSetServiceKey verifies setting a per-service URI key.
 func TestConfigClusterSetServiceKey(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "set",
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "set",
 		"foobar", "cluster.smd.uri", "https://foobar.openchami.cluster/smd")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
 
-	showRes := runOchami(t, "--config", cfg, "config", "cluster", "show", "foobar", "cluster.smd.uri")
+	showRes := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "foobar", "cluster.smd.uri")
 	if showRes.err != nil {
 		t.Fatalf("config cluster show: unexpected error: %v (exit %d)", showRes.err, showRes.exitCode)
 	}
@@ -79,6 +85,9 @@ func TestConfigClusterSetServiceKey(t *testing.T) {
 // TestConfigClusterShowAll verifies "config cluster show" with no args shows all
 // clusters.
 func TestConfigClusterShowAll(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
@@ -88,7 +97,7 @@ func TestConfigClusterShowAll(t *testing.T) {
     uri: https://bazqux.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -100,13 +109,16 @@ func TestConfigClusterShowAll(t *testing.T) {
 // TestConfigClusterShowOne verifies "config cluster show <name>" shows the whole
 // cluster entry.
 func TestConfigClusterShowOne(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
     uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show", "foobar")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "foobar")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -118,7 +130,10 @@ func TestConfigClusterShowOne(t *testing.T) {
 // TestConfigClusterSetMutuallyExclusiveSources verifies that specifying both
 // --user and --system is a usage error.
 func TestConfigClusterSetMutuallyExclusiveSources(t *testing.T) {
-	res := runOchami(t, "config", "cluster", "set", "--user", "--system",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "config", "cluster", "set", "--user", "--system",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -128,10 +143,13 @@ func TestConfigClusterSetMutuallyExclusiveSources(t *testing.T) {
 // TestConfigClusterSetCreatesFile verifies "config cluster set" creates a
 // missing config file when the user confirms.
 func TestConfigClusterSetCreatesFile(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	dir := t.TempDir()
 	path := dir + "/sub/config.yaml"
 
-	res := runOchamiWithInput(t, "y\ny\n", "--config", path, "config", "cluster", "set",
+	res := runOchamiWithInputAndRuntime(t, "y\ny\n", "--config", path, "config", "cluster", "set",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -144,6 +162,9 @@ func TestConfigClusterSetCreatesFile(t *testing.T) {
 // TestConfigClusterDeleteFromExisting verifies deleting a cluster and that the
 // file is updated. (Covers the delete RunE success path with a real file.)
 func TestConfigClusterDeleteFromExistingTwo(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
@@ -153,7 +174,7 @@ func TestConfigClusterDeleteFromExistingTwo(t *testing.T) {
     uri: https://bazqux.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "delete", "foobar")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "delete", "foobar")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -172,13 +193,16 @@ func TestConfigClusterDeleteFromExistingTwo(t *testing.T) {
 // TestConfigClusterShowNotFoundErrors verifies "config cluster show <name>" for
 // a nonexistent cluster is a config error.
 func TestConfigClusterShowNotFoundErrors(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
     uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
 	if res.err == nil {
 		t.Fatal("expected a config error for unknown cluster, got nil")
 	}
@@ -187,13 +211,16 @@ func TestConfigClusterShowNotFoundErrors(t *testing.T) {
 // TestConfigClusterShowKeyOfCluster verifies "config cluster show <name> <key>"
 // returns the value for a nested key.
 func TestConfigClusterShowKeyOfCluster(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
     uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show", "foobar", "cluster.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "foobar", "cluster.uri")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -204,6 +231,9 @@ func TestConfigClusterShowKeyOfCluster(t *testing.T) {
 
 // TestConfigClusterUnsetKey verifies removing a key from an existing cluster.
 func TestConfigClusterUnsetKey(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
@@ -212,7 +242,7 @@ func TestConfigClusterUnsetKey(t *testing.T) {
       uri: /smd
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}

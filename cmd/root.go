@@ -7,13 +7,13 @@ package cmd
 
 import (
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/internal/version"
-
 	// Subcommands
 	boot_cmd "github.com/openchami/ochami/cmd/boot"
 	bss_cmd "github.com/openchami/ochami/cmd/bss"
@@ -100,11 +100,21 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 			} else if rt.ConfigFile != "" {
 				// For test-injected runtimes with an explicit config file, load the config
 				// This allows tests to use --config flag while maintaining isolation for other state
-				if err := cli.InitConfigAndLogging(cmd, true); err != nil {
-					return err
+				// Temporarily sync global I/O streams from runtime to support global InitConfig function
+				restoreIos := cli.SetIOStream(rt.Ios.In(), rt.Ios.Out(), rt.Ios.Err())
+				defer restoreIos()
+
+				// Load config - don't create automatically to let commands handle file creation
+				if err := cli.InitConfigAndLogging(cmd, false); err != nil {
+					// Config file doesn't exist - that's ok for tests, commands will handle it
+					// Only return error if it's not a "file not found" error
+					if !os.IsNotExist(err) && !strings.Contains(err.Error(), "no such file") {
+						return err
+					}
 				}
 
 				// Sync runtime config from global state after initialization
+				// Note: Config might be empty if file doesn't exist, that's ok for tests
 				rt.Config = cli.ActiveConfig()
 				rt.Koanf = cli.ActiveKoanf()
 			}

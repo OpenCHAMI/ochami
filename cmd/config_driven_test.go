@@ -22,6 +22,9 @@ import (
 // TestDefaultClusterURIResolution verifies a command resolves its base URI from
 // the default cluster's cluster.uri in a config file (no --uri flag).
 func TestDefaultClusterURIResolution(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var hit bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit = true
@@ -37,7 +40,7 @@ clusters:
     enable-auth: false
 `)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -49,6 +52,9 @@ clusters:
 // TestPerServiceURIOverride verifies a per-service URI override in the cluster
 // config is honored.
 func TestPerServiceURIOverride(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -66,7 +72,7 @@ clusters:
     enable-auth: false
 `)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -79,6 +85,9 @@ clusters:
 // with enable-auth true and a valid <CLUSTER>_ACCESS_TOKEN env var, the token
 // is read and validated and the request succeeds.
 func TestEnableAuthReadsTokenFromEnv(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
@@ -97,7 +106,7 @@ clusters:
 	tok := validToken(t)
 	t.Setenv("DEMO_ACCESS_TOKEN", tok)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -109,6 +118,9 @@ clusters:
 // TestEnableAuthMissingTokenFails verifies that with enable-auth true and no
 // token available, the command fails with CodeAuth.
 func TestEnableAuthMissingTokenFails(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
@@ -125,7 +137,7 @@ clusters:
 	// Ensure the env var is not set.
 	os.Unsetenv("DEMO_ACCESS_TOKEN")
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err == nil {
 		t.Fatal("expected an auth error, got nil")
 	}
@@ -137,6 +149,9 @@ clusters:
 // TestEnableAuthDisabledSkipsToken verifies that with enable-auth false, no
 // token is required or sent.
 func TestEnableAuthDisabledSkipsToken(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
@@ -152,7 +167,7 @@ clusters:
     enable-auth: false
 `)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}

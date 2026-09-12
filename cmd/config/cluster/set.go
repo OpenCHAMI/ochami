@@ -59,7 +59,7 @@ See ochami-config(5) for details on the configuration options.`,
 			if rt, ok := cli.FromContext(cmd.Context()); ok {
 				// We must have a config file in order to write cluster info
 				var fileToModify string
-				if cmd.Flags().Changed("config") {
+				if rt.ConfigFile != "" {
 					fileToModify = rt.ConfigFile
 				} else if cmd.Parent().Parent().Flags().Changed("system") {
 					// Check if --system passed to 'config' command
@@ -97,7 +97,7 @@ See ochami-config(5) for details on the configuration options.`,
 			// Fallback to old approach during transition
 			// We must have a config file in order to write cluster info
 			var fileToModify string
-			if cmd.Flags().Changed("config") {
+			if cli.ConfigFile != "" {
 				fileToModify = cli.ConfigFile
 			} else if cmd.Parent().Parent().Flags().Changed("system") {
 				// Check if --system passed to 'config' command

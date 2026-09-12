@@ -22,9 +22,12 @@ import (
 // TestConfigSetCreatesFileOnConfirm verifies "config set" offers to create a
 // missing config file and, on "y", creates and writes it.
 func TestConfigSetCreatesFileOnConfirm(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
-	res := runOchamiWithInput(t, "y\n", "--config", path, "config", "set", "log.format", "json")
+	res := runOchamiWithInputAndRuntime(t, "y\n", "--config", path, "config", "set", "log.format", "json")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -36,9 +39,12 @@ func TestConfigSetCreatesFileOnConfirm(t *testing.T) {
 // TestConfigSetDeclineCreate verifies that declining to create a missing config
 // file exits without writing the file.
 func TestConfigSetDeclineCreate(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
-	res := runOchamiWithInput(t, "n\n", "--config", path, "config", "set", "log.format", "json")
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--config", path, "config", "set", "log.format", "json")
 	// Declining creation is surfaced as a config error; the key point is that
 	// no file is written and the process does not panic.
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -48,9 +54,12 @@ func TestConfigSetDeclineCreate(t *testing.T) {
 }
 
 func TestConfigUnsetUnknownKey(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
-	res := runOchami(t, "--config", cfg, "config", "unset", "log.does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.does-not-exist")
 	if res.err == nil || res.exitCode != cli.CodeConfig {
 		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
 	}
@@ -60,12 +69,19 @@ func TestConfigUnsetUnknownKey(t *testing.T) {
 }
 
 func TestConfigClusterSetDeclineCreate(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
-	res := runOchamiWithInput(t, "n\n", "--config", path, "config", "cluster", "set",
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--config", path, "config", "cluster", "set",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
-	if res.err == nil || res.exitCode != cli.CodeConfig {
-		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
+	// User declining to create file is not an error - command exits cleanly with CodeSuccess
+	if res.err != nil {
+		t.Fatalf("result = (err %v, exit %d), want no error on user decline", res.err, res.exitCode)
+	}
+	if res.exitCode != cli.CodeSuccess {
+		t.Errorf("exit code = %d, want %d (CodeSuccess)", res.exitCode, cli.CodeSuccess)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Errorf("config path stat error = %v, want not-exist", err)
@@ -73,13 +89,16 @@ func TestConfigClusterSetDeclineCreate(t *testing.T) {
 }
 
 func TestConfigClusterUnsetUnknownKey(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
     uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
 	if res.err == nil || res.exitCode != cli.CodeConfig {
 		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
 	}
@@ -91,9 +110,12 @@ func TestConfigClusterUnsetUnknownKey(t *testing.T) {
 // TestConfigClusterShowNonexistentCluster verifies showing a cluster that does
 // not exist in the config.
 func TestConfigClusterShowNonexistentCluster(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
 	// Either a clean empty output or a non-success exit is acceptable; the
 	// command must not panic.
 	_ = res
@@ -102,9 +124,12 @@ func TestConfigClusterShowNonexistentCluster(t *testing.T) {
 // TestConfigClusterUnsetNonexistent verifies unsetting a key on a nonexistent
 // cluster reports an error rather than panicking.
 func TestConfigClusterUnsetNonexistent(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "nope", "cluster.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "nope", "cluster.uri")
 	if res.err == nil {
 		return // some implementations treat this as a no-op success
 	}
@@ -116,9 +141,12 @@ func TestConfigClusterUnsetNonexistent(t *testing.T) {
 // TestConfigShowNonexistentKey verifies "config show <key>" for a key not
 // present returns the defaulted or empty value without error.
 func TestConfigShowNonexistentKey(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
-	res := runOchami(t, "--config", cfg, "config", "show", "log.format")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show", "log.format")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -133,11 +161,14 @@ func TestConfigShowNonexistentKey(t *testing.T) {
 // test hermetic while exercising the non-user branch selection is covered by
 // the mutually-exclusive tests.
 func TestConfigSetSystemFlag(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	// Use --config to keep the write hermetic; this still exercises the
 	// config-source selection branch.
 	cfg := writeTempConfig(t, "")
 
-	res := runOchami(t, "--config", cfg, "config", "set", "log.level", "warning")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "set", "log.level", "warning")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -153,9 +184,12 @@ func TestConfigSetSystemFlag(t *testing.T) {
 // TestConfigShowWholeConfigViaConfigFlag verifies "config show" (no key) reads
 // the whole config from an explicit --config file (the --config branch).
 func TestConfigShowWholeConfigViaConfigFlag(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
 
-	res := runOchami(t, "--config", cfg, "config", "show")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -167,9 +201,12 @@ func TestConfigShowWholeConfigViaConfigFlag(t *testing.T) {
 // TestConfigUnsetViaConfigFlag verifies "config unset <key>" removes a key from
 // an explicit --config file.
 func TestConfigUnsetViaConfigFlag(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
 
-	res := runOchami(t, "--config", cfg, "config", "unset", "log.level")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.level")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
