@@ -37,8 +37,10 @@ func TestCloudInitNodeGetData(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "cloud-init", "node", "get", tt.sub, "x3000c0s0b0n0",
-				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+			res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "node", "get", tt.sub, "x3000c0s0b0n0",
+				"--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -62,8 +64,10 @@ func TestCloudInitNodeGetGroup(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "group", "x3000c0s0b0n0", "compute",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "node", "get", "group", "x3000c0s0b0n0", "compute",
+		"--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -83,8 +87,10 @@ func TestCloudInitNodeGetDataHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "meta-data", "x3000c0s0b0n0",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "node", "get", "meta-data", "x3000c0s0b0n0",
+		"--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}

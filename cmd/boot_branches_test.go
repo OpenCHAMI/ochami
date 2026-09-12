@@ -38,8 +38,8 @@ func bootEnvelopePayload(typ string) string {
 
 // TestBootListFormats verifies list output-format variants across boot types.
 func TestBootListFormats(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		for _, f := range []string{"json", "json-pretty", "yaml"} {
@@ -50,7 +50,7 @@ func TestBootListFormats(t *testing.T) {
 				}))
 				defer srv.Close()
 
-				res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "list", "--uri", srv.URL, "--token", "t", "-F", f)
+				res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "list", "--uri", srv.URL, "--token", "t", "-F", f)
 				if res.err != nil {
 					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 				}
@@ -61,8 +61,8 @@ func TestBootListFormats(t *testing.T) {
 
 // TestBootGetFormats verifies get output-format variants across boot types.
 func TestBootGetFormats(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		for _, f := range []string{"json", "json-pretty", "yaml"} {
@@ -73,7 +73,7 @@ func TestBootGetFormats(t *testing.T) {
 				}))
 				defer srv.Close()
 
-				res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t", "-F", f)
+				res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t", "-F", f)
 				if res.err != nil {
 					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 				}
@@ -85,8 +85,8 @@ func TestBootGetFormats(t *testing.T) {
 // TestBootListNetworkError verifies a closed port resolves to a non-success exit
 // code for each boot type's list.
 func TestBootListNetworkError(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestBootListNetworkError(t *testing.T) {
 			url := srv.URL
 			srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "list", "--uri", url, "--token", "t")
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "list", "--uri", url, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -108,8 +108,8 @@ func TestBootListNetworkError(t *testing.T) {
 // TestBootGetHTTPError verifies a failing get resolves to a non-success exit
 // code across boot types.
 func TestBootGetHTTPErrorAllTypes(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestBootGetHTTPErrorAllTypes(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -132,8 +132,8 @@ func TestBootGetHTTPErrorAllTypes(t *testing.T) {
 // TestBootAddEnvelope verifies the envelope (advanced) API path of "add -e"
 // across boot types.
 func TestBootAddEnvelope(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -144,8 +144,8 @@ func TestBootAddEnvelope(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "add", "-e",
-				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootEnvelopePayload(typ))
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "add", "-e",
+				"--uri", srv.URL, "--token", "t", "-d", bootEnvelopePayload(typ))
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -156,8 +156,8 @@ func TestBootAddEnvelope(t *testing.T) {
 // TestBootAddStdin verifies add reads payload from stdin when -d is not supplied
 // (simple API path) across boot types.
 func TestBootAddStdin(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -168,8 +168,8 @@ func TestBootAddStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInputAndRuntime(t, "--ignore-config", bootAddPayload(typ),
-				"boot", typ, "add", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, bootAddPayload(typ),
+				"boot", "--ignore-config", typ, "add", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -180,8 +180,8 @@ func TestBootAddStdin(t *testing.T) {
 // TestBootSetEnvelope verifies the envelope API path of "set -e" across boot
 // types.
 func TestBootSetEnvelope(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -191,8 +191,8 @@ func TestBootSetEnvelope(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "set", "some-uid", "-e",
-				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootEnvelopePayload(typ))
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "set", "some-uid", "-e",
+				"--uri", srv.URL, "--token", "t", "-d", bootEnvelopePayload(typ))
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -203,8 +203,8 @@ func TestBootSetEnvelope(t *testing.T) {
 // TestBootSetHTTPError verifies a failing set resolves to a non-success exit
 // code across boot types.
 func TestBootSetHTTPError(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -213,8 +213,8 @@ func TestBootSetHTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "set", "some-uid",
-				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootAddPayload(typ))
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "set", "some-uid",
+				"--uri", srv.URL, "--token", "t", "-d", bootAddPayload(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -228,8 +228,8 @@ func TestBootSetHTTPError(t *testing.T) {
 // TestBootPatchHTTPError verifies a failing patch resolves to a non-success exit
 // code across boot types.
 func TestBootPatchHTTPError(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -238,8 +238,8 @@ func TestBootPatchHTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "patch", "some-uid",
-				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootAddPayload(typ))
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "patch", "some-uid",
+				"--uri", srv.URL, "--token", "t", "-d", bootAddPayload(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -253,8 +253,8 @@ func TestBootPatchHTTPError(t *testing.T) {
 // TestBootDeleteConfirmYes verifies answering "y" at the confirmation prompt
 // proceeds with deletion across boot types.
 func TestBootDeleteConfirmYes(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -276,8 +276,8 @@ func TestBootDeleteConfirmYes(t *testing.T) {
 // TestBootDeleteAbort verifies answering "n" aborts deletion without contacting
 // the server across boot types.
 func TestBootDeleteAbort(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -305,8 +305,8 @@ func TestBootDeleteAbort(t *testing.T) {
 // TestBootAddMalformedPayload verifies malformed inline payload resolves to a
 // non-success exit code across boot types.
 func TestBootAddMalformedPayload(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -315,7 +315,7 @@ func TestBootAddMalformedPayload(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "add", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "add", "--uri", srv.URL, "--token", "t",
 				"-d", `not json`)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -330,8 +330,8 @@ func TestBootAddMalformedPayload(t *testing.T) {
 // TestBootAddMultiItemAggregate verifies a multi-item add against a failing
 // server aggregates per-item errors into a non-success exit code.
 func TestBootAddMultiItemAggregate(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -341,7 +341,7 @@ func TestBootAddMultiItemAggregate(t *testing.T) {
 			defer srv.Close()
 
 			payload := "[" + bootAddPayload(typ) + "," + bootAddPayload(typ) + "]"
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "add", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "add", "--uri", srv.URL, "--token", "t",
 				"-d", payload)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -356,8 +356,8 @@ func TestBootAddMultiItemAggregate(t *testing.T) {
 // TestBootDeleteHTTPError verifies a failing delete resolves to a non-success
 // exit code across boot types (per-item aggregation).
 func TestBootDeleteHTTPError(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -366,8 +366,8 @@ func TestBootDeleteHTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "delete", "some-uid",
-				"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "delete", "some-uid",
+				"--uri", srv.URL, "--token", "t", "--no-confirm")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -381,8 +381,8 @@ func TestBootDeleteHTTPError(t *testing.T) {
 // TestBootSetStdin verifies "set <uid>" reads payload from stdin when -d is not
 // supplied across boot types.
 func TestBootSetStdin(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -392,8 +392,8 @@ func TestBootSetStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInputAndRuntime(t, "--ignore-config", bootAddPayload(typ),
-				"boot", typ, "set", "some-uid", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, bootAddPayload(typ),
+				"boot", "--ignore-config", typ, "set", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -404,8 +404,8 @@ func TestBootSetStdin(t *testing.T) {
 // TestBootPatchStdin verifies "patch <uid>" reads payload from stdin when -d is
 // not supplied across boot types.
 func TestBootPatchStdin(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -415,8 +415,8 @@ func TestBootPatchStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInputAndRuntime(t, "--ignore-config", bootAddPayload(typ),
-				"boot", typ, "patch", "some-uid", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, bootAddPayload(typ),
+				"boot", "--ignore-config", typ, "patch", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -427,8 +427,8 @@ func TestBootPatchStdin(t *testing.T) {
 // TestBootAddEnvelopeStdin verifies the envelope API path reads from stdin when
 // -d is not supplied across boot types.
 func TestBootAddEnvelopeStdin(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -439,8 +439,8 @@ func TestBootAddEnvelopeStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInputAndRuntime(t, "--ignore-config", bootEnvelopePayload(typ),
-				"boot", typ, "add", "-e", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, bootEnvelopePayload(typ),
+				"boot", "--ignore-config", typ, "add", "-e", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -451,8 +451,8 @@ func TestBootAddEnvelopeStdin(t *testing.T) {
 // TestBootSetEnvelopeStdin verifies the envelope set path reads from stdin when
 // -d is not supplied across boot types.
 func TestBootSetEnvelopeStdin(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -462,8 +462,8 @@ func TestBootSetEnvelopeStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInputAndRuntime(t, "--ignore-config", bootEnvelopePayload(typ),
-				"boot", typ, "set", "some-uid", "-e", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, bootEnvelopePayload(typ),
+				"boot", "--ignore-config", typ, "set", "some-uid", "-e", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -474,8 +474,8 @@ func TestBootSetEnvelopeStdin(t *testing.T) {
 // TestBootPatchKeyval verifies the key-value patch path (--set/--unset) across
 // boot types.
 func TestBootPatchKeyval(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -485,7 +485,7 @@ func TestBootPatchKeyval(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "patch", "some-uid", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "patch", "some-uid", "--uri", srv.URL, "--token", "t",
 				"--set", "description=new", "--unset", "obsolete")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -496,8 +496,8 @@ func TestBootPatchKeyval(t *testing.T) {
 
 // TestBootPatchRFC6902 verifies the rfc6902 patch-method path across boot types.
 func TestBootPatchRFC6902(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -507,7 +507,7 @@ func TestBootPatchRFC6902(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "patch", "some-uid", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "boot", "--ignore-config", typ, "patch", "some-uid", "--uri", srv.URL, "--token", "t",
 				"--patch-method", "rfc6902", "-d", `[{"op":"replace","path":"/description","value":"new"}]`)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -519,8 +519,8 @@ func TestBootPatchRFC6902(t *testing.T) {
 // TestBootPatchStdinData verifies patch reads from stdin when -d is not given
 // across boot types.
 func TestBootPatchStdinData(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
 
 	for _, typ := range bootTypes {
 		t.Run(typ, func(t *testing.T) {
