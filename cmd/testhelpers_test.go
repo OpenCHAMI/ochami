@@ -127,7 +127,7 @@ func runOchamiWithInputAndRuntime(t *testing.T, input string, args ...string) cm
 // TestRunOchamiWithRuntime_Basic verifies that the runtime-based test helper
 // works correctly for basic command execution.
 func TestRunOchamiWithRuntime_Basic(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	t.Parallel()
 
 	// Test version command which should work without any special setup
@@ -152,7 +152,7 @@ func TestRunOchamiWithRuntime_Basic(t *testing.T) {
 // TestRunOchamiWithInputAndRuntime_Basic verifies that the runtime-based test
 // helper with input works correctly.
 func TestRunOchamiWithInputAndRuntime_Basic(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	t.Parallel()
 
 	// Test version command with custom input (should be ignored by version)

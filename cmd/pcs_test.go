@@ -19,7 +19,7 @@ import (
 
 // TestPCSStatusList verifies "pcs status list" issues GET /power-status.
 func TestPCSStatusList(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotMethod, gotPath string
@@ -44,7 +44,7 @@ func TestPCSStatusList(t *testing.T) {
 // TestPCSStatusListWithFilters verifies xname and power/mgmt filters are encoded
 // in the query string.
 func TestPCSStatusListWithFilters(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotQuery string
@@ -67,7 +67,7 @@ func TestPCSStatusListWithFilters(t *testing.T) {
 // TestPCSStatusListInvalidPowerFilter verifies an invalid --power-filter value
 // is a usage error handled before any request.
 func TestPCSStatusListInvalidPowerFilter(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", "http://127.0.0.1:0",
@@ -83,7 +83,7 @@ func TestPCSStatusListInvalidPowerFilter(t *testing.T) {
 // TestPCSStatusListHTTPError verifies an unsuccessful HTTP response resolves to
 // CodeHTTP.
 func TestPCSStatusListHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +103,7 @@ func TestPCSStatusListHTTPError(t *testing.T) {
 // TestPCSServiceStatus verifies "pcs service status" contacts PCS readiness and
 // exits successfully when PCS reports ready (HTTP 204 on /readiness).
 func TestPCSServiceStatus(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotPath string
@@ -128,7 +128,7 @@ func TestPCSServiceStatus(t *testing.T) {
 // TestPCSServiceStatusHealth verifies that passing a health flag causes
 // "pcs service status" to query the /health endpoint.
 func TestPCSServiceStatusHealth(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var sawHealth bool

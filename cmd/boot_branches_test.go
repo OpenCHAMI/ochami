@@ -38,7 +38,7 @@ func bootEnvelopePayload(typ string) string {
 
 // TestBootListFormats verifies list output-format variants across boot types.
 func TestBootListFormats(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -61,7 +61,7 @@ func TestBootListFormats(t *testing.T) {
 
 // TestBootGetFormats verifies get output-format variants across boot types.
 func TestBootGetFormats(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -85,7 +85,7 @@ func TestBootGetFormats(t *testing.T) {
 // TestBootListNetworkError verifies a closed port resolves to a non-success exit
 // code for each boot type's list.
 func TestBootListNetworkError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -108,7 +108,7 @@ func TestBootListNetworkError(t *testing.T) {
 // TestBootGetHTTPError verifies a failing get resolves to a non-success exit
 // code across boot types.
 func TestBootGetHTTPErrorAllTypes(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -132,7 +132,7 @@ func TestBootGetHTTPErrorAllTypes(t *testing.T) {
 // TestBootAddEnvelope verifies the envelope (advanced) API path of "add -e"
 // across boot types.
 func TestBootAddEnvelope(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -156,7 +156,7 @@ func TestBootAddEnvelope(t *testing.T) {
 // TestBootAddStdin verifies add reads payload from stdin when -d is not supplied
 // (simple API path) across boot types.
 func TestBootAddStdin(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -180,7 +180,7 @@ func TestBootAddStdin(t *testing.T) {
 // TestBootSetEnvelope verifies the envelope API path of "set -e" across boot
 // types.
 func TestBootSetEnvelope(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -203,7 +203,7 @@ func TestBootSetEnvelope(t *testing.T) {
 // TestBootSetHTTPError verifies a failing set resolves to a non-success exit
 // code across boot types.
 func TestBootSetHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -228,7 +228,7 @@ func TestBootSetHTTPError(t *testing.T) {
 // TestBootPatchHTTPError verifies a failing patch resolves to a non-success exit
 // code across boot types.
 func TestBootPatchHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -253,7 +253,7 @@ func TestBootPatchHTTPError(t *testing.T) {
 // TestBootDeleteConfirmYes verifies answering "y" at the confirmation prompt
 // proceeds with deletion across boot types.
 func TestBootDeleteConfirmYes(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -276,7 +276,7 @@ func TestBootDeleteConfirmYes(t *testing.T) {
 // TestBootDeleteAbort verifies answering "n" aborts deletion without contacting
 // the server across boot types.
 func TestBootDeleteAbort(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -305,7 +305,7 @@ func TestBootDeleteAbort(t *testing.T) {
 // TestBootAddMalformedPayload verifies malformed inline payload resolves to a
 // non-success exit code across boot types.
 func TestBootAddMalformedPayload(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -330,7 +330,7 @@ func TestBootAddMalformedPayload(t *testing.T) {
 // TestBootAddMultiItemAggregate verifies a multi-item add against a failing
 // server aggregates per-item errors into a non-success exit code.
 func TestBootAddMultiItemAggregate(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -356,7 +356,7 @@ func TestBootAddMultiItemAggregate(t *testing.T) {
 // TestBootDeleteHTTPError verifies a failing delete resolves to a non-success
 // exit code across boot types (per-item aggregation).
 func TestBootDeleteHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -381,7 +381,7 @@ func TestBootDeleteHTTPError(t *testing.T) {
 // TestBootSetStdin verifies "set <uid>" reads payload from stdin when -d is not
 // supplied across boot types.
 func TestBootSetStdin(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -404,7 +404,7 @@ func TestBootSetStdin(t *testing.T) {
 // TestBootPatchStdin verifies "patch <uid>" reads payload from stdin when -d is
 // not supplied across boot types.
 func TestBootPatchStdin(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -427,7 +427,7 @@ func TestBootPatchStdin(t *testing.T) {
 // TestBootAddEnvelopeStdin verifies the envelope API path reads from stdin when
 // -d is not supplied across boot types.
 func TestBootAddEnvelopeStdin(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -451,7 +451,7 @@ func TestBootAddEnvelopeStdin(t *testing.T) {
 // TestBootSetEnvelopeStdin verifies the envelope set path reads from stdin when
 // -d is not supplied across boot types.
 func TestBootSetEnvelopeStdin(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -474,7 +474,7 @@ func TestBootSetEnvelopeStdin(t *testing.T) {
 // TestBootPatchKeyval verifies the key-value patch path (--set/--unset) across
 // boot types.
 func TestBootPatchKeyval(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -496,7 +496,7 @@ func TestBootPatchKeyval(t *testing.T) {
 
 // TestBootPatchRFC6902 verifies the rfc6902 patch-method path across boot types.
 func TestBootPatchRFC6902(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {
@@ -519,7 +519,7 @@ func TestBootPatchRFC6902(t *testing.T) {
 // TestBootPatchStdinData verifies patch reads from stdin when -d is not given
 // across boot types.
 func TestBootPatchStdinData(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, typ := range bootTypes {

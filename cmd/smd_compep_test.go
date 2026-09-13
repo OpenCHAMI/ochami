@@ -26,9 +26,9 @@ func TestSMDCompepGetAllFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		// TODO: Enable t.Parallel() once race conditions are resolved
+		
 		// t.Parallel()
-		// TODO: Enable t.Parallel() once race conditions are resolved
+		
 		// t.Parallel()
 		res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t", "-F", f)
 		if res.err != nil {
@@ -48,7 +48,7 @@ func TestSMDCompepGetByXnames(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b56n0", "x3000c1s7b56n1")
@@ -68,7 +68,7 @@ func TestSMDCompepGetAllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
@@ -87,7 +87,7 @@ func TestSMDCompepGetByXnameHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b56n0")
@@ -105,7 +105,7 @@ func TestSMDCompepGetNetworkError(t *testing.T) {
 	url := srv.URL
 	srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", url, "--token", "t")
 	if res.err == nil {
@@ -128,7 +128,7 @@ func TestSMDCompepDeleteByXnames(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "x3000c1s7b56n0", "x3000c1s7b56n1")
@@ -151,7 +151,7 @@ func TestSMDCompepDeleteByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `[{"ID":"x3000c1s7b56n0"}]`)
@@ -175,7 +175,7 @@ func TestSMDCompepDeleteAllConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithInputAndRuntime(t, "y\n",
 		"smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t", "--all")
@@ -201,7 +201,7 @@ func TestSMDCompepDeleteAbort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithInputAndRuntime(t, "n\n",
 		"smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
@@ -216,7 +216,7 @@ func TestSMDCompepDeleteAbort(t *testing.T) {
 // TestSMDCompepDeleteNoSelector verifies delete with neither -d, --all, nor args
 // is a usage error.
 func TestSMDCompepDeleteNoSelector(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--no-confirm")
@@ -236,7 +236,7 @@ func TestSMDCompepDeleteAllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "--all")

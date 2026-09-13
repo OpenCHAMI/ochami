@@ -22,7 +22,7 @@ import (
 // TestDefaultClusterURIResolution verifies a command resolves its base URI from
 // the default cluster's cluster.uri in a config file (no --uri flag).
 func TestDefaultClusterURIResolution(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var hit bool
@@ -52,7 +52,7 @@ clusters:
 // TestPerServiceURIOverride verifies a per-service URI override in the cluster
 // config is honored.
 func TestPerServiceURIOverride(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotPath string
@@ -85,7 +85,7 @@ clusters:
 // with enable-auth true and a valid <CLUSTER>_ACCESS_TOKEN env var, the token
 // is read and validated and the request succeeds.
 func TestEnableAuthReadsTokenFromEnv(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotAuth string
@@ -118,7 +118,7 @@ clusters:
 // TestEnableAuthMissingTokenFails verifies that with enable-auth true and no
 // token available, the command fails with CodeAuth.
 func TestEnableAuthMissingTokenFails(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -149,7 +149,7 @@ clusters:
 // TestEnableAuthDisabledSkipsToken verifies that with enable-auth false, no
 // token is required or sent.
 func TestEnableAuthDisabledSkipsToken(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotAuth string

@@ -37,7 +37,7 @@ func TestBSSBootImageSetByXnameAndNid(t *testing.T) {
 
 			args := append([]string{"--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t"},
 				append(sel, "https://example.com/new-image")...)
-			// TODO: Enable t.Parallel() once race conditions are resolved
+			
 			// t.Parallel()
 			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
@@ -58,7 +58,7 @@ func TestBSSBootImageSetGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t",
 		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
@@ -82,7 +82,7 @@ func TestBSSBootImageSetPutHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t",
 		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
@@ -104,7 +104,7 @@ func TestBSSBootScriptGetQuery(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "script", "get", "--uri", srv.URL,
 		"--xname", "x0c0s0b0n0", "--retry", "3", "--arch", "x86_64", "--timestamp", "12345")
@@ -124,7 +124,7 @@ func TestBSSBootScriptGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "script", "get", "--uri", srv.URL,
 		"--mac", "de:ad:be:ef:00:00")
@@ -147,7 +147,7 @@ func TestBSSHostsGetQueryAndFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "yaml"} {
-		// TODO: Enable t.Parallel() once race conditions are resolved
+		
 		// t.Parallel()
 		res := runOchamiWithRuntime(t, "--ignore-config", "bss", "hosts", "get", "--uri", srv.URL,
 			"--xname", "x0c0s0b0n0", "-F", f)
@@ -167,7 +167,7 @@ func TestBSSHostsGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "hosts", "get", "--uri", srv.URL, "--mac", "de:ad:be:ef:00:00")
 	if res.err == nil {
@@ -189,7 +189,7 @@ func TestBSSHistoryGetQueryAndFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "yaml"} {
-		// TODO: Enable t.Parallel() once race conditions are resolved
+		
 		// t.Parallel()
 		res := runOchamiWithRuntime(t, "--ignore-config", "bss", "history", "--uri", srv.URL,
 			"--xname", "x0c0s0b0n0", "-F", f)
@@ -210,7 +210,7 @@ func TestBSSHistoryGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "history", "--uri", srv.URL, "--endpoint", "x0c0s0b0")
 	if res.err == nil {

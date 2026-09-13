@@ -37,7 +37,7 @@ func TestCloudInitNodeGetData(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			// TODO: Enable t.Parallel() once race conditions are resolved
+			
 			// t.Parallel()
 			res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "node", "get", tt.sub, "x3000c0s0b0n0",
 				"--uri", srv.URL, "--token", "t")
@@ -64,7 +64,7 @@ func TestCloudInitNodeGetGroup(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "node", "get", "group", "x3000c0s0b0n0", "compute",
 		"--uri", srv.URL, "--token", "t")
@@ -87,7 +87,7 @@ func TestCloudInitNodeGetDataHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "node", "get", "meta-data", "x3000c0s0b0n0",
 		"--uri", srv.URL, "--token", "t")
