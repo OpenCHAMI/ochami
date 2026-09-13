@@ -162,6 +162,22 @@ func (i ioStream) LoopYesNo(p string) (bool, error) {
 // InitConfig initializes the global configuration for a command, creating the
 // config file if create is true, if it does not already exist.
 func InitConfig(cmd *cobra.Command, create bool) error {
+	// Try to use runtime from context first (new approach)
+	var configFile string
+	var askToCreate func(path string) (bool, error)
+	if ctx := cmd.Context(); ctx != nil {
+		if rt, ok := FromContext(ctx); ok {
+			configFile = rt.ConfigFile
+			askToCreate = rt.Ios.AskToCreate
+		} else {
+			configFile = ConfigFile
+			askToCreate = Ios.AskToCreate
+		}
+	} else {
+		configFile = ConfigFile
+		askToCreate = Ios.AskToCreate
+	}
+
 	// Do not read or write config file if --ignore-config passed
 	if f := cmd.Flag("ignore-config"); f != nil && f.Value.String() == "true" {
 		err := loadDefaultConfig()
@@ -171,10 +187,10 @@ func InitConfig(cmd *cobra.Command, create bool) error {
 		return nil
 	}
 
-	if ConfigFile != "" {
+	if configFile != "" {
 		if create {
 			// Try to create config file with default values if it doesn't exist
-			if cr, err := Ios.AskToCreate(ConfigFile); err != nil {
+			if cr, err := askToCreate(configFile); err != nil {
 				// Only return error if error is not one that the file
 				// already exists.
 				if !errors.Is(err, FileExistsError) {
@@ -183,8 +199,8 @@ func InitConfig(cmd *cobra.Command, create bool) error {
 				}
 			} else if cr {
 				// User answered yes
-				if err := CreateIfNotExists(ConfigFile); err != nil {
-					return fmt.Errorf("failed to create %s: %w", ConfigFile, err)
+				if err := CreateIfNotExists(configFile); err != nil {
+					return fmt.Errorf("failed to create %s: %w", configFile, err)
 				}
 			} else {
 				// User answered no
@@ -196,8 +212,8 @@ func InitConfig(cmd *cobra.Command, create bool) error {
 	// Read configuration from file, if passed or merge config from system
 	// config file and user config file if not passed.
 	var err error
-	if ConfigFile != "" {
-		err = loadConfigFromFile(ConfigFile)
+	if configFile != "" {
+		err = loadConfigFromFile(configFile)
 	} else {
 		err = loadMergedConfig()
 	}
@@ -397,6 +413,14 @@ func GetBaseURIRCS(cmd *cobra.Command) (string, error) {
 }
 
 func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, error) {
+	// Try to use runtime from context first (new approach)
+	if ctx := cmd.Context(); ctx != nil {
+		if rt, ok := FromContext(ctx); ok {
+			return rt.GetBaseURI(cmd, serviceName)
+		}
+	}
+
+	// Fallback to global state (old approach) during transition
 	// Precedence of getting base URI for requests (higher numbers override
 	// all preceding numbers):
 	//
@@ -487,6 +511,14 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 }
 
 func GetAPIVersion(cmd *cobra.Command, serviceName config.ServiceName) (string, error) {
+	// Try to use runtime from context first (new approach)
+	if ctx := cmd.Context(); ctx != nil {
+		if rt, ok := FromContext(ctx); ok {
+			return rt.GetAPIVersion(cmd, serviceName)
+		}
+	}
+
+	// Fallback to global state (old approach) during transition
 	// Precedence of getting API version for requests (higher numbers override
 	// all preceding numbers):
 	//
@@ -556,7 +588,17 @@ func GetAPIVersion(cmd *cobra.Command, serviceName config.ServiceName) (string, 
 // GetTimeout returns the timeout specified by --timeout, if passed. Otherwise,
 // the config value of timeout is used. If that is not set, the compile-time
 // default is used.
+// During the runtime transition, this function first tries to use a runtime from
+// the command context if available, falling back to global state for backward compatibility.
 func GetTimeout(cmd *cobra.Command) time.Duration {
+	// Try to use runtime from context first (new approach)
+	if ctx := cmd.Context(); ctx != nil {
+		if rt, ok := FromContext(ctx); ok {
+			return rt.GetTimeout(cmd)
+		}
+	}
+
+	// Fallback to global state (old approach) during transition
 	if cmd.Flag("timeout").Changed {
 		if dur, err := cmd.Flags().GetDuration("timeout"); err != nil {
 			log.Logger.Warn().Err(err).Msgf("failed to get timeout from flag, falling back to config value of %s", activeConfig.Timeout)
@@ -708,6 +750,17 @@ func HandlePayloadSlice[T any](cmd *cobra.Command, v *[]T) error {
 // HandlePayloadStdin is similar to HandlePayload except the data is read from
 // standard input.
 func HandlePayloadStdin(cmd *cobra.Command, v any) error {
+	// Try to use runtime from context first (new approach)
+	if ctx := cmd.Context(); ctx != nil {
+		if rt, ok := FromContext(ctx); ok {
+			if err := client.ReadPayloadReader(rt.Ios.In(), rt.FormatInput, v); err != nil {
+				return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
+			}
+			return nil
+		}
+	}
+
+	// Fallback to global state (old approach) during transition
 	if err := client.ReadPayloadReader(Ios.In(), FormatInput, v); err != nil {
 		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}
@@ -717,6 +770,17 @@ func HandlePayloadStdin(cmd *cobra.Command, v any) error {
 // HandlePayloadStdinSlice is similar to HandlePayloadStdin except that it
 // unmarshals the payload data into a typed slice.
 func HandlePayloadStdinSlice[T any](cmd *cobra.Command, v *[]T) error {
+	// Try to use runtime from context first (new approach)
+	if ctx := cmd.Context(); ctx != nil {
+		if rt, ok := FromContext(ctx); ok {
+			if err := client.ReadPayloadReaderSlice[T](rt.Ios.In(), rt.FormatInput, v); err != nil {
+				return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
+			}
+			return nil
+		}
+	}
+
+	// Fallback to global state (old approach) during transition
 	if err := client.ReadPayloadReaderSlice[T](Ios.In(), FormatInput, v); err != nil {
 		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}

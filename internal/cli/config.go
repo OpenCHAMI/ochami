@@ -41,7 +41,13 @@ func ActiveKoanf() *koanf.Koanf { return activeKoanf }
 
 // SetActiveConfig replaces the effective configuration. It is exported for
 // tests that need to seed configuration without loading a file.
-func SetActiveConfig(c config.Config) { activeConfig = c }
+//
+// During the runtime migration, this function now panics. Use runtime-based
+// configuration instead (rt.Config = ...). This panic helps identify any
+// remaining usage of global state that needs to be migrated to use runtime.
+func SetActiveConfig(c config.Config) {
+	panic("SetActiveConfig is deprecated during runtime migration. Use runtime-based configuration instead.")
+}
 
 // earlyLogger adapts log.EarlyLogger to the config.Logger interface so that
 // verbose configuration tracing continues to honor the --verbose flag.

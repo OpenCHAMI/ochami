@@ -6,7 +6,7 @@ package cli
 
 import (
 	"bytes"
-	"os"
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -32,16 +32,20 @@ func newResolutionCommand() *cobra.Command {
 }
 
 func TestGetBaseURIExplicitClusterOverridesDefault(t *testing.T) {
-	orig := ActiveConfig()
-	t.Cleanup(func() { SetActiveConfig(orig) })
-	SetActiveConfig(config.Config{
+	// Use runtime-based approach instead of global SetActiveConfig
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{
 		DefaultCluster: "default",
 		Clusters: []config.ConfigCluster{
 			{Name: "default", Cluster: config.ConfigClusterConfig{BSS: config.ConfigClusterBSS{URI: "https://default.example/bss"}}},
 			{Name: "chosen", Cluster: config.ConfigClusterConfig{BSS: config.ConfigClusterBSS{URI: "https://chosen.example/bss"}}},
 		},
-	})
+	}
+
 	cmd := newResolutionCommand()
+	// Set runtime in command context - need to create a background context first
+	ctx := context.Background()
+	cmd.SetContext(rt.WithContext(ctx))
 	if err := cmd.Flags().Set("cluster", "chosen"); err != nil {
 		t.Fatal(err)
 	}
@@ -56,16 +60,19 @@ func TestGetBaseURIExplicitClusterOverridesDefault(t *testing.T) {
 }
 
 func TestGetAPIVersionPrecedenceAndErrors(t *testing.T) {
-	orig := ActiveConfig()
-	t.Cleanup(func() { SetActiveConfig(orig) })
-	SetActiveConfig(config.Config{
+	// Use runtime-based approach instead of global SetActiveConfig
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{
 		DefaultCluster: "default",
 		Clusters: []config.ConfigCluster{
 			{Name: "default", Cluster: config.ConfigClusterConfig{BootService: config.ConfigClusterBootService{APIVersion: "v1"}}},
 			{Name: "chosen", Cluster: config.ConfigClusterConfig{BootService: config.ConfigClusterBootService{APIVersion: "v2"}}},
 		},
-	})
+	}
 	cmd := newResolutionCommand()
+	// Set runtime in command context
+	ctx := context.Background()
+	cmd.SetContext(rt.WithContext(ctx))
 	if err := cmd.Flags().Set("cluster", "chosen"); err != nil {
 		t.Fatalf("set cluster flag: %v", err)
 	}
@@ -87,10 +94,13 @@ func TestGetAPIVersionPrecedenceAndErrors(t *testing.T) {
 
 func TestBooleanFlagsUseTheirValue(t *testing.T) {
 	t.Run("ignore-config false", func(t *testing.T) {
-		orig := ConfigFile
-		t.Cleanup(func() { ConfigFile = orig })
-		ConfigFile = t.TempDir() + "/missing.yaml"
+		// Use runtime-based approach instead of global ConfigFile
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+		rt.ConfigFile = t.TempDir() + "/missing.yaml"
 		cmd := &cobra.Command{Use: "test"}
+		// Set runtime in command context
+		ctx := context.Background()
+		cmd.SetContext(rt.WithContext(ctx))
 		cmd.Flags().Bool("ignore-config", false, "")
 		if err := cmd.Flags().Set("ignore-config", "false"); err != nil {
 			t.Fatalf("set ignore-config flag: %v", err)
@@ -101,18 +111,21 @@ func TestBooleanFlagsUseTheirValue(t *testing.T) {
 	})
 
 	t.Run("no-token false", func(t *testing.T) {
-		origCfg, origToken := ActiveConfig(), Token
-		t.Cleanup(func() { SetActiveConfig(origCfg); Token = origToken })
-		SetActiveConfig(config.Config{
+		// Use runtime-based approach instead of global SetActiveConfig and Token
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+		rt.Config = config.Config{
 			DefaultCluster: "auth-cluster",
 			Clusters:       []config.ConfigCluster{{Name: "auth-cluster", Cluster: config.ConfigClusterConfig{EnableAuth: true}}},
-		})
-		Token = ""
-		_ = os.Unsetenv("AUTH_CLUSTER_ACCESS_TOKEN")
+		}
+		rt.Token = ""
 		cmd := newResolutionCommand()
+		// Set runtime in command context
+		ctx := context.Background()
+		cmd.SetContext(rt.WithContext(ctx))
 		if err := cmd.Flags().Set("no-token", "false"); err != nil {
 			t.Fatalf("set no-token flag: %v", err)
 		}
+		// HandleToken should use runtime from context
 		if err := HandleToken(cmd); err == nil || ExitCode(err) != CodeAuth {
 			t.Fatalf("HandleToken error = %v, want CodeAuth", err)
 		}
@@ -120,52 +133,63 @@ func TestBooleanFlagsUseTheirValue(t *testing.T) {
 }
 
 func TestPayloadReaderHelpers(t *testing.T) {
-	origFormat := FormatInput
-	t.Cleanup(func() { FormatInput = origFormat })
-	FormatInput = format.DataFormatJson
+	// Use runtime-based approach instead of global FormatInput and SetIOStream
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.FormatInput = format.DataFormatJson
 
 	var one map[string]interface{}
-	restore := SetIOStream(strings.NewReader(`{"name":"node"}`), &bytes.Buffer{}, &bytes.Buffer{})
-	if err := HandlePayloadStdin(&cobra.Command{}, &one); err != nil {
-		restore()
+	// Set runtime stdin for HandlePayloadStdin
+	var stdin1 = strings.NewReader(`{"name":"node"}`)
+	rt.Ios = NewIOStreams(stdin1, &bytes.Buffer{}, &bytes.Buffer{})
+	cmd1 := &cobra.Command{}
+	cmd1.SetContext(rt.WithContext(context.Background()))
+	if err := HandlePayloadStdin(cmd1, &one); err != nil {
 		t.Fatalf("HandlePayloadStdin: %v", err)
 	}
-	restore()
 	if one["name"] != "node" {
 		t.Errorf("payload = %#v", one)
 	}
 
 	var many []map[string]interface{}
-	restore = SetIOStream(strings.NewReader(`{"name":"node"}`), &bytes.Buffer{}, &bytes.Buffer{})
-	if err := HandlePayloadStdinSlice(&cobra.Command{}, &many); err != nil {
-		restore()
+	// Reset runtime stdin for next test
+	var stdin2 = strings.NewReader(`{"name":"node"}`)
+	rt.Ios = NewIOStreams(stdin2, &bytes.Buffer{}, &bytes.Buffer{})
+	cmd2 := &cobra.Command{}
+	cmd2.SetContext(rt.WithContext(context.Background()))
+	if err := HandlePayloadStdinSlice(cmd2, &many); err != nil {
 		t.Fatalf("HandlePayloadStdinSlice: %v", err)
 	}
-	restore()
 	if len(many) != 1 {
 		t.Errorf("slice length = %d, want 1", len(many))
 	}
 
-	restore = SetIOStream(strings.NewReader(`{`), &bytes.Buffer{}, &bytes.Buffer{})
-	if err := HandlePayloadStdin(&cobra.Command{}, &one); err == nil || ExitCode(err) != CodePayload {
-		restore()
+	// Test invalid payload
+	var stdin3 = strings.NewReader(`{`)
+	rt.Ios = NewIOStreams(stdin3, &bytes.Buffer{}, &bytes.Buffer{})
+	cmd3 := &cobra.Command{}
+	cmd3.SetContext(rt.WithContext(context.Background()))
+	if err := HandlePayloadStdin(cmd3, &one); err == nil || ExitCode(err) != CodePayload {
 		t.Fatalf("invalid payload error = %v, want CodePayload", err)
 	}
-	restore()
 
-	restore = SetIOStream(strings.NewReader(`{`), &bytes.Buffer{}, &bytes.Buffer{})
-	if err := HandlePayloadStdinSlice(&cobra.Command{}, &many); err == nil || ExitCode(err) != CodePayload {
-		restore()
+	// Test invalid slice payload
+	var stdin4 = strings.NewReader(`{`)
+	rt.Ios = NewIOStreams(stdin4, &bytes.Buffer{}, &bytes.Buffer{})
+	cmd4 := &cobra.Command{}
+	cmd4.SetContext(rt.WithContext(context.Background()))
+	if err := HandlePayloadStdinSlice(cmd4, &many); err == nil || ExitCode(err) != CodePayload {
 		t.Fatalf("invalid slice payload error = %v, want CodePayload", err)
 	}
-	restore()
 }
 
 func TestGetTimeoutAndCompletions(t *testing.T) {
-	orig := ActiveConfig()
-	t.Cleanup(func() { SetActiveConfig(orig) })
-	SetActiveConfig(config.Config{Timeout: 9 * time.Second})
+	// Use runtime-based approach instead of global SetActiveConfig
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{Timeout: 9 * time.Second}
 	cmd := newResolutionCommand()
+	// Set runtime in command context
+	ctx := context.Background()
+	cmd.SetContext(rt.WithContext(ctx))
 	if got := GetTimeout(cmd); got != 9*time.Second {
 		t.Errorf("GetTimeout config = %v", got)
 	}
