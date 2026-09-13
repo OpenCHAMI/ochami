@@ -62,6 +62,8 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 			// flag parsing, the runtime picks it up.
 			// For test-injected runtimes, we only sync the flag values (ConfigFile, CACertPath, Token, Insecure)
 			// to the runtime, but skip the I/O streams and config initialization to preserve test isolation.
+			// Use mutex to protect concurrent access to global variables during parallel test execution
+			cli.GlobalMu.Lock()
 			if useGlobalSync {
 				rt.Ios = cli.NewIOStreams(cli.Ios.In(), cli.Ios.Out(), cli.Ios.Err())
 				rt.ConfigFile = cli.ConfigFile
@@ -84,6 +86,7 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 					rt.Insecure = cli.Insecure
 				}
 			}
+			cli.GlobalMu.Unlock()
 
 			// Initialize config and logging using global functions (for backward compatibility)
 			// This will populate the global activeConfig, which runtime can access

@@ -21,7 +21,6 @@ import (
 // TestRCSConsoleList verifies "rcs console list" issues GET /consoles and prints
 // the returned console list.
 func TestRCSConsoleList(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
 	t.Parallel()
 
 	var gotMethod, gotPath string
@@ -46,7 +45,6 @@ func TestRCSConsoleList(t *testing.T) {
 // TestRCSConsoleListHTTPError verifies an unsuccessful HTTP response resolves to
 // a non-zero exit code.
 func TestRCSConsoleListHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +65,6 @@ func TestRCSConsoleListHTTPError(t *testing.T) {
 // websocket at /consoles/<node>, streams server output to stdout, and returns
 // nil on a normal websocket close.
 func TestRCSConsoleShow(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
 	t.Parallel()
 
 	var gotPath string

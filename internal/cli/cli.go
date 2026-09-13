@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v3/jwt"
@@ -42,6 +43,9 @@ var (
 	// Standard ioStream that writes to the regular OS's input/output
 	// streams.
 	Ios = newIOStream(os.Stdin, os.Stdout, os.Stderr)
+
+	// Mutex to protect mutable global state during parallel test execution
+	GlobalMu sync.Mutex
 
 	// Global config file path (set externally by importer)
 	ConfigFile string
@@ -85,9 +89,15 @@ func newIOStream(stdin io.Reader, stdout, stderr io.Writer) ioStream {
 //	restore := cli.SetIOStream(strings.NewReader("y\n"), &out, &out)
 //	defer restore()
 func SetIOStream(stdin io.Reader, stdout, stderr io.Writer) (restore func()) {
+	GlobalMu.Lock()
 	prev := Ios
 	Ios = newIOStream(stdin, stdout, stderr)
-	return func() { Ios = prev }
+	GlobalMu.Unlock()
+	return func() {
+		GlobalMu.Lock()
+		Ios = prev
+		GlobalMu.Unlock()
+	}
 }
 
 // In returns the stream's input reader. Commands that read interactive or piped
