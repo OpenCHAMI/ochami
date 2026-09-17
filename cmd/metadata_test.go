@@ -30,9 +30,9 @@ func okJSONServer(t *testing.T) *httptest.Server {
 
 // TestMetadataListSuccess verifies that "<type> list" exits successfully for
 // each metadata resource type.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestMetadataListSuccess(t *testing.T) {
+	t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := okJSONServer(t)
@@ -51,9 +51,9 @@ func TestMetadataListSuccess(t *testing.T) {
 
 // TestMetadataListHTTPError verifies that an unsuccessful HTTP response resolves
 // to a non-success exit code for each metadata resource type's "list".
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestMetadataListHTTPError(t *testing.T) {
+	t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -74,9 +74,9 @@ func TestMetadataListHTTPError(t *testing.T) {
 
 // TestMetadataGetSuccess verifies that "<type> get <uid>" exits successfully for
 // each metadata resource type.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestMetadataGetSuccess(t *testing.T) {
+	t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -98,9 +98,9 @@ func TestMetadataGetSuccess(t *testing.T) {
 
 // TestMetadataGetHTTPError verifies that an unsuccessful HTTP response from a
 // "<type> get" resolves to a non-success exit code for each resource type.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestMetadataGetHTTPError(t *testing.T) {
+	t.Parallel()
+	// TODO: Enable t.Parallel() once race conditions are resolved
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

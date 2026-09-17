@@ -22,7 +22,7 @@ import (
 // ready (200) but liveness reports ready (204), the command reports "live".
 func TestPCSServiceStatusLivenessFallback(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -46,7 +46,7 @@ func TestPCSServiceStatusLivenessFallback(t *testing.T) {
 // neither readiness nor liveness reports ready.
 func TestPCSServiceStatusUnknownState(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) // neither readiness nor liveness returns 204
@@ -66,7 +66,7 @@ func TestPCSServiceStatusUnknownState(t *testing.T) {
 // resolves to CodeHTTP.
 func TestPCSServiceStatusReadinessHTTPError(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
