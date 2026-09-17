@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/openchami/ochami/pkg/client"
 )
 
 // TestGetStatus verifies GetStatus routes to the SMD /service readiness/values
@@ -198,6 +200,60 @@ func TestBulkDeletes(t *testing.T) {
 			}
 			if gotMethod != http.MethodDelete || !strings.HasPrefix(gotPath, tc.wantPath) {
 				t.Errorf("request = %s %s, want DELETE %s", gotMethod, gotPath, tc.wantPath)
+			}
+		})
+	}
+}
+
+// TestIterativeDeletesPerItemHTTPError verifies that each iterative delete
+// records a per-item error (and an envelope) when the server returns a
+// non-success status, while still returning nil for the control-flow error.
+func TestIterativeDeletesPerItemHTTPError(t *testing.T) {
+	cases := []struct {
+		name string
+		call func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error)
+	}{
+		{"components", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteComponents("tok", "x0c0s0b0n0", "x0c0s0b0n1")
+		}},
+		{"rfe", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteRedfishEndpoints("tok", "x0c0s0b0", "x0c0s0b1")
+		}},
+		{"iface", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteEthernetInterfaces("tok", "de:ad:be:ef:00:01", "de:ad:be:ef:00:02")
+		}},
+		{"compendpoints", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteComponentEndpoints("tok", "x0c0s0b0n0", "x0c0s0b0n1")
+		}},
+		{"groups", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteGroups("tok", "compute", "storage")
+		}},
+		{"groupmembers", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteGroupMembers("tok", "compute", "x0c0s0b0n0", "x0c0s0b0n1")
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte("boom"))
+			})
+			defer srv.Close()
+
+			henvs, errs, err := tc.call(sc)
+			if err != nil {
+				t.Fatalf("%s: control-flow error = %v, want nil", tc.name, err)
+			}
+			if len(errs) != 2 {
+				t.Fatalf("%s: per-item errors length = %d, want 2", tc.name, len(errs))
+			}
+			if len(henvs) != 2 {
+				t.Fatalf("%s: envelopes length = %d, want 2", tc.name, len(henvs))
+			}
+			for i, e := range errs {
+				if e == nil {
+					t.Errorf("%s: per-item error[%d] = nil, want non-nil", tc.name, i)
+				}
 			}
 		})
 	}

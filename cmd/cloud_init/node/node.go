@@ -20,12 +20,7 @@ func NewCmd() *cobra.Command {
 		Long: `Manage cloud-init node-specific config.
 
 See ochami-cloud-init(1) for more details.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return cli.PrintUsageHandleError(cmd)
-			}
-			return nil
-		},
+		RunE: cli.PrintUsage,
 	}
 
 	// Add subcommands

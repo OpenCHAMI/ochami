@@ -26,12 +26,7 @@ func NewCmd() *cobra.Command {
 		Long: `Interact with the cloud-init service. This is a metacommand.
 
 See ochami-cloud-init(1) for more details.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return cli.PrintUsageHandleError(cmd)
-			}
-			return nil
-		},
+		RunE: cli.PrintUsage,
 	}
 
 	// Create flags

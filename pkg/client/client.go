@@ -248,16 +248,16 @@ func (oc *OchamiClient) DeleteData(endpoint, query string, headers *HTTPHeaders,
 
 	res, err := oc.MakeOchamiRequest(http.MethodDelete, endpoint, query, headers, body)
 	if err != nil {
-		return he, fmt.Errorf("error making PATCH request to %s, %w", oc.ServiceName, err)
+		return he, fmt.Errorf("error making DELETE request to %s, %w", oc.ServiceName, err)
 	}
 	if res != nil {
 		he, err := NewHTTPEnvelopeFromResponse(res)
 		if err != nil {
-			return he, fmt.Errorf("could not create HTTP envelope from PATCH response: %w", err)
+			return he, fmt.Errorf("could not create HTTP envelope from DELETE response: %w", err)
 		}
 		return he, he.CheckResponse()
 	}
-	return he, fmt.Errorf("%s PATCH response was empty", oc.ServiceName)
+	return he, fmt.Errorf("%s DELETE response was empty", oc.ServiceName)
 }
 
 // MakeOchamiRequest is a wrapper around MakeRequest that calls GetURI to form
@@ -361,15 +361,16 @@ func (oc *OchamiClient) MakeRequest(method, uri string, headers *HTTPHeaders, bo
 // as the OchamiClient's certificate authority certificate to verify the
 // certificates of connections to TLS-enabled HTTP URIs (HTTPS).
 func (oc *OchamiClient) UseCACert(caCertPath string) error {
+	if oc == nil {
+		return fmt.Errorf("client is nil")
+	}
 	cacert, err := os.ReadFile(caCertPath)
 	if err != nil {
 		return fmt.Errorf("failed to read %s: %w", caCertPath, err)
 	}
 	certPool := x509.NewCertPool()
-	certPool.AppendCertsFromPEM(cacert)
-
-	if oc == nil {
-		return fmt.Errorf("client is nil")
+	if ok := certPool.AppendCertsFromPEM(cacert); !ok {
+		return fmt.Errorf("failed to parse any CA certificates from %s", caCertPath)
 	}
 
 	(*oc).Transport = &http.Transport{
@@ -564,10 +565,9 @@ func ReadPayloadDataSlice[T any](data string, inFormat format.DataFormat, v *[]T
 	return err
 }
 
-// ReadPayloadStdin is like ReadPayloadData except it reads the data from
-// standard input instead of from a positional argument.
-func ReadPayloadStdin(format format.DataFormat, v any) error {
-	data, err := oio.ReadStdin()
+// ReadPayloadReader is like ReadPayloadData except it reads data from r.
+func ReadPayloadReader(r io.Reader, format format.DataFormat, v any) error {
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return fmt.Errorf("unable to read from stdin: %w", err)
 	}
@@ -586,10 +586,14 @@ func ReadPayloadStdin(format format.DataFormat, v any) error {
 	return err
 }
 
-// ReadPayloadStdinSlice is like ReadPayloadStdin except that v is a typed
-// slice.
-func ReadPayloadStdinSlice[T any](inFormat format.DataFormat, v *[]T) error {
-	data, err := oio.ReadStdin()
+// ReadPayloadStdin is like ReadPayloadReader except it reads data from os.Stdin.
+func ReadPayloadStdin(format format.DataFormat, v any) error {
+	return ReadPayloadReader(os.Stdin, format, v)
+}
+
+// ReadPayloadReaderSlice is like ReadPayloadReader except v is a typed slice.
+func ReadPayloadReaderSlice[T any](r io.Reader, inFormat format.DataFormat, v *[]T) error {
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return fmt.Errorf("unable to read from stdin: %w", err)
 	}
@@ -606,6 +610,12 @@ func ReadPayloadStdinSlice[T any](inFormat format.DataFormat, v *[]T) error {
 	}
 
 	return err
+}
+
+// ReadPayloadStdinSlice is like ReadPayloadReaderSlice except it reads data
+// from os.Stdin.
+func ReadPayloadStdinSlice[T any](inFormat format.DataFormat, v *[]T) error {
+	return ReadPayloadReaderSlice(os.Stdin, inFormat, v)
 }
 
 // CanonicalizeInterface takes an arbitrary map of data (e.g. returned from

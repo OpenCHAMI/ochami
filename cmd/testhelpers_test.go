@@ -91,11 +91,10 @@ func runOchami(t *testing.T, args ...string) cmdResult {
 
 	rootCmd := NewRootCmd()
 	rootCmd.SetArgs(args)
-	// Route Cobra's own output (usage/errors) away from os.Stdout so it does
-	// not pollute captured command output; command output uses fmt.Print
-	// which goes to the real os.Stdout we swapped above.
-	rootCmd.SetOut(io.Discard)
-	rootCmd.SetErr(io.Discard)
+	// Capture Cobra output as well as command output. This lets tests verify
+	// metacommand usage while preserving a single output assertion surface.
+	rootCmd.SetOut(w)
+	rootCmd.SetErr(w)
 
 	runErr := rootCmd.Execute()
 

@@ -21,12 +21,7 @@ func NewCmd() *cobra.Command {
 and kernel command line arguments. This is a metacommand.
 
 See ochami-bss(1) for more details.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return cli.PrintUsageHandleError(cmd)
-			}
-			return nil
-		},
+		RunE: cli.PrintUsage,
 	}
 
 	// Add subcommands

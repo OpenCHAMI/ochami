@@ -336,7 +336,11 @@ func streamConsoleOutput(stdout io.Writer, conn *websocket.Conn, errChan chan er
 	for {
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
-			errChan <- err
+			if isNormalWebSocketClose(err) {
+				errChan <- nil
+			} else {
+				errChan <- err
+			}
 			return
 		}
 		if messageType == websocket.TextMessage || messageType == websocket.BinaryMessage {
