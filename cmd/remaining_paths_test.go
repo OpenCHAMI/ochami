@@ -15,8 +15,7 @@ import (
 )
 
 func TestMetacommandPathsPrintUsage(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	paths := [][]string{
 		{},
@@ -38,8 +37,7 @@ func TestMetacommandPathsPrintUsage(t *testing.T) {
 			name = strings.Join(path, " ")
 		}
 		t.Run(name, func(t *testing.T) {
-			// TODO: Enable t.Parallel() once race conditions are resolved
-			// t.Parallel()
+			t.Parallel()
 
 			args := append([]string{"--ignore-config"}, path...)
 			res := runOchamiWithRuntime(t, args...)
@@ -54,13 +52,11 @@ func TestMetacommandPathsPrintUsage(t *testing.T) {
 }
 
 func TestCloudInitGroupGetRemainingPaths(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	for _, subcommand := range []string{"config", "meta-data"} {
 		t.Run(subcommand, func(t *testing.T) {
-			// TODO: Enable t.Parallel() once race conditions are resolved
-			// t.Parallel()
+			t.Parallel()
 
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")

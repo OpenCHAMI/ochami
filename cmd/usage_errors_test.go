@@ -17,8 +17,7 @@ import (
 
 // TestUsageErrorUnknownFlag verifies that an unknown flag is a usage error.
 func TestUsageErrorUnknownFlag(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--definitely-not-a-flag")
 	if res.err == nil {
@@ -32,8 +31,7 @@ func TestUsageErrorUnknownFlag(t *testing.T) {
 // TestUsageErrorBadFlagValue verifies that an invalid value for a typed flag
 // (here, a non-integer for the int32 --nid) is a usage error.
 func TestUsageErrorBadFlagValue(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--nid", "not-a-number")
 	if res.err == nil {
@@ -47,8 +45,7 @@ func TestUsageErrorBadFlagValue(t *testing.T) {
 // TestUsageErrorTooManyArgs verifies that violating a command's Args validator
 // (cobra.NoArgs on "smd component get") is a usage error.
 func TestUsageErrorTooManyArgs(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "unexpected-arg")
 	if res.err == nil {
@@ -63,8 +60,7 @@ func TestUsageErrorTooManyArgs(t *testing.T) {
 // cobra.ExactArgs (here, "smd group member get" requires exactly 1) is a usage
 // error.
 func TestUsageErrorExactArgs(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "group", "member", "get")
 	if res.err == nil {

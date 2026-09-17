@@ -25,7 +25,7 @@ import (
 // exits successfully.
 func TestDeleteConfirmYes(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +54,7 @@ func TestDeleteConfirmYes(t *testing.T) {
 // is issued and the command exits 0 (user-abort is not an error).
 func TestDeleteConfirmNo(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +86,7 @@ func TestDeleteConfirmNo(t *testing.T) {
 // second command family (smd component) to exercise its prompt branch.
 func TestDeleteConfirmYesComponent(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +112,7 @@ func TestDeleteConfirmYesComponent(t *testing.T) {
 // confirming the pattern holds across services.
 func TestDeleteConfirmNoBSS(t *testing.T) {
 	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
