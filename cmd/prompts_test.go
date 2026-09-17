@@ -24,7 +24,7 @@ import (
 // causes the delete to proceed (a DELETE request is issued) and the command
 // exits successfully.
 func TestDeleteConfirmYes(t *testing.T) {
-	
+
 	t.Parallel()
 
 	var deletes int
@@ -53,7 +53,7 @@ func TestDeleteConfirmYes(t *testing.T) {
 // TestDeleteConfirmNo verifies that answering "n" aborts the delete: no request
 // is issued and the command exits 0 (user-abort is not an error).
 func TestDeleteConfirmNo(t *testing.T) {
-	
+
 	t.Parallel()
 
 	var deletes int
@@ -85,7 +85,7 @@ func TestDeleteConfirmNo(t *testing.T) {
 // TestDeleteConfirmYesComponent covers the same confirm-then-delete flow for a
 // second command family (smd component) to exercise its prompt branch.
 func TestDeleteConfirmYesComponent(t *testing.T) {
-	
+
 	t.Parallel()
 
 	var deletes int
@@ -111,7 +111,7 @@ func TestDeleteConfirmYesComponent(t *testing.T) {
 // TestDeleteConfirmNoBSS covers the abort branch for a bss delete command,
 // confirming the pattern holds across services.
 func TestDeleteConfirmNoBSS(t *testing.T) {
-	
+
 	t.Parallel()
 
 	var deletes int

@@ -40,7 +40,7 @@ const discoveryPayload = `{
 // issuing POST requests for the discovered structures, and exits successfully
 // when the server accepts them.
 func TestDiscoverStatic(t *testing.T) {
-	
+
 	t.Parallel()
 
 	sawPost := false
@@ -67,7 +67,7 @@ func TestDiscoverStatic(t *testing.T) {
 // TestDiscoverStaticOverwrite verifies the --overwrite path, which PUTs/PATCHes
 // existing structures instead of only POSTing.
 func TestDiscoverStaticOverwrite(t *testing.T) {
-	
+
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +90,7 @@ func TestDiscoverStaticOverwrite(t *testing.T) {
 // writes, "discover static" resolves to the CodeHTTP exit code (the "completed
 // with errors" aggregate).
 func TestDiscoverStaticHTTPError(t *testing.T) {
-	
+
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

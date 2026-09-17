@@ -32,7 +32,7 @@ func okJSONServer(t *testing.T) *httptest.Server {
 // each metadata resource type.
 func TestMetadataListSuccess(t *testing.T) {
 	t.Parallel()
-	
+
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := okJSONServer(t)
@@ -53,7 +53,7 @@ func TestMetadataListSuccess(t *testing.T) {
 // to a non-success exit code for each metadata resource type's "list".
 func TestMetadataListHTTPError(t *testing.T) {
 	t.Parallel()
-	
+
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +76,7 @@ func TestMetadataListHTTPError(t *testing.T) {
 // each metadata resource type.
 func TestMetadataGetSuccess(t *testing.T) {
 	t.Parallel()
-	
+
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +100,7 @@ func TestMetadataGetSuccess(t *testing.T) {
 // "<type> get" resolves to a non-success exit code for each resource type.
 func TestMetadataGetHTTPError(t *testing.T) {
 	t.Parallel()
-	
+
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

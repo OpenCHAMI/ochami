@@ -23,7 +23,6 @@ import (
 // TestPCSTransitionList verifies "pcs transition list" issues GET /transitions.
 func TestPCSTransitionList(t *testing.T) {
 	t.Parallel()
-	
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +46,6 @@ func TestPCSTransitionList(t *testing.T) {
 // and prints the first status entry.
 func TestPCSStatusShow(t *testing.T) {
 	t.Parallel()
-	
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +71,6 @@ func TestPCSStatusShow(t *testing.T) {
 // CodeGeneric (the "no status found" case).
 func TestPCSStatusShowEmpty(t *testing.T) {
 	t.Parallel()
-	
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"status":[]}`)) //nolint:errcheck // test response writes are observed by the client
@@ -94,7 +91,6 @@ func TestPCSStatusShowEmpty(t *testing.T) {
 // is a usage error and no request is made.
 func TestPCSTransitionStartInvalidOp(t *testing.T) {
 	t.Parallel()
-	
 
 	requestMade := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +119,7 @@ func TestPCSTransitionStartInvalidOp(t *testing.T) {
 // /admin/cluster-defaults.
 func TestCloudInitDefaultsGet(t *testing.T) {
 	t.Parallel()
-	
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -145,7 +141,7 @@ func TestCloudInitDefaultsGet(t *testing.T) {
 // exits successfully when the /version endpoint responds OK.
 func TestCloudInitServiceStatusRunning(t *testing.T) {
 	t.Parallel()
-	
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -171,7 +167,7 @@ func TestCloudInitServiceStatusRunning(t *testing.T) {
 // a non-zero exit code.
 func TestCloudInitServiceStatusNotRunning(t *testing.T) {
 	t.Parallel()
-	
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
 	srv.Close() // connection refused
@@ -197,7 +193,7 @@ func TestCloudInitServiceStatusNotRunning(t *testing.T) {
 // the exact request path.
 func TestMetadataGroupListHTTPError(t *testing.T) {
 	t.Parallel()
-	
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 	}))
@@ -217,7 +213,7 @@ func TestMetadataGroupListHTTPError(t *testing.T) {
 // successfully when the service returns a valid list response.
 func TestMetadataGroupListSuccess(t *testing.T) {
 	t.Parallel()
-	
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
@@ -238,7 +234,7 @@ func TestMetadataGroupListSuccess(t *testing.T) {
 // /transitions/<id>.
 func TestPCSTransitionShow(t *testing.T) {
 	t.Parallel()
-	
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -259,7 +255,7 @@ func TestPCSTransitionShow(t *testing.T) {
 // /transitions/<id>.
 func TestPCSTransitionAbort(t *testing.T) {
 	t.Parallel()
-	
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -280,7 +276,7 @@ func TestPCSTransitionAbort(t *testing.T) {
 // POST /transitions.
 func TestPCSTransitionStart(t *testing.T) {
 	t.Parallel()
-	
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -303,7 +299,7 @@ func TestPCSTransitionStart(t *testing.T) {
 // /transitions/<id> and exits when the transition reports "completed".
 func TestPCSTransitionMonitor(t *testing.T) {
 	t.Parallel()
-	
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
