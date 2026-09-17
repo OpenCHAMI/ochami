@@ -87,15 +87,3 @@ func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*cloud_init.Clou
 
 	return cloudInitClient, nil
 }
-
-// GetClient sets up the cloud-init client with the cloud-init base URI
-// and certificates (if necessary) and returns it. This function uses the runtime from context.
-// Since cmd/root.go always injects a runtime into context, this will always succeed.
-func GetClient(cmd *cobra.Command) (*cloud_init.CloudInitClient, error) {
-	// Get runtime from context (always available since cmd/root.go injects it)
-	rt, err := cli.RuntimeFromCommand(cmd)
-	if err != nil {
-		return nil, err
-	}
-	return GetClientWithRuntime(cmd, rt)
-}

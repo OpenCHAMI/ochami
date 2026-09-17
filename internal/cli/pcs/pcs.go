@@ -40,15 +40,3 @@ func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*pcs.PCSClient, 
 
 	return pcsClient, nil
 }
-
-// GetClient sets up the PCS client with the PCS base URI and certificates
-// (if necessary) and returns it. This function uses the runtime from context.
-// Since cmd/root.go always injects a runtime into context, this will always succeed.
-func GetClient(cmd *cobra.Command) (*pcs.PCSClient, error) {
-	// Get runtime from context (always available since cmd/root.go injects it)
-	rt, err := cli.RuntimeFromCommand(cmd)
-	if err != nil {
-		return nil, err
-	}
-	return GetClientWithRuntime(cmd, rt)
-}

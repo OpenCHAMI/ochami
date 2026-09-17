@@ -41,15 +41,3 @@ func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*metadata_servic
 
 	return metadataServiceClient, nil
 }
-
-// GetClient sets up the metadata-service client with the metadata-service base
-// URI and certificates (if necessary) and returns it. This function uses the runtime from context.
-// Since cmd/root.go always injects a runtime into context, this will always succeed.
-func GetClient(cmd *cobra.Command) (*metadata_service.MetadataServiceClient, error) {
-	// Get runtime from context (always available since cmd/root.go injects it)
-	rt, err := cli.RuntimeFromCommand(cmd)
-	if err != nil {
-		return nil, err
-	}
-	return GetClientWithRuntime(cmd, rt)
-}
