@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openchami/ochami/internal/config"
 	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 // Exit code contract for the ochami CLI. These values are a stable, public

@@ -9,8 +9,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/configfile"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 func newCmdClusterSet() *cobra.Command {
@@ -62,7 +63,7 @@ See ochami-config(5) for details on the configuration options.`,
 				// Check if --system passed to 'config' command
 				fileToModify = config.SystemConfigFile
 			} else {
-				fileToModify = config.UserConfigFile
+				fileToModify = cli.UserConfigFile
 			}
 
 			// Ask to create file if it doesn't exist
@@ -84,7 +85,7 @@ See ochami-config(5) for details on the configuration options.`,
 			if err != nil {
 				return cli.Errorf(cli.CodeUsage, "failed to retrieve \"default\" flag: %w", err)
 			}
-			if err := config.ModifyConfigCluster(fileToModify, args[0], args[1], dflt, config.StringToType(args[2])); err != nil {
+			if err := configfile.ModifyConfigCluster(fileToModify, args[0], args[1], dflt, configfile.StringToType(args[2])); err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}
 

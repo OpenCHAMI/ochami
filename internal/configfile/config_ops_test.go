@@ -3,10 +3,9 @@
 //
 // SPDX-License-Identifier: MIT
 
-package config
+package configfile
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,910 +14,18 @@ import (
 	"time"
 
 	"github.com/knadh/koanf/providers/confmap"
-	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
 	"gopkg.in/yaml.v3"
+
+	"github.com/openchami/ochami/pkg/config"
 )
 
-// mustWriteFile writes data to path with mode 0o644, failing the test on error.
-// It centralizes error handling for config-file setup in tests.
 func mustWriteFile(t *testing.T, path string, data []byte) {
 	t.Helper()
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		t.Fatalf("failed to write test config file %s: %v", path, err)
 	}
-}
-
-func TestConfig_GetCluster(t *testing.T) {
-	type args struct {
-		name string
-	}
-
-	tests := []struct {
-		name        string
-		cfg         Config
-		args        args
-		want        ConfigCluster
-		wantErr     bool
-		wantErrName string // expected cluster name referenced in the not-found error
-	}{
-		{
-			name: "Cluster exists in config",
-			cfg: Config{
-				Clusters: []ConfigCluster{
-					{
-						Name: "cluster-a",
-						Cluster: ConfigClusterConfig{
-							URI: "http://example.com/a",
-						},
-					},
-					{
-						Name: "cluster-b",
-						Cluster: ConfigClusterConfig{
-							URI: "http://example.com/b",
-						},
-					},
-				},
-			},
-			args: args{name: "cluster-a"},
-			want: ConfigCluster{
-				Name: "cluster-a",
-				Cluster: ConfigClusterConfig{
-					URI: "http://example.com/a",
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "Cluster does not exist in config",
-			cfg: Config{
-				Clusters: []ConfigCluster{
-					{
-						Name: "cluster-a",
-						Cluster: ConfigClusterConfig{
-							URI: "http://example.com/a",
-						},
-					},
-				},
-			},
-			args:        args{name: "cluster-x"},
-			want:        (ConfigCluster{}),
-			wantErr:     true,
-			wantErrName: "cluster-x",
-		},
-		{
-			name:        "Empty cluster list",
-			cfg:         Config{Clusters: []ConfigCluster{}},
-			args:        args{name: "any-cluster"},
-			want:        (ConfigCluster{}),
-			wantErr:     true,
-			wantErrName: "any-cluster",
-		},
-		{
-			name: "Multiple clusters with similar names",
-			cfg: Config{
-				Clusters: []ConfigCluster{
-					{
-						Name: "cluster1",
-						Cluster: ConfigClusterConfig{
-							URI: "http://example.com/1",
-						},
-					},
-					{
-						Name: "cluster-1",
-						Cluster: ConfigClusterConfig{
-							URI: "http://example.com/1-dash",
-						},
-					},
-					{
-						Name: "cluster_1",
-						Cluster: ConfigClusterConfig{
-							URI: "http://example.com/1-underscore",
-						},
-					},
-				},
-			},
-			args: args{name: "cluster-1"},
-			want: ConfigCluster{
-				Name: "cluster-1",
-				Cluster: ConfigClusterConfig{
-					URI: "http://example.com/1-dash",
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "Exact match required, case sensitivity test",
-			cfg: Config{
-				Clusters: []ConfigCluster{
-					{
-						Name: "ClusterA",
-						Cluster: ConfigClusterConfig{
-							URI: "http://example.com/case",
-						},
-					},
-					{
-						Name: "clustera",
-						Cluster: ConfigClusterConfig{
-							URI: "http://example.com/lower",
-						},
-					},
-				},
-			},
-			args: args{name: "ClusterA"},
-			want: ConfigCluster{
-				Name: "ClusterA",
-				Cluster: ConfigClusterConfig{
-					URI: "http://example.com/case",
-				},
-			},
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt // capture loop variable
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.cfg.GetCluster(tt.args.name)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Fatalf("GetCluster(%q) error = nil, want non-nil", tt.args.name)
-				}
-				// Make sure error is an ErrUnknownCluster and
-				// make sure cluster name is contained in it
-				var ue ErrUnknownCluster
-				if !errors.As(err, &ue) {
-					t.Fatalf("GetCluster(%q) error type = %T, want ErrUnknownCluster", tt.args.name, err)
-				}
-				if !strings.Contains(err.Error(), tt.wantErrName) {
-					t.Fatalf("GetCluster(%q) error = %q, want it to mention %q", tt.args.name, err.Error(), tt.wantErrName)
-				}
-				if !reflect.DeepEqual(got, tt.want) {
-					t.Fatalf("GetCluster(%q) got = %#v, want %#v", tt.args.name, got, tt.want)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("GetCluster(%q) unexpected error: %v", tt.args.name, err)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("GetCluster(%q) got = %#v, want %#v", tt.args.name, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
-	type fields struct {
-		URI       string
-		BSS       ConfigClusterBSS
-		CloudInit ConfigClusterCloudInit
-		PCS       ConfigClusterPCS
-		SMD       ConfigClusterSMD
-		RCS       ConfigClusterRCS
-	}
-	type args struct {
-		c ConfigClusterConfig
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   ConfigClusterConfig
-	}{
-		{
-			name: "empty old and empty new",
-			fields: fields{
-				URI: "",
-				BSS: ConfigClusterBSS{
-					URI: "",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-				RCS: ConfigClusterRCS{
-					URI: "",
-				},
-			},
-			args: args{
-				c: ConfigClusterConfig{
-					URI: "",
-					BSS: ConfigClusterBSS{
-						URI: "",
-					},
-					CloudInit: ConfigClusterCloudInit{
-						URI: "",
-					},
-					PCS: ConfigClusterPCS{
-						URI: "",
-					},
-					SMD: ConfigClusterSMD{
-						URI: "",
-					},
-				},
-			},
-			want: ConfigClusterConfig{
-				URI: "",
-				BSS: ConfigClusterBSS{
-					URI: "",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-				RCS: ConfigClusterRCS{
-					URI: "",
-				},
-			},
-		},
-		{
-			name: "empty old and new all fields",
-			fields: fields{
-				URI: "",
-				BSS: ConfigClusterBSS{
-					URI: "",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-				RCS: ConfigClusterRCS{
-					URI: "",
-				},
-			},
-			args: args{
-				c: ConfigClusterConfig{
-					URI: "newUri",
-					BSS: ConfigClusterBSS{
-						URI: "newBss",
-					},
-					CloudInit: ConfigClusterCloudInit{
-						URI: "newCi",
-					},
-					PCS: ConfigClusterPCS{
-						URI: "newPcs",
-					},
-					SMD: ConfigClusterSMD{
-						URI: "newSmd",
-					},
-					RCS: ConfigClusterRCS{
-						URI: "newRcs",
-					},
-				},
-			},
-			want: ConfigClusterConfig{
-				URI: "newUri",
-				BSS: ConfigClusterBSS{
-					URI: "newBss",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "newCi",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "newPcs",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "newSmd",
-				},
-				RCS: ConfigClusterRCS{
-					URI: "newRcs",
-				},
-			},
-		},
-		{
-			name: "old all fields and empty new",
-			fields: fields{
-				URI: "oldUri",
-				BSS: ConfigClusterBSS{
-					URI: "oldBss",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "oldCi",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "oldPcs",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "oldSmd",
-				},
-				RCS: ConfigClusterRCS{
-					URI: "oldRcs",
-				},
-			},
-			args: args{
-				c: ConfigClusterConfig{
-					URI: "",
-					BSS: ConfigClusterBSS{
-						URI: "",
-					},
-					CloudInit: ConfigClusterCloudInit{
-						URI: "",
-					},
-					PCS: ConfigClusterPCS{
-						URI: "",
-					},
-					SMD: ConfigClusterSMD{
-						URI: "",
-					},
-					RCS: ConfigClusterRCS{
-						URI: "",
-					},
-				},
-			},
-			want: ConfigClusterConfig{
-				URI: "oldUri",
-				BSS: ConfigClusterBSS{
-					URI: "oldBss",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "oldCi",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "oldPcs",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "oldSmd",
-				},
-				RCS: ConfigClusterRCS{
-					URI: "oldRcs",
-				},
-			},
-		},
-		{
-			name: "partial override",
-			fields: fields{
-				URI: "oldUri",
-				BSS: ConfigClusterBSS{
-					URI: "oldBss",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "oldCi",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "oldPcs",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "oldSmd",
-				},
-			},
-			args: args{
-				c: ConfigClusterConfig{
-					URI: "newUri",
-					BSS: ConfigClusterBSS{
-						URI: "",
-					},
-					CloudInit: ConfigClusterCloudInit{
-						URI: "newCi",
-					},
-					PCS: ConfigClusterPCS{
-						URI: "",
-					},
-					SMD: ConfigClusterSMD{
-						URI: "newSmd",
-					},
-				},
-			},
-			want: ConfigClusterConfig{
-				URI: "newUri",
-				BSS: ConfigClusterBSS{
-					URI: "oldBss",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "newCi",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "oldPcs",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "newSmd",
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ccc := &ConfigClusterConfig{
-				URI:       tt.fields.URI,
-				BSS:       tt.fields.BSS,
-				CloudInit: tt.fields.CloudInit,
-				PCS:       tt.fields.PCS,
-				SMD:       tt.fields.SMD,
-				RCS:       tt.fields.RCS,
-			}
-			if got := ccc.MergeURIConfig(tt.args.c); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ConfigClusterConfig.MergeURIConfig() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestConfigClusterConfig_GetServiceBaseURI(t *testing.T) {
-	type fields struct {
-		URI       string
-		BSS       ConfigClusterBSS
-		CloudInit ConfigClusterCloudInit
-		PCS       ConfigClusterPCS
-		SMD       ConfigClusterSMD
-		RCS       ConfigClusterRCS
-	}
-	type args struct {
-		svcName ServiceName
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{
-			name: "missing cluster and service URI",
-			fields: fields{
-				URI: "",
-				BSS: ConfigClusterBSS{
-					URI: "",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-				RCS: ConfigClusterRCS{
-					URI: "",
-				},
-			},
-			args: args{
-				svcName: ServiceBSS,
-			},
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name: "absolute service URI without cluster",
-			fields: fields{
-				URI: "",
-				BSS: ConfigClusterBSS{
-					URI: "https://service.example.com/bss",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-				RCS: ConfigClusterRCS{
-					URI: "",
-				},
-			},
-			args: args{
-				svcName: ServiceBSS,
-			},
-			want:    "https://service.example.com/bss",
-			wantErr: false,
-		},
-		{
-			name: "relative service URI without cluster",
-			fields: fields{
-				URI: "",
-				BSS: ConfigClusterBSS{
-					URI: "/bss",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-				RCS: ConfigClusterRCS{
-					URI: "",
-				},
-			},
-			args: args{
-				svcName: ServiceBSS,
-			},
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name: "default service path with cluster",
-			fields: fields{
-				URI: "https://cluster.local/api",
-				BSS: ConfigClusterBSS{
-					URI: "",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-			},
-			args: args{
-				svcName: ServiceBSS,
-			},
-			want:    "https://cluster.local/api" + DefaultBasePathBSS,
-			wantErr: false,
-		},
-		{
-			name: "absolute service override with cluster",
-			fields: fields{
-				URI: "https://cluster.local/api",
-				BSS: ConfigClusterBSS{
-					URI: "https://override.example.com/bss",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-			},
-			args: args{
-				svcName: ServiceBSS,
-			},
-			want:    "https://override.example.com/bss",
-			wantErr: false,
-		},
-		{
-			name: "invalid cluster URI",
-			fields: fields{
-				URI: "://bad_uri",
-				BSS: ConfigClusterBSS{
-					URI: "",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-			},
-			args: args{
-				svcName: ServiceBSS,
-			},
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name: "unknown service",
-			fields: fields{
-				URI: "https://cluster.local",
-				BSS: ConfigClusterBSS{
-					URI: "",
-				},
-				CloudInit: ConfigClusterCloudInit{
-					URI: "",
-				},
-				PCS: ConfigClusterPCS{
-					URI: "",
-				},
-				SMD: ConfigClusterSMD{
-					URI: "",
-				},
-			},
-			args: args{
-				svcName: ServiceName("unknown"),
-			},
-			want:    "",
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ccc := &ConfigClusterConfig{
-				URI:       tt.fields.URI,
-				BSS:       tt.fields.BSS,
-				CloudInit: tt.fields.CloudInit,
-				PCS:       tt.fields.PCS,
-				SMD:       tt.fields.SMD,
-				RCS:       tt.fields.RCS,
-			}
-			got, err := ccc.GetServiceBaseURI(tt.args.svcName)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ConfigClusterConfig.GetServiceBaseURI() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("ConfigClusterConfig.GetServiceBaseURI() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestConfigClusterConfig_BootServiceBaseURIAndMerge(t *testing.T) {
-	t.Run("default boot-service path with cluster", func(t *testing.T) {
-		ccc := ConfigClusterConfig{URI: "https://cluster.local/api"}
-		got, err := ccc.GetServiceBaseURI(ServiceBoot)
-		if err != nil {
-			t.Fatalf("GetServiceBaseURI(ServiceBoot) unexpected error = %v", err)
-		}
-		want := "https://cluster.local/api" + DefaultBasePathBootService
-		if got != want {
-			t.Fatalf("GetServiceBaseURI(ServiceBoot) = %q, want %q", got, want)
-		}
-	})
-
-	t.Run("absolute boot-service override", func(t *testing.T) {
-		ccc := ConfigClusterConfig{BootService: ConfigClusterBootService{URI: "https://boot.example.com/boot-service"}}
-		got, err := ccc.GetServiceBaseURI(ServiceBoot)
-		if err != nil {
-			t.Fatalf("GetServiceBaseURI(ServiceBoot) unexpected error = %v", err)
-		}
-		want := "https://boot.example.com/boot-service"
-		if got != want {
-			t.Fatalf("GetServiceBaseURI(ServiceBoot) = %q, want %q", got, want)
-		}
-	})
-
-	t.Run("relative boot-service override with cluster", func(t *testing.T) {
-		ccc := ConfigClusterConfig{URI: "https://cluster.local/api", BootService: ConfigClusterBootService{URI: "/custom-boot"}}
-		got, err := ccc.GetServiceBaseURI(ServiceBoot)
-		if err != nil {
-			t.Fatalf("GetServiceBaseURI(ServiceBoot) unexpected error = %v", err)
-		}
-		want := "https://cluster.local/api/custom-boot"
-		if got != want {
-			t.Fatalf("GetServiceBaseURI(ServiceBoot) = %q, want %q", got, want)
-		}
-	})
-
-	t.Run("merge boot-service URI", func(t *testing.T) {
-		old := ConfigClusterConfig{URI: "https://cluster.local", BootService: ConfigClusterBootService{URI: "/old-boot"}}
-		newCfg := ConfigClusterConfig{BootService: ConfigClusterBootService{URI: "/new-boot"}}
-		got := old.MergeURIConfig(newCfg)
-		if got.BootService.URI != "/new-boot" {
-			t.Fatalf("BootService.URI = %q, want /new-boot", got.BootService.URI)
-		}
-	})
-
-	t.Run("boot-service api version unmarshals", func(t *testing.T) {
-		ko := koanf.NewWithConf(kConfig)
-		if err := ko.Load(rawbytes.Provider([]byte("boot-service:\n  api-version: v1beta2\n")), configParser); err != nil {
-			t.Fatalf("ko.Load unexpected error = %v", err)
-		}
-		if ko.String("boot-service.api-version") != "v1beta2" {
-			t.Fatalf("BootService.APIVersion = %q, want v1beta2", ko.String("boot-service.api-version"))
-		}
-	})
-}
-
-func TestRemoveFromSlice(t *testing.T) {
-	type args struct {
-		slice []interface{}
-		index int
-	}
-	tests := []struct {
-		name string
-		args args
-		want []interface{}
-	}{
-		{
-			name: "remove first element",
-			args: args{
-				slice: []interface{}{
-					1,
-					2,
-					3,
-				},
-				index: 0,
-			},
-			want: []interface{}{
-				3,
-				2,
-			},
-		},
-		{
-			name: "remove middle element",
-			args: args{
-				slice: []interface{}{
-					1,
-					2,
-					3,
-					4,
-				},
-				index: 1,
-			},
-			want: []interface{}{
-				1,
-				4,
-				3,
-			},
-		},
-		{
-			name: "remove last element",
-			args: args{
-				slice: []interface{}{
-					1,
-					2,
-					3,
-				},
-				index: 2,
-			},
-			want: []interface{}{
-				1,
-				2,
-			},
-		},
-		{
-			name: "remove single element",
-			args: args{
-				slice: []interface{}{
-					42,
-				},
-				index: 0,
-			},
-			want: []interface{}{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := RemoveFromSlice(tt.args.slice, tt.args.index); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("RemoveFromSlice() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestLoadGlobalConfigFromFile(t *testing.T) {
-	originalConfig := GlobalConfig
-	originalKoanf := GlobalKoanf
-	t.Cleanup(func() {
-		GlobalConfig = originalConfig
-		GlobalKoanf = originalKoanf
-	})
-
-	t.Run("sparse config applies global and cluster defaults", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "config.yaml")
-		mustWriteFile(t, path, []byte(`default-cluster: foo
-clusters:
-  - name: foo
-    cluster:
-      uri: https://foo.example.com
-`))
-
-		// Seed stale values to ensure the loader replaces, rather than merges
-		// into, the previous global state.
-		GlobalConfig = Config{
-			Log:            ConfigLog{Format: "stale", Level: "stale", Color: "stale"},
-			Timeout:        time.Hour,
-			DefaultCluster: "stale",
-		}
-
-		if err := LoadGlobalConfigFromFile(path); err != nil {
-			t.Fatalf("LoadGlobalConfigFromFile(): unexpected error: %v", err)
-		}
-
-		if GlobalConfig.Log.Format != DefaultConfigMap["log.format"] {
-			t.Errorf("log.format = %q, want %q", GlobalConfig.Log.Format, DefaultConfigMap["log.format"])
-		}
-		if GlobalConfig.Log.Level != DefaultConfigMap["log.level"] {
-			t.Errorf("log.level = %q, want %q", GlobalConfig.Log.Level, DefaultConfigMap["log.level"])
-		}
-		if GlobalConfig.Log.Color != DefaultConfigMap["log.color"] {
-			t.Errorf("log.color = %q, want %q", GlobalConfig.Log.Color, DefaultConfigMap["log.color"])
-		}
-		if GlobalConfig.Timeout != GetDefaultTimeout() {
-			t.Errorf("timeout = %s, want %s", GlobalConfig.Timeout, GetDefaultTimeout())
-		}
-		cluster, err := GlobalConfig.GetCluster("foo")
-		if err != nil {
-			t.Fatalf("GetCluster(foo): unexpected error: %v", err)
-		}
-		if !cluster.Cluster.EnableAuth {
-			t.Error("cluster enable-auth = false, want true default")
-		}
-		if GlobalKoanf == nil {
-			t.Fatal("GlobalKoanf = nil, want effective config")
-		}
-	})
-
-	t.Run("quoted enable-auth is coerced", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "config.yaml")
-		mustWriteFile(t, path, []byte(`clusters:
-  - name: foo
-    cluster:
-      uri: https://foo.example.com
-      enable-auth: "false"
-`))
-
-		if err := LoadGlobalConfigFromFile(path); err != nil {
-			t.Fatalf("LoadGlobalConfigFromFile(): unexpected error: %v", err)
-		}
-		cluster, err := GlobalConfig.GetCluster("foo")
-		if err != nil {
-			t.Fatalf("GetCluster(foo): unexpected error: %v", err)
-		}
-		if cluster.Cluster.EnableAuth {
-			t.Error("cluster enable-auth = true, want coerced false")
-		}
-	})
-
-	t.Run("failed load does not change globals", func(t *testing.T) {
-		tests := []struct {
-			name string
-			path func(*testing.T) string
-		}{
-			{
-				name: "null timeout",
-				path: func(t *testing.T) string {
-					path := filepath.Join(t.TempDir(), "config.yaml")
-					mustWriteFile(t, path, []byte("timeout:\n"))
-					return path
-				},
-			},
-			{
-				name: "null enable-auth",
-				path: func(t *testing.T) string {
-					path := filepath.Join(t.TempDir(), "config.yaml")
-					mustWriteFile(t, path, []byte("clusters:\n  - name: foo\n    cluster:\n      enable-auth:\n"))
-					return path
-				},
-			},
-			{
-				name: "missing file",
-				path: func(t *testing.T) string {
-					return filepath.Join(t.TempDir(), "missing.yaml")
-				},
-			},
-		}
-
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				sentinelConfig := Config{DefaultCluster: "sentinel", Timeout: time.Hour}
-				sentinelKoanf := koanf.NewWithConf(kConfigRaw)
-				GlobalConfig = sentinelConfig
-				GlobalKoanf = sentinelKoanf
-
-				if err := LoadGlobalConfigFromFile(tt.path(t)); err == nil {
-					t.Fatal("LoadGlobalConfigFromFile(): expected error, got nil")
-				}
-				if !reflect.DeepEqual(GlobalConfig, sentinelConfig) {
-					t.Errorf("GlobalConfig changed after failed load: got %+v, want %+v", GlobalConfig, sentinelConfig)
-				}
-				if GlobalKoanf != sentinelKoanf {
-					t.Error("GlobalKoanf changed after failed load")
-				}
-			})
-		}
-	})
 }
 
 func TestModifyConfig(t *testing.T) {
@@ -949,7 +56,7 @@ func TestModifyConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read back failed: %v", err)
 		}
-		var got Config
+		var got config.Config
 		err = ko.Unmarshal("", &got)
 		if err != nil {
 			t.Errorf("unable to unmarshal config: %v", err)
@@ -973,7 +80,7 @@ func TestModifyConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read back failed: %v", err)
 		}
-		var got Config
+		var got config.Config
 		err = ko.Unmarshal("", &got)
 		if err != nil {
 			t.Errorf("unable to unmarshal config: %v", err)
@@ -1036,7 +143,7 @@ clusters: null`))
 		if err != nil {
 			t.Fatalf("read back failed: %v", err)
 		}
-		var got Config
+		var got config.Config
 		err = ko.Unmarshal("", &got)
 		if err != nil {
 			t.Errorf("unable to unmarshal config: %v", err)
@@ -1067,7 +174,7 @@ clusters:
 		if err != nil {
 			t.Fatalf("read back failed: %v", err)
 		}
-		var got Config
+		var got config.Config
 		err = ko.Unmarshal("", &got)
 		if err != nil {
 			t.Errorf("unable to unmarshal config: %v", err)
@@ -1097,7 +204,7 @@ clusters: null`))
 		if err != nil {
 			t.Fatalf("read back failed: %v", err)
 		}
-		var got Config
+		var got config.Config
 		err = ko.Unmarshal("", &got)
 		if err != nil {
 			t.Errorf("unable to unmarshal config: %v", err)
@@ -1143,7 +250,7 @@ clusters: []`))
 		if err != nil {
 			t.Fatalf("read back failed: %v", err)
 		}
-		var got Config
+		var got config.Config
 		err = ko.Unmarshal("", &got)
 		if err != nil {
 			t.Fatalf("unmarshal failed: %v", err)
@@ -1171,7 +278,7 @@ log:
 			t.Fatalf("read back failed: %v", err)
 		}
 
-		var got Config
+		var got config.Config
 		err = ko.Unmarshal("", &got)
 
 		if err != nil {
@@ -1189,10 +296,10 @@ log:
 		tmp := t.TempDir()
 		path := filepath.Join(tmp, "cfg.yaml")
 
-		initial := Config{
+		initial := config.Config{
 			Timeout:        30 * time.Second,
 			DefaultCluster: "x",
-			Log: ConfigLog{
+			Log: config.ConfigLog{
 				Format: "f",
 				Level:  "l",
 			},
@@ -1217,7 +324,7 @@ log:
 			t.Fatalf("read back failed: %v", err)
 		}
 
-		var got Config
+		var got config.Config
 		err = ko.Unmarshal("", &got)
 		if err != nil {
 			t.Fatalf("unmarshal failed: %v", err)
@@ -1288,7 +395,7 @@ clusters:
 			t.Fatalf("DeleteConfigCluster(): unexpected error: %v", err)
 		}
 		ko, _ := ReadConfig(path)
-		var cl []ConfigCluster
+		var cl []config.ConfigCluster
 		if err := ko.Unmarshal("clusters", &cl); err != nil {
 			t.Fatalf("unable to unmarshal clusters: %v", err)
 		}
@@ -1319,7 +426,7 @@ clusters:
 		if err != nil {
 			t.Fatalf("read back failed: %v", err)
 		}
-		var got Config
+		var got config.Config
 		err = ko.Unmarshal("", &got)
 		if err != nil {
 			t.Errorf("unable to unmarshal config: %v", err)
@@ -1346,13 +453,13 @@ clusters:
 func TestGetConfig(t *testing.T) {
 	// sample config for testing
 	cfg := koanf.NewWithConf(kConfig)
-	if err := cfg.Load(structs.Provider(Config{
+	if err := cfg.Load(structs.Provider(config.Config{
 		DefaultCluster: "def",
-		Log: ConfigLog{
+		Log: config.ConfigLog{
 			Format: "json",
 			Level:  "warn",
 		},
-		Clusters: []ConfigCluster{
+		Clusters: []config.ConfigCluster{
 			{Name: "c1"},
 			{Name: "c2"},
 		},
@@ -1403,7 +510,7 @@ func TestGetConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetConfig(): unexpected error: %v", err)
 		}
-		// Expect a map[string]interface{} or Config depending on koanf unmarshal,
+		// Expect a map[string]interface{} or config.Config depending on koanf unmarshal,
 		// but at minimum verify that default-cluster value appears in v via reflection.
 		mv := reflect.ValueOf(v)
 		found := false
@@ -1416,7 +523,7 @@ func TestGetConfig(t *testing.T) {
 				}
 			}
 		case reflect.Struct:
-			found = true // unmarshaled directly into Config
+			found = true // unmarshaled directly into config.Config
 		}
 		if !found {
 			t.Errorf("returned whole config does not appear to contain default-cluster")
@@ -1432,14 +539,14 @@ func TestGetConfig(t *testing.T) {
 }
 
 func TestGetConfigFromFile(t *testing.T) {
-	// Prepare a sample Config struct and write it to a temp YAML file.
-	sample := Config{
+	// Prepare a sample config.Config struct and write it to a temp YAML file.
+	sample := config.Config{
 		DefaultCluster: "dc",
-		Log: ConfigLog{
+		Log: config.ConfigLog{
 			Format: "json",
 			Level:  "debug",
 		},
-		Clusters: []ConfigCluster{
+		Clusters: []config.ConfigCluster{
 			{Name: "c1"},
 		},
 	}
@@ -1509,7 +616,7 @@ clusters:
 		if err != nil {
 			t.Fatalf("GetConfigFromFile(): unexpected error: %v", err)
 		}
-		// Expect either a map[string]interface{} or the Config struct.
+		// Expect either a map[string]interface{} or the config.Config struct.
 		rv := reflect.ValueOf(v)
 		switch rv.Kind() {
 		case reflect.Map:
@@ -1519,7 +626,7 @@ clusters:
 			}
 		case reflect.Struct:
 			// Struct case: check field
-			got := v.(Config)
+			got := v.(config.Config)
 			if got.DefaultCluster != "dc" {
 				t.Errorf("got %+v, want %+v", got, sample)
 			}
@@ -1538,13 +645,13 @@ clusters:
 
 func TestGetConfigString(t *testing.T) {
 	ko := koanf.NewWithConf(kConfig)
-	if err := ko.Load(structs.Provider(Config{
+	if err := ko.Load(structs.Provider(config.Config{
 		DefaultCluster: "dc",
-		Log: ConfigLog{
+		Log: config.ConfigLog{
 			Format: "json",
 			Level:  "info",
 		},
-		Clusters: []ConfigCluster{
+		Clusters: []config.ConfigCluster{
 			{Name: "c1"},
 		},
 	}, "koanf"), nil); err != nil {
@@ -1694,14 +801,14 @@ clusters:
 }
 
 func TestGetConfigCluster(t *testing.T) {
-	cluster := ConfigCluster{
+	cluster := config.ConfigCluster{
 		Name: "c1",
-		Cluster: ConfigClusterConfig{
+		Cluster: config.ConfigClusterConfig{
 			URI:       "http://example.com",
-			BSS:       ConfigClusterBSS{URI: "/bss"},
-			CloudInit: ConfigClusterCloudInit{URI: "/ci"},
-			PCS:       ConfigClusterPCS{URI: "/pcs"},
-			SMD:       ConfigClusterSMD{URI: "/smd"},
+			BSS:       config.ConfigClusterBSS{URI: "/bss"},
+			CloudInit: config.ConfigClusterCloudInit{URI: "/ci"},
+			PCS:       config.ConfigClusterPCS{URI: "/pcs"},
+			SMD:       config.ConfigClusterSMD{URI: "/smd"},
 		},
 	}
 
@@ -1790,12 +897,12 @@ func TestGetConfigCluster(t *testing.T) {
 }
 
 func TestGetConfigClusterString(t *testing.T) {
-	cluster := ConfigCluster{
+	cluster := config.ConfigCluster{
 		Name: "c1",
-		Cluster: ConfigClusterConfig{
+		Cluster: config.ConfigClusterConfig{
 			URI:       "http://example.com",
-			BSS:       ConfigClusterBSS{URI: "/bss"},
-			CloudInit: ConfigClusterCloudInit{URI: "/ci"},
+			BSS:       config.ConfigClusterBSS{URI: "/bss"},
+			CloudInit: config.ConfigClusterCloudInit{URI: "/ci"},
 		},
 	}
 
@@ -1888,7 +995,7 @@ func TestReadConfig(t *testing.T) {
 
 		// Use default config
 		ko := koanf.NewWithConf(kConfig)
-		err := ko.Load(confmap.Provider(DefaultConfigMap, "."), nil)
+		err := ko.Load(confmap.Provider(config.DefaultGlobalMap(), "."), nil)
 		if err != nil {
 			t.Fatalf("failed to load default config: %v", err)
 		}
@@ -1907,21 +1014,21 @@ func TestReadConfig(t *testing.T) {
 			t.Fatalf("ReadConfig(): unexpected error reading valid config: %v", err)
 		}
 
-		// var gotStruct, defStruct Config
+		// var gotStruct, defStruct config.Config
 		// err = got.Unmarshal("", &gotStruct)
 		// if err != nil {
 		// 	t.Errorf("ReadConfig(): unable to unmarshal config into struct: %v", err)
 		// }
 
-		if !reflect.DeepEqual(got.All(), DefaultConfigMap) {
-			t.Errorf("ReadConfig() = %+v, want %+v", got, DefaultConfigMap)
+		if !reflect.DeepEqual(got.All(), config.DefaultGlobalMap()) {
+			t.Errorf("ReadConfig() = %+v, want %+v", got, config.DefaultGlobalMap())
 		}
 	})
 }
 
 func TestWriteConfig(t *testing.T) {
 	ko := koanf.NewWithConf(kConfig)
-	err := ko.Load(confmap.Provider(DefaultConfigMap, "."), nil)
+	err := ko.Load(confmap.Provider(config.DefaultGlobalMap(), "."), nil)
 	if err != nil {
 		t.Fatalf("WriteConfig(): failed to load default config")
 		return
@@ -1947,8 +1054,8 @@ func TestWriteConfig(t *testing.T) {
 			t.Fatalf("cannot read written file: %v", err)
 		}
 
-		if !reflect.DeepEqual(ko.All(), DefaultConfigMap) {
-			t.Errorf("WriteConfig(): unmarshaled config = %+v, want %+v", ko.All(), DefaultConfigMap)
+		if !reflect.DeepEqual(ko.All(), config.DefaultGlobalMap()) {
+			t.Errorf("WriteConfig(): unmarshaled config = %+v, want %+v", ko.All(), config.DefaultGlobalMap())
 		}
 	})
 
@@ -2010,12 +1117,12 @@ clusters:
 		}
 
 		// Global default should be present even though not in the file.
-		if got := ko.String("timeout"); got != DefaultConfigMap["timeout"] {
-			t.Errorf("timeout = %q, want %q", got, DefaultConfigMap["timeout"])
+		if got := ko.String("timeout"); got != config.DefaultGlobalMap()["timeout"] {
+			t.Errorf("timeout = %q, want %q", got, config.DefaultGlobalMap()["timeout"])
 		}
 
 		// Cluster default (enable-auth: true) should be applied.
-		var clusters []ConfigCluster
+		var clusters []config.ConfigCluster
 		if err := ko.Unmarshal("clusters", &clusters); err != nil {
 			t.Fatalf("unmarshal clusters: %v", err)
 		}
@@ -2055,7 +1162,7 @@ clusters:
 			if err != nil {
 				t.Fatalf("ReadConfigWithDefaults(): unexpected error: %v", err)
 			}
-			var clusters []ConfigCluster
+			var clusters []config.ConfigCluster
 			if err := ko.Unmarshal("clusters", &clusters); err != nil {
 				t.Fatalf("unmarshal clusters: %v", err)
 			}
@@ -2073,95 +1180,7 @@ clusters:
 // TestLoadGlobalConfigMerged ensures that the merged loader applies defaults and
 // respects user‑config precedence. The system config path is constant and may not
 // exist on the test runner, which is fine – the loader skips missing files.
-func TestLoadGlobalConfigMerged(t *testing.T) {
-	// Preserve original globals and HOME.
-	origConfig, origKoanf := GlobalConfig, GlobalKoanf
-	origHome := os.Getenv("HOME")
-	t.Cleanup(func() {
-		GlobalConfig, GlobalKoanf = origConfig, origKoanf
-		os.Setenv("HOME", origHome)
-	})
 
-	// Set HOME to a temporary directory.
-	tmpHome := t.TempDir()
-	os.Setenv("HOME", tmpHome)
-
-	// Write test user config to the temp HOME.
-	cfgDir := filepath.Join(tmpHome, ".config", "ochami")
-	cfgPath := filepath.Join(cfgDir, "config.yaml")
-	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
-		t.Fatalf("mkdir config dir: %v", err)
-	}
-	userCfg := []byte(`timeout: 1m
-default-cluster: foo
-clusters:
-  - name: foo
-    cluster:
-      uri: https://foo.example.com
-`)
-	if err := os.WriteFile(cfgPath, userCfg, 0o600); err != nil {
-		t.Fatalf("write user config: %v", err)
-	}
-
-	// Call the loader (system config will be skipped).
-	if err := LoadGlobalConfigMerged(); err != nil {
-		t.Fatalf("LoadGlobalConfigMerged failed: %v", err)
-	}
-
-	// Verify that values from the user config took precedence over defaults.
-	if GlobalConfig.Timeout != time.Minute {
-		t.Errorf("timeout = %s, want %s", GlobalConfig.Timeout, time.Minute)
-	}
-	if GlobalConfig.DefaultCluster != "foo" {
-		t.Errorf("default-cluster = %q, want %q", GlobalConfig.DefaultCluster, "foo")
-	}
-	// The cluster should exist and retain its default enable‑auth (true).
-	cl, err := GlobalConfig.GetCluster("foo")
-	if err != nil {
-		t.Fatalf("GetCluster(foo) error: %v", err)
-	}
-	if cl.Cluster.URI != "https://foo.example.com" {
-		t.Errorf("cluster uri = %q, want https://foo.example.com", cl.Cluster.URI)
-	}
-	if !cl.Cluster.EnableAuth {
-		t.Errorf("enable‑auth default should be true when omitted")
-	}
-}
-
-// TestGetUserConfigPath verifies that the helper respects the HOME environment
-// variable and constructs the expected path.
-func TestGetUserConfigPath(t *testing.T) {
-	tmpHome := t.TempDir()
-	// Override HOME for this test.
-	oldHome, had := os.LookupEnv("HOME")
-	os.Setenv("HOME", tmpHome)
-	if had {
-		defer os.Setenv("HOME", oldHome)
-	} else {
-		defer os.Unsetenv("HOME")
-	}
-
-	p, err := getUserConfigPath()
-	if err != nil {
-		t.Fatalf("getUserConfigPath returned error: %v", err)
-	}
-	want := filepath.Join(tmpHome, ".config", "ochami", "config.yaml")
-	if p != want {
-		t.Fatalf("path = %s, want %s", p, want)
-	}
-}
-
-// TestGetDefaultTimeout simply ensures the helper returns the parsed default.
-func TestGetDefaultTimeout(t *testing.T) {
-	got := GetDefaultTimeout()
-	want, _ := time.ParseDuration(DefaultConfigMap["timeout"].(string))
-	if got != want {
-		t.Fatalf("GetDefaultTimeout = %s, want %s", got, want)
-	}
-}
-
-// TestReadConfigWithDefaultsAppliesClusterDefaults checks that a cluster that
-// omits enable‑auth receives the default value (true).
 func TestReadConfigWithDefaultsAppliesClusterDefaults(t *testing.T) {
 	cfg := []byte(`clusters:
   - name: bar
@@ -2176,7 +1195,7 @@ func TestReadConfigWithDefaultsAppliesClusterDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadConfigWithDefaults error: %v", err)
 	}
-	var clusters []ConfigCluster
+	var clusters []config.ConfigCluster
 	if err := ko.Unmarshal("clusters", &clusters); err != nil {
 		t.Fatalf("unmarshal clusters: %v", err)
 	}
@@ -2191,8 +1210,8 @@ func TestReadConfigWithDefaultsAppliesClusterDefaults(t *testing.T) {
 		t.Errorf("uri mismatch: %s", clusters[0].Cluster.URI)
 	}
 	// Verify that the overall koanf still contains the default log.format.
-	if v := ko.String("log.format"); v != DefaultConfigMap["log.format"] {
-		t.Errorf("log.format = %q, want %q", v, DefaultConfigMap["log.format"])
+	if v := ko.String("log.format"); v != config.DefaultGlobalMap()["log.format"] {
+		t.Errorf("log.format = %q, want %q", v, config.DefaultGlobalMap()["log.format"])
 	}
 	// Ensure the slice ordering is deterministic (single element).
 	if order := reflect.TypeOf(clusters); order.Kind() != reflect.Slice {
