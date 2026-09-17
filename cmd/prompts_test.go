@@ -20,15 +20,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// runOchamiWithInput runs the CLI with a scripted interactive stdin. The prompt
-// text the command writes is captured in the returned cmdResult's stdout (the
-// harness routes cli.Ios output into the same capture buffer).
-func runOchamiWithInput(t *testing.T, input string, args ...string) cmdResult {
-	t.Helper()
-	testStdin = strings.NewReader(input)
-	return runOchami(t, args...)
-}
-
 // TestDeleteConfirmYes verifies that answering "y" to the confirmation prompt
 // causes the delete to proceed (a DELETE request is issued) and the command
 // exits successfully.

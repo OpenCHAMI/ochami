@@ -24,6 +24,9 @@ import (
 // TestDiscoverStaticFlagStateIsLocal verifies one command invocation cannot
 // change the default discovery version of a subsequently constructed command.
 func TestDiscoverStaticFlagStateIsLocal(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	first := discover_static.NewCmd()
 	if err := first.Flags().Set("discovery-version", "1"); err != nil {
 		t.Fatalf("set first discovery version: %v", err)
@@ -106,12 +109,15 @@ func smdOverwriteServer(t *testing.T, rec *smdOverwriteRecorder) *httptest.Serve
 // server that returns 409 on POST, the command falls back to PUT (redfish) and
 // PATCH (group), exercising the 409-fallback loops.
 func TestDiscoverStaticOverwriteFallback(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	rec := &smdOverwriteRecorder{}
 	srv := smdOverwriteServer(t, rec)
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--overwrite",
+		"--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -128,13 +134,16 @@ func TestDiscoverStaticOverwriteFallback(t *testing.T) {
 // TestDiscoverStaticV1Overwrite verifies the discovery-version v1 path with
 // --overwrite exercises the ethernet-interface POST->409->PATCH fallback loop.
 func TestDiscoverStaticV1Overwrite(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	rec := &smdOverwriteRecorder{}
 	srv := smdOverwriteServer(t, rec)
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--discovery-version", "1",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+		"--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -148,6 +157,9 @@ func TestDiscoverStaticV1Overwrite(t *testing.T) {
 // TestDiscoverStaticV1 verifies the discovery-version v1 path (non-overwrite)
 // POSTs ethernet interfaces.
 func TestDiscoverStaticV1(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var sawIfacePost bool
 	var mu sync.Mutex
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -162,9 +174,9 @@ func TestDiscoverStaticV1(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload,
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload,
 		"--discovery-version", "1",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+		"--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -178,6 +190,9 @@ func TestDiscoverStaticV1(t *testing.T) {
 // TestDiscoverStaticStdin verifies the command reads the discovery payload from
 // stdin when -d is not passed.
 func TestDiscoverStaticStdin(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	var sawPost bool
 	var mu sync.Mutex
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -192,7 +207,7 @@ func TestDiscoverStaticStdin(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, discoveryPayload,
+	res := runOchamiWithInputAndRuntime(t, discoveryPayload, "--ignore-config",
 		"discover", "static", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -207,6 +222,9 @@ func TestDiscoverStaticStdin(t *testing.T) {
 // TestDiscoverStaticDeprecatedFormat verifies the deprecated discovery format
 // (detected via the bmc_mac node key) is accepted and populates SMD.
 func TestDiscoverStaticDeprecatedFormat(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	const deprecatedPayload = `{
   "nodes": [
     {
@@ -236,7 +254,7 @@ func TestDiscoverStaticDeprecatedFormat(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", deprecatedPayload,
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", deprecatedPayload,
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -251,7 +269,10 @@ func TestDiscoverStaticDeprecatedFormat(t *testing.T) {
 // TestDiscoverStaticMalformedPayload verifies malformed inline payload resolves
 // to CodePayload.
 func TestDiscoverStaticMalformedPayload(t *testing.T) {
-	res := runOchami(t, "discover", "static", "-d", `not json`,
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", `not json`,
 		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -264,7 +285,10 @@ func TestDiscoverStaticMalformedPayload(t *testing.T) {
 // TestDiscoverStaticNoConfig verifies that without a resolvable base URI the
 // command fails with CodeConfig.
 func TestDiscoverStaticNoConfig(t *testing.T) {
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--ignore-config", "--token", "t")
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--ignore-config", "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected a config error, got nil")
 	}
@@ -276,6 +300,9 @@ func TestDiscoverStaticNoConfig(t *testing.T) {
 // TestDiscoverStaticOverwriteHTTPError verifies that with --overwrite, a
 // non-409 HTTP error on the redfish POST resolves to the CodeHTTP aggregate.
 func TestDiscoverStaticOverwriteHTTPError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "RedfishEndpoints") && r.Method == http.MethodPost {
@@ -287,7 +314,7 @@ func TestDiscoverStaticOverwriteHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -301,6 +328,9 @@ func TestDiscoverStaticOverwriteHTTPError(t *testing.T) {
 // redfish POST returns 409 but the fallback PUT also fails, the command reports
 // the CodeHTTP aggregate.
 func TestDiscoverStaticOverwritePutFails(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "RedfishEndpoints") {
@@ -318,7 +348,7 @@ func TestDiscoverStaticOverwritePutFails(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -332,6 +362,9 @@ func TestDiscoverStaticOverwritePutFails(t *testing.T) {
 // discovery-version v1, when the ethernet-interface POST returns 409 but the
 // fallback PATCH also fails, the command reports the CodeHTTP aggregate.
 func TestDiscoverStaticV1OverwritePatchFails(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "EthernetInterfaces") {
@@ -348,7 +381,7 @@ func TestDiscoverStaticV1OverwritePatchFails(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--discovery-version", "1",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
@@ -363,6 +396,9 @@ func TestDiscoverStaticV1OverwritePatchFails(t *testing.T) {
 // when the group POST returns 409 but the fallback PATCH also fails, the
 // command reports the CodeHTTP aggregate.
 func TestDiscoverStaticOverwriteGroupPatchFails(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "groups") {
@@ -379,7 +415,7 @@ func TestDiscoverStaticOverwriteGroupPatchFails(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -392,6 +428,9 @@ func TestDiscoverStaticOverwriteGroupPatchFails(t *testing.T) {
 // TestDiscoverStaticComponentHTTPError verifies that a failing component POST
 // (non-overwrite) surfaces the CodeHTTP aggregate.
 func TestDiscoverStaticComponentHTTPError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "State/Components") {
@@ -403,7 +442,7 @@ func TestDiscoverStaticComponentHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload,
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload,
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -416,6 +455,9 @@ func TestDiscoverStaticComponentHTTPError(t *testing.T) {
 // TestDiscoverStaticOverwriteComponentError verifies that with --overwrite, a
 // failing component PUT surfaces the CodeHTTP aggregate.
 func TestDiscoverStaticOverwriteComponentError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "State/Components") {
@@ -427,7 +469,7 @@ func TestDiscoverStaticOverwriteComponentError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -440,6 +482,9 @@ func TestDiscoverStaticOverwriteComponentError(t *testing.T) {
 // TestDiscoverStaticV1IfaceError verifies the discovery-version v1 non-overwrite
 // path surfaces an ethernet-interface POST error as the CodeHTTP aggregate.
 func TestDiscoverStaticV1IfaceError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "EthernetInterfaces") {
@@ -451,7 +496,7 @@ func TestDiscoverStaticV1IfaceError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--discovery-version", "1",
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--discovery-version", "1",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -464,6 +509,9 @@ func TestDiscoverStaticV1IfaceError(t *testing.T) {
 // TestDiscoverStaticGroupError verifies a failing group POST (non-overwrite)
 // surfaces the CodeHTTP aggregate.
 func TestDiscoverStaticGroupError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "groups") {
@@ -475,7 +523,7 @@ func TestDiscoverStaticGroupError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload,
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload,
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -489,11 +537,14 @@ func TestDiscoverStaticGroupError(t *testing.T) {
 // server) surfaces as an aggregate error, exercising the non-HTTP ("failed to
 // add ... to SMD") error-message arms across all sections.
 func TestDiscoverStaticNetworkError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
 	srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload,
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload,
 		"--ignore-config", "--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -506,11 +557,14 @@ func TestDiscoverStaticNetworkError(t *testing.T) {
 // TestDiscoverStaticV1NetworkError does the same for the discovery-version v1
 // path so the ethernet-interface non-HTTP error arm is exercised.
 func TestDiscoverStaticV1NetworkError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
 	srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--discovery-version", "1",
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--discovery-version", "1",
 		"--ignore-config", "--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -523,11 +577,14 @@ func TestDiscoverStaticV1NetworkError(t *testing.T) {
 // TestDiscoverStaticOverwriteNetworkError exercises the overwrite path against a
 // closed server so the function-level error arms in the overwrite loops fire.
 func TestDiscoverStaticOverwriteNetworkError(t *testing.T) {
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
 	srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--discovery-version", "1",
 		"--ignore-config", "--uri", url, "--token", "t")
 	if res.err == nil {

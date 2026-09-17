@@ -15,6 +15,9 @@ import (
 )
 
 func TestMetacommandPathsPrintUsage(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	paths := [][]string{
 		{},
 		{"boot"}, {"boot", "bmc"}, {"boot", "config"}, {"boot", "node"}, {"boot", "service"},
@@ -35,8 +38,11 @@ func TestMetacommandPathsPrintUsage(t *testing.T) {
 			name = strings.Join(path, " ")
 		}
 		t.Run(name, func(t *testing.T) {
-			args := append(append([]string{}, path...), "--ignore-config")
-			res := runOchami(t, args...)
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+
+			args := append([]string{"--ignore-config"}, path...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v", res.err)
 			}
@@ -48,16 +54,22 @@ func TestMetacommandPathsPrintUsage(t *testing.T) {
 }
 
 func TestCloudInitGroupGetRemainingPaths(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	for _, subcommand := range []string{"config", "meta-data"} {
 		t.Run(subcommand, func(t *testing.T) {
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = io.WriteString(w, `{}`) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "cloud-init", "group", "get", subcommand,
-				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", subcommand,
+				"--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -66,6 +78,9 @@ func TestCloudInitGroupGetRemainingPaths(t *testing.T) {
 }
 
 func TestRemainingServicePaths(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	tests := []struct {
 		name     string
 		args     []string
@@ -81,6 +96,9 @@ func TestRemainingServicePaths(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+
 			var gotPath string
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
@@ -89,8 +107,8 @@ func TestRemainingServicePaths(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append(append([]string{}, tc.args...), "--ignore-config", "--uri", srv.URL)
-			res := runOchami(t, args...)
+			args := append([]string{"--ignore-config"}, append(tc.args, "--uri", srv.URL)...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -102,8 +120,14 @@ func TestRemainingServicePaths(t *testing.T) {
 }
 
 func TestMetadataPatchPathsAndArrayOperations(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	for _, resource := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(resource, func(t *testing.T) {
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+
 			var gotContentType, gotBody string
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotContentType = r.Header.Get("Content-Type")
@@ -117,7 +141,7 @@ func TestMetadataPatchPathsAndArrayOperations(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", resource, "patch", "some-uid",
+			res := runOchamiWithRuntime(t, "metadata", resource, "patch", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "--add", "items=value")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -133,6 +157,9 @@ func TestMetadataPatchPathsAndArrayOperations(t *testing.T) {
 }
 
 func TestRCSConsoleConnect(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	upgrader := websocket.Upgrader{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -150,8 +177,8 @@ func TestRCSConsoleConnect(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "", "rcs", "console", "connect", "x0c0s1b0n0",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithInputAndRuntime(t, "", "--ignore-config", "rcs", "console", "connect", "x0c0s1b0n0",
+		"--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}

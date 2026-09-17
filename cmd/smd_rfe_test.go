@@ -44,8 +44,8 @@ func TestSMDRFEGetFilters(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append([]string{"smd", "rfe", "get", "--ignore-config", "--uri", srv.URL, "--token", "t"}, tc.args...)
-			res := runOchami(t, args...)
+			args := append([]string{"--ignore-config", "smd", "rfe", "get", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -64,7 +64,7 @@ func TestSMDRFEGetFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		res := runOchami(t, "smd", "rfe", "get", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+		res := runOchamiWithRuntime(t, "smd", "rfe", "get", "--uri", srv.URL, "--token", "t", "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
 		}
@@ -82,7 +82,7 @@ func TestSMDRFEGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "rfe", "get", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -98,7 +98,7 @@ func TestSMDRFEGetNetworkError(t *testing.T) {
 	url := srv.URL
 	srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "get", "--ignore-config", "--uri", url, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "rfe", "get", "--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -117,7 +117,7 @@ func TestSMDRFEAddByFlagsWithOptional(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "add", "--uri", srv.URL, "--token", "t",
 		"--domain", "example.com", "--hostname", "bmc56", "--username", "root", "--password", "pw",
 		"x3000c1s7b56", "bmc-node56", "172.16.0.156", "de:ca:fc:0f:fe:ee")
 	if res.err != nil {
@@ -137,7 +137,7 @@ func TestSMDRFEAddByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "add", "--uri", srv.URL, "--token", "t",
 		"-d", `{"RedfishEndpoints":[{"ID":"x3000c1s7b56","Name":"bmc","IPAddress":"172.16.0.156","MACAddr":"de:ca:fc:0f:fe:ee"}]}`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -150,7 +150,7 @@ func TestSMDRFEAddByData(t *testing.T) {
 // TestSMDRFEAddWrongArgs verifies that fewer than 4 args without -d is a usage
 // error.
 func TestSMDRFEAddWrongArgs(t *testing.T) {
-	res := runOchami(t, "smd", "rfe", "add", "--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "add", "--uri", "http://127.0.0.1:1", "--token", "t",
 		"x3000c1s7b56", "bmc-node56")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -167,7 +167,7 @@ func TestSMDRFEAddHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "add", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b56", "bmc-node56", "172.16.0.156", "de:ca:fc:0f:fe:ee")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -189,7 +189,7 @@ func TestSMDRFEDeleteByXnames(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "x3000c1s7b56", "x3000c1s7b57")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -210,7 +210,7 @@ func TestSMDRFEDeleteByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `{"RedfishEndpoints":[{"ID":"x3000c1s7b56"}]}`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -232,8 +232,8 @@ func TestSMDRFEDeleteAllConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "rfe", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "--all")
+	res := runOchamiWithInputAndRuntime(t, "y\n",
+		"--ignore-config", "smd", "rfe", "delete", "--uri", srv.URL, "--token", "t", "--all")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -253,8 +253,8 @@ func TestSMDRFEDeleteAbort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"smd", "rfe", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "x3000c1s7b56")
+	res := runOchamiWithInputAndRuntime(t, "n\n",
+		"--ignore-config", "smd", "rfe", "delete", "--uri", srv.URL, "--token", "t", "x3000c1s7b56")
 	if res.err != nil {
 		t.Fatalf("unexpected error on abort: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -266,7 +266,7 @@ func TestSMDRFEDeleteAbort(t *testing.T) {
 // TestSMDRFEDeleteNoSelector verifies delete with neither -d, --all, nor args is
 // a usage error.
 func TestSMDRFEDeleteNoSelector(t *testing.T) {
-	res := runOchami(t, "smd", "rfe", "delete", "--ignore-config", "--uri", "http://127.0.0.1:1",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "delete", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -284,7 +284,7 @@ func TestSMDRFEDeleteByXnamesHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "x3000c1s7b56")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

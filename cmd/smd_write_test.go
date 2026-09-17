@@ -28,8 +28,10 @@ func TestSMDGroupMemberAdd(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "member", "add", "compute", "x0c0s0b0n0",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "member", "add", "compute", "x0c0s0b0n0",
+		"--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -51,8 +53,10 @@ func TestSMDGroupMemberDelete(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "member", "delete", "compute", "x0c0s0b0n0",
-		"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "member", "delete", "compute", "x0c0s0b0n0",
+		"--uri", srv.URL, "--token", "t", "--no-confirm")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -73,9 +77,11 @@ func TestSMDGroupUpdate(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "update", "compute",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "update", "compute",
 		"--description", "compute nodes",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+		"--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -95,8 +101,10 @@ func TestSMDGroupMemberAddHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "member", "add", "compute", "x0c0s0b0n0",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "member", "add", "compute", "x0c0s0b0n0",
+		"--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -115,8 +123,10 @@ func TestSMDRFEDeleteNoConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "delete", "x0c0s0b0",
-		"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "rfe", "delete", "x0c0s0b0",
+		"--uri", srv.URL, "--token", "t", "--no-confirm")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -142,7 +152,9 @@ func TestSMDDeleteRejectsEmptyData(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			res := runOchami(t, "smd", tc.command, "delete", "--ignore-config",
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+			res := runOchamiWithRuntime(t, "smd", "--ignore-config", tc.command, "delete",
 				"--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm", "-d", tc.payload)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")

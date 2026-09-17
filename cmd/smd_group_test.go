@@ -40,8 +40,8 @@ func TestSMDGroupGetFilters(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append([]string{"smd", "group", "get", "--ignore-config", "--uri", srv.URL, "--token", "t"}, tc.args...)
-			res := runOchami(t, args...)
+			args := append([]string{"--ignore-config", "smd", "group", "get", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -60,7 +60,7 @@ func TestSMDGroupGetFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		res := runOchami(t, "smd", "group", "get", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+		res := runOchamiWithRuntime(t, "smd", "group", "get", "--uri", srv.URL, "--token", "t", "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
 		}
@@ -78,7 +78,7 @@ func TestSMDGroupGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "group", "get", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -94,7 +94,7 @@ func TestSMDGroupGetNetworkError(t *testing.T) {
 	url := srv.URL
 	srv.Close()
 
-	res := runOchami(t, "smd", "group", "get", "--ignore-config", "--uri", url, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "group", "get", "--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -113,7 +113,7 @@ func TestSMDGroupAddWithOptionalFlags(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t",
 		"--description", "The compute group", "--tag", "prod", "--exclusive-group", "excl",
 		"--member", "x0c0s0b0n0", "compute")
 	if res.err != nil {
@@ -133,7 +133,7 @@ func TestSMDGroupAddByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"label":"compute"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -150,7 +150,7 @@ func TestSMDGroupAddHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t", "compute")
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -169,7 +169,7 @@ func TestSMDGroupUpdateByFlags(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "update", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", srv.URL, "--token", "t",
 		"--description", "updated", "--tag", "new", "compute")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -182,7 +182,7 @@ func TestSMDGroupUpdateByFlags(t *testing.T) {
 // TestSMDGroupUpdateMissingFields verifies "update <label>" with no
 // description/tag is a usage error.
 func TestSMDGroupUpdateMissingFields(t *testing.T) {
-	res := runOchami(t, "smd", "group", "update", "--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", "http://127.0.0.1:1", "--token", "t",
 		"compute")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -199,7 +199,7 @@ func TestSMDGroupUpdateHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "update", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", srv.URL, "--token", "t",
 		"--description", "updated", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -221,7 +221,7 @@ func TestSMDGroupDeleteByLabels(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "compute", "storage")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -242,7 +242,7 @@ func TestSMDGroupDeleteByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `[{"label":"compute"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -260,7 +260,7 @@ func TestSMDGroupDeleteHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -280,7 +280,7 @@ func TestSMDGroupMembershipFilters(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "membership", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "membership", "--uri", srv.URL, "--token", "t",
 		"--type", "Node", "--arch", "X86", "--nid-start", "1000", "--nid-end", "2000")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -301,7 +301,7 @@ func TestSMDGroupMembershipHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "membership", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "group", "membership", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -320,7 +320,7 @@ func TestSMDGroupAddDataWithExtraArgs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"label":"compute"}]`, "ignored-arg")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -337,7 +337,7 @@ func TestSMDGroupAddBadData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t",
 		"-d", `not json`)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -357,7 +357,7 @@ func TestSMDGroupUpdateDataWithExtraArgs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "update", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"label":"compute","description":"d"}]`, "ignored-arg")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -375,7 +375,7 @@ func TestSMDGroupDeleteDataWithExtraArgs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `[{"label":"compute"}]`, "ignored-arg")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -389,7 +389,7 @@ func TestSMDGroupAddNetworkError(t *testing.T) {
 	url := srv.URL
 	srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", url, "--token", "t", "compute")
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", url, "--token", "t", "compute")
 	if res.err == nil {
 		t.Fatal("expected a network error, got nil")
 	}

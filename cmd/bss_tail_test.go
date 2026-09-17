@@ -35,9 +35,11 @@ func TestBSSBootImageSetByXnameAndNid(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append([]string{"bss", "boot", "image", "set", "--ignore-config", "--uri", srv.URL, "--token", "t"},
+			args := append([]string{"--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t"},
 				append(sel, "https://example.com/new-image")...)
-			res := runOchami(t, args...)
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -56,7 +58,9 @@ func TestBSSBootImageSetGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "image", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t",
 		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -78,7 +82,9 @@ func TestBSSBootImageSetPutHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "image", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t",
 		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -98,7 +104,9 @@ func TestBSSBootScriptGetQuery(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "script", "get", "--ignore-config", "--uri", srv.URL,
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "script", "get", "--uri", srv.URL,
 		"--xname", "x0c0s0b0n0", "--retry", "3", "--arch", "x86_64", "--timestamp", "12345")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -116,7 +124,9 @@ func TestBSSBootScriptGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "script", "get", "--ignore-config", "--uri", srv.URL,
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "script", "get", "--uri", srv.URL,
 		"--mac", "de:ad:be:ef:00:00")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -137,7 +147,9 @@ func TestBSSHostsGetQueryAndFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "yaml"} {
-		res := runOchami(t, "bss", "hosts", "get", "--ignore-config", "--uri", srv.URL,
+		// TODO: Enable t.Parallel() once race conditions are resolved
+		// t.Parallel()
+		res := runOchamiWithRuntime(t, "--ignore-config", "bss", "hosts", "get", "--uri", srv.URL,
 			"--xname", "x0c0s0b0n0", "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
@@ -155,7 +167,9 @@ func TestBSSHostsGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "hosts", "get", "--ignore-config", "--uri", srv.URL, "--mac", "de:ad:be:ef:00:00")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "hosts", "get", "--uri", srv.URL, "--mac", "de:ad:be:ef:00:00")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -175,7 +189,9 @@ func TestBSSHistoryGetQueryAndFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "yaml"} {
-		res := runOchami(t, "bss", "history", "--ignore-config", "--uri", srv.URL,
+		// TODO: Enable t.Parallel() once race conditions are resolved
+		// t.Parallel()
+		res := runOchamiWithRuntime(t, "--ignore-config", "bss", "history", "--uri", srv.URL,
 			"--xname", "x0c0s0b0n0", "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
@@ -194,7 +210,9 @@ func TestBSSHistoryGetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "history", "--ignore-config", "--uri", srv.URL, "--endpoint", "x0c0s0b0")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "history", "--uri", srv.URL, "--endpoint", "x0c0s0b0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
