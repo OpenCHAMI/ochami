@@ -45,6 +45,12 @@ See ochami(1) for more details on available commands.
 See ochami-config(1) for more details on how to configure ochami using the CLI.
 See ochami-config(5) for more details on configuring the ochami config file(s).`,
 		Version: version.Version,
+		// Errors and usage are handled centrally in Execute so that failures
+		// produce a single, consistent message plus a help hint and a
+		// differentiated exit code. SilenceErrors/SilenceUsage prevent Cobra
+		// from also printing them.
+		SilenceErrors: true,
+		SilenceUsage:  true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Ask the user in any child commands to create the config file
 			// if missing. If this is undesired, define PersistentPreRunE in
@@ -52,7 +58,9 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 			//
 			//   cli.InitConfigAndLogging(cmd, false)
 			//
-			cli.InitConfigAndLogging(cmd, true)
+			if err := cli.InitConfigAndLogging(cmd, true); err != nil {
+				return err
+			}
 
 			// Apply the default formats (if the flags aren't changed and the config option is present)
 			// Note that this doesn't cover the case where the variable is checked without the corresponding
@@ -69,11 +77,9 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
-			if len(args) == 0 {
-				cli.PrintUsageHandleError(cmd)
-				os.Exit(0)
-			}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// With no subcommand, print usage and exit successfully.
+			return cli.PrintUsageHandleError(cmd)
 		},
 	}
 
@@ -112,6 +118,10 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 		version_cmd.NewCmd(),
 	)
 
+	// Ensure flag-parse and argument-validation errors across the whole
+	// command tree resolve to the CodeUsage exit code.
+	cli.WrapUsageErrors(rootCmd)
+
 	return rootCmd
 }
 
@@ -122,17 +132,17 @@ func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("failed to execute command")
-		if cmd, _, err := rootCmd.Find(os.Args[1:]); err != nil {
+		if cmd, _, ferr := rootCmd.Find(os.Args[1:]); ferr != nil {
 			// Error looking up invoked command, default to printing
 			// help suggestion for root command, printing debug
 			// message only for debugging (most users don't need to
 			// know an error occurred).
-			log.Logger.Debug().Err(err).Msg("failed to lookup invoked command")
-			cli.LogHelpError(rootCmd)
+			log.Logger.Debug().Err(ferr).Msg("failed to lookup invoked command")
+			cli.LogHelpHint(rootCmd)
 		} else {
 			// Print help suggestion for invoked command
-			cli.LogHelpError(cmd)
+			cli.LogHelpHint(cmd)
 		}
-		os.Exit(1)
+		os.Exit(cli.ExitCode(err))
 	}
 }

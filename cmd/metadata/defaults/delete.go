@@ -5,14 +5,14 @@
 package defaults
 
 import (
-	"os"
+	"errors"
 
 	"github.com/spf13/cobra"
 
+	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
-
-	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataDefaultsDelete() *cobra.Command {
@@ -25,30 +25,38 @@ func newCmdMetadataDefaultsDelete() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Delete a cluster defaults
-  ochami metadata defaults delete clusterdefaults-d614b918
+   ochami metadata defaults delete clusterdefaults-d614b918
 
   # Delete multiple cluster defaults
   ochami metadata defaults delete clusterdefaults-d614b918 clusterdefaults-82c40109
 
   # Don't confirm deletion
   ochami metadata defaults delete --no-confirm clusterdefaults-d614b918`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Ask before attempting deletion unless --no-confirm was passed
-			if !cmd.Flag("no-confirm").Changed {
+			noConfirm, err := cmd.Flags().GetBool("no-confirm")
+			if err != nil {
+				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
+			}
+			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to fetch user input")
-					os.Exit(1)
+					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 				} else if !respDelete {
 					log.Logger.Info().Msg("user aborted cluster default deletion")
-					os.Exit(0)
+					return nil
 				} else {
 					log.Logger.Debug().Msg("user answered affirmatively to delete cluster defaults")
 				}
@@ -57,16 +65,21 @@ See ochami-metadata(1) for more details.`,
 			// Send off requests
 			defaultsDeleted, errs, err := metadataServiceClient.DeleteDefaults(cli.Token, args)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to delete cluster defaults")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to delete cluster defaults: %w", err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to delete cluster defaults: %w", err)
 			}
 
 			// Deal with per-request errors
 			var errorsOccurred = false
 			for _, err := range errs {
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to delete cluster defaults")
+					if errors.Is(err, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(err).Msg("failed to delete cluster defaults")
+					} else {
+						log.Logger.Error().Err(err).Msg("failed to delete cluster defaults")
+					}
 					errorsOccurred = true
 				}
 			}
@@ -76,10 +89,10 @@ See ochami-metadata(1) for more details.`,
 
 			// Warn if any request errors occurred
 			if errorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("cluster defaults deletion completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "cluster defaults deletion completed with errors")
 			}
+
+			return nil
 		},
 	}
 

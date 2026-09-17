@@ -5,7 +5,7 @@
 package instance
 
 import (
-	"os"
+	"errors"
 
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
@@ -15,6 +15,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataInstanceSet() *cobra.Command {
@@ -27,25 +28,25 @@ func newCmdMetadataInstanceSet() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Set instance info details using payload data
-  ochami metadata instance set instanceinfo-d614b918 -d \
-    '{
-       "instance_id": "x1000c0s0b0n0",
-       "hostname": "nid001000.demo.cluster",
-       "local_hostname": "nid001000"
-     }'
+   ochami metadata instance set instanceinfo-d614b918 -d \
+     '{
+        "instance_id": "x1000c0s0b0n0",
+        "hostname": "nid001000.demo.cluster",
+        "local_hostname": "nid001000"
+      }'
 
   # Set instance info details preserving labels/annotations (envelope API)
   ochami metadata instance set instanceinfo-d614b918 -e -d \
-    '{
-       "metadata": {
-         "labels": {
-           "env": "prod"
-         }
-       },
-       "spec": {
-         "instance_id": "x1000c0s0b0n0"
-       }
-     }'
+     '{
+        "metadata": {
+          "labels": {
+            "env": "prod"
+          }
+        },
+        "spec": {
+          "instance_id": "x1000c0s0b0n0"
+        }
+      }'
 
   # Set instance info details using file
   ochami metadata instance set instanceinfo-d614b918 -d @instance.json
@@ -53,15 +54,20 @@ See ochami-metadata(1) for more details.`,
 
   # Set instance info details using data from stdin
   echo '<json_data>' | ochami metadata instance set instanceinfo-d614b918 -d @-
-  echo '<json_data>' | ochami metadata instance set instanceinfo-d614b918
+  echo '<json_data>' | odami metadata instance set instanceinfo-d614b918
   echo '<yaml_data>' | ochami metadata instance set instanceinfo-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata instance set instanceinfo-d614b918 -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
@@ -77,9 +83,13 @@ See ochami-metadata(1) for more details.`,
 				// Read instance data
 				instance := metadata_service_client.UpdateInstanceInfoRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &instance)
+					if err := cli.HandlePayload(cmd, &instance); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &instance)
+					if err := cli.HandlePayloadStdin(cmd, &instance); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
@@ -90,29 +100,34 @@ See ochami-metadata(1) for more details.`,
 				// Read instance data
 				spec := api.InstanceInfoSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &spec)
+					if err := cli.HandlePayload(cmd, &spec); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &spec)
+					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
 				instanceSet, reqErr = metadataServiceClient.SetInstanceInfoSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to set instance info")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to set instance info: %w", reqErr)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to set instance info: %w", reqErr)
 			}
 
 			// Check that a modified item was returned
 			if instanceSet == nil {
-				log.Logger.Error().Msg("instance info set returned no resource")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeGeneric, "instance info set returned no resource")
 			}
 
 			// Print UIDs of modified items
 			log.Logger.Info().Msgf("Instance infos set: %+v", []string{instanceSet.Metadata.UID})
+
+			return nil
 		},
 	}
 

@@ -6,13 +6,11 @@ package service
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/cli/rcs"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -25,25 +23,28 @@ func newStatusCmd() *cobra.Command {
 See ochami-rcs(1) for more details.`,
 		Example: `  # Get console service status
   ochami rcs service status`,
-		Run: func(cmd *cobra.Command, args []string) {
-			cli.HandleToken(cmd)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
-			rcsClient := rcs.GetClient(cmd)
+			rcsClient, err := rcs.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			status, err := rcsClient.GetStatus(cli.Token)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get console service status")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get console service status: %w", err)
 			}
 
-			if outBytes, err := format.MarshalData(status, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Println(string(outBytes))
+			outBytes, err := format.MarshalData(status, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Println(string(outBytes))
+
+			return nil
 		},
 	}
 

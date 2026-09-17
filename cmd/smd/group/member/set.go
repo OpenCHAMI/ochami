@@ -7,7 +7,6 @@ package member
 
 import (
 	"errors"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -33,12 +32,17 @@ removed from the group.
 
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member set compute x1000c1s7b1n0 x1000c1s7b2n0`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Send off request
 			henv, err := smdClient.PutGroupMembers(cli.Token, args[0], args[1:]...)
@@ -54,14 +58,9 @@ See ochami-smd(1) for more details.`,
 					log.Logger.Info().Msg("  - Invalid component xnames")
 					log.Logger.Info().Msg("  - Authentication/authorization failure (check token)")
 					log.Logger.Info().Msg("  - SMD base URI misconfiguration (should include /hsm/v2)")
-				} else {
-					log.Logger.Error().Err(err).
-						Str("group", args[0]).
-						Int("member_count", len(args)-1).
-						Msg("failed to set group membership in SMD")
+					return cli.Errorf(cli.CodeHTTP, "SMD group member set request failed with HTTP error: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to set group membership in SMD: %w", err)
 			}
 
 			// Success, log confirmation
@@ -69,6 +68,8 @@ See ochami-smd(1) for more details.`,
 				Str("group", args[0]).
 				Int("member_count", len(args)-1).
 				Msg("Successfully set group membership")
+
+			return nil
 		},
 	}
 

@@ -5,8 +5,6 @@
 package node
 
 import (
-	"os"
-
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -71,12 +69,17 @@ See ochami-boot(1) for more details.`,
   echo '<json_data>' | ochami boot node set nod-bc76f7f2
   echo '<yaml_data>' | ochami boot node set -d @- -f yaml nod-bc76f7f2
   echo '<yaml_data>' | ochami boot node set -f yaml nod-bc76f7f2`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
@@ -92,9 +95,13 @@ See ochami-boot(1) for more details.`,
 				// Read node data
 				node := boot_service_client.UpdateNodeRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &node)
+					if err := cli.HandlePayload(cmd, &node); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &node)
+					if err := cli.HandlePayloadStdin(cmd, &node); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
@@ -105,21 +112,25 @@ See ochami-boot(1) for more details.`,
 				// Read node data
 				spec := api.NodeSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &spec)
+					if err := cli.HandlePayload(cmd, &spec); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &spec)
+					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
 				nodeSet, reqErr = bootServiceClient.SetNodeSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to set node")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to set node: %w", reqErr)
 			}
 
 			log.Logger.Debug().Msgf("node set: %+v", nodeSet)
+
+			return nil
 		},
 	}
 

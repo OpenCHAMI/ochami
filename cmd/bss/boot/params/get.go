@@ -9,12 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
@@ -38,12 +36,17 @@ See ochami-bss(1) for more details.`,
   ochami bss boot params get --mac 00:de:ad:be:ef:00
   ochami bss boot params get --mac 00:de:ad:be:ef:00,00:c0:ff:ee:00:00
   ochami bss boot params get --mac 00:de:ad:be:ef:00 --mac 00:c0:ff:ee:00:00`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bssClient := bss_lib.GetClient(cmd)
+			bssClient, err := bss_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// If no ID flags are specified, get all boot parameters
 			qstr := ""
@@ -54,9 +57,7 @@ See ochami-bss(1) for more details.`,
 				if cmd.Flag("xname").Changed {
 					s, err := cmd.Flags().GetStringSlice("xname")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch xname list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch xname list: %w", err)
 					}
 					for _, x := range s {
 						values.Add("name", x)
@@ -65,9 +66,7 @@ See ochami-bss(1) for more details.`,
 				if cmd.Flag("mac").Changed {
 					s, err := cmd.Flags().GetStringSlice("mac")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch mac list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch mac list: %w", err)
 					}
 					for _, m := range s {
 						values.Add("mac", m)
@@ -76,9 +75,7 @@ See ochami-bss(1) for more details.`,
 				if cmd.Flag("nid").Changed {
 					s, err := cmd.Flags().GetInt32Slice("nid")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch nid list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch nid list: %w", err)
 					}
 					for _, n := range s {
 						values.Add("nid", fmt.Sprintf("%d", n))
@@ -89,21 +86,19 @@ See ochami-bss(1) for more details.`,
 			httpEnv, err := bssClient.GetBootParams(qstr, cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("BSS boot parameter request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to request boot parameters from BSS")
+					return cli.Errorf(cli.CodeHTTP, "BSS boot parameter request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to request boot parameters from BSS: %w", err)
 			}
 
-			if outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			// Print output
+			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

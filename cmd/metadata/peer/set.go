@@ -5,7 +5,7 @@
 package peer
 
 import (
-	"os"
+	"errors"
 
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
@@ -15,6 +15,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataPeerSet() *cobra.Command {
@@ -27,49 +28,54 @@ func newCmdMetadataPeerSet() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Set WireGuard peer details using payload data
-  ochami metadata peer set wireguardpeer-d614b918 -d \
-    '{
-       "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-       "allowed_ip": "10.42.1.1/32",
-       "description": "Updated peer"
-     }'
+   ochami metadata peer set wireguardpeer-d614b918 -d \
+     '{
+        "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+        "allowed_ip": "10.42.1.1/32",
+        "description": "Updated peer"
+      }'
 
   # Set WireGuard peer details using YAML payload data
   ochami metadata peer set wireguardpeer-d614b918 -f yaml <<'EOF'
-   public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
-   allowed_ip: "10.42.1.1/32"
-   description: "Updated peer"
-   EOF
+    public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
+    allowed_ip: "10.42.1.1/32"
+    description: "Updated peer"
+    EOF'
 
   # Set WireGuard peer details preserving labels/annotations (envelope API)
   ochami metadata peer set wireguardpeer-d614b918 -e -d \
-    '{
-       "metadata": {
-         "labels": {
-           "env": "prod"
-         }
-       },
-       "spec": {
-         "public_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-         "allowed_ip": "10.42.1.1/32"
-       }
-     }'
+     '{
+        "metadata": {
+          "labels": {
+            "env": "prod"
+          }
+        },
+        "spec": {
+          "public_key": "xTIBA5rboUvnH4htodjb6e6e97QjLERt1NAB4mZqp8Dg=",
+          "allowed_ip": "10.42.1.1/32"
+        }
+      }'
 
   # Set WireGuard peer details using file
   ochami metadata peer set wireguardpeer-d614b918 -d @peer.json
-  ochami metadata peer set wireguardpeer-d614b918 -d @peer.yaml -f yaml
+  odami metadata peer set wireguardpeer-d614b918 -d @peer.yaml -f yaml
 
   # Set WireGuard peer details using data from stdin
-  echo '<json_data>' | ochami metadata peer set wireguardpeer-d614b918 -d @-
-  echo '<json_data>' | ochami metadata peer set wireguardpeer-d614b918
-  echo '<yaml_data>' | ochami metadata peer set wireguardpeer-d614b918 -f yaml -d @-
-  echo '<yaml_data>' | ochami metadata peer set wireguardpeer-d614b918 -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+  echo '<json_data>' | odami metadata peer set wireguardpeer-d614b918 -d @-
+  echo '<json_data>' | odami metadata peer set wireguardpeer-d614b918
+  echo '<yaml_data>' | odami metadata peer set wireguardpeer-d614b918 -f yaml -d @-
+  echo '<yaml_data>' | odami metadata peer set wireguardpeer-d614b918 -f yaml`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
@@ -85,9 +91,13 @@ See ochami-metadata(1) for more details.`,
 				// Read peer data
 				peer := metadata_service_client.UpdateWireGuardPeerRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &peer)
+					if err := cli.HandlePayload(cmd, &peer); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &peer)
+					if err := cli.HandlePayloadStdin(cmd, &peer); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
@@ -98,29 +108,34 @@ See ochami-metadata(1) for more details.`,
 				// Read peer data
 				spec := api.WireGuardPeerSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &spec)
+					if err := cli.HandlePayload(cmd, &spec); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &spec)
+					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
 				peerSet, reqErr = metadataServiceClient.SetWireGuardPeerSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to set WireGuard peer")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to set WireGuard peer: %w", reqErr)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to set WireGuard peer: %w", reqErr)
 			}
 
 			// Check that a modified item was returned
 			if peerSet == nil {
-				log.Logger.Error().Msg("WireGuard peer set returned no resource")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeGeneric, "WireGuard peer set returned no resource")
 			}
 
 			// Print UIDs of modified items
 			log.Logger.Info().Msgf("WireGuard peers set: %+v", []string{peerSet.Metadata.UID})
+
+			return nil
 		},
 	}
 

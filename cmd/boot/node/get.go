@@ -6,13 +6,11 @@ package node
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
-	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdBootNodeGet() *cobra.Command {
@@ -26,25 +24,30 @@ func newCmdBootNodeGet() *cobra.Command {
 See ochami-boot(1) for more details.`,
 		Example: `  # Get info about a node
   ochami boot node get nod-bc76f7f2`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			uid := args[0]
 
 			// Make request
 			outBytes, err := bootServiceClient.GetNode(cli.Token, cli.FormatOutput, uid)
 			if err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to get boot configuration for %s", uid)
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get node for %s: %w", uid, err)
 			}
 
 			// Print output
 			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

@@ -6,7 +6,6 @@
 package config
 
 import (
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -45,7 +44,7 @@ See ochami-config(5) for details on the configuration options.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// We must have a config file in order to write config
 			var fileToModify string
 			if cmd.Flags().Changed("config") {
@@ -59,35 +58,29 @@ See ochami-config(5) for details on the configuration options.`,
 
 			// Refuse to modify config if user tries to modify cluster config
 			if strings.HasPrefix(args[0], "clusters") {
-				log.Logger.Error().Msg("`ochami config set` is meant for modifying general config, use `ochami config cluster set` for modifying cluster config")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "`ochami config set` is meant for modifying general config, use `ochami config cluster set` for modifying cluster config")
 			}
 
 			// Ask to create file if it doesn't exist.
 			if create, err := cli.Ios.AskToCreate(fileToModify); err != nil {
 				if err != cli.FileExistsError {
-					log.Logger.Error().Err(err).Msg("error asking to create file")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "error asking to create file: %w", err)
 				}
 			} else if create {
 				if err := cli.CreateIfNotExists(fileToModify); err != nil {
-					log.Logger.Error().Err(err).Msg("error creating file")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "error creating file: %w", err)
 				}
 			} else {
-				log.Logger.Error().Msg("user declined to create file, not modifying")
-				os.Exit(0)
+				log.Logger.Info().Msg("user declined to create file, not modifying")
+				return nil
 			}
 
 			// Perform modification
 			if err := config.ModifyConfig(fileToModify, args[0], config.StringToType(args[1])); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to modify config file")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}
+
+			return nil
 		},
 	}
 

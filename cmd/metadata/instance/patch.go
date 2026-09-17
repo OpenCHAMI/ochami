@@ -5,7 +5,7 @@
 package instance
 
 import (
-	"os"
+	"errors"
 
 	"github.com/spf13/cobra"
 
@@ -49,10 +49,10 @@ of these methods.
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Patch using JSON patch (RFC 6902)
-  ochami metadata instance patch instanceinfo-d614b918 --patch-method rfc6902 --data '[
-    {"op":"replace","path":"/hostname","value":"nid002000.demo.cluster"},
-    {"op":"replace","path":"/local_hostname","value":"nid002000"}
-  ]'
+   ochami metadata instance patch instanceinfo-d614b918 --patch-method rfc6902 --data '[
+     {"op":"replace","path":"/hostname","value":"nid002000.demo.cluster"},
+     {"op":"replace","path":"/local_hostname","value":"nid002000"}
+   ]'
 
   # Patch specific fields using JSON merge patch (RFC 7386) (simple merge)
   ochami metadata instance patch instanceinfo-d614b918 --patch-method rfc7386 --data '{"hostname":"nid002000.demo.cluster"}'
@@ -65,16 +65,21 @@ See ochami-metadata(1) for more details.`,
   ochami metadata instance patch instanceinfo-d614b918 -d @payload.yaml -f yaml
 
   # Patch using stdin
-  echo '<json_data>' | ochami metadata instance patch instanceinfo-d614b918 -d @-
-  echo '<json_data>' | ochami metadata instance patch instanceinfo-d614b918
-  echo '<yaml_data>' | ochami metadata instance patch instanceinfo-d614b918 -d @- -f yaml
-  echo '<yaml_data>' | ochami metadata instance patch instanceinfo-d614b918 -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+  echo '<json_data>' | odami metadata instance patch instanceinfo-d614b918 -d @-
+  echo '<json_data>' | odami metadata instance patch instanceinfo-d614b918
+  echo '<yaml_data>' | odami metadata instance patch instanceinfo-d614b918 -d @- -f yaml
+  echo '<yaml_data>' | odami metadata instance patch instanceinfo-d614b918 -f yaml`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			var patchData map[string]interface{}
 			if cmd.Flag("set").Changed || cmd.Flag("unset").Changed || cmd.Flag("add").Changed || cmd.Flag("remove").Changed {
@@ -84,35 +89,38 @@ See ochami-metadata(1) for more details.`,
 
 				pd, err := client.NewKeyValPatch(setList, unsetList, addList, removeList)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("error creating key-value patch data")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return err
 				}
 				patchData = pd
 			} else {
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &patchData)
+					if err := cli.HandlePayload(cmd, &patchData); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &patchData)
+					if err := cli.HandlePayloadStdin(cmd, &patchData); err != nil {
+						return err
+					}
 				}
 			}
 
 			instancePatched, err := metadataServiceClient.PatchInstanceInfo(cli.Token, formatPatch, args[0], patchData)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to patch instance info")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to patch instance info: %w", err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to patch instance info: %w", err)
 			}
 
 			// Check that a modified item was returned
 			if instancePatched == nil {
-				log.Logger.Error().Msg("instance info patch returned no resource")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeGeneric, "instance info patch returned no resource")
 			}
 
 			// Print UIDs of modified items
 			log.Logger.Info().Msgf("Instance infos patched: %+v", []string{instancePatched.Metadata.UID})
+
+			return nil
 		},
 	}
 

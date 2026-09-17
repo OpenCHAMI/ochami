@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -68,28 +67,28 @@ nodes:
       ip_addr: 192.168.0.1
 
 See ochami-discover(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Without a base URI, we cannot do anything
 			smdBaseURI, err := cli.GetBaseURISMD(cmd)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get base URI for SMD")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "failed to get base URI for SMD: %w", err)
 			}
 
 			// This endpoint requires authentication, so a token is needed
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Create client to make request to SMD
 			smdClient, err := smd.NewClient(smdBaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("error creating new SMD client")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "error creating new SMD client: %w", err)
 			}
 
 			// Check if a CA certificate was passed and load it into client if valid
-			cli.UseCACert(smdClient.OchamiClient)
+			if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+				return err
+			}
 
 			if cmd.Flag("overwrite").Changed {
 				log.Logger.Warn().Msg("--overwrite passed; overwriting any existing data")
@@ -120,9 +119,13 @@ See ochami-discover(1) for more details.`,
 			// discovery method to use.
 			discoveryData := make(map[string]([]map[string]any))
 			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &discoveryData)
+				if err := cli.HandlePayload(cmd, &discoveryData); err != nil {
+					return err
+				}
 			} else {
-				cli.HandlePayloadStdin(cmd, &discoveryData)
+				if err := cli.HandlePayloadStdin(cmd, &discoveryData); err != nil {
+					return err
+				}
 			}
 			useDeprecatedFormat := discoverStaticDeprecatedFormat(cmd, discoveryData)
 			var rawData []byte
@@ -132,14 +135,12 @@ See ochami-discover(1) for more details.`,
 				// Convert discovery data to struct
 				rawData, err := json.Marshal(discoveryData)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to marshal discovery data to json")
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "unable to marshal discovery data to json: %w", err)
 				}
 				nodes := discover.NodeListDeprecated{}
 				err = json.Unmarshal(rawData, &nodes)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to unmarshal discovery data from json")
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "unable to unmarshal discovery data from json: %w", err)
 				}
 
 				log.Logger.Debug().Msgf("read %d nodes", len(nodes.Nodes))
@@ -160,23 +161,19 @@ See ochami-discover(1) for more details.`,
 				log.Logger.Debug().Msg("generating redfish structures to send to SMD")
 				comps, rfes, ifaces, err = discover.DiscoveryInfoV2Deprecated(smdBaseURI, nodes)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to construct structures to send to SMD")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "failed to construct structures to send to SMD: %w", err)
 				}
 				log.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
 			} else {
 				// Convert discovery data to struct
 				rawData, err = json.Marshal(discoveryData)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to marshal discovery items to json")
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "unable to marshal discovery items to json: %w", err)
 				}
 				items := discover.DiscoveryItems{}
 				err = json.Unmarshal(rawData, &items)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to unmarshal discovery items from json")
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "unable to unmarshal discovery items from json: %w", err)
 				}
 
 				log.Logger.Debug().Msgf("read %d bmcs", len(items.BMCs))
@@ -199,9 +196,7 @@ See ochami-discover(1) for more details.`,
 				var err error
 				comps, rfes, ifaces, err = discover.DiscoveryInfoV2(smdBaseURI, items)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to construct structures to send to SMD")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "failed to construct structures to send to SMD: %w", err)
 				}
 				log.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
 			}
@@ -564,27 +559,23 @@ See ochami-discover(1) for more details.`,
 			}
 
 			// Notify user if any request errors occurred
-			exitStatus := 0
-			if compErrorsOccurred || rfeErrorsOccurred || ifaceErrorsOccurred || groupErrorsOccurred {
-				cli.LogHelpError(cmd)
-			}
 			if compErrorsOccurred {
 				log.Logger.Warn().Msg("component requests completed with errors")
-				exitStatus = 1
 			}
 			if rfeErrorsOccurred {
 				log.Logger.Warn().Msg("redfish endpoint requests completed with errors")
-				exitStatus = 1
 			}
 			if ifaceErrorsOccurred {
 				log.Logger.Warn().Msg("ethernet interface requests completed with errors")
-				exitStatus = 1
 			}
 			if groupErrorsOccurred {
 				log.Logger.Warn().Msg("group requests completed with errors")
-				exitStatus = 1
 			}
-			os.Exit(exitStatus)
+			if compErrorsOccurred || rfeErrorsOccurred || ifaceErrorsOccurred || groupErrorsOccurred {
+				return cli.Errorf(cli.CodeHTTP, "static discovery completed with errors")
+			}
+
+			return nil
 		},
 	}
 

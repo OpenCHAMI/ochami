@@ -5,8 +5,6 @@
 package metadata_service
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -19,13 +17,11 @@ import (
 // GetClient sets up the metadata-service client with the metadata-service base
 // URI and certificates (if necessary) and returns it. This function is used by
 // each subcommand.
-func GetClient(cmd *cobra.Command) *metadata_service.MetadataServiceClient {
+func GetClient(cmd *cobra.Command) (*metadata_service.MetadataServiceClient, error) {
 	// Without a base URI, we cannot do anything
 	metadataServiceBaseURI, err := cli.GetBaseURIMetadataService(cmd)
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("failed to get base URI for metadata-service")
-		cli.LogHelpError(cmd)
-		os.Exit(1)
+		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for metadata-service: %w", err)
 	}
 
 	apiVersion, err := cli.GetAPIVersion(cmd, config.ServiceMetadata)
@@ -36,13 +32,13 @@ func GetClient(cmd *cobra.Command) *metadata_service.MetadataServiceClient {
 	// Create client to make request to metadata-service
 	metadataServiceClient, err := metadata_service.NewClient(metadataServiceBaseURI, cli.GetTimeout(cmd), apiVersion, log.Logger, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("error creating new metadata-service client")
-		cli.LogHelpError(cmd)
-		os.Exit(1)
+		return nil, cli.Errorf(cli.CodeGeneric, "error creating new metadata-service client: %w", err)
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	cli.UseCACert(metadataServiceClient.OchamiClient)
+	if err := cli.UseCACert(metadataServiceClient.OchamiClient); err != nil {
+		return nil, err
+	}
 
-	return metadataServiceClient
+	return metadataServiceClient, nil
 }

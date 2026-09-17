@@ -9,12 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -32,21 +30,26 @@ passed, all ethernet interfaces are returned. Optionally, options can be passed 
 ethernet interfaces returned.
 
 See ochami-smd(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Deal with --id
 			if cmd.Flag("id").Changed {
 				// This endpoint requires authentication, so a token is needed
-				cli.SetToken(cmd)
-				cli.CheckToken(cmd)
+				if err := cli.SetToken(cmd); err != nil {
+					return err
+				}
+				if err := cli.CheckToken(cmd); err != nil {
+					return err
+				}
 
 				id, err := cmd.Flags().GetString("id")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to get id")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "failed to get id: %w", err)
 				}
 				byIP := false
 				if cmd.Flag("by-ip").Changed {
@@ -55,19 +58,14 @@ See ochami-smd(1) for more details.`,
 				httpEnv, err := smdClient.GetEthernetInterfaceByID(id, cli.Token, byIP)
 				if err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("SMD ethernet interface request by ID yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(err).Msg("failed to request ethernet interfaces by ID from SMD")
+						return cli.Errorf(cli.CodeHTTP, "SMD ethernet interface request by ID yielded unsuccessful HTTP response: %w", err)
 					}
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeNetwork, "failed to request ethernet interfaces by ID from SMD: %w", err)
 				}
 				fmt.Println(string(httpEnv.Body))
-				os.Exit(0)
+				return nil
 			} else if cmd.Flag("by-ip").Changed {
-				log.Logger.Error().Msg("--by-ip can only be used with --id")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "--by-ip can only be used with --id")
 			}
 
 			// All other cases
@@ -78,9 +76,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("mac").Changed {
 					s, err := cmd.Flags().GetStringSlice("mac")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch macs")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch macs: %w", err)
 					}
 					for _, m := range s {
 						values.Add("MACAddress", m)
@@ -89,9 +85,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("ip").Changed {
 					s, err := cmd.Flags().GetStringSlice("ip")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch IPs")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch IPs: %w", err)
 					}
 					for _, i := range s {
 						values.Add("IPAddress", i)
@@ -100,9 +94,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("net").Changed {
 					s, err := cmd.Flags().GetStringSlice("net")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch networks")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch networks: %w", err)
 					}
 					for _, n := range s {
 						values.Add("Network", n)
@@ -111,9 +103,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("comp-id").Changed {
 					s, err := cmd.Flags().GetStringSlice("comp-id")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch component IDs")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch component IDs: %w", err)
 					}
 					for _, c := range s {
 						values.Add("ComponentID", c)
@@ -122,9 +112,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("type").Changed {
 					s, err := cmd.Flags().GetStringSlice("type")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch type")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch type: %w", err)
 					}
 					for _, t := range s {
 						values.Add("Type", t)
@@ -133,18 +121,14 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("older-than").Changed {
 					s, err := cmd.Flags().GetString("older-than")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch older-than timestamp")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch older-than timestamp: %w", err)
 					}
 					values.Add("OlderThan", s)
 				}
 				if cmd.Flag("newer-than").Changed {
 					s, err := cmd.Flags().GetString("newer-than")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch newer-than timestamp")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch newer-than timestamp: %w", err)
 					}
 					values.Add("NewerThan", s)
 				}
@@ -153,22 +137,19 @@ See ochami-smd(1) for more details.`,
 			httpEnv, err := smdClient.GetEthernetInterfaces(qstr)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("SMD ethernet interface request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to request ethernet interfaces from SMD")
+					return cli.Errorf(cli.CodeHTTP, "SMD ethernet interface request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to request ethernet interfaces from SMD: %w", err)
 			}
 
 			// Print output
-			if outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

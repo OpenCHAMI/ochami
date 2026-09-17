@@ -9,12 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -37,12 +35,17 @@ See ochami-smd(1) for more details.`,
   ochami smd group get --name group1 --name group2
   ochami smd group get --name group1,group2 --tag tag1,tag2
   ochami smd group get --name group1 --name group2 --tag tag1 --tag tag2`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// If no ID flags are specified, get all groups
 			qstr := ""
@@ -51,9 +54,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("name").Changed {
 					s, err := cmd.Flags().GetStringSlice("name")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch name list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch name list: %w", err)
 					}
 					for _, n := range s {
 						values.Add("group", n)
@@ -62,9 +63,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("tag").Changed {
 					s, err := cmd.Flags().GetStringSlice("tag")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch tag list")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch tag list: %w", err)
 					}
 					for _, t := range s {
 						values.Add("tag", t)
@@ -75,22 +74,19 @@ See ochami-smd(1) for more details.`,
 			httpEnv, err := smdClient.GetGroups(qstr, cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("SMD group request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to request groups from SMD")
+					return cli.Errorf(cli.CodeHTTP, "SMD group request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to request groups from SMD: %w", err)
 			}
 
 			// Print output
-			if outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

@@ -412,7 +412,9 @@ func TestSetToken_FromFlag(t *testing.T) {
 		t.Fatalf("Failed to set flag: %v", err)
 	}
 
-	SetToken(cmd)
+	if err := SetToken(cmd); err != nil {
+		t.Fatalf("SetToken returned unexpected error: %v", err)
+	}
 
 	if Token != "test-token-from-flag" {
 		t.Errorf("Token = %q, want %q", Token, "test-token-from-flag")

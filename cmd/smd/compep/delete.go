@@ -7,8 +7,6 @@ package compep
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/openchami/smd/v2/pkg/sm"
 	"github.com/spf13/cobra"
@@ -57,7 +55,7 @@ See ochami-smd(1) for more details.`,
 			// must be passed.
 			if !cmd.Flag("all").Changed && !cmd.Flag("data").Changed {
 				if len(args) == 0 {
-					return fmt.Errorf("expected -d, --all, or >= 1 argument (xname), got %d", len(args))
+					return cli.Errorf(cli.CodeUsage, "expected -d, --all, or >= 1 argument (xname), got %d", len(args))
 				}
 			} else {
 				if len(args) > 0 {
@@ -67,45 +65,49 @@ See ochami-smd(1) for more details.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Ask before attempting deletion unless --no-confirm was passed
 			noConfirm, err := cmd.Flags().GetBool("no-confirm")
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get --no-confirm")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
 			}
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				var respDelete bool
-				var err error
 				if cmd.Flag("all").Changed {
 					respDelete, err = cli.Ios.LoopYesNo("Really delete ALL COMPONENT ENDPOINTS?")
 				} else {
 					respDelete, err = cli.Ios.LoopYesNo("Really delete?")
 				}
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("Error fetching user input")
-					os.Exit(1)
+					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 				} else if !respDelete {
 					log.Logger.Info().Msg("User aborted component endpoint deletion")
-					os.Exit(0)
+					return nil
 				} else {
 					log.Logger.Debug().Msg("User answered affirmatively to delete component endpoints")
 				}
 			}
 
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Create list of xnames to delete
 			var ceSlice []sm.ComponentEndpoint
 			var xnameSlice []string
 			if cmd.Flag("data").Changed {
 				// Use payload file if passed
-				cli.HandlePayload(cmd, &ceSlice)
+				if err := cli.HandlePayload(cmd, &ceSlice); err != nil {
+					return err
+				}
 			} else {
 				// ...otherwise, use passed CLI arguments
 				xnameSlice = args
@@ -117,26 +119,21 @@ See ochami-smd(1) for more details.`,
 				_, err := smdClient.DeleteComponentEndpointsAll(cli.Token)
 				if err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("SMD component endpoint deletion yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(err).Msg("failed to delete component endpoints in SMD")
+						return cli.Errorf(cli.CodeHTTP, "SMD component endpoint deletion yielded unsuccessful HTTP response: %w", err)
 					}
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeNetwork, "failed to delete component endpoints in SMD: %w", err)
 				}
 			} else {
 				// If --all not passed, pass argument list to deletion logic
 				_, errs, err := smdClient.DeleteComponentEndpoints(cli.Token, xnameSlice...)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to delete redfish endpoints in SMD")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeNetwork, "failed to delete component endpoints in SMD: %w", err)
 				}
 				// Since smdClient.DeleteComponentEndpoints does the deletion iteratively, we need to
 				// deal with each error that might have occurred.
 				var errorsOccurred = false
 				for _, e := range errs {
-					if err != nil {
+					if e != nil {
 						if errors.Is(e, client.UnsuccessfulHTTPError) {
 							log.Logger.Error().Err(e).Msg("SMD component endpoint deletion yielded unsuccessful HTTP response")
 						} else {
@@ -147,11 +144,11 @@ See ochami-smd(1) for more details.`,
 				}
 				// Warn the user if any errors occurred during deletion iterations
 				if errorsOccurred {
-					log.Logger.Warn().Msg("SMD component endpoint deletion completed with errors")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeHTTP, "SMD component endpoint deletion completed with errors")
 				}
 			}
+
+			return nil
 		},
 	}
 

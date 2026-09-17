@@ -9,12 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
@@ -34,9 +32,12 @@ This command sends a GET to BSS. An access token is not required.
 
 See ochami-bss(1) for more details.`,
 		Example: `  ochami boot script get --mac 00:c0:ff:ee:00:00`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bssClient := bss_lib.GetClient(cmd)
+			bssClient, err := bss_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Structure representing the boot script query string
 			values := url.Values{}
@@ -45,9 +46,7 @@ See ochami-bss(1) for more details.`,
 			if cmd.Flag("xname").Changed {
 				s, err := cmd.Flags().GetStringSlice("xname")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch xname list")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch xname list: %w", err)
 				}
 				for _, x := range s {
 					values.Add("name", x)
@@ -56,9 +55,7 @@ See ochami-bss(1) for more details.`,
 			if cmd.Flag("mac").Changed {
 				s, err := cmd.Flags().GetStringSlice("mac")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch mac list")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch mac list: %w", err)
 				}
 				for _, m := range s {
 					values.Add("mac", m)
@@ -67,9 +64,7 @@ See ochami-bss(1) for more details.`,
 			if cmd.Flag("nid").Changed {
 				s, err := cmd.Flags().GetInt32Slice("nid")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch nid list")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch nid list: %w", err)
 				}
 				for _, n := range s {
 					values.Add("nid", fmt.Sprintf("%d", n))
@@ -80,27 +75,21 @@ See ochami-bss(1) for more details.`,
 			if cmd.Flag("retry").Changed {
 				s, err := cmd.Flags().GetInt("retry")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch number of retries")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch number of retries: %w", err)
 				}
 				values.Add("retry", fmt.Sprintf("%d", s))
 			}
 			if cmd.Flag("arch").Changed {
 				s, err := cmd.Flags().GetString("arch")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch arch")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch arch: %w", err)
 				}
 				values.Add("arch", s)
 			}
 			if cmd.Flag("timestamp").Changed {
 				s, err := cmd.Flags().GetInt("timestamp")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch timestamp")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch timestamp: %w", err)
 				}
 				values.Add("timestamp", fmt.Sprintf("%d", s))
 			}
@@ -109,14 +98,13 @@ See ochami-bss(1) for more details.`,
 			httpEnv, err := bssClient.GetBootScript(qstr)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("BSS boot script request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to request boot script from BSS")
+					return cli.Errorf(cli.CodeHTTP, "BSS boot script request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to request boot script from BSS: %w", err)
 			}
 			fmt.Println(string(httpEnv.Body))
+
+			return nil
 		},
 	}
 

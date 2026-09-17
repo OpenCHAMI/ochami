@@ -7,8 +7,6 @@ package group
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -62,10 +60,10 @@ See ochami-smd(1) for more details.`,
 			// cmd.LocalFlags().NFlag() doesn't seem to work, so we check every flag
 			if !cmd.Flag("data").Changed {
 				if len(args) == 0 {
-					return fmt.Errorf("expected -d or >= 1 argument (group label), got %d", len(args))
+					return cli.Errorf(cli.CodeUsage, "expected -d or >= 1 argument (group label), got %d", len(args))
 				} else {
 					if !cmd.Flag("description").Changed && !cmd.Flag("tag").Changed {
-						return fmt.Errorf("group label passed, but no --description/--tag (at least one is required)")
+						return cli.Errorf(cli.CodeUsage, "group label passed, but no --description/--tag (at least one is required)")
 					}
 				}
 			} else {
@@ -76,35 +74,37 @@ See ochami-smd(1) for more details.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// The group list we will send
 			var groups []smd.Group
 
 			// Read payload from file first, allowing overwrites from flags
-			var err error
 			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &groups)
+				if err := cli.HandlePayload(cmd, &groups); err != nil {
+					return err
+				}
 			} else {
 				// ...otherwise use CLI options/args
 				group := smd.Group{Label: args[0]}
 				if cmd.Flag("description").Changed {
 					if group.Description, err = cmd.Flags().GetString("description"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch description")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch description: %w", err)
 					}
 				}
 				if cmd.Flag("tag").Changed {
 					if group.Tags, err = cmd.Flags().GetStringSlice("tag"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch tags")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch tags: %w", err)
 					}
 				}
 				groups = append(groups, group)
@@ -113,29 +113,25 @@ See ochami-smd(1) for more details.`,
 			// Send 'em off
 			_, errs, err := smdClient.PatchGroups(groups, cli.Token)
 			if err != nil {
-				log.Logger.Error().Err(err).
-					Int("group_count", len(groups)).
-					Msg("failed to patch group(s) in SMD")
 				log.Logger.Info().Msg("Common causes:")
 				log.Logger.Info().Msg("  - SMD base URI misconfiguration (should include /hsm/v2)")
 				log.Logger.Info().Msg("  - Invalid payload format")
 				log.Logger.Info().Msg("  - Authentication/authorization failure (check token)")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to patch %d group(s) in SMD: %w", len(groups), err)
 			}
 			// Since smdClient.PatchGroups does the edition iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for i, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).
+			for i, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).
 							Str("group", groups[i].Label).
 							Msg("SMD group update request yielded unsuccessful HTTP response")
 						log.Logger.Info().Msg("  - Group may not exist")
 						log.Logger.Info().Msg("  - Invalid field values")
 					} else {
-						log.Logger.Error().Err(err).
+						log.Logger.Error().Err(e).
 							Str("group", groups[i].Label).
 							Msg("failed to update group in SMD")
 					}
@@ -143,15 +139,15 @@ See ochami-smd(1) for more details.`,
 				}
 			}
 			if errorsOccurred {
-				log.Logger.Warn().Msg("SMD group update completed with errors")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "SMD group update completed with errors")
 			}
 
 			// Success, log confirmation
 			log.Logger.Info().
 				Int("group_count", len(groups)).
 				Msg("Successfully updated group(s)")
+
+			return nil
 		},
 	}
 

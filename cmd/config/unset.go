@@ -6,14 +6,12 @@
 package config
 
 import (
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/config"
-	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdUnset() *cobra.Command {
@@ -40,9 +38,7 @@ See ochami-config(5) for details on the configuration options.`,
 			// It doesn't make sense to unset from a config file that
 			// doesn't exist, so err if the specified config file doesn't
 			// exist.
-			cli.InitConfigAndLogging(cmd, false)
-
-			return nil
+			return cli.InitConfigAndLogging(cmd, false)
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// To mark both persistent and regular flags mutually exclusive,
@@ -53,7 +49,7 @@ See ochami-config(5) for details on the configuration options.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get root command
 			rootCmd := cmd.Root()
 			_ = rootCmd // read persistent flags, annotations, etc.
@@ -71,17 +67,15 @@ See ochami-config(5) for details on the configuration options.`,
 
 			// Refuse to modify config if user tries to modify cluster config
 			if strings.HasPrefix(args[0], "clusters") {
-				log.Logger.Error().Msg("`ochami config unset` is meant for unsetting general config, use `ochami config cluster delete` for deleting cluster config")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "`ochami config unset` is meant for unsetting general config, use `ochami config cluster delete` for deleting cluster config")
 			}
 
 			// Perform modification
 			if err := config.DeleteConfig(fileToModify, args[0]); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to modify config file")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}
+
+			return nil
 		},
 	}
 

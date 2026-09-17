@@ -5,14 +5,14 @@
 package bmc
 
 import (
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
-	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdBootBmcGet() *cobra.Command {
@@ -25,26 +25,34 @@ func newCmdBootBmcGet() *cobra.Command {
 
 See ochami-boot(1) for more details.`,
 		Example: `  # Get info about a BMC
-  ochami boot bmc get bmc-773d99bf`,
-		Run: func(cmd *cobra.Command, args []string) {
+   ochami boot bmc get bmc-773d99bf`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			uid := args[0]
 
 			// Make request
 			outBytes, err := bootServiceClient.GetBMC(cli.Token, cli.FormatOutput, uid)
 			if err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to get BMC info for %s", uid)
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to get BMC info for %s: %w", uid, err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to get BMC info for %s: %w", uid, err)
 			}
 
 			// Print output
 			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

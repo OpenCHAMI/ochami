@@ -76,6 +76,33 @@ func newIOStream(stdin io.Reader, stdout, stderr io.Writer) ioStream {
 	}
 }
 
+// SetIOStream replaces the package-global Ios with one backed by the provided
+// streams and returns a function that restores the previous Ios. It exists so
+// that callers (notably tests) can redirect interactive input/output and
+// capture prompt output without modifying os.Std*.
+//
+// Typical use:
+//
+//	restore := cli.SetIOStream(strings.NewReader("y\n"), &out, &out)
+//	defer restore()
+func SetIOStream(stdin io.Reader, stdout, stderr io.Writer) (restore func()) {
+	prev := Ios
+	Ios = newIOStream(stdin, stdout, stderr)
+	return func() { Ios = prev }
+}
+
+// In returns the stream's input reader. Commands that read interactive or piped
+// input should use this instead of os.Stdin so the source can be swapped via
+// SetIOStream.
+func (i ioStream) In() io.Reader { return i.stdin }
+
+// Out returns the stream's output writer. Commands that stream output should
+// use this instead of os.Stdout so it can be captured via SetIOStream.
+func (i ioStream) Out() io.Writer { return i.stdout }
+
+// Err returns the stream's error writer.
+func (i ioStream) Err() io.Writer { return i.stderr }
+
 // AskToCreate prompts the user to, if path does not exist, to create a blank
 // file at path. If it exists, nil is returned. If the user declines, a
 // UserDeclinedError is returned. If an error occurs during creation, an error
@@ -223,19 +250,16 @@ func InitLogging(cmd *cobra.Command) error {
 // directive. createCfg determines whether a config file should be created if
 // missing. This creation only applies when a config file is explicitly
 // specified on the command line and not the merged config.
-func InitConfigAndLogging(cmd *cobra.Command, createCfg bool) {
+func InitConfigAndLogging(cmd *cobra.Command, createCfg bool) error {
 	// Load configuration first (this populates GlobalConfig)
 	if err := InitConfig(cmd, createCfg); err != nil {
-		el.BasicLogf("failed to initialize config: %v", err)
-		el.BasicLogf("see '%s --help' for long command help", cmd.CommandPath())
-		os.Exit(1)
+		return Errorf(CodeConfig, "failed to initialize config: %w", err)
 	}
 	// Initialize logging second (flag overrides are applied inside InitLogging)
 	if err := InitLogging(cmd); err != nil {
-		el.BasicLogf("failed to initialize logging: %v", err)
-		el.BasicLogf("see '%s --help' for long command help", cmd.CommandPath())
-		os.Exit(1)
+		return Errorf(CodeConfig, "failed to initialize logging: %w", err)
 	}
+	return nil
 }
 
 // ShowToken reports whether the --show-token flag was passed for cmd, indicating
@@ -273,11 +297,11 @@ func CreateIfNotExists(path string) error {
 }
 
 // CheckToken takes a pointer to a Cobra command and checks to see if --token
-// was set. If not, an error is printed and the program exits.
-func CheckToken(cmd *cobra.Command) {
+// was set. If not, or if the token is invalid or expired, a CodeAuth CodedError
+// is returned.
+func CheckToken(cmd *cobra.Command) error {
 	if Token == "" {
-		log.Logger.Error().Msg("no token set")
-		os.Exit(1)
+		return Errorf(CodeAuth, "no token set")
 	}
 
 	// Parse and validate token (jwt.Parse validates nbf, iat, exp automatically
@@ -288,17 +312,15 @@ func CheckToken(cmd *cobra.Command) {
 	if err != nil {
 		// Provide specific error messages based on error type
 		if errors.Is(err, jwt.TokenExpiredError()) {
-			log.Logger.Error().Msg("token is expired")
+			return Errorf(CodeAuth, "token is expired")
 		} else if errors.Is(err, jwt.TokenNotYetValidError()) {
-			log.Logger.Error().Msg("token is not yet valid (nbf in future)")
+			return Errorf(CodeAuth, "token is not yet valid (nbf in future)")
 		} else if errors.Is(err, jwt.InvalidIssuerError()) {
-			log.Logger.Error().Msg("token has invalid issuer")
+			return Errorf(CodeAuth, "token has invalid issuer")
 		} else if errors.Is(err, jwt.InvalidAudienceError()) {
-			log.Logger.Error().Msg("token has invalid audience")
-		} else {
-			log.Logger.Error().Err(err).Msg("failed to parse token")
+			return Errorf(CodeAuth, "token has invalid audience")
 		}
-		os.Exit(1)
+		return Errorf(CodeAuth, "failed to parse token: %w", err)
 	}
 
 	// Manual expiration check for "expiring soon" warning. jwt.Parse() already
@@ -308,19 +330,21 @@ func CheckToken(cmd *cobra.Command) {
 	if ok && exp.Sub(now).Minutes() <= 15 && exp.After(now) {
 		log.Logger.Warn().Msgf("%s until token expires", exp.Sub(now))
 	}
+
+	return nil
 }
 
 // UseCACert takes a pointer to a client.OchamiClient and, if a path to a CA
 // certificate has been set via --cacert, it configures it to use it. If an
-// error occurs, a log is printed and the program exits.
-func UseCACert(client *client.OchamiClient) {
+// error occurs loading the certificate, a CodePayload CodedError is returned.
+func UseCACert(client *client.OchamiClient) error {
 	if CACertPath != "" {
 		log.Logger.Debug().Msgf("Attempting to use CA certificate at %s", CACertPath)
 		if err := client.UseCACert(CACertPath); err != nil {
-			log.Logger.Error().Err(err).Msgf("failed to load CA certificate %s", CACertPath)
-			os.Exit(1)
+			return Errorf(CodePayload, "failed to load CA certificate %s: %w", CACertPath, err)
 		}
 	}
+	return nil
 }
 
 func GetBaseURIMetadataService(cmd *cobra.Command) (string, error) {
@@ -525,7 +549,7 @@ func GetTimeout(cmd *cobra.Command) time.Duration {
 // HandleToken is a wrapper function around code that reads, checks, and
 // performs any other setup tasks for tokens. It is called by all commands that
 // require a token.
-func HandleToken(cmd *cobra.Command) {
+func HandleToken(cmd *cobra.Command) error {
 	if cmd.Flag("no-token").Changed {
 		// --no-token overrides any cluster settings
 		log.Logger.Debug().Msg("--no-token passed, not reading or checking for token")
@@ -551,23 +575,26 @@ func HandleToken(cmd *cobra.Command) {
 					log.Logger.Warn().Msgf("cluster %q not found, not checking token", clusterName)
 				} else {
 					// Other error occurred, fatal
-					log.Logger.Error().Err(err).Msg("failed to get cluster")
-					LogHelpError(cmd)
-					os.Exit(1)
+					return Errorf(CodeConfig, "failed to get cluster: %w", err)
 				}
 			} else {
 				// Cluster was found, use enable-auth value to
 				// determine whether to read/check token
 				if cl.Cluster.EnableAuth {
 					log.Logger.Debug().Msgf("authentication enabled for cluster %s, reading and checking token", cl.Name)
-					SetToken(cmd)
-					CheckToken(cmd)
+					if err := SetToken(cmd); err != nil {
+						return err
+					}
+					if err := CheckToken(cmd); err != nil {
+						return err
+					}
 				} else {
 					log.Logger.Debug().Msgf("authentication disabled for cluster %s, not reading or checking for token", cl.Name)
 				}
 			}
 		}
 	}
+	return nil
 }
 
 // SetToken sets the access token for a cobra command cmd. If --token
@@ -578,9 +605,8 @@ func HandleToken(cmd *cobra.Command) {
 // either by --cluster or reading default-cluster from the config file (the
 // former preceding the latter), replacing spaces and dashes (-) with
 // underscores, and making the letters uppercase. If no config file is set or
-// the environment variable is not set, an error is logged and the program
-// exits.
-func SetToken(cmd *cobra.Command) {
+// the environment variable is not set, a CodeAuth CodedError is returned.
+func SetToken(cmd *cobra.Command) error {
 	var (
 		clusterName string
 		varPrefix   string
@@ -588,7 +614,7 @@ func SetToken(cmd *cobra.Command) {
 	if cmd.Flag("token").Changed {
 		Token = cmd.Flag("token").Value.String()
 		log.Logger.Debug().Msg("--token passed, setting token to its value: " + client.RedactToken(Token, ShowToken(cmd)))
-		return
+		return nil
 	}
 
 	log.Logger.Debug().Msg("Determining token from environment variable based on cluster in config file")
@@ -599,9 +625,7 @@ func SetToken(cmd *cobra.Command) {
 		clusterName = config.GlobalConfig.DefaultCluster
 		log.Logger.Debug().Msg("--cluster not specified, using default-cluster: " + clusterName)
 	} else {
-		log.Logger.Error().Msg("No default-cluster specified and --token not passed")
-		LogHelpError(cmd)
-		os.Exit(1)
+		return Errorf(CodeAuth, "no default-cluster specified and --token not passed")
 	}
 
 	varPrefix = strings.ReplaceAll(clusterName, "-", "_")
@@ -612,81 +636,77 @@ func SetToken(cmd *cobra.Command) {
 	if t, tokenSet := os.LookupEnv(envVarToRead); tokenSet {
 		log.Logger.Debug().Msgf("Token found from environment variable: %s=%s", envVarToRead, client.RedactToken(t, ShowToken(cmd)))
 		Token = t
-		return
+		return nil
 	}
 
-	log.Logger.Error().Msgf("Environment variable %s unset for reading token for cluster %q", envVarToRead, clusterName)
-	os.Exit(1)
-	LogHelpError(cmd)
+	return Errorf(CodeAuth, "environment variable %s unset for reading token for cluster %q", envVarToRead, clusterName)
 }
 
 // HandlePayload unmarshals raw data or data from a payload file into v for
 // command cmd if --data and, optionally, --format-input, are passed.
-func HandlePayload(cmd *cobra.Command, v any) {
+func HandlePayload(cmd *cobra.Command, v any) error {
 	if cmd.Flag("data").Changed {
 		data := cmd.Flag("data").Value.String()
 		if err := client.ReadPayload(data, FormatInput, v); err != nil {
-			log.Logger.Error().Err(err).Msg("unable to read payload data or file")
-			LogHelpError(cmd)
-			os.Exit(1)
+			return Errorf(CodePayload, "unable to read payload data or file: %w", err)
 		}
 	}
+	return nil
 }
 
 // HandlePayloadSlice is similar to HandlePayload except that it unmarshals the
 // payload data into a typed slice.
-func HandlePayloadSlice[T any](cmd *cobra.Command, v *[]T) {
+func HandlePayloadSlice[T any](cmd *cobra.Command, v *[]T) error {
 	if cmd.Flag("data").Changed {
 		data := cmd.Flag("data").Value.String()
 		if err := client.ReadPayloadSlice[T](data, FormatInput, v); err != nil {
-			log.Logger.Error().Err(err).Msg("unable to read payload data or file into slice")
-			LogHelpError(cmd)
-			os.Exit(1)
+			return Errorf(CodePayload, "unable to read payload data or file into slice: %w", err)
 		}
 	}
+	return nil
 }
 
 // HandlePayloadStdin is similar to HandlePayload except the data is read from
 // standard input.
-func HandlePayloadStdin(cmd *cobra.Command, v any) {
+func HandlePayloadStdin(cmd *cobra.Command, v any) error {
 	if err := client.ReadPayloadStdin(FormatInput, v); err != nil {
-		log.Logger.Error().Err(err).Msg("error reading payload data from stdin")
-		os.Exit(1)
+		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}
+	return nil
 }
 
 // HandlePayloadStdinSlice is similar to HandlePayloadStdin except that it
 // unmarshals the payload data into a typed slice.
-func HandlePayloadStdinSlice[T any](cmd *cobra.Command, v *[]T) {
+func HandlePayloadStdinSlice[T any](cmd *cobra.Command, v *[]T) error {
 	if err := client.ReadPayloadStdinSlice[T](FormatInput, v); err != nil {
-		log.Logger.Error().Err(err).Msg("error reading payload data from stdin")
-		os.Exit(1)
+		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}
+	return nil
 }
 
-// PrintUsageHandleError is a simple wrapper around printing a command's usage
-// that handles errors.
-func PrintUsageHandleError(cmd *cobra.Command) {
+// PrintUsageHandleError prints a command's usage, returning an error (rather
+// than exiting) if usage printing fails. It is used by metacommands that have
+// no action of their own and simply display usage.
+func PrintUsageHandleError(cmd *cobra.Command) error {
 	if err := cmd.Usage(); err != nil {
-		log.Logger.Error().Err(err).Msg("failed to print usage")
-		os.Exit(1)
+		return Errorf(CodeGeneric, "failed to print usage: %w", err)
 	}
-	LogHelpWarn(cmd)
+	return nil
 }
 
-// LogHelpError logs a message at error level telling the user to use the
+// logHelpHint logs a message at error level telling the user to use the
 // '--help' flag of the passed command to get more information on the command.
 // The full command invocation without flags or arguments is printed in the
-// message.
-func LogHelpError(cmd *cobra.Command) {
+// message. It is emitted centrally by Execute after a command fails.
+func logHelpHint(cmd *cobra.Command) {
 	log.Logger.Error().Msgf("see '%s --help' for long command help", cmd.CommandPath())
 }
 
-// LogHelpWarn logs a message at warn level telling the user to use the '--help'
-// flag of the passed command to get more information on the command.  The full
-// command invocation without flags or arguments is printed in the message.
-func LogHelpWarn(cmd *cobra.Command) {
-	log.Logger.Warn().Msgf("see '%s --help' for long command help", cmd.CommandPath())
+// LogHelpHint emits the "see '<cmd> --help'" hint for cmd. It is intended to be
+// called centrally (by Execute) after a command has failed, preserving the
+// prior behavior of pointing users at command help on error.
+func LogHelpHint(cmd *cobra.Command) {
+	logHelpHint(cmd)
 }
 
 // CompletionFormatData is the cobra completion function for any flag that uses

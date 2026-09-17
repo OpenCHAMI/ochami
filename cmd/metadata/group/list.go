@@ -5,14 +5,14 @@
 package group
 
 import (
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
-	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataGroupList() *cobra.Command {
@@ -24,28 +24,31 @@ func newCmdMetadataGroupList() *cobra.Command {
 		Long: `List groups.
 
 See ochami-metadata(1) for more details.`,
-		Example: `  # List all groups
-  ochami metadata group list
-
-  # List groups in YAML format
-  ochami metadata group list -F yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Make request
 			outBytes, err := metadataServiceClient.ListGroups(cli.Token, cli.FormatOutput)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to list groups")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to list groups: %w", err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to list groups: %w", err)
 			}
 
 			// Print output
 			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

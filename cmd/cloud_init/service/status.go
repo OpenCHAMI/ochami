@@ -8,7 +8,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -28,31 +27,30 @@ func newCmdServiceStatus() *cobra.Command {
 		Long: `Display status of the cloud-init metadata service.
 
 See ochami-cloud-init(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			if !cmd.Flag("api").Changed {
 				if _, err := cloudInitClient.GetVersion(); err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("cloud-init status request yielded unsuccessful HTTP response")
 						if !cmd.Flag("quiet").Changed {
 							fmt.Println("cloud-init is running, but not normally")
 						}
-						os.Exit(1)
-					} else {
-						log.Logger.Error().Err(err).Msg("failed to get cloud-init status")
-						if !cmd.Flag("quiet").Changed {
-							fmt.Println("cloud-init is not running")
-						}
-						os.Exit(1)
+						return cli.Errorf(cli.CodeHTTP, "cloud-init status request yielded unsuccessful HTTP response: %w", err)
 					}
-				} else {
 					if !cmd.Flag("quiet").Changed {
-						fmt.Println("cloud-init is running")
+						fmt.Println("cloud-init is not running")
 					}
-					os.Exit(0)
+					return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init status: %w", err)
 				}
+				if !cmd.Flag("quiet").Changed {
+					fmt.Println("cloud-init is running")
+				}
+				return nil
 			}
 
 			var respArr []client.HTTPEnvelope
@@ -71,19 +69,18 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			for _, henv := range respArr {
-				if outBytes, err := client.FormatBody(henv.Body, cli.FormatOutput); err != nil {
-					log.Logger.Error().Err(err).Msg("failed to format output")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
-				} else {
-					fmt.Print(string(outBytes))
+				outBytes, err := client.FormatBody(henv.Body, cli.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 				}
+				fmt.Print(string(outBytes))
 			}
 
 			if errOccurred {
-				log.Logger.Warn().Msg("one or more requests to cloud-init failed")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "one or more requests to cloud-init failed")
 			}
+
+			return nil
 		},
 	}
 

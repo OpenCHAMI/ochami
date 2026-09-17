@@ -5,13 +5,14 @@
 package instance
 
 import (
-	"os"
+	"errors"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataInstanceDelete() *cobra.Command {
@@ -24,30 +25,38 @@ func newCmdMetadataInstanceDelete() *cobra.Command {
 
 See ochami-metadata(1) for more details.`,
 		Example: `  # Delete an instance info
-  ochami metadata instance delete instanceinfo-d614b918
+   ochami metadata instance delete instanceinfo-d614b918
 
   # Delete multiple instance infos
   ochami metadata instance delete instanceinfo-d614b918 instanceinfo-82c40109
 
   # Don't confirm deletion
   ochami metadata instance delete --no-confirm instanceinfo-d614b918`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Ask before attempting deletion unless --no-confirm was passed
-			if !cmd.Flag("no-confirm").Changed {
+			noConfirm, err := cmd.Flags().GetBool("no-confirm")
+			if err != nil {
+				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
+			}
+			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to fetch user input")
-					os.Exit(1)
+					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 				} else if !respDelete {
 					log.Logger.Info().Msg("user aborted instance info deletion")
-					os.Exit(0)
+					return nil
 				} else {
 					log.Logger.Debug().Msg("user answered affirmatively to delete instance infos")
 				}
@@ -56,16 +65,21 @@ See ochami-metadata(1) for more details.`,
 			// Send off requests
 			instancesDeleted, errs, err := metadataServiceClient.DeleteInstanceInfos(cli.Token, args)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to delete instance infos")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to delete instance infos: %w", err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to delete instance infos: %w", err)
 			}
 
 			// Deal with per-request errors
 			var errorsOccurred = false
 			for _, err := range errs {
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to delete instance info")
+					if errors.Is(err, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(err).Msg("failed to delete instance info")
+					} else {
+						log.Logger.Error().Err(err).Msg("failed to delete instance info")
+					}
 					errorsOccurred = true
 				}
 			}
@@ -75,10 +89,10 @@ See ochami-metadata(1) for more details.`,
 
 			// Warn if any request errors occurred
 			if errorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("Instance info deletion completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "Instance info deletion completed with errors")
 			}
+
+			return nil
 		},
 	}
 

@@ -5,8 +5,6 @@
 package config
 
 import (
-	"os"
-
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -98,12 +96,17 @@ See ochami-boot(1) for more details.`,
   echo '<json_data>' | ochami boot config add
   echo '<yaml_data>' | ochami boot config add -d @- -f yaml
   echo '<yaml_data>' | ochami boot config add -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
@@ -120,9 +123,13 @@ See ochami-boot(1) for more details.`,
 				// Read boot configuration data
 				bcs := []boot_service_client.CreateBootConfigurationRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs)
+					if err := cli.HandlePayloadSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs)
+					if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -133,9 +140,13 @@ See ochami-boot(1) for more details.`,
 				// Read boot configuration data
 				bcs := []boot_service.BootConfigSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[boot_service.BootConfigSpec](cmd, &bcs)
+					if err := cli.HandlePayloadSlice[boot_service.BootConfigSpec](cmd, &bcs); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[boot_service.BootConfigSpec](cmd, &bcs)
+					if err := cli.HandlePayloadStdinSlice[boot_service.BootConfigSpec](cmd, &bcs); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -144,16 +155,14 @@ See ochami-boot(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to add boot configurations")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to add boot configurations: %w", reqErr)
 			}
 
 			// Deal with per-request errors
 			var reqErrorsOccurred = false
-			for _, err := range reqErrs {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to add boot configuration")
+			for _, e := range reqErrs {
+				if e != nil {
+					log.Logger.Error().Err(e).Msg("failed to add boot configuration")
 					reqErrorsOccurred = true
 				}
 			}
@@ -163,10 +172,10 @@ See ochami-boot(1) for more details.`,
 			}
 			log.Logger.Debug().Msgf("boot configs created: %q", names)
 			if reqErrorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("boot configuration addition completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "boot configuration addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 
