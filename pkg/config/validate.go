@@ -84,8 +84,9 @@ func ValidateConfig(ko *koanf.Koanf) error {
 	if ko.Exists("timeout") {
 		v := ko.Get("timeout")
 		if s, ok := v.(string); ok {
-			if _, err := time.ParseDuration(s); err != nil {
-				return ErrInvalidConfigVal{Key: "timeout", Value: s, Expected: "duration string (e.g. \"30s\")"}
+			d, err := time.ParseDuration(s)
+			if err != nil || d <= 0 {
+				return ErrInvalidConfigVal{Key: "timeout", Value: s, Expected: "positive duration string (e.g. \"30s\")"}
 			}
 		}
 	}

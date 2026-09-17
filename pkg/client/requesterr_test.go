@@ -9,6 +9,7 @@ package client
 // server so the underlying transport fails.
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,19 +32,19 @@ func closedServerClient(t *testing.T) *OchamiClient {
 func TestDataWrappersRequestErrors(t *testing.T) {
 	oc := closedServerClient(t)
 
-	if _, err := oc.GetData("/x", "", nil); err == nil {
+	if _, err := oc.GetData(context.Background(), "/x", "", nil); err == nil {
 		t.Error("GetData against closed server = nil, want error")
 	}
-	if _, err := oc.PostData("/x", "", nil, []byte(`{}`)); err == nil {
+	if _, err := oc.PostData(context.Background(), "/x", "", nil, []byte(`{}`)); err == nil {
 		t.Error("PostData against closed server = nil, want error")
 	}
-	if _, err := oc.PutData("/x", "", nil, []byte(`{}`)); err == nil {
+	if _, err := oc.PutData(context.Background(), "/x", "", nil, []byte(`{}`)); err == nil {
 		t.Error("PutData against closed server = nil, want error")
 	}
-	if _, err := oc.PatchData("/x", "", nil, []byte(`{}`)); err == nil {
+	if _, err := oc.PatchData(context.Background(), "/x", "", nil, []byte(`{}`)); err == nil {
 		t.Error("PatchData against closed server = nil, want error")
 	}
-	if _, err := oc.DeleteData("/x", "", nil, nil); err == nil {
+	if _, err := oc.DeleteData(context.Background(), "/x", "", nil, nil); err == nil {
 		t.Error("DeleteData against closed server = nil, want error")
 	}
 }

@@ -9,13 +9,59 @@ package static
 // discoverStaticDeprecatedFormat (deprecated-format detection).
 
 import (
+	"errors"
+	"fmt"
+	"net/http"
 	"sort"
 	"testing"
 
 	"github.com/spf13/cobra"
 
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
 )
+
+func TestSingleBatchResult(t *testing.T) {
+	want := errors.New("batch failed")
+	if _, err := singleBatchResult(nil, nil, want); !errors.Is(err, want) {
+		t.Fatalf("singleBatchResult() error = %v, want batch error", err)
+	}
+	if _, err := singleBatchResult(nil, nil, nil); err == nil {
+		t.Fatal("singleBatchResult() accepted misaligned empty results")
+	}
+	henv := client.HTTPEnvelope{StatusCode: http.StatusCreated}
+	got, err := singleBatchResult([]client.HTTPEnvelope{henv}, []error{nil}, nil)
+	if err != nil || got.StatusCode != http.StatusCreated {
+		t.Fatalf("singleBatchResult() = (%v, %v)", got, err)
+	}
+}
+
+func TestUpsertOnConflict(t *testing.T) {
+	conflict := fmt.Errorf("%w: conflict", client.UnsuccessfulHTTPError)
+	wantUpdateErr := errors.New("update failed")
+	updates := 0
+	errs := upsertOnConflict([]string{"create", "replace", "fail"},
+		func(item string) (client.HTTPEnvelope, error) {
+			switch item {
+			case "create":
+				return client.HTTPEnvelope{StatusCode: http.StatusCreated}, nil
+			case "replace":
+				return client.HTTPEnvelope{StatusCode: http.StatusConflict}, conflict
+			default:
+				return client.HTTPEnvelope{StatusCode: http.StatusBadRequest}, fmt.Errorf("%w: bad request", client.UnsuccessfulHTTPError)
+			}
+		},
+		func(string) (client.HTTPEnvelope, error) {
+			updates++
+			return client.HTTPEnvelope{}, wantUpdateErr
+		})
+	if updates != 1 {
+		t.Errorf("updates = %d, want 1", updates)
+	}
+	if len(errs) != 2 || !errors.Is(errs[0], wantUpdateErr) || !errors.Is(errs[1], client.UnsuccessfulHTTPError) {
+		t.Errorf("errors = %v, want update and create errors", errs)
+	}
+}
 
 func groupByLabel(groups []smd.Group) map[string]smd.Group {
 	m := make(map[string]smd.Group, len(groups))

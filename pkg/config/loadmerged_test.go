@@ -17,6 +17,7 @@ import (
 // defaults merged with the (optional) user config file resolved from HOME.
 func TestLoadMergedWithLayeredFiles(t *testing.T) {
 	tmpHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", "")
 	oldHome, had := os.LookupEnv("HOME")
 	os.Setenv("HOME", tmpHome)
 	if had {
@@ -48,6 +49,7 @@ func TestLoadMergedWithLayeredFiles(t *testing.T) {
 // file exists (the user source is optional).
 func TestLoadMergedNoUserFile(t *testing.T) {
 	tmpHome := t.TempDir() // empty; no config file present
+	t.Setenv("XDG_CONFIG_HOME", "")
 	oldHome, had := os.LookupEnv("HOME")
 	os.Setenv("HOME", tmpHome)
 	if had {
@@ -64,6 +66,7 @@ func TestLoadMergedNoUserFile(t *testing.T) {
 // TestUserConfigPathHomeUnset covers the fallback branch of UserConfigPath that
 // consults user.Current() when HOME is unset.
 func TestUserConfigPathHomeUnset(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", "")
 	oldHome, had := os.LookupEnv("HOME")
 	os.Unsetenv("HOME")
 	defer func() {

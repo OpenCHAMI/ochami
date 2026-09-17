@@ -151,7 +151,7 @@ func TestStreamRawConsoleInputWriteError(t *testing.T) {
 // reader that is not an *os.File (e.g. an in-memory reader), so buffered mode is
 // used for non-terminal input.
 func TestTerminalInputFileNonFile(t *testing.T) {
-	if _, ok := terminalInputFile(strings.NewReader("x")); ok {
+	if _, ok := terminalInputFile(strings.NewReader("x"), systemTerminal{}); ok {
 		t.Error("terminalInputFile reported true for a non-file reader")
 	}
 }

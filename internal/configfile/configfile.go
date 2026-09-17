@@ -14,6 +14,7 @@ package configfile
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	kyaml "github.com/knadh/koanf/parsers/yaml"
@@ -191,14 +192,38 @@ func WriteConfig(path string, k *koanf.Koanf) error {
 		return fmt.Errorf("failed to marshal config for writing: %w", err)
 	}
 
-	// Get mode if file exists
+	// Get mode if file exists.
 	var fmode os.FileMode = 0o644
 	if finfo, err := os.Stat(path); err == nil {
-		fmode = finfo.Mode()
+		fmode = finfo.Mode().Perm()
 	}
 
-	if err := os.WriteFile(path, c, fmode); err != nil {
-		return fmt.Errorf("failed to write config to file %s: %w", path, err)
+	// Write beside the destination and rename only after the complete file has
+	// reached disk. This prevents a failed write from truncating a valid config.
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary config file for %s: %w", path, err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath) //nolint:errcheck // best-effort cleanup after rename or failure
+
+	if err := tmp.Chmod(fmode); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("failed to set permissions on temporary config file for %s: %w", path, err)
+	}
+	if _, err := tmp.Write(c); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("failed to write temporary config file for %s: %w", path, err)
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("failed to sync temporary config file for %s: %w", path, err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("failed to close temporary config file for %s: %w", path, err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("failed to replace config file %s: %w", path, err)
 	}
 
 	return nil
@@ -248,11 +273,17 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 		return fmt.Errorf("unable to unmarshal clusters: %w", err)
 	}
 
-	// Make sure that if setting the cluster name, a cluster with that name
-	// doesn't already exist.
+	// Make sure that if setting the cluster name, the value is valid and a
+	// cluster with that name doesn't already exist.
+	var newName string
 	if key == "name" {
+		var ok bool
+		newName, ok = value.(string)
+		if !ok || newName == "" {
+			return fmt.Errorf("cluster name must be a non-empty string")
+		}
 		for _, cl := range clusters {
-			if cl["name"] == value.(string) {
+			if cl["name"] == newName {
 				return fmt.Errorf("cluster with name %q already exists", cl["name"])
 			}
 		}
@@ -273,7 +304,7 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 		cidx = len(clusters)
 		clusters = append(clusters, map[string]any{})
 		if key == "name" {
-			clusters[cidx]["name"] = value
+			clusters[cidx]["name"] = newName
 		} else {
 			clusters[cidx]["name"] = cluster
 		}
@@ -304,12 +335,7 @@ func ModifyConfigCluster(path, cluster, key string, dflt bool, value any) error 
 		// If key was "name", set default-cluster to "name"
 		// instead of cluster specified in arg.
 		if key == "name" {
-			s, ok := value.(string)
-			if !ok || s == "" {
-				err = fmt.Errorf("value '%v' is not a string or is an empty string", value)
-			} else {
-				err = ko.Set("default-cluster", s)
-			}
+			err = ko.Set("default-cluster", newName)
 		} else {
 			err = ko.Set("default-cluster", cluster)
 		}

@@ -94,11 +94,10 @@ func TestModifyConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("permission denied writing file", func(t *testing.T) {
-		// Assume non-root context; writing to /root should fail
-		err := ModifyConfig("/root/config.yaml", "default-cluster", "x")
+	t.Run("destination is a directory", func(t *testing.T) {
+		err := ModifyConfig(t.TempDir(), "default-cluster", "x")
 		if err == nil {
-			t.Fatal("ModifyConfig(): expected permission error, got nil")
+			t.Fatal("ModifyConfig(): expected directory read error, got nil")
 		}
 	})
 }
@@ -108,6 +107,16 @@ func TestModifyConfigCluster(t *testing.T) {
 		err := ModifyConfigCluster("", "c1", "name", false, "c1")
 		if err == nil {
 			t.Fatalf("ModifyConfigCluster(): expected read error, got %v", err)
+		}
+	})
+
+	t.Run("rename rejects non-string and empty values", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "cfg.yaml")
+		mustWriteFile(t, path, []byte("clusters:\n  - name: c1\n"))
+		for _, value := range []any{42, ""} {
+			if err := ModifyConfigCluster(path, "c1", "name", false, value); err == nil {
+				t.Errorf("ModifyConfigCluster(name=%v) error = nil", value)
+			}
 		}
 	})
 
@@ -1083,13 +1092,27 @@ func TestWriteConfig(t *testing.T) {
 		if perm := fi.Mode().Perm(); perm != 0o600 {
 			t.Errorf("WriteConfig(): file mode = %o, want 0600", perm)
 		}
+		matches, err := filepath.Glob(filepath.Join(tmp, ".config.yaml.*"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(matches) != 0 {
+			t.Errorf("temporary files left behind: %v", matches)
+		}
 	})
 
-	t.Run("permission denied", func(t *testing.T) {
-		// very likely to fail on non-root test environments
-		err := WriteConfig("/root/protected.yaml", ko)
+	t.Run("nonexistent parent directory", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "missing", "config.yaml")
+		err := WriteConfig(path, ko)
 		if err == nil {
-			t.Fatal("WriteConfig(): expected permission error, got nil")
+			t.Fatal("WriteConfig(): expected missing-parent error, got nil")
+		}
+	})
+
+	t.Run("destination is a directory", func(t *testing.T) {
+		err := WriteConfig(t.TempDir(), ko)
+		if err == nil {
+			t.Fatal("WriteConfig(): expected directory error, got nil")
 		}
 	})
 }

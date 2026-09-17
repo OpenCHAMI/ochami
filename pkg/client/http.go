@@ -96,14 +96,21 @@ func NewHTTPEnvelopeFromResponse(res *http.Response) (HTTPEnvelope, error) {
 		henv.Headers = headers
 
 		var body HTTPBody
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return henv, fmt.Errorf("could not read HTTP body: %w", err)
+		body, readErr := io.ReadAll(res.Body)
+		closeErr := res.Body.Close()
+		if readErr != nil {
+			return henv, fmt.Errorf("could not read HTTP body: %w", readErr)
 		}
-		if err := res.Body.Close(); err != nil {
-			return henv, fmt.Errorf("error closing response body: %w", err)
+		if closeErr != nil {
+			return henv, fmt.Errorf("error closing response body: %w", closeErr)
 		}
 		henv.Body = body
+		if len(body) > 0 {
+			log.Logger.Debug().Msg("Response body:")
+			log.Logger.Debug().Msgf("%s", string(body))
+		} else {
+			log.Logger.Debug().Msg("No body in response")
+		}
 
 		return henv, nil
 	} else {
