@@ -61,12 +61,6 @@ func runOchamiWithRuntime(t *testing.T, args ...string) cmdResult {
 	// Create runtime with both stdout and stderr pointing to the same buffer
 	rt := cli.NewTestRuntime(stdinReader, &combinedBuf, &combinedBuf)
 
-	// Temporarily redirect global I/O streams to the runtime streams for backward compatibility
-	// This ensures that commands that still use cli.Ios.Out() instead of rt.Ios.Out() will
-	// have their output captured correctly during the transition period.
-	restoreIos := cli.SetIOStream(rt.Ios.In(), rt.Ios.Out(), rt.Ios.Err())
-	defer restoreIos()
-
 	// Create root command with runtime in context
 	rootCmd := NewRootCmd()
 	rootCmd.SetContext(rt.WithContext(context.Background()))
@@ -100,12 +94,6 @@ func runOchamiWithInputAndRuntime(t *testing.T, input string, args ...string) cm
 	// Create runtime with both stdout and stderr pointing to the same buffer
 	rt := cli.NewTestRuntime(stdinReader, &combinedBuf, &combinedBuf)
 
-	// Temporarily redirect global I/O streams to the runtime streams for backward compatibility
-	// This ensures that commands that still use cli.Ios.Out() instead of rt.Ios.Out() will
-	// have their output captured correctly during the transition period.
-	restoreIos := cli.SetIOStream(rt.Ios.In(), rt.Ios.Out(), rt.Ios.Err())
-	defer restoreIos()
-
 	// Create root command with runtime in context
 	rootCmd := NewRootCmd()
 	rootCmd.SetContext(rt.WithContext(context.Background()))
@@ -127,8 +115,7 @@ func runOchamiWithInputAndRuntime(t *testing.T, input string, args ...string) cm
 // TestRunOchamiWithRuntime_Basic verifies that the runtime-based test helper
 // works correctly for basic command execution.
 func TestRunOchamiWithRuntime_Basic(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	// Test version command which should work without any special setup
 	res := runOchamiWithRuntime(t, "--ignore-config", "version")
@@ -152,8 +139,7 @@ func TestRunOchamiWithRuntime_Basic(t *testing.T) {
 // TestRunOchamiWithInputAndRuntime_Basic verifies that the runtime-based test
 // helper with input works correctly.
 func TestRunOchamiWithInputAndRuntime_Basic(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	// Test version command with custom input (should be ignored by version)
 	res := runOchamiWithInputAndRuntime(t, "some input", "--ignore-config", "version")

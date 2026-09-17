@@ -32,11 +32,11 @@ import (
 // TestIOStreamErr verifies Err returns the configured error writer.
 func TestIOStreamErr(t *testing.T) {
 	var errBuf bytes.Buffer
-	restore := SetIOStream(nil, &bytes.Buffer{}, &errBuf)
-	defer restore()
+	// Use runtime-based approach instead of global SetIOStream
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &errBuf)
 
-	if Ios.Err() != &errBuf {
-		t.Errorf("Err() = %v, want the configured error writer", Ios.Err())
+	if rt.Ios.Err() != &errBuf {
+		t.Errorf("Err() = %v, want the configured error writer", rt.Ios.Err())
 	}
 }
 
@@ -75,28 +75,29 @@ func writeTestCACert(t *testing.T) string {
 
 // TestUseCACert covers the no-op (empty path), valid, and invalid cert arms.
 func TestUseCACert(t *testing.T) {
+	// Use runtime-based approach instead of global CACertPath
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+
 	oc, err := client.NewOchamiClient("test", "https://example.com")
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
 	// No CA path set: no-op, returns nil.
-	origPath := CACertPath
-	defer func() { CACertPath = origPath }()
-	CACertPath = ""
-	if err := UseCACert(oc); err != nil {
+	rt.CACertPath = ""
+	if err := rt.UseCACert(oc); err != nil {
 		t.Errorf("UseCACert with empty path = %v, want nil", err)
 	}
 
 	// Valid CA cert.
-	CACertPath = writeTestCACert(t)
-	if err := UseCACert(oc); err != nil {
+	rt.CACertPath = writeTestCACert(t)
+	if err := rt.UseCACert(oc); err != nil {
 		t.Errorf("UseCACert with valid cert = %v, want nil", err)
 	}
 
 	// Invalid/nonexistent CA cert => CodePayload.
-	CACertPath = filepath.Join(t.TempDir(), "does-not-exist.pem")
-	err = UseCACert(oc)
+	rt.CACertPath = filepath.Join(t.TempDir(), "does-not-exist.pem")
+	err = rt.UseCACert(oc)
 	if err == nil {
 		t.Fatal("UseCACert with missing cert = nil, want error")
 	}
@@ -109,8 +110,8 @@ func TestUseCACert(t *testing.T) {
 	if err := os.WriteFile(bad, []byte("not a pem"), 0o644); err != nil {
 		t.Fatalf("failed to write bad pem: %v", err)
 	}
-	CACertPath = bad
-	if err := UseCACert(oc); err == nil || ExitCode(err) != CodePayload {
+	rt.CACertPath = bad
+	if err := rt.UseCACert(oc); err == nil || ExitCode(err) != CodePayload {
 		t.Errorf("UseCACert with malformed PEM = %v (exit %d), want CodePayload", err, ExitCode(err))
 	}
 }
