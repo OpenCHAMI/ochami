@@ -12,7 +12,85 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/smd"
 )
+
+// compepDeleteOptions holds the flag values for the smd compep delete command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type compepDeleteOptions struct {
+	All       bool
+	NoConfirm bool
+}
+
+// runCoreCompepDelete contains the core logic for the smd compep delete command.
+// It takes the parsed options and performs the actual work of deleting component endpoints.
+func runCoreCompepDelete(cmd *cobra.Command, opts *compepDeleteOptions, args []string, smdClient *smd.SMDClient) error {
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		var respDelete bool
+		var err error
+		if opts.All {
+			respDelete, err = cli.Ios.LoopYesNo("Really delete ALL COMPONENT ENDPOINTS?")
+		} else {
+			respDelete, err = cli.Ios.LoopYesNo("Really delete?")
+		}
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+		} else if !respDelete {
+			log.Logger.Info().Msg("User aborted component endpoint deletion")
+			return nil
+		} else {
+			log.Logger.Debug().Msg("User answered affirmatively to delete component endpoints")
+		}
+	}
+
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Create list of xnames to delete
+	var ceSlice []sm.ComponentEndpoint
+	var xnameSlice []string
+	if cmd.Flag("data").Changed {
+		// Use payload file if passed
+		if err := cli.HandlePayload(cmd, &ceSlice); err != nil {
+			return err
+		}
+		for _, ce := range ceSlice {
+			xnameSlice = append(xnameSlice, ce.ID)
+		}
+		if len(xnameSlice) == 0 {
+			return cli.Errorf(cli.CodeUsage, "payload contained no component endpoints to delete")
+		}
+	} else {
+		// ...otherwise, use passed CLI arguments
+		xnameSlice = args
+	}
+
+	// Perform deletion
+	if opts.All {
+		// If --all passed, we don't care about any passed arguments
+		_, err := smdClient.DeleteComponentEndpointsAll(cmd.Context(), cli.Token)
+		if err != nil {
+			return cli.ClassifyClientError(err,
+				"SMD component endpoint deletion yielded unsuccessful HTTP response",
+				"failed to delete component endpoints in SMD")
+		}
+	} else {
+		// If --all not passed, pass argument list to deletion logic
+		results := smdClient.DeleteComponentEndpoints(cmd.Context(), cli.Token, xnameSlice...)
+		// Since smdClient.DeleteComponentEndpoints does the deletion iteratively, we need to
+		// deal with each error that might have occurred.
+		if err := cli.AggregateItemErrors(results.Errors(), "SMD component endpoint deletion"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 func newCmdCompepDelete() *cobra.Command {
 	// compepDeleteCmd represents the "smd compep delete" command
@@ -62,77 +140,24 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, _ := cmd.Flags().GetBool("no-confirm") //nolint:errcheck // flag is registered with the matching type on this command
-			if !noConfirm {
-				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-				var respDelete bool
-				var err error
-				if cmd.Flag("all").Changed {
-					respDelete, err = cli.Ios.LoopYesNo("Really delete ALL COMPONENT ENDPOINTS?")
-				} else {
-					respDelete, err = cli.Ios.LoopYesNo("Really delete?")
-				}
-				if err != nil {
-					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
-				} else if !respDelete {
-					log.Logger.Info().Msg("User aborted component endpoint deletion")
-					return nil
-				} else {
-					log.Logger.Debug().Msg("User answered affirmatively to delete component endpoints")
-				}
-			}
-
 			// Create client to use for requests
 			smdClient, err := smd_lib.GetClient(cmd)
 			if err != nil {
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
-			}
-
-			// Create list of xnames to delete
-			var ceSlice []sm.ComponentEndpoint
-			var xnameSlice []string
-			if cmd.Flag("data").Changed {
-				// Use payload file if passed
-				if err := cli.HandlePayload(cmd, &ceSlice); err != nil {
-					return err
-				}
-				for _, ce := range ceSlice {
-					xnameSlice = append(xnameSlice, ce.ID)
-				}
-				if len(xnameSlice) == 0 {
-					return cli.Errorf(cli.CodeUsage, "payload contained no component endpoints to delete")
-				}
-			} else {
-				// ...otherwise, use passed CLI arguments
-				xnameSlice = args
-			}
-
-			// Perform deletion
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &compepDeleteOptions{}
 			if cmd.Flag("all").Changed {
-				// If --all passed, we don't care about any passed arguments
-				_, err := smdClient.DeleteComponentEndpointsAll(cmd.Context(), cli.Token)
-				if err != nil {
-					return cli.ClassifyClientError(err,
-						"SMD component endpoint deletion yielded unsuccessful HTTP response",
-						"failed to delete component endpoints in SMD")
-				}
-			} else {
-				// If --all not passed, pass argument list to deletion logic
-				results := smdClient.DeleteComponentEndpoints(cmd.Context(), cli.Token, xnameSlice...)
-				// Since smdClient.DeleteComponentEndpoints does the deletion iteratively, we need to
-				// deal with each error that might have occurred.
-				if err := cli.AggregateItemErrors(results.Errors(), "SMD component endpoint deletion"); err != nil {
-					return err
-				}
+				opts.All = true
+			}
+			if cmd.Flag("no-confirm").Changed {
+				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return nil
+			return runCoreCompepDelete(cmd, opts, args, smdClient)
 		},
 	}
 

@@ -11,9 +11,73 @@ import (
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/boot_service"
+
+	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 )
+
+// bootBmcSetOptions holds the flag values for the boot bmc set command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type bootBmcSetOptions struct {
+	Envelope bool
+}
+
+// runCoreBootBmcSet contains the core logic for the boot bmc set command.
+// It takes the parsed options and performs the actual work of setting BMC details.
+func runCoreBootBmcSet(cmd *cobra.Command, opts *bootBmcSetOptions, args []string, bootServiceClient *boot_service.BootServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var bmcSet *api.BMC
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read BMC data
+		bmc := boot_service_client.UpdateBMCRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &bmc); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &bmc); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		bmcSet, reqErr = bootServiceClient.SetBMC(cmd.Context(), cli.Token, args[0], bmc)
+	} else {
+		// Use simple API (spec)
+
+		// Read BMC data
+		spec := api.BMCSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		bmcSet, reqErr = bootServiceClient.SetBMCSpec(cmd.Context(), cli.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.Errorf(cli.CodeNetwork, "failed to set bmc: %w", reqErr)
+	}
+
+	log.Logger.Debug().Msgf("bmc set: %+v", bmcSet)
+
+	return nil
+}
 
 func newCmdBootBmcSet() *cobra.Command {
 	// bootBmcSetCmd represents the "boot bmc set" command
@@ -65,58 +129,15 @@ See ochami-boot(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &bootBmcSetOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
-
-			var bmcSet *api.BMC
-			var reqErr error
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read BMC data
-				bmc := boot_service_client.UpdateBMCRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &bmc); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &bmc); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				bmcSet, reqErr = bootServiceClient.SetBMC(cmd.Context(), cli.Token, args[0], bmc)
-			} else {
-				// Use simple API (spec)
-
-				// Read BMC data
-				spec := api.BMCSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &spec); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				bmcSet, reqErr = bootServiceClient.SetBMCSpec(cmd.Context(), cli.Token, args[0], spec)
-			}
-			if reqErr != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to set bmc: %w", reqErr)
-			}
-
-			log.Logger.Debug().Msgf("bmc set: %+v", bmcSet)
-
-			return nil
+			return runCoreBootBmcSet(cmd, opts, args, bootServiceClient)
 		},
 	}
 

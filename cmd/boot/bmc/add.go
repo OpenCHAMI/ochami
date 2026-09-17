@@ -17,6 +17,79 @@ import (
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
+// bootBmcAddOptions holds the flag values for the boot bmc add command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type bootBmcAddOptions struct {
+	Envelope bool
+}
+
+// runCoreBootBmcAdd contains the core logic for the boot bmc add command.
+// It takes the parsed options and performs the actual work of adding BMCs.
+func runCoreBootBmcAdd(cmd *cobra.Command, opts *bootBmcAddOptions, bootServiceClient *boot_service.BootServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var results client.BatchResult[*api.BMC]
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read node data
+		bmcs := []boot_service_client.CreateBMCRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = bootServiceClient.AddBMCs(cmd.Context(), cli.Token, bmcs)
+	} else {
+		// Use simple API (spec)
+
+		// Read node data
+		bmcs := []boot_service.BMCSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[boot_service.BMCSpec](cmd, &bmcs); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[boot_service.BMCSpec](cmd, &bmcs); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = bootServiceClient.AddBMCSpecs(cmd.Context(), cli.Token, bmcs)
+	}
+
+	// Deal with per-request errors
+	var reqErrorsOccurred = false
+	for _, err := range results.Errors() {
+		if err != nil {
+			log.Logger.Error().Err(err).Msg("failed to add BMC")
+			reqErrorsOccurred = true
+		}
+	}
+	var names []string
+	for _, bmc := range results.Values() {
+		names = append(names, bmc.Metadata.Name)
+	}
+	log.Logger.Debug().Msgf("BMCs created: %q", names)
+	if reqErrorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "BMC addition completed with errors")
+	}
+
+	return nil
+}
+
 func newCmdBootBmcAdd() *cobra.Command {
 	// bootBmcAddCmd represents the "boot bmc add" command
 	var bootBmcAddCmd = &cobra.Command{
@@ -93,69 +166,15 @@ See ochami-boot(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &bootBmcAddOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
-
-			var results client.BatchResult[*api.BMC]
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read node data
-				bmcs := []boot_service_client.CreateBMCRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = bootServiceClient.AddBMCs(cmd.Context(), cli.Token, bmcs)
-			} else {
-				// Use simple API (spec)
-
-				// Read node data
-				bmcs := []boot_service.BMCSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[boot_service.BMCSpec](cmd, &bmcs); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[boot_service.BMCSpec](cmd, &bmcs); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = bootServiceClient.AddBMCSpecs(cmd.Context(), cli.Token, bmcs)
-			}
-
-			// Deal with per-request errors
-			var reqErrorsOccurred = false
-			for _, err := range results.Errors() {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to add BMC")
-					reqErrorsOccurred = true
-				}
-			}
-			var names []string
-			for _, bmc := range results.Values() {
-				names = append(names, bmc.Metadata.Name)
-			}
-			log.Logger.Debug().Msgf("BMCs created: %q", names)
-			if reqErrorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "BMC addition completed with errors")
-			}
-
-			return nil
+			return runCoreBootBmcAdd(cmd, opts, bootServiceClient)
 		},
 	}
 

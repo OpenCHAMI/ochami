@@ -271,11 +271,11 @@ func TestNoContextBackgroundInProduction(t *testing.T) {
 
 		// Verify that client methods accept context parameter
 		// These calls should compile and not panic - the context is the key parameter
-		_, _ = testClient.GetData(ctx, "/test", "", nil)
-		_, _ = testClient.PostData(ctx, "/test", "", nil, nil)
-		_, _ = testClient.PutData(ctx, "/test", "", nil, nil)
-		_, _ = testClient.PatchData(ctx, "/test", "", nil, nil)
-		_, _ = testClient.DeleteData(ctx, "/test", "", nil, nil)
+		_, _ = testClient.GetData(ctx, "/test", "", nil)         //nolint:errcheck // test response writes are observed by the client
+		_, _ = testClient.PostData(ctx, "/test", "", nil, nil)   //nolint:errcheck // test response writes are observed by the client
+		_, _ = testClient.PutData(ctx, "/test", "", nil, nil)    //nolint:errcheck // test response writes are observed by the client
+		_, _ = testClient.PatchData(ctx, "/test", "", nil, nil)  //nolint:errcheck // test response writes are observed by the client
+		_, _ = testClient.DeleteData(ctx, "/test", "", nil, nil) //nolint:errcheck // test response writes are observed by the client
 
 		t.Log("✓ All client methods accept context parameter")
 	})

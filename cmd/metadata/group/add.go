@@ -11,11 +11,85 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
+
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 )
+
+// metadataGroupAddOptions holds the flag values for the metadata group add command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type metadataGroupAddOptions struct {
+	Envelope bool
+}
+
+// runCoreMetadataGroupAdd contains the core logic for the metadata group add command.
+// It takes the parsed options and performs the actual work of adding groups.
+func runCoreMetadataGroupAdd(cmd *cobra.Command, opts *metadataGroupAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var results client.BatchResult[api.Group]
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read group data
+		groups := []metadata_service_client.CreateGroupRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[metadata_service_client.CreateGroupRequest](cmd, &groups); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateGroupRequest](cmd, &groups); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddGroups(cmd.Context(), cli.Token, groups)
+	} else {
+		// Use simple API (spec)
+
+		// Read group data
+		groups := []metadata_service.GroupSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[metadata_service.GroupSpec](cmd, &groups); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[metadata_service.GroupSpec](cmd, &groups); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddGroupSpecs(cmd.Context(), cli.Token, groups)
+	}
+
+	// Deal with per-request errors
+	var reqErrorsOccurred = false
+	for _, err := range results.Errors() {
+		if err != nil {
+			log.Logger.Error().Err(err).Msg("failed to add group")
+			reqErrorsOccurred = true
+		}
+	}
+	var names []string
+	for _, group := range results.Values() {
+		names = append(names, group.Metadata.Name)
+	}
+	log.Logger.Debug().Msgf("groups created: %q", names)
+	if reqErrorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "group addition completed with errors")
+	}
+
+	return nil
+}
 
 func newCmdMetadataGroupAdd() *cobra.Command {
 	// metadataGroupAddCmd represents the "metadata group add" command
@@ -104,73 +178,15 @@ See ochami-metadata(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &metadataGroupAddOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
-
-			var results client.BatchResult[api.Group]
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read group data
-				groups := []metadata_service_client.CreateGroupRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[metadata_service_client.CreateGroupRequest](cmd, &groups); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateGroupRequest](cmd, &groups); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = metadataServiceClient.AddGroups(cmd.Context(), cli.Token, groups)
-			} else {
-				// Use simple API (spec)
-
-				// Read group data
-				groups := []metadata_service.GroupSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[metadata_service.GroupSpec](cmd, &groups); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[metadata_service.GroupSpec](cmd, &groups); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = metadataServiceClient.AddGroupSpecs(cmd.Context(), cli.Token, groups)
-			}
-
-			// Deal with per-request errors
-			var reqErrorsOccurred = false
-			for _, err := range results.Errors() {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to add group")
-					reqErrorsOccurred = true
-				}
-			}
-
-			// Print names of created items
-			var names []string
-			for _, group := range results.Values() {
-				names = append(names, group.Metadata.Name)
-			}
-			log.Logger.Info().Msgf("Groups created: %q", names)
-
-			// Warn if any request errors occurred
-			if reqErrorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "Group addition completed with errors")
-			}
-
-			return nil
+			return runCoreMetadataGroupAdd(cmd, opts, metadataServiceClient)
 		},
 	}
 

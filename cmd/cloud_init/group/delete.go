@@ -15,9 +15,61 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/client/cloud_init"
 
 	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
+
+// groupDeleteOptions holds the flag values for the cloud-init group delete command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type groupDeleteOptions struct {
+	NoConfirm bool
+}
+
+// runCoreGroupDelete contains the core logic for the cloud-init group delete command.
+// It takes the parsed options and performs the actual work of deleting cloud-init groups.
+func runCoreGroupDelete(cmd *cobra.Command, opts *groupDeleteOptions, args []string, groupsToDel []string, cloudInitClient *cloud_init.CloudInitClient) error {
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+		} else if !respDelete {
+			log.Logger.Info().Msg("User aborted cloud-init group deletion")
+			return nil
+		} else {
+			log.Logger.Debug().Msg("User answered affirmatively to delete cloud-init groups")
+		}
+	}
+
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Send data
+	results := cloudInitClient.DeleteGroups(cmd.Context(), cli.Token, groupsToDel...)
+	// Since the requests are done iteratively, we need to deal with
+	// each error that might have occurred.
+	var errorsOccurred = false
+	for _, e := range results.Errors() {
+		if e != nil {
+			if errors.Is(e, client.UnsuccessfulHTTPError) {
+				log.Logger.Error().Err(e).Msg("cloud-init group request yielded unsuccessful HTTP response")
+			} else {
+				log.Logger.Error().Err(e).Msg("failed to delete groups in cloud-init")
+			}
+			errorsOccurred = true
+		}
+	}
+	if errorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "cloud-init group deletion completed with errors")
+	}
+
+	return nil
+}
 
 func newCmdGroupDelete() *cobra.Command {
 	// groupDeleteCmd represents the "cloud-init group delete" command
@@ -78,52 +130,21 @@ See ochami-cloud-init(1) for more details.`,
 				groupsToDel = args
 			}
 
-			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, _ := cmd.Flags().GetBool("no-confirm") //nolint:errcheck // flag is registered with the matching type on this command
-			if !noConfirm {
-				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
-				if err != nil {
-					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
-				} else if !respDelete {
-					log.Logger.Info().Msg("User aborted cloud-init group deletion")
-					return nil
-				} else {
-					log.Logger.Debug().Msg("User answered affirmatively to delete cloud-init groups")
-				}
-			}
-
 			// Create client to use for requests
 			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
 			if err != nil {
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &groupDeleteOptions{}
+			if cmd.Flag("no-confirm").Changed {
+				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// Send data
-			results := cloudInitClient.DeleteGroups(cmd.Context(), cli.Token, groupsToDel...)
-			// Since the requests are done iteratively, we need to deal with
-			// each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range results.Errors() {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("cloud-init group request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to delete groups in cloud-init")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "cloud-init group deletion completed with errors")
-			}
-
-			return nil
+			return runCoreGroupDelete(cmd, opts, args, groupsToDel, cloudInitClient)
 		},
 	}
 
