@@ -43,7 +43,7 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Abort the transition
-			transitionHttpEnv, err := pcsClient.DeleteTransition(transitionID, cli.Token)
+			transitionHttpEnv, err := pcsClient.DeleteTransition(cmd.Context(), transitionID, cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "PCS transition abort request yielded unsuccessful HTTP response", "failed to abort PCS transition")
 

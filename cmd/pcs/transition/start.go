@@ -73,7 +73,7 @@ See ochami-pcs(1) for more details.`,
 			xnames, _ := cmd.Flags().GetStringSlice("xname") //nolint:errcheck // flag is registered with the matching type on this command
 
 			// Create transition
-			transitionHttpEnv, err := pcsClient.CreateTransition(operation, nil, xnames, cli.Token)
+			transitionHttpEnv, err := pcsClient.CreateTransition(cmd.Context(), operation, nil, xnames, cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "PCS transition create request yielded unsuccessful HTTP response", "failed to create transition")
 

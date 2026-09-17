@@ -105,14 +105,11 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Send data
-			_, errs, err := cloudInitClient.DeleteGroups(cli.Token, groupsToDel...)
-			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to delete groups: %w", err)
-			}
+			results := cloudInitClient.DeleteGroups(cmd.Context(), cli.Token, groupsToDel...)
 			// Since the requests are done iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, e := range errs {
+			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(e).Msg("cloud-init group request yielded unsuccessful HTTP response")

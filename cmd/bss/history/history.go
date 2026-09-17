@@ -55,7 +55,7 @@ See ochami-bss(1) for more details.`,
 			}
 
 			// Send request
-			httpEnv, err := bssClient.GetEndpointHistory(qstr)
+			httpEnv, err := bssClient.GetEndpointHistory(cmd.Context(), qstr)
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS endpoint history request yielded unsuccessful HTTP response", "failed to request endpoint history from BSS")
 

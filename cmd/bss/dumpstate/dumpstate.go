@@ -33,7 +33,7 @@ See ochami-bss(1) for more details.`,
 			}
 
 			// Send request
-			httpEnv, err := bssClient.GetDumpstate()
+			httpEnv, err := bssClient.GetDumpstate(cmd.Context())
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS dump state request yielded unsuccessful HTTP response", "failed to request dump state from BSS")
 

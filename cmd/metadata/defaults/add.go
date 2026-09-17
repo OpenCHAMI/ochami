@@ -13,6 +13,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
@@ -106,9 +107,7 @@ See ochami-metadata(1) for more details.`,
 			// Determine how to read payload (simple versus advanced API)
 			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
 
-			var defaultsCreated []api.ClusterDefaults
-			var reqErrs []error
-			var reqErr error
+			var results client.BatchResult[api.ClusterDefaults]
 			if envelope {
 				// Use advanced API (spec, metadata, annotations)
 
@@ -125,7 +124,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off requests
-				defaultsCreated, reqErrs, reqErr = metadataServiceClient.AddDefaults(cli.Token, defaults)
+				results = metadataServiceClient.AddDefaults(cmd.Context(), cli.Token, defaults)
 			} else {
 				// Use simple API (spec)
 
@@ -142,18 +141,12 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off requests
-				defaultsCreated, reqErrs, reqErr = metadataServiceClient.AddDefaultsSpecs(cli.Token, defaults)
-			}
-
-			// Handle any non-request error
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to add cluster defaults", "failed to add cluster defaults")
-
+				results = metadataServiceClient.AddDefaultsSpecs(cmd.Context(), cli.Token, defaults)
 			}
 
 			// Deal with per-request errors
 			var reqErrorsOccurred = false
-			for _, err := range reqErrs {
+			for _, err := range results.Errors() {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to add cluster defaults")
 					reqErrorsOccurred = true
@@ -162,7 +155,7 @@ See ochami-metadata(1) for more details.`,
 
 			// Print names of created items
 			var names []string
-			for _, defaults := range defaultsCreated {
+			for _, defaults := range results.Values() {
 				names = append(names, defaults.Metadata.Name)
 			}
 			log.Logger.Info().Msgf("Cluster defaults created: %q", names)

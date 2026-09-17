@@ -57,15 +57,11 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			groupsDeleted, errs, err := metadataServiceClient.DeleteGroups(cli.Token, args)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to delete groups", "failed to delete groups")
-
-			}
+			results := metadataServiceClient.DeleteGroups(cmd.Context(), cli.Token, args)
 
 			// Deal with per-request errors
 			var errorsOccurred = false
-			for _, err := range errs {
+			for _, err := range results.Errors() {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to delete group")
 					errorsOccurred = true
@@ -73,7 +69,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Print UIDs of deleted items
-			log.Logger.Info().Msgf("Groups deleted: %+v", groupsDeleted)
+			log.Logger.Info().Msgf("Groups deleted: %+v", results.Values())
 
 			// Warn if any request errors occurred
 			if errorsOccurred {

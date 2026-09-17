@@ -54,7 +54,7 @@ See ochami-smd(1) for more details.`,
 				if cmd.Flag("by-ip").Changed {
 					byIP = true
 				}
-				httpEnv, err := smdClient.GetEthernetInterfaceByID(id, cli.Token, byIP)
+				httpEnv, err := smdClient.GetEthernetInterfaceByID(cmd.Context(), id, cli.Token, byIP)
 				if err != nil {
 					return cli.ClassifyClientError(err, "SMD ethernet interface request by ID yielded unsuccessful HTTP response", "failed to request ethernet interfaces by ID from SMD")
 
@@ -110,7 +110,7 @@ See ochami-smd(1) for more details.`,
 				}
 				qstr = values.Encode()
 			}
-			httpEnv, err := smdClient.GetEthernetInterfaces(qstr)
+			httpEnv, err := smdClient.GetEthernetInterfaces(cmd.Context(), qstr)
 			if err != nil {
 				return cli.ClassifyClientError(err, "SMD ethernet interface request yielded unsuccessful HTTP response", "failed to request ethernet interfaces from SMD")
 

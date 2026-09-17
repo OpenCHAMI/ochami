@@ -30,7 +30,7 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Make request
-			outbytes, err := bootServiceClient.GetHealth(cli.FormatOutput)
+			outbytes, err := bootServiceClient.GetHealth(cmd.Context(), cli.FormatOutput)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get boot-service health", "failed to get boot-service health")
 

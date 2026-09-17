@@ -91,7 +91,7 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off request
-				bmcSet, reqErr = bootServiceClient.SetBMC(cli.Token, args[0], bmc)
+				bmcSet, reqErr = bootServiceClient.SetBMC(cmd.Context(), cli.Token, args[0], bmc)
 			} else {
 				// Use simple API (spec)
 
@@ -108,7 +108,7 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off request
-				bmcSet, reqErr = bootServiceClient.SetBMCSpec(cli.Token, args[0], spec)
+				bmcSet, reqErr = bootServiceClient.SetBMCSpec(cmd.Context(), cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to set bmc: %w", reqErr)

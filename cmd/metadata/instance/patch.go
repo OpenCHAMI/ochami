@@ -96,7 +96,7 @@ See ochami-metadata(1) for more details.`,
 				}
 			}
 
-			instancePatched, err := metadataServiceClient.PatchInstanceInfo(cli.Token, formatPatch, args[0], patchData)
+			instancePatched, err := metadataServiceClient.PatchInstanceInfo(cmd.Context(), cli.Token, formatPatch, args[0], patchData)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to patch instance info", "failed to patch instance info")
 

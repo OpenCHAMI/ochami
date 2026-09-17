@@ -32,7 +32,7 @@ See ochami-cloud-init(1) for more details.`,
 				return err
 			}
 
-			henv, err := cloudInitClient.GetVersion()
+			henv, err := cloudInitClient.GetVersion(cmd.Context())
 			if err != nil {
 				return cli.ClassifyClientError(err, "cloud-init version request yielded unsuccessful HTTP response", "failed to get cloud-init version")
 

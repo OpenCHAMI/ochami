@@ -96,7 +96,7 @@ See ochami-metadata(1) for more details.`,
 				}
 			}
 
-			groupPatched, err := metadataServiceClient.PatchGroup(cli.Token, formatPatch, args[0], patchData)
+			groupPatched, err := metadataServiceClient.PatchGroup(cmd.Context(), cli.Token, formatPatch, args[0], patchData)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to patch group", "failed to patch group")
 

@@ -30,7 +30,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Make request
-			outbytes, err := metadataServiceClient.GetHealth(cli.FormatOutput)
+			outbytes, err := metadataServiceClient.GetHealth(cmd.Context(), cli.FormatOutput)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get metadata-service health", "failed to get metadata-service health")
 

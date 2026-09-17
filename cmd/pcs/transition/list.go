@@ -41,7 +41,7 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Get transitions
-			transitionsHttpEnv, err := pcsClient.GetTransitions(cli.Token)
+			transitionsHttpEnv, err := pcsClient.GetTransitions(cmd.Context(), cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "PCS transitions request yielded unsuccessful HTTP response", "failed to list PCS transitions")
 

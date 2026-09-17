@@ -27,60 +27,37 @@ type GroupSpec struct {
 }
 
 // AddGroups is a wrapper that calls the metadata-service client's
-// CreateGroup() function, passing it context. It returns a slice of
-// successfully created Group resources, a slice of per-request errors, and an
-// error that is populated if an error occurred in the function itself. A nil
-// resource returned without an error is reported as a per-request error.
-func (msc *MetadataServiceClient) AddGroups(token string, groups []metadata_service_client.CreateGroupRequest) (groupsAdded []api.Group, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, g := range groups {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		item, err := msc.Client.WithBearerToken(token).CreateGroup(ctx, g)
-		cancel()
+// CreateGroup() function, passing it context. It returns one result per request
+// in input order.
+func (msc *MetadataServiceClient) AddGroups(ctx context.Context, token string, groups []metadata_service_client.CreateGroupRequest) client.BatchResult[api.Group] {
+	return runBatch(ctx, msc.Timeout, groups, func(requestCtx context.Context, g metadata_service_client.CreateGroupRequest) (api.Group, error) {
+		item, err := msc.Client.WithBearerToken(token).CreateGroup(requestCtx, g)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add group %+v: %w", g, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			groupsAdded = append(groupsAdded, *item)
-		} else {
-			newErr := fmt.Errorf("group creation did not err, but was not created for: %+v", g)
-			errors = append(errors, newErr)
+			return api.Group{}, fmt.Errorf("failed to add group %+v: %w", g, err)
 		}
-	}
-
-	return
+		return *item, nil
+	})
 }
 
 // DeleteGroups is a wrapper that calls the metadata-service client's
 // DeleteGroup() function, passing it context and a list of Group UIDs to
-// delete. It returns a slice of successfully deleted Group UIDs, a slice of
-// per-request errors, and an error that is populated if an error occurred in the
-// function itself.
-func (msc *MetadataServiceClient) DeleteGroups(token string, uids []string) (groupsDeleted []string, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, groupUid := range uids {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		err := msc.Client.WithBearerToken(token).DeleteGroup(ctx, groupUid)
-		cancel()
+// delete. It returns one result per UID in input order.
+func (msc *MetadataServiceClient) DeleteGroups(ctx context.Context, token string, uids []string) client.BatchResult[string] {
+	return runBatch(ctx, msc.Timeout, uids, func(requestCtx context.Context, groupUID string) (string, error) {
+		err := msc.Client.WithBearerToken(token).DeleteGroup(requestCtx, groupUID)
 		if err != nil {
-			newErr := fmt.Errorf("failed to delete group %s: %w", groupUid, err)
-			errors = append(errors, newErr)
-		} else {
-			groupsDeleted = append(groupsDeleted, groupUid)
+			return "", fmt.Errorf("failed to delete group %s: %w", groupUID, err)
 		}
-	}
-
-	return
+		return groupUID, nil
+	})
 }
 
 // GetGroup is a wrapper that calls the metadata-service client's
 // GetGroup() function, passing it context and a UID. The output is a
 // []byte containing the entity's group information, formatted as
 // outFormat.
-func (msc *MetadataServiceClient) GetGroup(token string, outFormat format.DataFormat, uid string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) GetGroup(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	group, err := msc.Client.WithBearerToken(token).GetGroup(ctx, uid)
@@ -99,8 +76,8 @@ func (msc *MetadataServiceClient) GetGroup(token string, outFormat format.DataFo
 // ListGroups is a wrapper that calls the metadata-service client's
 // GetGroups() function, passing it context. The output is a []byte
 // containing the groups formatted as outFormat.
-func (msc *MetadataServiceClient) ListGroups(token string, outFormat format.DataFormat) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) ListGroups(ctx context.Context, token string, outFormat format.DataFormat) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	groups, err := msc.Client.WithBearerToken(token).GetGroups(ctx)
@@ -121,8 +98,8 @@ func (msc *MetadataServiceClient) ListGroups(token string, outFormat format.Data
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the Group identified by uid. It returns the modified Group
 // resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.Group, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) PatchGroup(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.Group, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	outData, err := format.MarshalData(data, format.DataFormatJson)
@@ -146,8 +123,8 @@ func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.Pa
 // SetGroup is a wrapper that calls the metadata-service client's
 // UpdateGroup() function, passing it context. It returns the modified Group
 // resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) SetGroup(token string, uid string, group metadata_service_client.UpdateGroupRequest) (*api.Group, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) SetGroup(ctx context.Context, token string, uid string, group metadata_service_client.UpdateGroupRequest) (*api.Group, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateGroup(ctx, uid, group)
@@ -161,31 +138,20 @@ func (msc *MetadataServiceClient) SetGroup(token string, uid string, group metad
 // AddGroupSpecs is like AddGroups but calls the metadata-service client's
 // simple CreateGroupSimple() function, which only sends the resource name and
 // spec.
-func (msc *MetadataServiceClient) AddGroupSpecs(token string, groups []GroupSpec) (groupsAdded []api.Group, errors []error, funcErr error) {
-	// TODO: Make concurrent
-	for _, g := range groups {
-		ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
-
-		item, err := msc.Client.WithBearerToken(token).CreateGroupSimple(ctx, g.Name, g.GroupSpec)
-		cancel()
+func (msc *MetadataServiceClient) AddGroupSpecs(ctx context.Context, token string, groups []GroupSpec) client.BatchResult[api.Group] {
+	return runBatch(ctx, msc.Timeout, groups, func(requestCtx context.Context, g GroupSpec) (api.Group, error) {
+		item, err := msc.Client.WithBearerToken(token).CreateGroupSimple(requestCtx, g.Name, g.GroupSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add group %q (%+v): %w", g.Name, g.GroupSpec, err)
-			errors = append(errors, newErr)
-		} else if item != nil {
-			groupsAdded = append(groupsAdded, *item)
-		} else {
-			newErr := fmt.Errorf("group creation did not err, but was not created for: %+v", g)
-			errors = append(errors, newErr)
+			return api.Group{}, fmt.Errorf("failed to add group %q (%+v): %w", g.Name, g.GroupSpec, err)
 		}
-	}
-
-	return
+		return *item, nil
+	})
 }
 
 // SetGroupSpec is like SetGroup but calls the metadata-service client's simple
 // UpdateGroupSimple() function, which only sends the resource spec.
-func (msc *MetadataServiceClient) SetGroupSpec(token string, uid string, spec api.GroupSpec) (*api.Group, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
+func (msc *MetadataServiceClient) SetGroupSpec(ctx context.Context, token string, uid string, spec api.GroupSpec) (*api.Group, error) {
+	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
 	item, err := msc.Client.WithBearerToken(token).UpdateGroupSimple(ctx, uid, spec)

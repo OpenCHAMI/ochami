@@ -43,7 +43,7 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Get transition
-			transitionHttpEnv, err := pcsClient.GetTransition(transitionID, cli.Token)
+			transitionHttpEnv, err := pcsClient.GetTransition(cmd.Context(), transitionID, cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "PCS transitions request yielded unsuccessful HTTP response", "failed to get PCS transition")
 

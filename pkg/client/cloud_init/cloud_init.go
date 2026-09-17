@@ -96,8 +96,8 @@ func NewClient(baseURI string, opts ...client.Option) (*CloudInitClient, error) 
 
 // GetAPI sends a GET to cloud-init's /openapi.json endpoint to retrieve the
 // OpenAPI specification.
-func (cic *CloudInitClient) GetAPI() (client.HTTPEnvelope, error) {
-	henv, err := cic.GetData(context.Background(), CloudInitRelpathAPI, "", nil)
+func (cic *CloudInitClient) GetAPI(ctx context.Context) (client.HTTPEnvelope, error) {
+	henv, err := cic.GetData(ctx, CloudInitRelpathAPI, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetAPI(): error getting cloud-init API: %w", err)
 	}
@@ -106,7 +106,7 @@ func (cic *CloudInitClient) GetAPI() (client.HTTPEnvelope, error) {
 
 // GetDefaults is a wrapper function around OchamiClient.GetData that returns
 // the result of querying the cloud-init cluster-defaults endpoint.
-func (cic *CloudInitClient) GetDefaults(token string) (client.HTTPEnvelope, error) {
+func (cic *CloudInitClient) GetDefaults(ctx context.Context, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -115,7 +115,7 @@ func (cic *CloudInitClient) GetDefaults(token string) (client.HTTPEnvelope, erro
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := cic.GetData(context.Background(), CloudInitRelpathDefaults, "", headers)
+	henv, err := cic.GetData(ctx, CloudInitRelpathDefaults, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetDefaults(): error getting cloud-init cluster-defaults: %w", err)
 	}
@@ -125,48 +125,30 @@ func (cic *CloudInitClient) GetDefaults(token string) (client.HTTPEnvelope, erro
 // GetGroups is a wrapper function around OchamiClient.Getdata that returns
 // group data for a list of group ids. If none are passed, all group data is
 // returned.
-func (cic *CloudInitClient) GetGroups(token string, ids ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		headers *client.HTTPHeaders
-		henvs   []client.HTTPEnvelope
-	)
-	headers = client.NewHTTPHeaders()
+func (cic *CloudInitClient) GetGroups(ctx context.Context, token string, ids ...string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	if len(ids) == 0 {
-		henv, err := cic.GetData(context.Background(), CloudInitRelpathGroups, "", headers)
-		henvs = append(henvs, henv)
+		henv, err := cic.GetData(ctx, CloudInitRelpathGroups, "", headers)
 		if err != nil {
-			newErr := fmt.Errorf("GetGroups(): failed to GET all groups from cloud-init: %w", err)
-			errors = append(errors, newErr)
-		} else {
-			errors = append(errors, nil)
+			err = fmt.Errorf("GetGroups(): failed to GET all groups from cloud-init: %w", err)
 		}
-	} else {
-		for _, id := range ids {
-			var henv client.HTTPEnvelope
-			finalEP, err := url.JoinPath(CloudInitRelpathGroups, id)
-			if err != nil {
-				newErr := fmt.Errorf("GetGroups(): failed to join base group path with ID: %w", err)
-				errors = append(errors, newErr)
-				henvs = append(henvs, henv)
-				continue
-			}
-			henv, err = cic.GetData(context.Background(), finalEP, "", headers)
-			henvs = append(henvs, henv)
-			if err != nil {
-				newErr := fmt.Errorf("GetGroups(): failed to GET group from cloud-init: %w", err)
-				log.Logger.Debug().Err(err).Msg("failed to get group")
-				errors = append(errors, newErr)
-				continue
-			}
-			errors = append(errors, nil)
-		}
+		return client.BatchResult[client.HTTPEnvelope]{{Value: henv, Err: err}}
 	}
-
-	return henvs, errors, nil
+	return executeBatch(ctx, ids, func(ctx context.Context, id string) (client.HTTPEnvelope, error) {
+		finalEP, err := url.JoinPath(CloudInitRelpathGroups, id)
+		if err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("GetGroups(): failed to join base group path with ID: %w", err)
+		}
+		henv, err := cic.GetData(ctx, finalEP, "", headers)
+		if err != nil {
+			log.Logger.Debug().Err(err).Msg("failed to get group")
+			return henv, fmt.Errorf("GetGroups(): failed to GET group from cloud-init: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // GetNodeData gets the data of type dataType for each ID in the passed list (at
@@ -174,40 +156,26 @@ func (cic *CloudInitClient) GetGroups(token string, ids ...string) ([]client.HTT
 // OchamiClient.GetData. Slices containing the client.HTTPEnvelope and error for
 // each request is returned, along with a separate single error if a function
 // error occurred.
-func (cic *CloudInitClient) GetNodeData(dataType CIDataType, token string, ids ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		headers *client.HTTPHeaders
-		henvs   []client.HTTPEnvelope
-	)
+func (cic *CloudInitClient) GetNodeData(ctx context.Context, dataType CIDataType, token string, ids ...string) (client.BatchResult[client.HTTPEnvelope], error) {
 	if len(ids) == 0 {
-		return henvs, errors, fmt.Errorf("GetNodeData(): at least one ID is required")
+		return nil, fmt.Errorf("GetNodeData(): at least one ID is required")
 	}
-	headers = client.NewHTTPHeaders()
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, id := range ids {
-		var henv client.HTTPEnvelope
+	return executeBatch(ctx, ids, func(ctx context.Context, id string) (client.HTTPEnvelope, error) {
 		finalEP, err := url.JoinPath(CloudInitRelpathImpersonation, id, string(dataType))
 		if err != nil {
-			newErr := fmt.Errorf("GetNodeData(): failed to join %s with ID %s and %s: %w", CloudInitRelpathImpersonation, id, dataType, err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, henv)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("GetNodeData(): failed to join %s with ID %s and %s: %w", CloudInitRelpathImpersonation, id, dataType, err)
 		}
-		henv, err = cic.GetData(context.Background(), finalEP, "", headers)
-		henvs = append(henvs, henv)
+		henv, err := cic.GetData(ctx, finalEP, "", headers)
 		if err != nil {
-			newErr := fmt.Errorf("GetNodeData(): failed to GET node data from cloud-init: %w", err)
 			log.Logger.Debug().Err(err).Msg("failed to get node data")
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("GetNodeData(): failed to GET node data from cloud-init: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		return henv, nil
+	}), nil
 }
 
 // GetNodeGroupData gets the {group}.yaml data for a list of group IDs (at least
@@ -215,48 +183,34 @@ func (cic *CloudInitClient) GetNodeData(dataType CIDataType, token string, ids .
 // iteratively calling OchamiClient.GetData. Slices containing the
 // client.HTTPEnvelope and error for each request are returned, along with a
 // separate single error if a function error occurred.
-func (cic *CloudInitClient) GetNodeGroupData(token, id string, groups ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		headers *client.HTTPHeaders
-		henvs   []client.HTTPEnvelope
-	)
+func (cic *CloudInitClient) GetNodeGroupData(ctx context.Context, token, id string, groups ...string) (client.BatchResult[client.HTTPEnvelope], error) {
 	if strings.Trim(id, " ") == "" {
-		return henvs, errors, fmt.Errorf("GetNodeGroupData(): group cannot be blank")
+		return nil, fmt.Errorf("GetNodeGroupData(): group cannot be blank")
 	}
 	if len(groups) == 0 {
-		return henvs, errors, fmt.Errorf("GetNodeGroupData(): at least one group is required")
+		return nil, fmt.Errorf("GetNodeGroupData(): at least one group is required")
 	}
-	headers = client.NewHTTPHeaders()
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, group := range groups {
-		var henv client.HTTPEnvelope
+	return executeBatch(ctx, groups, func(ctx context.Context, group string) (client.HTTPEnvelope, error) {
 		finalEP, err := url.JoinPath(CloudInitRelpathImpersonation, id, fmt.Sprintf("%s.yaml", group))
 		if err != nil {
-			newErr := fmt.Errorf("GetNodeGroupData(): failed to join %s with ID %s and %s.yaml: %w", CloudInitRelpathImpersonation, id, group, err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, henv)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("GetNodeGroupData(): failed to join %s with ID %s and %s.yaml: %w", CloudInitRelpathImpersonation, id, group, err)
 		}
-		henv, err = cic.GetData(context.Background(), finalEP, "", headers)
-		henvs = append(henvs, henv)
+		henv, err := cic.GetData(ctx, finalEP, "", headers)
 		if err != nil {
-			newErr := fmt.Errorf("GetNodeGroupData(): failed to GET node group data from cloud-init: %w", err)
 			log.Logger.Debug().Err(err).Msg("failed to get node group data")
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("GetNodeGroupData(): failed to GET node group data from cloud-init: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		return henv, nil
+	}), nil
 }
 
 // GetVersion sends a GET to cloud-init's /version endpoint.
-func (cic *CloudInitClient) GetVersion() (client.HTTPEnvelope, error) {
-	henv, err := cic.GetData(context.Background(), CloudInitRelpathVersion, "", nil)
+func (cic *CloudInitClient) GetVersion(ctx context.Context) (client.HTTPEnvelope, error) {
+	henv, err := cic.GetData(ctx, CloudInitRelpathVersion, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetVersion(): error getting cloud-init version: %w", err)
 	}
@@ -267,7 +221,7 @@ func (cic *CloudInitClient) GetVersion() (client.HTTPEnvelope, error) {
 // cistore.ClusterDefaults and a token, puts the token in the request headers as
 // an authorization bearer, marshals ciDflts as JSON and sets it as the request
 // body, then passes it to Ochami.PostData.
-func (cic *CloudInitClient) PostDefaults(ciDflts cistore.ClusterDefaults, token string) (client.HTTPEnvelope, error) {
+func (cic *CloudInitClient) PostDefaults(ctx context.Context, ciDflts cistore.ClusterDefaults, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -281,7 +235,7 @@ func (cic *CloudInitClient) PostDefaults(ciDflts cistore.ClusterDefaults, token 
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = cic.PostData(context.Background(), CloudInitRelpathDefaults, "", headers, body)
+	henv, err = cic.PostData(ctx, CloudInitRelpathDefaults, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PostDefaults(): failed to POST cluster-defaults to cloud-init: %w", err)
 	}
@@ -293,139 +247,81 @@ func (cic *CloudInitClient) PostDefaults(ciDflts cistore.ClusterDefaults, token 
 // slice of cistore.GroupData and a token, puts the token in the request headers
 // as an authorization bearer, and iteratively calls OchamiClient.PostData using
 // each item from the slice.
-func (cic *CloudInitClient) PostGroups(ciGroups []cistore.GroupData, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (cic *CloudInitClient) PostGroups(ctx context.Context, ciGroups []cistore.GroupData, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, cig := range ciGroups {
-		var body client.HTTPBody
-		var err error
-		if body, err = json.Marshal(cig); err != nil {
-			newErr := fmt.Errorf("PostGroups(): failed to marshal GroupData: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := cic.PostData(context.Background(), CloudInitRelpathGroups, "", headers, body)
-		henvs = append(henvs, henv)
+	return executeBatch(ctx, ciGroups, func(ctx context.Context, cig cistore.GroupData) (client.HTTPEnvelope, error) {
+		body, err := json.Marshal(cig)
 		if err != nil {
-			newErr := fmt.Errorf("PostGroups(): failed to POST group(s) to cloud-init: %w", err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PostGroups(): failed to marshal GroupData: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := cic.PostData(ctx, CloudInitRelpathGroups, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PostGroups(): failed to POST group(s) to cloud-init: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // PutGroups is a wrapper function around OchamiClient.PutData that takes a
 // slice of cistore.GroupData and a token, puts the token in the request
 // headers as an authorization bearer, and iteratively calls
 // OchamiClient.PostData using each item from the slice.
-func (cic *CloudInitClient) PutGroups(ciGroups []cistore.GroupData, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (cic *CloudInitClient) PutGroups(ctx context.Context, ciGroups []cistore.GroupData, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, cig := range ciGroups {
-		var (
-			body    client.HTTPBody
-			err     error
-			finalEP string
-		)
+	return executeBatch(ctx, ciGroups, func(ctx context.Context, cig cistore.GroupData) (client.HTTPEnvelope, error) {
 		if strings.Trim(cig.Name, " ") == "" {
-			newErr := fmt.Errorf("PutGroups(): group name cannot be blank")
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutGroups(): group name cannot be blank")
 		}
-		if finalEP, err = url.JoinPath(CloudInitRelpathGroups, cig.Name); err != nil {
-			newErr := fmt.Errorf("PutGroups(): failed to join paths %q and %q: %w", CloudInitRelpathGroups, cig.Name, err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		if body, err = json.Marshal(cig); err != nil {
-			newErr := fmt.Errorf("PutGroups(): failed to marshal GroupData: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := cic.PutData(context.Background(), finalEP, "", headers, body)
-		henvs = append(henvs, henv)
+		finalEP, err := url.JoinPath(CloudInitRelpathGroups, cig.Name)
 		if err != nil {
-			newErr := fmt.Errorf("PutGroups(): failed to PUT group(s) to cloud-init: %w", err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutGroups(): failed to join paths %q and %q: %w", CloudInitRelpathGroups, cig.Name, err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		body, err := json.Marshal(cig)
+		if err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PutGroups(): failed to marshal GroupData: %w", err)
+		}
+		henv, err := cic.PutData(ctx, finalEP, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PutGroups(): failed to PUT group(s) to cloud-init: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // PutInstanceInfo sends a PUT to cloud-init for each instance info in
 // instanceInfoList, using the "id" field to determine which node to use.
-func (cic *CloudInitClient) PutInstanceInfo(instanceInfoList []cistore.OpenCHAMIInstanceInfo, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (cic *CloudInitClient) PutInstanceInfo(ctx context.Context, instanceInfoList []cistore.OpenCHAMIInstanceInfo, token string) (client.BatchResult[client.HTTPEnvelope], error) {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	if len(instanceInfoList) == 0 {
-		return henvs, errors, fmt.Errorf("PutInstanceInfo(): at least one instance info is required")
+		return nil, fmt.Errorf("PutInstanceInfo(): at least one instance info is required")
 	}
-	for _, instanceInfo := range instanceInfoList {
-		var (
-			body    client.HTTPBody
-			err     error
-			finalEP string
-		)
+	return executeBatch(ctx, instanceInfoList, func(ctx context.Context, instanceInfo cistore.OpenCHAMIInstanceInfo) (client.HTTPEnvelope, error) {
 		if strings.Trim(instanceInfo.ID, " ") == "" {
-			newErr := fmt.Errorf("PutInstanceInfo(): id cannot be blank")
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutInstanceInfo(): id cannot be blank")
 		}
-		if finalEP, err = url.JoinPath(CloudInitRelpathInstanceInfo, instanceInfo.ID); err != nil {
-			newErr := fmt.Errorf("PutInstanceInfo(): failed to join paths %q and %q: %w", CloudInitRelpathInstanceInfo, instanceInfo.ID, err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		if body, err = json.Marshal(instanceInfo); err != nil {
-			newErr := fmt.Errorf("PutInstanceInfo(): failed to marshal instance info data: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := cic.PutData(context.Background(), finalEP, "", headers, body)
-		henvs = append(henvs, henv)
+		finalEP, err := url.JoinPath(CloudInitRelpathInstanceInfo, instanceInfo.ID)
 		if err != nil {
-			newErr := fmt.Errorf("PutInstanceInfo(): failed to PUT instance info for %q to cloud-init: %w", instanceInfo.ID, err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutInstanceInfo(): failed to join paths %q and %q: %w", CloudInitRelpathInstanceInfo, instanceInfo.ID, err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		body, err := json.Marshal(instanceInfo)
+		if err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PutInstanceInfo(): failed to marshal instance info data: %w", err)
+		}
+		henv, err := cic.PutData(ctx, finalEP, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PutInstanceInfo(): failed to PUT instance info for %q to cloud-init: %w", instanceInfo.ID, err)
+		}
+		return henv, nil
+	}), nil
 }
 
 // DeleteGroups takes a token and group names and iteratively calls
@@ -435,33 +331,35 @@ func (cic *CloudInitClient) PutInstanceInfo(instanceInfoList []cistore.OpenCHAMI
 // corresponding errors are also returned. If an error in the function itself
 // occurs, an additional error is returned in order to distinguish HTTP request
 // errors from control flow errors.
-func (cic *CloudInitClient) DeleteGroups(token string, groups ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (cic *CloudInitClient) DeleteGroups(ctx context.Context, token string, groups ...string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, group := range groups {
+	return executeBatch(ctx, groups, func(ctx context.Context, group string) (client.HTTPEnvelope, error) {
 		finalEP, err := url.JoinPath(CloudInitRelpathGroups, group)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteGroups(): failed join %q with %q: %w", CloudInitRelpathGroups, group, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("DeleteGroups(): failed join %q with %q: %w", CloudInitRelpathGroups, group, err)
 		}
-		henv, err := cic.DeleteData(context.Background(), finalEP, "", headers, nil)
-		henvs = append(henvs, henv)
+		henv, err := cic.DeleteData(ctx, finalEP, "", headers, nil)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteGroups(): failed to DELETE group %s in cloud-init: %w", group, err)
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("DeleteGroups(): failed to DELETE group %s in cloud-init: %w", group, err)
 		}
-		errors = append(errors, nil)
-	}
+		return henv, nil
+	})
+}
 
-	return henvs, errors, nil
+func executeBatch[T any](ctx context.Context, items []T, execute func(context.Context, T) (client.HTTPEnvelope, error)) client.BatchResult[client.HTTPEnvelope] {
+	results := make(client.BatchResult[client.HTTPEnvelope], len(items))
+	for i, item := range items {
+		if err := ctx.Err(); err != nil {
+			for ; i < len(results); i++ {
+				results[i].Err = err
+			}
+			break
+		}
+		value, err := execute(ctx, item)
+		results[i] = client.Result[client.HTTPEnvelope]{Value: value, Err: err}
+	}
+	return results
 }

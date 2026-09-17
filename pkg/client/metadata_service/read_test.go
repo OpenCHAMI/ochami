@@ -10,6 +10,7 @@ package metadata_service
 // covered in the resource-specific *_test.go files.
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -26,7 +27,7 @@ func TestGetHealth(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.GetHealth(format.DataFormatJson); err != nil {
+	if _, err := c.GetHealth(context.Background(), format.DataFormatJson); err != nil {
 		t.Fatalf("GetHealth: %v", err)
 	}
 	if gotMethod != http.MethodGet || gotPath != "/health" {
@@ -42,11 +43,20 @@ func TestListEndpoints(t *testing.T) {
 		call     func(c *MetadataServiceClient) error
 		wantPath string
 	}{
-		{"groups", func(c *MetadataServiceClient) error { _, e := c.ListGroups("", format.DataFormatJson); return e }, "/groups"},
-		{"defaults", func(c *MetadataServiceClient) error { _, e := c.ListDefaults("", format.DataFormatJson); return e }, "/clusterdefaultss"},
-		{"instanceinfos", func(c *MetadataServiceClient) error { _, e := c.ListInstanceInfos("", format.DataFormatJson); return e }, "/instanceinfos"},
+		{"groups", func(c *MetadataServiceClient) error {
+			_, e := c.ListGroups(context.Background(), "", format.DataFormatJson)
+			return e
+		}, "/groups"},
+		{"defaults", func(c *MetadataServiceClient) error {
+			_, e := c.ListDefaults(context.Background(), "", format.DataFormatJson)
+			return e
+		}, "/clusterdefaultss"},
+		{"instanceinfos", func(c *MetadataServiceClient) error {
+			_, e := c.ListInstanceInfos(context.Background(), "", format.DataFormatJson)
+			return e
+		}, "/instanceinfos"},
 		{"wireguardpeers", func(c *MetadataServiceClient) error {
-			_, e := c.ListWireGuardPeers("", format.DataFormatJson)
+			_, e := c.ListWireGuardPeers(context.Background(), "", format.DataFormatJson)
 			return e
 		}, "/wireguardpeers"},
 	}
@@ -78,17 +88,20 @@ func TestGetEndpoints(t *testing.T) {
 		call     func(c *MetadataServiceClient) error
 		wantPath string
 	}{
-		{"group", func(c *MetadataServiceClient) error { _, e := c.GetGroup("", format.DataFormatJson, "uid1"); return e }, "/groups/uid1"},
+		{"group", func(c *MetadataServiceClient) error {
+			_, e := c.GetGroup(context.Background(), "", format.DataFormatJson, "uid1")
+			return e
+		}, "/groups/uid1"},
 		{"defaults", func(c *MetadataServiceClient) error {
-			_, e := c.GetDefaults("", format.DataFormatJson, "uid1")
+			_, e := c.GetDefaults(context.Background(), "", format.DataFormatJson, "uid1")
 			return e
 		}, "/clusterdefaultss/uid1"},
 		{"instanceinfo", func(c *MetadataServiceClient) error {
-			_, e := c.GetInstanceInfo("", format.DataFormatJson, "uid1")
+			_, e := c.GetInstanceInfo(context.Background(), "", format.DataFormatJson, "uid1")
 			return e
 		}, "/instanceinfos/uid1"},
 		{"wireguardpeer", func(c *MetadataServiceClient) error {
-			_, e := c.GetWireGuardPeer("", format.DataFormatJson, "uid1")
+			_, e := c.GetWireGuardPeer(context.Background(), "", format.DataFormatJson, "uid1")
 			return e
 		}, "/wireguardpeers/uid1"},
 	}

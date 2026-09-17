@@ -43,7 +43,7 @@ See ochami-smd(1) for more details.`,
 			var httpEnv client.HTTPEnvelope
 			if len(args) == 0 {
 				// Get all ComponentEndpoints if no args passed
-				httpEnv, err = smdClient.GetComponentEndpointsAll(cli.Token)
+				httpEnv, err = smdClient.GetComponentEndpointsAll(cmd.Context(), cli.Token)
 				if err != nil {
 					return cli.ClassifyClientError(err, "SMD component endpoint request yielded unsuccessful HTTP response", "failed to request component endpoints from SMD")
 
@@ -56,14 +56,11 @@ See ochami-smd(1) for more details.`,
 				}
 				fmt.Fprint(cli.Ios.Out(), string(outBytes))
 			} else {
-				httpEnvs, errs, err := smdClient.GetComponentEndpoints(cli.Token, args...)
-				if err != nil {
-					return cli.Errorf(cli.CodeNetwork, "failed to get component endpoints from SMD: %w", err)
-				}
+				results := smdClient.GetComponentEndpoints(cmd.Context(), cli.Token, args...)
 				// Since smdClient.GetComponentEndpoints does the fetching iteratively, we need to
 				// deal with each error that might have occurred.
 				var errorsOccurred = false
-				for _, e := range errs {
+				for _, e := range results.Errors() {
 					if e != nil {
 						if errors.Is(e, client.UnsuccessfulHTTPError) {
 							log.Logger.Error().Err(e).Msg("SMD component endpoint request yielded unsuccessful HTTP response")
@@ -79,10 +76,10 @@ See ochami-smd(1) for more details.`,
 					ComponentEndpoints []interface{} `json:"ComponentEndpoints" yaml:"ComponentEndpoints"`
 				}
 				var ceArr []interface{}
-				for i, h := range httpEnvs {
-					if errs[i] == nil {
+				for _, result := range results {
+					if result.Err == nil {
 						var ce interface{}
-						err := json.Unmarshal(h.Body, &ce)
+						err := json.Unmarshal(result.Value.Body, &ce)
 						if err != nil {
 							log.Logger.Warn().Err(err).Msg("failed to unmarshal component endpoint")
 							continue

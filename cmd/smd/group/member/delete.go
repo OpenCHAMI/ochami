@@ -55,14 +55,14 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Perform deletion from arguments
-			_, errs, err := smdClient.DeleteGroupMembers(cli.Token, args[0], args[1:]...)
+			results, err := smdClient.DeleteGroupMembers(cmd.Context(), cli.Token, args[0], args[1:]...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to delete members from group %s in SMD: %w", args[0], err)
 			}
 			// Since smdClient.DeleteGroupMembers does the deletion iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, e := range errs {
+			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(e).Msg("SMD group member deletion yielded unsuccessful HTTP response")

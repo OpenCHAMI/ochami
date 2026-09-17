@@ -14,8 +14,8 @@ import (
 // GetHealth is a wrapper that calls the boot-service client's GetHealth()
 // function, passing it context. The output is a []byte containing the
 // response from the health endpoint formatted as outFormat.
-func (bsc *BootServiceClient) GetHealth(outFormat format.DataFormat) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
+func (bsc *BootServiceClient) GetHealth(ctx context.Context, outFormat format.DataFormat) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
 	health, err := bsc.Client.GetHealth(ctx)

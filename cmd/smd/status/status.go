@@ -36,9 +36,9 @@ See ochami-smd(1) for more details.`,
 			// Determine which component to get status for and send request
 			var httpEnv client.HTTPEnvelope
 			if cmd.Flag("all").Changed {
-				httpEnv, err = smdClient.GetStatus("all")
+				httpEnv, err = smdClient.GetStatus(cmd.Context(), "all")
 			} else {
-				httpEnv, err = smdClient.GetStatus("")
+				httpEnv, err = smdClient.GetStatus(cmd.Context(), "")
 			}
 			if err != nil {
 				return cli.ClassifyClientError(err, "SMD status request yielded unsuccessful HTTP response", "failed to get SMD status")

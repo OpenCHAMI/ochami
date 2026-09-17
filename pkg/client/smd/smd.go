@@ -155,7 +155,7 @@ func NewClient(baseURI string, opts ...client.Option) (*SMDClient, error) {
 // Otherwise:
 //
 // "all" -> "/service/values"
-func (sc *SMDClient) GetStatus(component string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) GetStatus(ctx context.Context, component string) (client.HTTPEnvelope, error) {
 	var (
 		henv              client.HTTPEnvelope
 		err               error
@@ -175,7 +175,7 @@ func (sc *SMDClient) GetStatus(component string) (client.HTTPEnvelope, error) {
 		return henv, fmt.Errorf("GetStatus(): error creating SMD status endpoint: %w", err)
 	}
 
-	henv, err = sc.GetData(context.Background(), smdStatusEndpoint, "", nil)
+	henv, err = sc.GetData(ctx, smdStatusEndpoint, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetStatus(): error getting SMD all status: %w", err)
 	}
@@ -185,8 +185,8 @@ func (sc *SMDClient) GetStatus(component string) (client.HTTPEnvelope, error) {
 
 // GetComponentsAll is a wrapper function around OchamiClient.GetData that queries
 // /State/Components.
-func (sc *SMDClient) GetComponentsAll() (client.HTTPEnvelope, error) {
-	henv, err := sc.GetData(context.Background(), SMDRelpathComponents, "", nil)
+func (sc *SMDClient) GetComponentsAll(ctx context.Context) (client.HTTPEnvelope, error) {
+	henv, err := sc.GetData(ctx, SMDRelpathComponents, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetComponentsAll(): error getting components: %w", err)
 	}
@@ -196,14 +196,14 @@ func (sc *SMDClient) GetComponentsAll() (client.HTTPEnvelope, error) {
 
 // GetComponentsXname is like GetComponentsAll except that it takes a token and
 // queries /State/Components/{xname}.
-func (sc *SMDClient) GetComponentsXname(xname, token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) GetComponentsXname(ctx context.Context, xname, token string) (client.HTTPEnvelope, error) {
 	var henv client.HTTPEnvelope
 	finalEP := SMDRelpathComponents + "/" + xname
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := sc.GetData(context.Background(), finalEP, "", headers)
+	henv, err := sc.GetData(ctx, finalEP, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetComponentsXname(): error getting component for xname %q: %w", xname, err)
 	}
@@ -213,14 +213,14 @@ func (sc *SMDClient) GetComponentsXname(xname, token string) (client.HTTPEnvelop
 
 // GetComponentsNid is like GetComponentsAll except that it takes a token and
 // queries /State/Components/ByNID/{nid}.
-func (sc *SMDClient) GetComponentsNid(nid int32, token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) GetComponentsNid(ctx context.Context, nid int32, token string) (client.HTTPEnvelope, error) {
 	var henv client.HTTPEnvelope
 	finalEP := SMDRelpathComponents + "/ByNID/" + fmt.Sprint(nid)
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := sc.GetData(context.Background(), finalEP, "", headers)
+	henv, err := sc.GetData(ctx, finalEP, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetComponentsNid(): error getting component for NID %d: %w", nid, err)
 	}
@@ -232,7 +232,7 @@ func (sc *SMDClient) GetComponentsNid(nid int32, token string) (client.HTTPEnvel
 // optional query string (without the "?") and a token. It sets token as the
 // authorization bearer in the headers and passes the query string and headers
 // to OchamiClient.GetData, using the SMD RedfishEndpoints API endpoint.
-func (sc *SMDClient) GetRedfishEndpoints(query, token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) GetRedfishEndpoints(ctx context.Context, query, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -242,7 +242,7 @@ func (sc *SMDClient) GetRedfishEndpoints(query, token string) (client.HTTPEnvelo
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.GetData(context.Background(), SMDRelpathRedfishEndpoints, query, headers)
+	henv, err = sc.GetData(ctx, SMDRelpathRedfishEndpoints, query, headers)
 	if err != nil {
 		err = fmt.Errorf("GetRedfishEndpoints(): error getting redfish endpoints: %w", err)
 	}
@@ -253,8 +253,8 @@ func (sc *SMDClient) GetRedfishEndpoints(query, token string) (client.HTTPEnvelo
 // GetEthernetInterfaces is a wrapper around OchamiClient.GetData that takes a
 // query string and passes it to OchamiClient.GetData using SMD's ethernet
 // interfaces endpoint.
-func (sc *SMDClient) GetEthernetInterfaces(query string) (client.HTTPEnvelope, error) {
-	henv, err := sc.GetData(context.Background(), SMDRelpathEthernetInterfaces, query, nil)
+func (sc *SMDClient) GetEthernetInterfaces(ctx context.Context, query string) (client.HTTPEnvelope, error) {
+	henv, err := sc.GetData(ctx, SMDRelpathEthernetInterfaces, query, nil)
 	if err != nil {
 		err = fmt.Errorf("GetEthernetInterfaces(): error getting ethernet interfaces: %w", err)
 	}
@@ -267,7 +267,7 @@ func (sc *SMDClient) GetEthernetInterfaces(query string) (client.HTTPEnvelope, e
 // interface itself should be retrieved or a list of its IPs. It passes these to
 // OchamiClient.GetData, setting the token as the authorization bearer in the
 // request headers.
-func (sc *SMDClient) GetEthernetInterfaceByID(id, token string, getIPs bool) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) GetEthernetInterfaceByID(ctx context.Context, id, token string, getIPs bool) (client.HTTPEnvelope, error) {
 	var (
 		ep      string
 		err     error
@@ -290,7 +290,7 @@ func (sc *SMDClient) GetEthernetInterfaceByID(id, token string, getIPs bool) (cl
 			return henv, fmt.Errorf("GetEthernetInterfacesByID(): failed to join endpoint %s with id %q: %w", ep, id, err)
 		}
 	}
-	henv, err = sc.GetData(context.Background(), ep, "", headers)
+	henv, err = sc.GetData(ctx, ep, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetEthernetInterfacesByID(): failed to GET ethernet interfaces in SMD: %w", err)
 	}
@@ -300,37 +300,26 @@ func (sc *SMDClient) GetEthernetInterfaceByID(id, token string, getIPs bool) (cl
 
 // GetComponentEndpoints is similar to GetComponentEndpointsAll except that it
 // iteratively calls OchamiClient.GetData on each xname passed. Each request
-// has a corresponding client.HTTPEnvelope and error in returned slices. The
-// function also returns a separate error if a control flow error occurs.
-func (sc *SMDClient) GetComponentEndpoints(token string, xnames ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+// has a corresponding aligned result containing its HTTP envelope and error.
+func (sc *SMDClient) GetComponentEndpoints(ctx context.Context, token string, xnames ...string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, xname := range xnames {
-		henv, err := sc.GetData(context.Background(), SMDRelpathComponentEndpoints+"/"+xname, "", headers)
+	return executeBatch(ctx, xnames, func(ctx context.Context, xname string) (client.HTTPEnvelope, error) {
+		henv, err := sc.GetData(ctx, SMDRelpathComponentEndpoints+"/"+xname, "", headers)
 		if err != nil {
-			newErr := fmt.Errorf("GetComponentEndpoints(): failed to GET component endpoint from SMD: %w", err)
 			log.Logger.Debug().Err(err).Msg("failed to get component endpoint")
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("GetComponentEndpoints(): failed to GET component endpoint from SMD: %w", err)
 		}
-		errors = append(errors, nil)
-		henvs = append(henvs, henv)
-	}
-
-	return henvs, errors, nil
+		return henv, nil
+	})
 }
 
 // GetComponentEndpointsAll is a wrapper function around OchamiClient.GetData
 // that takes a token and puts it in the request headers as an authorization
 // bearer, then sends a get to the SMD component endpoint API endpoint.
-func (sc *SMDClient) GetComponentEndpointsAll(token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) GetComponentEndpointsAll(ctx context.Context, token string) (client.HTTPEnvelope, error) {
 	var (
 		err     error
 		henv    client.HTTPEnvelope
@@ -340,7 +329,7 @@ func (sc *SMDClient) GetComponentEndpointsAll(token string) (client.HTTPEnvelope
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.GetData(context.Background(), SMDRelpathComponentEndpoints, "", headers)
+	henv, err = sc.GetData(ctx, SMDRelpathComponentEndpoints, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetComponentEndpointsAll(): error getting component endpoints: %w", err)
 	}
@@ -353,7 +342,7 @@ func (sc *SMDClient) GetComponentEndpointsAll(token string) (client.HTTPEnvelope
 // authorization bearer, then sends a get to the SMD groups API endpoint with
 // the query string, returning the response as an client.HTTPEnvelope and an
 // error if one occurred.
-func (sc *SMDClient) GetGroups(query, token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) GetGroups(ctx context.Context, query, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -363,7 +352,7 @@ func (sc *SMDClient) GetGroups(query, token string) (client.HTTPEnvelope, error)
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.GetData(context.Background(), SMDRelpathGroups, query, headers)
+	henv, err = sc.GetData(ctx, SMDRelpathGroups, query, headers)
 	if err != nil {
 		err = fmt.Errorf("GetGroups(): error getting groups: %w", err)
 	}
@@ -375,7 +364,7 @@ func (sc *SMDClient) GetGroups(query, token string) (client.HTTPEnvelope, error)
 // a group name, which it passes to the GetData function using the SMD group
 // membership endpoint. It also takes a token, which it puts into the headers as
 // the authorization bearer.
-func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) GetGroupMembers(ctx context.Context, group, token string) (client.HTTPEnvelope, error) {
 	if group == "" {
 		return client.HTTPEnvelope{}, fmt.Errorf("GetGroupMembers(): group label cannot be empty")
 	}
@@ -387,7 +376,7 @@ func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, 
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := sc.GetData(context.Background(), finalEP, "", headers)
+	henv, err := sc.GetData(ctx, finalEP, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetGroupMembers(): error getting group members for group %s: %w", group, err)
 	}
@@ -399,12 +388,12 @@ func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, 
 // a node name, which it passes to the GetData function using the SMD node
 // membership endpoint. It also takes a token, which it puts into the headers as
 // the authorization bearer.
-func (sc *SMDClient) GetGroupMembership(qstr, token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) GetGroupMembership(ctx context.Context, qstr, token string) (client.HTTPEnvelope, error) {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err := sc.GetData(context.Background(), SMDRelpathMemberships, qstr, headers)
+	henv, err := sc.GetData(ctx, SMDRelpathMemberships, qstr, headers)
 	if err != nil {
 		err = fmt.Errorf("GetGroupMembership(): error getting group memberships for query %s: %w", qstr, err)
 	}
@@ -416,7 +405,7 @@ func (sc *SMDClient) GetGroupMembership(qstr, token string) (client.HTTPEnvelope
 // a ComponentSlice and a token, puts the token in the request headers as an
 // authorization bearer, marshalls compSlice as JSON and sets it as the request
 // body, then passes it to Ochami.PostData.
-func (sc *SMDClient) PostComponents(compSlice ComponentSlice, token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) PostComponents(ctx context.Context, compSlice ComponentSlice, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -430,7 +419,7 @@ func (sc *SMDClient) PostComponents(compSlice ComponentSlice, token string) (cli
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.PostData(context.Background(), SMDRelpathComponents, "", headers, body)
+	henv, err = sc.PostData(ctx, SMDRelpathComponents, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PostComponents(): failed to POST component(s) to SMD: %w", err)
 	}
@@ -442,343 +431,208 @@ func (sc *SMDClient) PostComponents(compSlice ComponentSlice, token string) (cli
 // takes a RedfishEndpointSlice and a token, puts the token in the request
 // headers as an authorization bearer, and iteratively calls
 // OchamiClient.PostData using each RedfishEndpoint in the slice.
-func (sc *SMDClient) PostRedfishEndpoints(rfes RedfishEndpointSlice, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (sc *SMDClient) PostRedfishEndpoints(ctx context.Context, rfes RedfishEndpointSlice, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, rfe := range rfes.RedfishEndpoints {
-		var body client.HTTPBody
-		var err error
-		if body, err = json.Marshal(rfe); err != nil {
-			newErr := fmt.Errorf("PostRedfishEndpoints(): failed to marshal RedfishEndpoint: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := sc.PostData(context.Background(), SMDRelpathRedfishEndpoints, "", headers, body)
-		henvs = append(henvs, henv)
+	return executeBatch(ctx, rfes.RedfishEndpoints, func(ctx context.Context, rfe csm.RedfishEndpoint) (client.HTTPEnvelope, error) {
+		body, err := json.Marshal(rfe)
 		if err != nil {
-			newErr := fmt.Errorf("PostRedfishEndpoints(): failed to POST redfish endpoint to SMD: %w", err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PostRedfishEndpoints(): failed to marshal RedfishEndpoint: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := sc.PostData(ctx, SMDRelpathRedfishEndpoints, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PostRedfishEndpoints(): failed to POST redfish endpoint to SMD: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // PostRedfishEndpointsV2 behaves like PostRedfishEndpoints except that it works
 // with a RedfishEndpointSliceV2.
-func (sc *SMDClient) PostRedfishEndpointsV2(rfes RedfishEndpointSliceV2, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (sc *SMDClient) PostRedfishEndpointsV2(ctx context.Context, rfes RedfishEndpointSliceV2, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, rfe := range rfes.RedfishEndpoints {
-		var body client.HTTPBody
-		var err error
-		if body, err = json.Marshal(rfe); err != nil {
-			newErr := fmt.Errorf("PostRedfishEndpointsV2(): failed to marshal RedfishEndpoint: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := sc.PostData(context.Background(), SMDRelpathRedfishEndpoints, "", headers, body)
-		henvs = append(henvs, henv)
+	return executeBatch(ctx, rfes.RedfishEndpoints, func(ctx context.Context, rfe RedfishEndpointV2) (client.HTTPEnvelope, error) {
+		body, err := json.Marshal(rfe)
 		if err != nil {
-			newErr := fmt.Errorf("PostRedfishEndpointsV2(): failed to POST redfish endpoint to SMD: %w", err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PostRedfishEndpointsV2(): failed to marshal RedfishEndpoint: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := sc.PostData(ctx, SMDRelpathRedfishEndpoints, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PostRedfishEndpointsV2(): failed to POST redfish endpoint to SMD: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // PostEthernetInterfaces is a wrapper function around OchamiClient.PostData
 // that takes a slice of EthernetInterfaces and a token, puts the token in the
 // request headers as an authorization bearer, and iteratively calls
 // OchamiClient.PostData using each EthernetInterface in the slice.
-func (sc *SMDClient) PostEthernetInterfaces(eis []EthernetInterface, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (sc *SMDClient) PostEthernetInterfaces(ctx context.Context, eis []EthernetInterface, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, ei := range eis {
-		var body client.HTTPBody
-		var err error
-		if body, err = json.Marshal(ei); err != nil {
-			newErr := fmt.Errorf("PostEthernetInterfaces(): failed to marshal EthernetInterface: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := sc.PostData(context.Background(), SMDRelpathEthernetInterfaces, "", headers, body)
-		henvs = append(henvs, henv)
+	return executeBatch(ctx, eis, func(ctx context.Context, ei EthernetInterface) (client.HTTPEnvelope, error) {
+		body, err := json.Marshal(ei)
 		if err != nil {
-			newErr := fmt.Errorf("PostEthernetInterfaces(): failed to POST ethernet interface(s) to SMD: %w", err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PostEthernetInterfaces(): failed to marshal EthernetInterface: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := sc.PostData(ctx, SMDRelpathEthernetInterfaces, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PostEthernetInterfaces(): failed to POST ethernet interface(s) to SMD: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // PostGroups is a wrapper function around OchamiClient.PostData that takes a
 // Group slice and a token, puts the token in the request headers as an
 // authorization bearer, and iteratively calls OchamiClient.PostData using each
 // Group in the slice.
-func (sc *SMDClient) PostGroups(groups []Group, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (sc *SMDClient) PostGroups(ctx context.Context, groups []Group, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, group := range groups {
-		var body client.HTTPBody
-		var err error
-		if body, err = json.Marshal(group); err != nil {
-			newErr := fmt.Errorf("PostGroups(): failed to marshal Group: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := sc.PostData(context.Background(), SMDRelpathGroups, "", headers, body)
-		henvs = append(henvs, henv)
+	return executeBatch(ctx, groups, func(ctx context.Context, group Group) (client.HTTPEnvelope, error) {
+		body, err := json.Marshal(group)
 		if err != nil {
-			newErr := fmt.Errorf("PostGroups(): failed to POST group to SMD: %w", err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PostGroups(): failed to marshal Group: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := sc.PostData(ctx, SMDRelpathGroups, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PostGroups(): failed to POST group to SMD: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // PostGroupMembers is a wrapper function around OchamiClient.PostData that
 // takes a token, group name, and a list of one or more component IDs. It puts
 // the token in the request headers as an authorization bearer, and iteratively
 // calls OchamiClient.PostData for each member on the group.
-func (sc *SMDClient) PostGroupMembers(token, group string, members ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-		body    client.HTTPBody
-		errors  []error
-	)
+func (sc *SMDClient) PostGroupMembers(ctx context.Context, token, group string, members ...string) (client.BatchResult[client.HTTPEnvelope], error) {
 	if group == "" {
-		return henvs, errors, fmt.Errorf("PostGroupMembers(): no group label specified to add members to")
+		return nil, fmt.Errorf("PostGroupMembers(): no group label specified to add members to")
 	}
 	if len(members) == 0 {
-		return henvs, errors, fmt.Errorf("PostGroupMembers(): no new members specified to add to group")
+		return nil, fmt.Errorf("PostGroupMembers(): no new members specified to add to group")
 	}
-	headers = client.NewHTTPHeaders()
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, member := range members {
+	results := executeBatch(ctx, members, func(ctx context.Context, member string) (client.HTTPEnvelope, error) {
 		groupPath, err := url.JoinPath(SMDRelpathGroups, group, "members")
 		if err != nil {
-			newErr := fmt.Errorf("PostGroupMembers(): failed to join group path (%s) with group label (%s): %w", SMDRelpathGroups, group, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PostGroupMembers(): failed to join group path (%s) with group label (%s): %w", SMDRelpathGroups, group, err)
 		}
-		m := make(map[string]string)
-		m["id"] = member
-		if body, err = json.Marshal(m); err != nil {
-			newErr := fmt.Errorf("PostGroupMembers(): failed to marshal member id %s: %w", member, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
-		}
-		henv, err := sc.PostData(context.Background(), groupPath, "", headers, body)
-		henvs = append(henvs, henv)
+		body, err := json.Marshal(map[string]string{"id": member})
 		if err != nil {
-			newErr := fmt.Errorf("PostGroupMembers(): failed to POST member %s to group %s: %w", member, group, err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PostGroupMembers(): failed to marshal member id %s: %w", member, err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := sc.PostData(ctx, groupPath, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PostGroupMembers(): failed to POST member %s to group %s: %w", member, group, err)
+		}
+		return henv, nil
+	})
+	return results, nil
 }
 
 // PutComponents takes a ComponentSlice and a token and iteratively calls
 // OchamiClient.PutData for each Component in the contained list. This is
 // necessary because SMD only allows sending a PUT for a single Component using
 // its ID in the endpoint path, forcing the client to send only a single
-// Component per request. A slice of client.HTTPEnvelopes is returned
-// containing one client.HTTPEnvelope per HTTP request, as well as an error
-// slice containing errors corresponding to each HTTP request. The indexes of
-// these should correspond.  If an error in the function itself occurred, a
-// separate error is returned.  This is to distinguish iterative HTTP request
-// errors from control flow errors.
-func (sc *SMDClient) PutComponents(compSlice ComponentSlice, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		henvs   []client.HTTPEnvelope
-		errors  []error
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+// Component per request. Each input has one aligned result.
+func (sc *SMDClient) PutComponents(ctx context.Context, compSlice ComponentSlice, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, comp := range compSlice.Components {
+	return executeBatch(ctx, compSlice.Components, func(ctx context.Context, comp Component) (client.HTTPEnvelope, error) {
 		if comp.ID == "" {
-			newErr := fmt.Errorf("PutComponents(): unable to update component with blank ID")
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutComponents(): unable to update component with blank ID")
 		}
 		xnamePath, err := url.JoinPath(SMDRelpathComponents, comp.ID)
 		if err != nil {
-			newErr := fmt.Errorf("PutComponents(): failed join component path (%s) with xname (%s): %w", SMDRelpathComponents, comp.ID, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutComponents(): failed join component path (%s) with xname (%s): %w", SMDRelpathComponents, comp.ID, err)
 		}
 		// SMD is weird and requires the PUT body to be a structure that
 		// _contains_ the component, so we do that here.
 		putComp := map[string]any{"Component": comp, "Force": true}
 		body, marshalErr := json.Marshal(putComp)
 		if marshalErr != nil {
-			newErr := fmt.Errorf("PutComponents(): failed to marshal component into JSON: %w", marshalErr)
-			errors = append(errors, newErr)
+			return client.HTTPEnvelope{}, fmt.Errorf("PutComponents(): failed to marshal component into JSON: %w", marshalErr)
 		}
-		henv, err := sc.PutData(context.Background(), xnamePath, "", headers, body)
-		henvs = append(henvs, henv)
+		henv, err := sc.PutData(ctx, xnamePath, "", headers, body)
 		if err != nil {
-			newErr := fmt.Errorf("PutComponents(): failed to PUT component %s in SMD: %w", comp.ID, err)
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("PutComponents(): failed to PUT component %s in SMD: %w", comp.ID, err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		return henv, nil
+	})
 }
 
 // PutRedfishEndpoints is a wrapper function around OchamiClient.PutData that
 // takes a RedfishEndpointSlice and a token, puts the token in the request
 // headers as an authorization bearer, and iteratively calls
 // OchamiClient.PutData using each RedfishEndpoint in the slice.
-func (sc *SMDClient) PutRedfishEndpoints(rfes RedfishEndpointSlice, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (sc *SMDClient) PutRedfishEndpoints(ctx context.Context, rfes RedfishEndpointSlice, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, rfe := range rfes.RedfishEndpoints {
-		var body client.HTTPBody
-		var err error
+	return executeBatch(ctx, rfes.RedfishEndpoints, func(ctx context.Context, rfe csm.RedfishEndpoint) (client.HTTPEnvelope, error) {
 		if rfe.ID == "" {
-			newErr := fmt.Errorf("PutRedfishEndpoints(): unable to update redfish endpoint with blank ID")
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutRedfishEndpoints(): unable to update redfish endpoint with blank ID")
 		}
 		xnamePath, err := url.JoinPath(SMDRelpathRedfishEndpoints, rfe.ID)
 		if err != nil {
-			newErr := fmt.Errorf("PutRedfishEndpoints(): failed to join redfish endpoint path (%s) with xname (%s): %w", SMDRelpathRedfishEndpoints, rfe.ID, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutRedfishEndpoints(): failed to join redfish endpoint path (%s) with xname (%s): %w", SMDRelpathRedfishEndpoints, rfe.ID, err)
 		}
-		if body, err = json.Marshal(rfe); err != nil {
-			newErr := fmt.Errorf("PutRedfishEndpoints(): failed to marshal RedfishEndpoint: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := sc.PutData(context.Background(), xnamePath, "", headers, body)
-		henvs = append(henvs, henv)
+		body, err := json.Marshal(rfe)
 		if err != nil {
-			newErr := fmt.Errorf("PutRedfishEndpoints(): failed to PUT redfish endpoint to SMD: %w", err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutRedfishEndpoints(): failed to marshal RedfishEndpoint: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := sc.PutData(ctx, xnamePath, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PutRedfishEndpoints(): failed to PUT redfish endpoint to SMD: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // PutRedfishEndpointsV2 behaves like PutRedfishEndpoints except that it works
 // with a RedfishEndpointSliceV2.
-func (sc *SMDClient) PutRedfishEndpointsV2(rfes RedfishEndpointSliceV2, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (sc *SMDClient) PutRedfishEndpointsV2(ctx context.Context, rfes RedfishEndpointSliceV2, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, rfe := range rfes.RedfishEndpoints {
-		var body client.HTTPBody
-		var err error
+	return executeBatch(ctx, rfes.RedfishEndpoints, func(ctx context.Context, rfe RedfishEndpointV2) (client.HTTPEnvelope, error) {
 		if rfe.ID == "" {
-			newErr := fmt.Errorf("PutRedfishEndpointsV2(): unable to update redfish endpoint with blank ID")
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutRedfishEndpointsV2(): unable to update redfish endpoint with blank ID")
 		}
 		xnamePath, err := url.JoinPath(SMDRelpathRedfishEndpoints, rfe.ID)
 		if err != nil {
-			newErr := fmt.Errorf("PutRedfishEndpointsV2(): failed to join redfish endpoint path (%s) with xname (%s): %w", SMDRelpathRedfishEndpoints, rfe.ID, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutRedfishEndpointsV2(): failed to join redfish endpoint path (%s) with xname (%s): %w", SMDRelpathRedfishEndpoints, rfe.ID, err)
 		}
-		if body, err = json.Marshal(rfe); err != nil {
-			newErr := fmt.Errorf("PutRedfishEndpointsV2(): failed to marshal RedfishEndpoint: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := sc.PutData(context.Background(), xnamePath, "", headers, body)
-		henvs = append(henvs, henv)
+		body, err := json.Marshal(rfe)
 		if err != nil {
-			newErr := fmt.Errorf("PutRedfishEndpointsV2(): failed to PUT redfish endpoint to SMD: %w", err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PutRedfishEndpointsV2(): failed to marshal RedfishEndpoint: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := sc.PutData(ctx, xnamePath, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PutRedfishEndpointsV2(): failed to PUT redfish endpoint to SMD: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // PutGroupMembers is a wrapper function around OchamiClient.PutData that takes
@@ -786,7 +640,7 @@ func (sc *SMDClient) PutRedfishEndpointsV2(rfes RedfishEndpointSliceV2, token st
 // token in the request headers as an authorization bearer and calls
 // OchamiClient.PostData on the SMD group members API endpoint with the group
 // and member list.
-func (sc *SMDClient) PutGroupMembers(token, group string, members ...string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) PutGroupMembers(ctx context.Context, token, group string, members ...string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -821,7 +675,7 @@ func (sc *SMDClient) PutGroupMembers(token, group string, members ...string) (cl
 	if body, err = json.Marshal(g); err != nil {
 		return henv, fmt.Errorf("PutGroupMembers(): failed to marshal group data: %w", err)
 	}
-	henv, err = sc.PutData(context.Background(), groupPath, "", headers, body)
+	henv, err = sc.PutData(ctx, groupPath, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PutGroupMembers(): failed to PUT members to group %s: %w", group, err)
 	}
@@ -835,7 +689,7 @@ func (sc *SMDClient) PutGroupMembers(token, group string, members ...string) (cl
 // fields except these are blanked. These modified components are then passed
 // with the token to OchamiClient.PatchData to SMD's BulkNID endpoint to update
 // the NIDs of the Components.
-func (sc *SMDClient) PatchComponentsNID(comps ComponentSlice, token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) PatchComponentsNID(ctx context.Context, comps ComponentSlice, token string) (client.HTTPEnvelope, error) {
 	// Set token in request headers
 	headers := client.NewHTTPHeaders()
 	if token != "" {
@@ -864,7 +718,7 @@ func (sc *SMDClient) PatchComponentsNID(comps ComponentSlice, token string) (cli
 	}
 
 	// Send request
-	henv, err := sc.PatchData(context.Background(), nidPath, "", headers, body)
+	henv, err := sc.PatchData(ctx, nidPath, "", headers, body)
 	if err != nil {
 		err = fmt.Errorf("PatchComponentsNID(): failed to PATCH stripped components in SMD: %w", err)
 	}
@@ -876,19 +730,12 @@ func (sc *SMDClient) PatchComponentsNID(comps ComponentSlice, token string) (cli
 // that takes a slice of EthernetInterfaces and a token, puts the token in the
 // request headers as an authorization bearer, and iteratively calls
 // OchamiClient.PatchData using each EthernetInterface in the slice.
-func (sc *SMDClient) PatchEthernetInterfaces(eis []EthernetInterface, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+func (sc *SMDClient) PatchEthernetInterfaces(ctx context.Context, eis []EthernetInterface, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, ei := range eis {
-		var body client.HTTPBody
-		var err error
+	return executeBatch(ctx, eis, func(ctx context.Context, ei EthernetInterface) (client.HTTPEnvelope, error) {
 		if ei.ID == "" {
 			if ei.MACAddress != "" {
 				log.Logger.Warn().Msgf("PatchEthernetInterfaces(): ID for ethernet interface is blank, attempting to adapt from MAC address (%s)", ei.MACAddress)
@@ -898,36 +745,23 @@ func (sc *SMDClient) PatchEthernetInterfaces(eis []EthernetInterface, token stri
 				newID = strings.ReplaceAll(newID, "_", "")
 				ei.ID = newID
 			} else {
-				newErr := fmt.Errorf("PatchEthernetInterfaces(): unable to patch ethernet interface with both blank ID and blank MAC address")
-				henvs = append(henvs, client.HTTPEnvelope{})
-				errors = append(errors, newErr)
-				continue
+				return client.HTTPEnvelope{}, fmt.Errorf("PatchEthernetInterfaces(): unable to patch ethernet interface with both blank ID and blank MAC address")
 			}
 		}
 		eiPath, err := url.JoinPath(SMDRelpathEthernetInterfaces, ei.ID)
 		if err != nil {
-			newErr := fmt.Errorf("PatchEthernetInterfaces(): failed to join ethernet interface path (%s) with ethernet interface ID (%s): %w", SMDRelpathEthernetInterfaces, ei.ID, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PatchEthernetInterfaces(): failed to join ethernet interface path (%s) with ethernet interface ID (%s): %w", SMDRelpathEthernetInterfaces, ei.ID, err)
 		}
-		if body, err = json.Marshal(ei); err != nil {
-			newErr := fmt.Errorf("PatchEthernetInterfaces(): failed to marshal EthernetInterface: %w", err)
-			errors = append(errors, newErr)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			continue
-		}
-		henv, err := sc.PatchData(context.Background(), eiPath, "", headers, body)
-		henvs = append(henvs, henv)
+		body, err := json.Marshal(ei)
 		if err != nil {
-			newErr := fmt.Errorf("PatchEthernetInterfaces(): failed to PATCH ethernet interface(s) to SMD: %w", err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PatchEthernetInterfaces(): failed to marshal EthernetInterface: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := sc.PatchData(ctx, eiPath, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PatchEthernetInterfaces(): failed to PATCH ethernet interface(s) to SMD: %w", err)
+		}
+		return henv, nil
+	})
 }
 
 // PatchGroups is a wrapper function around OchamiClient.PatchData that takes a
@@ -935,94 +769,57 @@ func (sc *SMDClient) PatchEthernetInterfaces(eis []EthernetInterface, token stri
 // authorization bearer, marshals each group as JSON and sets it as the request
 // body, then passes it to OchamiClient.PatchData using the group label in the
 // path.
-func (sc *SMDClient) PatchGroups(groups []Group, token string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-		body    client.HTTPBody
-		errors  []error
-	)
-	headers = client.NewHTTPHeaders()
+func (sc *SMDClient) PatchGroups(ctx context.Context, groups []Group, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, group := range groups {
+	return executeBatch(ctx, groups, func(ctx context.Context, group Group) (client.HTTPEnvelope, error) {
 		if group.Label == "" {
-			newErr := fmt.Errorf("PatchGroups(): no group label specified to update")
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PatchGroups(): no group label specified to update")
 		}
 		groupPath, err := url.JoinPath(SMDRelpathGroups, group.Label)
 		if err != nil {
-			newErr := fmt.Errorf("PatchGroups(): failed to join group path (%s) with group label (%s): %w", SMDRelpathGroups, group.Label, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PatchGroups(): failed to join group path (%s) with group label (%s): %w", SMDRelpathGroups, group.Label, err)
 		}
-		if body, err = json.Marshal(group); err != nil {
-			newErr := fmt.Errorf("PatchGroups(): failed to marshal Group: %w", err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
-		}
-		henv, err := sc.PatchData(context.Background(), groupPath, "", headers, body)
-		henvs = append(henvs, henv)
+		body, err := json.Marshal(group)
 		if err != nil {
-			newErr := fmt.Errorf("PatchGroups(): failed to PATCH group %s in SMD: %w", group.Label, err)
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("PatchGroups(): failed to marshal Group: %w", err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		henv, err := sc.PatchData(ctx, groupPath, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PatchGroups(): failed to PATCH group %s in SMD: %w", group.Label, err)
+		}
+		return henv, nil
+	})
 }
 
 // DeleteComponents takes a token and xnames and iteratively calls
 // OchamiClient.DeleteData for each xname. This is necessary because SMD only
-// allows deleting one xname at a time. A slice of client.HTTPEnvelopes is
-// returned containing one client.HTTPEnvelope per deletion, as well as an
-// error slice containing errors corresponding to each deletion. The indexes of
-// these should correspond. If an error in the function itself occurred, a
-// separate error is returned. This is to distinguish HTTP request errors from
-// control flow errors.
-func (sc *SMDClient) DeleteComponents(token string, xnames ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+// allows deleting one xname at a time. Each input has one aligned result.
+func (sc *SMDClient) DeleteComponents(ctx context.Context, token string, xnames ...string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, xname := range xnames {
+	return executeBatch(ctx, xnames, func(ctx context.Context, xname string) (client.HTTPEnvelope, error) {
 		xnamePath, err := url.JoinPath(SMDRelpathComponents, xname)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteComponents(): failed join component path (%s) with xname (%s): %w", SMDRelpathComponents, xname, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("DeleteComponents(): failed join component path (%s) with xname (%s): %w", SMDRelpathComponents, xname, err)
 		}
-		henv, err := sc.DeleteData(context.Background(), xnamePath, "", headers, nil)
-		henvs = append(henvs, henv)
+		henv, err := sc.DeleteData(ctx, xnamePath, "", headers, nil)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteComponents(): failed to DELETE component %s in SMD: %w", xname, err)
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("DeleteComponents(): failed to DELETE component %s in SMD: %w", xname, err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		return henv, nil
+	})
 }
 
 // DeleteComponentsAll is a wrapper function around OchamiClient.DeleteData that
 // takes a token, puts it in the request headers as an authorization bearer, and
 // sends it in a DELETE request to the SMD components endpoint. This should
 // delete all components SMD knows about if the token is authorized.
-func (sc *SMDClient) DeleteComponentsAll(token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) DeleteComponentsAll(ctx context.Context, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -1033,7 +830,7 @@ func (sc *SMDClient) DeleteComponentsAll(token string) (client.HTTPEnvelope, err
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.DeleteData(context.Background(), SMDRelpathComponents, "", headers, nil)
+	henv, err = sc.DeleteData(ctx, SMDRelpathComponents, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteComponentsAll(): failed to DELETE component(s) to SMD: %w", err)
 	}
@@ -1043,41 +840,23 @@ func (sc *SMDClient) DeleteComponentsAll(token string) (client.HTTPEnvelope, err
 
 // DeleteRedfishEndpoints takes a token and xnames and iteratively calls
 // OchamiClient.DeleteData for each xname. This is necessary because SMD only
-// allows deleting one xname at a time. A slice of client.HTTPEnvelopes is
-// returned containing one client.HTTPEnvelope per deletion, as well as an
-// error slice containing errors corresponding to each deletion. The indexes of
-// these should correspond. If an error in the function itself occurred, a
-// separate error is returned. This is to distinguish HTTP request errors from
-// control flow errors.
-func (sc *SMDClient) DeleteRedfishEndpoints(token string, xnames ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+// allows deleting one xname at a time. Each input has one aligned result.
+func (sc *SMDClient) DeleteRedfishEndpoints(ctx context.Context, token string, xnames ...string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, xname := range xnames {
+	return executeBatch(ctx, xnames, func(ctx context.Context, xname string) (client.HTTPEnvelope, error) {
 		xnamePath, err := url.JoinPath(SMDRelpathRedfishEndpoints, xname)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteRedfishEndpoints(): failed join redfish endpoint path (%s) with xname (%s): %w", SMDRelpathRedfishEndpoints, xname, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("DeleteRedfishEndpoints(): failed join redfish endpoint path (%s) with xname (%s): %w", SMDRelpathRedfishEndpoints, xname, err)
 		}
-		henv, err := sc.DeleteData(context.Background(), xnamePath, "", headers, nil)
-		henvs = append(henvs, henv)
+		henv, err := sc.DeleteData(ctx, xnamePath, "", headers, nil)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteRedfishEndpoints(): failed to DELETE redfish endpoint %s in SMD: %w", xname, err)
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("DeleteRedfishEndpoints(): failed to DELETE redfish endpoint %s in SMD: %w", xname, err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		return henv, nil
+	})
 }
 
 // DeleteRedfishEndpointsAll is a wrapper function around
@@ -1085,7 +864,7 @@ func (sc *SMDClient) DeleteRedfishEndpoints(token string, xnames ...string) ([]c
 // an authorization bearer, and sends it in a DELETE request to the SMD redfish
 // endpoints endpoint. This should delete all redfish endpoints SMD knows about
 // if the token is authorized.
-func (sc *SMDClient) DeleteRedfishEndpointsAll(token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) DeleteRedfishEndpointsAll(ctx context.Context, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -1096,7 +875,7 @@ func (sc *SMDClient) DeleteRedfishEndpointsAll(token string) (client.HTTPEnvelop
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.DeleteData(context.Background(), SMDRelpathRedfishEndpoints, "", headers, nil)
+	henv, err = sc.DeleteData(ctx, SMDRelpathRedfishEndpoints, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteRedfishEndpointsAll(): failed to DELETE redfish endpoint(s) to SMD: %w", err)
 	}
@@ -1107,41 +886,23 @@ func (sc *SMDClient) DeleteRedfishEndpointsAll(token string) (client.HTTPEnvelop
 // DeleteEthernetInterfaces takes a token and one or more ethernet interface
 // IDs and iteratively calls OchamiClient.DeleteData for each ID. This is
 // necessary because SMD only allows deleting one ethernet interface at a time.
-// A slice of client.HTTPEnvelopes is returned containing one
-// client.HTTPEnvelope per deletion, as well as an error slice containing
-// errors corresponding to each deletion. The indexes of these should
-// correspond. If an error in the function itself occurred, a separate error is
-// returned. This is to distinguish HTTP request errors from control flow
-// errors.
-func (sc *SMDClient) DeleteEthernetInterfaces(token string, eIds ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+// Each input has one aligned result.
+func (sc *SMDClient) DeleteEthernetInterfaces(ctx context.Context, token string, eIds ...string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, eId := range eIds {
-		eIdPath, err := url.JoinPath(SMDRelpathEthernetInterfaces, eId)
+	return executeBatch(ctx, eIds, func(ctx context.Context, eID string) (client.HTTPEnvelope, error) {
+		eIdPath, err := url.JoinPath(SMDRelpathEthernetInterfaces, eID)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteEthernetInterfaces(): failed join ethernet interface path (%s) with ethernet interface %s: %w", SMDRelpathEthernetInterfaces, eId, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("DeleteEthernetInterfaces(): failed join ethernet interface path (%s) with ethernet interface %s: %w", SMDRelpathEthernetInterfaces, eID, err)
 		}
-		henv, err := sc.DeleteData(context.Background(), eIdPath, "", headers, nil)
-		henvs = append(henvs, henv)
+		henv, err := sc.DeleteData(ctx, eIdPath, "", headers, nil)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteEthernetInterfaces(): failed to DELETE ethernet interface %s in SMD: %w", eId, err)
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("DeleteEthernetInterfaces(): failed to DELETE ethernet interface %s in SMD: %w", eID, err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		return henv, nil
+	})
 }
 
 // DeleteEthernetInterfacesAll is a wrapper function around
@@ -1149,7 +910,7 @@ func (sc *SMDClient) DeleteEthernetInterfaces(token string, eIds ...string) ([]c
 // an authorization bearer, and sends it in a DELETE request to the SMD ethernet
 // interfaces endpoint. This should delete all ethernet interfaces SMD knows
 // about if the token is authorized.
-func (sc *SMDClient) DeleteEthernetInterfacesAll(token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) DeleteEthernetInterfacesAll(ctx context.Context, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -1160,7 +921,7 @@ func (sc *SMDClient) DeleteEthernetInterfacesAll(token string) (client.HTTPEnvel
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.DeleteData(context.Background(), SMDRelpathEthernetInterfaces, "", headers, nil)
+	henv, err = sc.DeleteData(ctx, SMDRelpathEthernetInterfaces, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteEthernetInterfacesAll(): failed to DELETE ethernet interface(s) to SMD: %w", err)
 	}
@@ -1170,41 +931,24 @@ func (sc *SMDClient) DeleteEthernetInterfacesAll(token string) (client.HTTPEnvel
 
 // DeleteComponentEndpoints takes a token and one or more xnames and
 // iteratively calls OchamiClient.DeleteData for each xname. This is necessary
-// because SMD only allows deleting one component endpoint at a time. A slice
-// of client.HTTPEnvelopes is returned containing one client.HTTPEnvelope per
-// deletion, as well as an error slice containing errors corresponding to each
-// deletion. The indexes of these should correspond. If an error in the
-// function itself occurred, a separate error is returned. This is to
-// distinguish HTTP request errors from control flow errors.
-func (sc *SMDClient) DeleteComponentEndpoints(token string, xnames ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+// because SMD only allows deleting one component endpoint at a time. Each input
+// has one aligned result.
+func (sc *SMDClient) DeleteComponentEndpoints(ctx context.Context, token string, xnames ...string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, xname := range xnames {
+	return executeBatch(ctx, xnames, func(ctx context.Context, xname string) (client.HTTPEnvelope, error) {
 		finalEP, err := url.JoinPath(SMDRelpathComponentEndpoints, xname)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteComponentEndpoints(): failed join component endpoint path (%s) with xname %s: %w", SMDRelpathComponentEndpoints, xname, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("DeleteComponentEndpoints(): failed join component endpoint path (%s) with xname %s: %w", SMDRelpathComponentEndpoints, xname, err)
 		}
-		henv, err := sc.DeleteData(context.Background(), finalEP, "", headers, nil)
-		henvs = append(henvs, henv)
+		henv, err := sc.DeleteData(ctx, finalEP, "", headers, nil)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteComponentEndpoints(): failed to DELETE component endpoint %s in SMD: %w", xname, err)
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("DeleteComponentEndpoints(): failed to DELETE component endpoint %s in SMD: %w", xname, err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		return henv, nil
+	})
 }
 
 // DeleteComponentEndpointsAll is a wrapper function around
@@ -1212,7 +956,7 @@ func (sc *SMDClient) DeleteComponentEndpoints(token string, xnames ...string) ([
 // an authorization bearer, and sends it in a DELETE request to the SMD
 // component endpoints endpoint. This should delete all component endpoints SMD
 // knows about if the token is authorized.
-func (sc *SMDClient) DeleteComponentEndpointsAll(token string) (client.HTTPEnvelope, error) {
+func (sc *SMDClient) DeleteComponentEndpointsAll(ctx context.Context, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
 		headers *client.HTTPHeaders
@@ -1223,7 +967,7 @@ func (sc *SMDClient) DeleteComponentEndpointsAll(token string) (client.HTTPEnvel
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	henv, err = sc.DeleteData(context.Background(), SMDRelpathComponentEndpoints, "", headers, nil)
+	henv, err = sc.DeleteData(ctx, SMDRelpathComponentEndpoints, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteComponentEndpointsAll(): failed to DELETE component endpoint(s) to SMD: %w", err)
 	}
@@ -1233,84 +977,65 @@ func (sc *SMDClient) DeleteComponentEndpointsAll(token string) (client.HTTPEnvel
 
 // DeleteGroups takes a token and one or more group labels and iteratively
 // calls OchamiClient.DeleteData for each label. This is necessary because SMD
-// only allows deleting one group at a time. A slice of client.HTTPEnvelopes is
-// returned containing one client.HTTPEnvelope per deletion, as well as an
-// error slice containing errors corresponding to each deletion. The indexes of
-// these should correspond. If an error in the function itself occurred, a
-// separate error is returned. This is to distinguish HTTP request errors from
-// control flow errors.
-func (sc *SMDClient) DeleteGroups(token string, groupLabels ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
-	headers = client.NewHTTPHeaders()
+// only allows deleting one group at a time. Each input has one aligned result.
+func (sc *SMDClient) DeleteGroups(ctx context.Context, token string, groupLabels ...string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, label := range groupLabels {
+	return executeBatch(ctx, groupLabels, func(ctx context.Context, label string) (client.HTTPEnvelope, error) {
 		labelPath, err := url.JoinPath(SMDRelpathGroups, label)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteGroups(): failed join group path (%s) with group label (%s): %w", SMDRelpathGroups, label, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("DeleteGroups(): failed join group path (%s) with group label (%s): %w", SMDRelpathGroups, label, err)
 		}
-		henv, err := sc.DeleteData(context.Background(), labelPath, "", headers, nil)
-		henvs = append(henvs, henv)
+		henv, err := sc.DeleteData(ctx, labelPath, "", headers, nil)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteGroups(): failed to DELETE group %s in SMD: %w", label, err)
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("DeleteGroups(): failed to DELETE group %s in SMD: %w", label, err)
 		}
-		errors = append(errors, nil)
-	}
-
-	return henvs, errors, nil
+		return henv, nil
+	})
 }
 
 // DeleteGroupMembers takes a token, group name, and one or more component IDs
 // and iteratively calls OchamiClient.DeleteData for each member for the group.
-// This is necessary because SMD only allows deleting one member at a time. A
-// slice of client.HTTPEnvelopes is returned containing one client.HTTPEnvelope
-// per deletion, as well as an error slice containing errors corresponding to
-// each deletion. The indexes of these should correspond. If an error in the
-// function itself occurred, a separate error is returned. This is to
-// distinguish HTTP request errors from control flow errors.
-func (sc *SMDClient) DeleteGroupMembers(token, group string, members ...string) ([]client.HTTPEnvelope, []error, error) {
-	var (
-		errors  []error
-		henvs   []client.HTTPEnvelope
-		headers *client.HTTPHeaders
-	)
+// This is necessary because SMD only allows deleting one member at a time. Each
+// input has one aligned result; operation-wide validation errors are returned
+// separately.
+func (sc *SMDClient) DeleteGroupMembers(ctx context.Context, token, group string, members ...string) (client.BatchResult[client.HTTPEnvelope], error) {
 	if group == "" {
-		return henvs, errors, fmt.Errorf("DeleteGroupMembers(): no group label specified to delete members from")
+		return nil, fmt.Errorf("DeleteGroupMembers(): no group label specified to delete members from")
 	}
 	if len(members) == 0 {
-		return henvs, errors, fmt.Errorf("DeleteGroupMembers(): no members specified to delete from group")
+		return nil, fmt.Errorf("DeleteGroupMembers(): no members specified to delete from group")
 	}
-	headers = client.NewHTTPHeaders()
+	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
-	for _, member := range members {
+	results := executeBatch(ctx, members, func(ctx context.Context, member string) (client.HTTPEnvelope, error) {
 		memberPath, err := url.JoinPath(SMDRelpathGroups, group, "members", member)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteGroupMembers(): failed join group path (%s) with group %s and member %s: %w", SMDRelpathGroups, group, member, err)
-			henvs = append(henvs, client.HTTPEnvelope{})
-			errors = append(errors, newErr)
-			continue
+			return client.HTTPEnvelope{}, fmt.Errorf("DeleteGroupMembers(): failed join group path (%s) with group %s and member %s: %w", SMDRelpathGroups, group, member, err)
 		}
-		henv, err := sc.DeleteData(context.Background(), memberPath, "", headers, nil)
-		henvs = append(henvs, henv)
+		henv, err := sc.DeleteData(ctx, memberPath, "", headers, nil)
 		if err != nil {
-			newErr := fmt.Errorf("DeleteGroupMembers(): failed to DELETE member %s from group %s in SMD: %w", member, group, err)
-			errors = append(errors, newErr)
-			continue
+			return henv, fmt.Errorf("DeleteGroupMembers(): failed to DELETE member %s from group %s in SMD: %w", member, group, err)
 		}
-		errors = append(errors, nil)
-	}
+		return henv, nil
+	})
+	return results, nil
+}
 
-	return henvs, errors, nil
+func executeBatch[T any](ctx context.Context, items []T, operation func(context.Context, T) (client.HTTPEnvelope, error)) client.BatchResult[client.HTTPEnvelope] {
+	results := make(client.BatchResult[client.HTTPEnvelope], len(items))
+	for i, item := range items {
+		if err := ctx.Err(); err != nil {
+			for ; i < len(results); i++ {
+				results[i].Err = err
+			}
+			break
+		}
+		results[i].Value, results[i].Err = operation(ctx, item)
+	}
+	return results
 }
