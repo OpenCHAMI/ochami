@@ -11,27 +11,40 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/bss"
+	"github.com/openchami/ochami/pkg/config"
 )
 
-// GetClient sets up the BSS client with the BSS base URI and certificates
-// (if necessary) and returns it. This function is used by each subcommand.
-func GetClient(cmd *cobra.Command) (*bss.BSSClient, error) {
+// GetClientWithRuntime sets up the BSS client with the BSS base URI and certificates
+// (if necessary) and returns it. This function uses the provided runtime for configuration.
+func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*bss.BSSClient, error) {
 	// Without a base URI, we cannot do anything
-	bssBaseURI, err := cli.GetBaseURIBSS(cmd)
+	bssBaseURI, err := rt.GetBaseURI(cmd, config.ServiceBSS)
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for BSS: %w", err)
 	}
 
 	// Create client to make request to BSS
-	bssClient, err := bss.NewClient(bssBaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
+	bssClient, err := bss.NewClient(bssBaseURI, client.WithInsecure(rt.Insecure), client.WithShowToken(rt.ShowToken(cmd)))
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeGeneric, "error creating new BSS client: %w", err)
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	if err := cli.UseCACert(bssClient.OchamiClient); err != nil {
+	if err := rt.UseCACert(bssClient.OchamiClient); err != nil {
 		return nil, err
 	}
 
 	return bssClient, nil
+}
+
+// GetClient sets up the BSS client with the BSS base URI and certificates
+// (if necessary) and returns it. This function uses the runtime from context.
+// Since cmd/root.go always injects a runtime into context, this will always succeed.
+func GetClient(cmd *cobra.Command) (*bss.BSSClient, error) {
+	// Get runtime from context (always available since cmd/root.go injects it)
+	rt, err := cli.RuntimeFromCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return GetClientWithRuntime(cmd, rt)
 }

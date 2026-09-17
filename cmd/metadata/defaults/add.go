@@ -24,11 +24,9 @@ type metadataDefaultsAddOptions struct {
 	Envelope bool
 }
 
-// runCoreMetadataDefaultsAdd contains the core logic for the metadata defaults add command.
-// It takes the parsed options and performs the actual work of adding cluster defaults.
-func runCoreMetadataDefaultsAdd(cmd *cobra.Command, opts *metadataDefaultsAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+func runCoreMetadataDefaultsAddWithRuntime(cmd *cobra.Command, opts *metadataDefaultsAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -40,34 +38,34 @@ func runCoreMetadataDefaultsAdd(cmd *cobra.Command, opts *metadataDefaultsAddOpt
 		// Read cluster defaults data
 		defaults := []metadata_service_client.CreateClusterDefaultsRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[metadata_service_client.CreateClusterDefaultsRequest](cmd, &defaults); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service_client.CreateClusterDefaultsRequest](rt, cmd, &defaults); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateClusterDefaultsRequest](cmd, &defaults); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service_client.CreateClusterDefaultsRequest](rt, cmd, &defaults); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = metadataServiceClient.AddDefaults(cmd.Context(), cli.Token, defaults)
+		results = metadataServiceClient.AddDefaults(cmd.Context(), rt.Token, defaults)
 	} else {
 		// Use simple API (spec)
 
 		// Read cluster defaults data
 		defaults := []metadata_service.ClusterDefaultsSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[metadata_service.ClusterDefaultsSpec](cmd, &defaults); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service.ClusterDefaultsSpec](rt, cmd, &defaults); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[metadata_service.ClusterDefaultsSpec](cmd, &defaults); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service.ClusterDefaultsSpec](rt, cmd, &defaults); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = metadataServiceClient.AddDefaultsSpecs(cmd.Context(), cli.Token, defaults)
+		results = metadataServiceClient.AddDefaultsSpecs(cmd.Context(), rt.Token, defaults)
 	}
 
 	// Deal with per-request errors
@@ -170,8 +168,14 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | ochami metadata defaults add -f yaml -d @-
   echo '<yaml_data>' | ochami metadata defaults add -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -184,14 +188,14 @@ See ochami-metadata(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreMetadataDefaultsAdd(cmd, opts, metadataServiceClient)
+			return runCoreMetadataDefaultsAddWithRuntime(cmd, opts, metadataServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	metadataDefaultsAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	metadataDefaultsAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(metadataDefaultsAddCmd)
 	metadataDefaultsAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return metadataDefaultsAddCmd

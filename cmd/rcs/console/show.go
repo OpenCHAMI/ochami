@@ -25,7 +25,14 @@ See ochami-rcs(1) for more details.`,
   ochami rcs console show x0c0s1b0n0`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cli.HandleToken(cmd); err != nil {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Handle token for this command
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -41,11 +48,11 @@ See ochami-rcs(1) for more details.`,
 
 			nodeID := args[0]
 
-			rcsClient, err := rcs.GetClient(cmd)
+			rcsClient, err := rcs.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
-			err = rcsClient.ShowConsole(cmd.Context(), nodeID, follow, lines, cli.Token, cli.Ios.Out())
+			err = rcsClient.ShowConsole(cmd.Context(), nodeID, follow, lines, rt.Token, rt.Ios.Out())
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to show console: %w", err)
 			}

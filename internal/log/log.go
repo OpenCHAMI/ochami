@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -22,12 +23,57 @@ import (
 )
 
 var (
-	Logger zerolog.Logger
+	Logger = NewConcurrentLogger(zerolog.Nop())
 
 	// A BasicLogger that is turned off until turned on by the
 	// --verbose flag.
 	EarlyLogger = NewBasicLogger(os.Stderr, false, version.ProgName)
 )
+
+// ConcurrentLogger provides race-safe replacement and access to the process
+// logger. Each log event uses an immutable snapshot, so separate CLI
+// invocations may initialize logging concurrently without racing with active
+// commands.
+type ConcurrentLogger struct {
+	logger atomic.Pointer[zerolog.Logger]
+}
+
+// NewConcurrentLogger creates a logger initialized with logger.
+func NewConcurrentLogger(logger zerolog.Logger) *ConcurrentLogger {
+	cl := &ConcurrentLogger{}
+	cl.Set(logger)
+	return cl
+}
+
+// Set atomically replaces the logger used for future events.
+func (cl *ConcurrentLogger) Set(logger zerolog.Logger) {
+	cl.logger.Store(&logger)
+}
+
+// Get returns an immutable snapshot of the current logger.
+func (cl *ConcurrentLogger) Get() zerolog.Logger {
+	return *cl.logger.Load()
+}
+
+func (cl *ConcurrentLogger) Debug() *zerolog.Event {
+	logger := cl.Get()
+	return logger.Debug()
+}
+
+func (cl *ConcurrentLogger) Info() *zerolog.Event {
+	logger := cl.Get()
+	return logger.Info()
+}
+
+func (cl *ConcurrentLogger) Warn() *zerolog.Event {
+	logger := cl.Get()
+	return logger.Warn()
+}
+
+func (cl *ConcurrentLogger) Error() *zerolog.Event {
+	logger := cl.Get()
+	return logger.Error()
+}
 
 // Init() initializes the global logging object so it can be used for logging by
 // any package that imports this internal log package.
@@ -63,14 +109,14 @@ func Init(ll, lf, lc string) error {
 	case "rfc3339":
 		cw.TimeFormat = time.RFC3339
 		cw.FormatCaller = getFormatCaller(cw.NoColor)
-		Logger = zerolog.New(cw).Level(loggerLevel).With().Timestamp().Caller().Logger()
+		Logger.Set(zerolog.New(cw).Level(loggerLevel).With().Timestamp().Caller().Logger())
 	case "basic":
 		cw.FormatTimestamp = func(i interface{}) string { return "" }
 		cw.FormatLevel = func(i interface{}) string { return strings.ToUpper(fmt.Sprintf("%-6s|", i)) }
 		cw.FormatCaller = getFormatCaller(cw.NoColor)
-		Logger = zerolog.New(cw).Level(loggerLevel).With().Caller().Logger()
+		Logger.Set(zerolog.New(cw).Level(loggerLevel).With().Caller().Logger())
 	case "json":
-		Logger = zerolog.New(cw).Level(loggerLevel).With().Timestamp().Logger()
+		Logger.Set(zerolog.New(cw).Level(loggerLevel).With().Timestamp().Logger())
 	default:
 		return fmt.Errorf("unknown log format: %s", lf)
 	}

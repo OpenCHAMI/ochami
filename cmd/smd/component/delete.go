@@ -23,18 +23,19 @@ type componentDeleteOptions struct {
 	NoConfirm bool
 }
 
-// runCoreComponentDelete contains the core logic for the smd component delete command.
+// runCoreComponentDeleteWithRuntime contains the core logic for the smd component delete command.
 // It takes the parsed options and performs the actual work of deleting components.
-func runCoreComponentDelete(cmd *cobra.Command, opts *componentDeleteOptions, args []string, smdClient *smd.SMDClient) error {
+// Runtime-aware version.
+func runCoreComponentDeleteWithRuntime(cmd *cobra.Command, opts *componentDeleteOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
 		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 		var respDelete bool
 		var err error
 		if opts.All {
-			respDelete, err = cli.Ios.LoopYesNo("Really delete ALL COMPONENTS?")
+			respDelete, err = rt.Ios.LoopYesNo("Really delete ALL COMPONENTS?")
 		} else {
-			respDelete, err = cli.Ios.LoopYesNo("Really delete?")
+			respDelete, err = rt.Ios.LoopYesNo("Really delete?")
 		}
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
@@ -47,7 +48,7 @@ func runCoreComponentDelete(cmd *cobra.Command, opts *componentDeleteOptions, ar
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -56,7 +57,7 @@ func runCoreComponentDelete(cmd *cobra.Command, opts *componentDeleteOptions, ar
 	var xnameSlice []string
 	if cmd.Flag("data").Changed {
 		// Use payload file if passed
-		if err := cli.HandlePayload(cmd, &compSlice); err != nil {
+		if err := rt.HandlePayload(cmd, &compSlice); err != nil {
 			return err
 		}
 		for _, component := range compSlice.Components {
@@ -73,7 +74,7 @@ func runCoreComponentDelete(cmd *cobra.Command, opts *componentDeleteOptions, ar
 	// Perform deletion
 	if opts.All {
 		// If --all passed, we don't care about any passed arguments
-		_, err := smdClient.DeleteComponentsAll(cmd.Context(), cli.Token)
+		_, err := smdClient.DeleteComponentsAll(cmd.Context(), rt.Token)
 		if err != nil {
 			return cli.ClassifyClientError(err,
 				"SMD component deletion yielded unsuccessful HTTP response",
@@ -81,7 +82,7 @@ func runCoreComponentDelete(cmd *cobra.Command, opts *componentDeleteOptions, ar
 		}
 	} else {
 		// If --all not passed, pass argument list to deletion logic
-		results := smdClient.DeleteComponents(cmd.Context(), cli.Token, xnameSlice...)
+		results := smdClient.DeleteComponents(cmd.Context(), rt.Token, xnameSlice...)
 		// Since smdClient.DeleteComponents does the deletion iteratively, we need to deal with
 		// each error that might have occurred.
 		if err := cli.AggregateItemErrors(results.Errors(), "SMD component deletion"); err != nil {
@@ -143,8 +144,14 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -160,16 +167,16 @@ See ochami-smd(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreComponentDelete(cmd, opts, args, smdClient)
+			return runCoreComponentDeleteWithRuntime(cmd, opts, args, smdClient, rt)
 		},
 	}
 
 	// Create flags
 	componentDeleteCmd.Flags().BoolP("all", "a", false, "delete all components in SMD")
 	componentDeleteCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	componentDeleteCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	componentDeleteCmd.Flags().Bool("no-confirm", false, "do not ask before attempting deletion")
 
+	cli.AddFormatInputFlag(componentDeleteCmd)
 	componentDeleteCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return componentDeleteCmd

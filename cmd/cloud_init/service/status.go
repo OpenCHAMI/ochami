@@ -7,7 +7,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -28,8 +27,14 @@ func newCmdServiceStatus() *cobra.Command {
 
 See ochami-cloud-init(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -38,17 +43,23 @@ See ochami-cloud-init(1) for more details.`,
 				if _, err := cloudInitClient.GetVersion(cmd.Context()); err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
 						if !cmd.Flag("quiet").Changed {
-							fmt.Fprintln(cli.Ios.Out(), "cloud-init is running, but not normally")
+							if err := cli.WriteString(rt.Ios.Out(), "cloud-init is running, but not normally\n"); err != nil {
+								return err
+							}
 						}
 						return cli.Errorf(cli.CodeHTTP, "cloud-init status request yielded unsuccessful HTTP response: %w", err)
 					}
 					if !cmd.Flag("quiet").Changed {
-						fmt.Fprintln(cli.Ios.Out(), "cloud-init is not running")
+						if err := cli.WriteString(rt.Ios.Out(), "cloud-init is not running\n"); err != nil {
+							return err
+						}
 					}
 					return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init status: %w", err)
 				}
 				if !cmd.Flag("quiet").Changed {
-					fmt.Fprintln(cli.Ios.Out(), "cloud-init is running")
+					if err := cli.WriteString(rt.Ios.Out(), "cloud-init is running\n"); err != nil {
+						return err
+					}
 				}
 				return nil
 			}
@@ -69,11 +80,13 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			for _, henv := range respArr {
-				outBytes, err := client.FormatBody(henv.Body, cli.FormatOutput)
+				outBytes, err := client.FormatBody(henv.Body, rt.FormatOutput)
 				if err != nil {
 					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 				}
-				fmt.Fprint(cli.Ios.Out(), string(outBytes))
+				if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+					return err
+				}
 			}
 
 			if errOccurred {
@@ -87,10 +100,10 @@ See ochami-cloud-init(1) for more details.`,
 	// Create flags
 	serviceStatusCmd.Flags().Bool("api", false, "print OpenAPI spec")
 	serviceStatusCmd.Flags().BoolP("quiet", "q", false, "don't print output; return 0 if running, 1 if not")
-	serviceStatusCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
 	serviceStatusCmd.MarkFlagsMutuallyExclusive("quiet", "api")
 
+	cli.AddFormatOutputFlag(serviceStatusCmd)
 	serviceStatusCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return serviceStatusCmd

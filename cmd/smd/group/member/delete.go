@@ -25,13 +25,14 @@ type groupMemberDeleteOptions struct {
 	NoConfirm bool
 }
 
-// runCoreGroupMemberDelete contains the core logic for the smd group member delete command.
+// runCoreGroupMemberDeleteWithRuntime contains the core logic for the smd group member delete command.
 // It takes the parsed options and performs the actual work of deleting group members.
-func runCoreGroupMemberDelete(cmd *cobra.Command, opts *groupMemberDeleteOptions, args []string, smdClient *smd.SMDClient) error {
+// Runtime-aware version.
+func runCoreGroupMemberDeleteWithRuntime(cmd *cobra.Command, opts *groupMemberDeleteOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
 		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 		} else if !respDelete {
@@ -43,12 +44,12 @@ func runCoreGroupMemberDelete(cmd *cobra.Command, opts *groupMemberDeleteOptions
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Perform deletion from arguments
-	results, err := smdClient.DeleteGroupMembers(cmd.Context(), cli.Token, args[0], args[1:]...)
+	results, err := smdClient.DeleteGroupMembers(cmd.Context(), rt.Token, args[0], args[1:]...)
 	if err != nil {
 		return cli.Errorf(cli.CodeNetwork, "failed to delete members from group %s in SMD: %w", args[0], err)
 	}
@@ -84,8 +85,14 @@ func newCmdGroupMemberDelete() *cobra.Command {
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member delete compute x3000c1s7b56n0`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -98,7 +105,7 @@ See ochami-smd(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreGroupMemberDelete(cmd, opts, args, smdClient)
+			return runCoreGroupMemberDeleteWithRuntime(cmd, opts, args, smdClient, rt)
 		},
 	}
 

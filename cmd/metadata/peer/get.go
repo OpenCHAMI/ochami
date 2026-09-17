@@ -6,7 +6,6 @@ package peer
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -30,21 +29,27 @@ See ochami-metadata(1) for more details.`,
   # Get WireGuard peer in YAML format
   ochami metadata peer get wireguardpeer-773d99bf -F yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			uid := args[0]
 
 			// Make request
-			outBytes, err := metadataServiceClient.GetWireGuardPeer(cmd.Context(), cli.Token, cli.FormatOutput, uid)
+			outBytes, err := metadataServiceClient.GetWireGuardPeer(cmd.Context(), rt.Token, rt.FormatOutput, uid)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
 					return cli.Errorf(cli.CodeHTTP, "failed to get WireGuard peer info for %s: %w", uid, err)
@@ -53,15 +58,17 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Print output
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	metadataPeerGetCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(metadataPeerGetCmd)
 	metadataPeerGetCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return metadataPeerGetCmd

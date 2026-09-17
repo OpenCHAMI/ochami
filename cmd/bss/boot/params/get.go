@@ -27,11 +27,12 @@ type bootParamsGetOptions struct {
 	Nid   []int32
 }
 
-// runCoreBootParamsGet contains the core logic for the bss boot params get command.
+// runCoreBootParamsGetWithRuntime contains the core logic for the bss boot params get command.
 // It takes the parsed options and performs the actual work of getting boot parameters.
-func runCoreBootParamsGet(cmd *cobra.Command, opts *bootParamsGetOptions, bssClient *bss.BSSClient) error {
+// Runtime-aware version.
+func runCoreBootParamsGetWithRuntime(cmd *cobra.Command, opts *bootParamsGetOptions, bssClient *bss.BSSClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -51,17 +52,19 @@ func runCoreBootParamsGet(cmd *cobra.Command, opts *bootParamsGetOptions, bssCli
 		qstr = values.Encode()
 	}
 
-	httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, cli.Token)
+	httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, rt.Token)
 	if err != nil {
 		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
 	}
 
 	// Print output
-	outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+	outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
 	if err != nil {
 		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 	}
-	fmt.Fprint(cli.Ios.Out(), string(outBytes))
+	if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -85,8 +88,14 @@ See ochami-bss(1) for more details.`,
   ochami bss boot params get --mac 00:de:ad:be:ef:00,00:c0:ff:ee:00:00
   ochami bss boot params get --mac 00:de:ad:be:ef:00 --mac 00:c0:ff:ee:00:00`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -105,7 +114,7 @@ See ochami-bss(1) for more details.`,
 				opts.Nid, _ = cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreBootParamsGet(cmd, opts, bssClient)
+			return runCoreBootParamsGetWithRuntime(cmd, opts, bssClient, rt)
 		},
 	}
 
@@ -113,8 +122,8 @@ See ochami-bss(1) for more details.`,
 	bootParamsGetCmd.Flags().StringSliceP("xname", "x", []string{}, "one or more xnames whose boot parameters to get")
 	bootParamsGetCmd.Flags().StringSliceP("mac", "m", []string{}, "one or more MAC addresses whose boot parameters to get")
 	bootParamsGetCmd.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to get")
-	bootParamsGetCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(bootParamsGetCmd)
 	bootParamsGetCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return bootParamsGetCmd

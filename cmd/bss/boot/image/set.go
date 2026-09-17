@@ -38,14 +38,20 @@ See ochami-bss(1) for more details.`,
 		Example: `  # Set nodes to boot live image
   ochami bss boot image set --mac 00:de:ad:be:ef:00,de:ca:fc:0f:fe:ee live:https://172.16.0.254/image.squashfs`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -79,7 +85,7 @@ See ochami-bss(1) for more details.`,
 				}
 			}
 			qstr := values.Encode()
-			httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, cli.Token)
+			httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, rt.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
 
@@ -153,7 +159,7 @@ See ochami-bss(1) for more details.`,
 				bps[bpIdx].Params = k.String()
 
 				// Send modified params back to BSS
-				_, err = bssClient.PutBootParams(cmd.Context(), bps[bpIdx], cli.Token)
+				_, err = bssClient.PutBootParams(cmd.Context(), bps[bpIdx], rt.Token)
 				if err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(err).Msg("BSS boot parameter PUT request yielded unsuccessful HTTP response")

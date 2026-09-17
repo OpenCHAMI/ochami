@@ -8,7 +8,6 @@ package compep
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -29,34 +28,41 @@ func newCmdCompepGet() *cobra.Command {
 
 See ochami-smd(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			var httpEnv client.HTTPEnvelope
 			if len(args) == 0 {
 				// Get all ComponentEndpoints if no args passed
-				httpEnv, err = smdClient.GetComponentEndpointsAll(cmd.Context(), cli.Token)
+				httpEnv, err = smdClient.GetComponentEndpointsAll(cmd.Context(), rt.Token)
 				if err != nil {
 					return cli.ClassifyClientError(err, "SMD component endpoint request yielded unsuccessful HTTP response", "failed to request component endpoints from SMD")
-
 				}
 
 				// Print output
-				outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+				outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
 				if err != nil {
 					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 				}
-				fmt.Fprint(cli.Ios.Out(), string(outBytes))
+				if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+					return err
+				}
 			} else {
-				results := smdClient.GetComponentEndpoints(cmd.Context(), cli.Token, args...)
+				results := smdClient.GetComponentEndpoints(cmd.Context(), rt.Token, args...)
 				// Since smdClient.GetComponentEndpoints does the fetching iteratively, we need to
 				// deal with each error that might have occurred.
 				var errorsOccurred = false
@@ -100,11 +106,13 @@ See ochami-smd(1) for more details.`,
 				}
 
 				// Print output
-				outBytes, err := client.FormatBody(cesBytes, cli.FormatOutput)
+				outBytes, err := client.FormatBody(cesBytes, rt.FormatOutput)
 				if err != nil {
 					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 				}
-				fmt.Fprint(cli.Ios.Out(), string(outBytes))
+				if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+					return err
+				}
 			}
 
 			return nil
@@ -112,8 +120,8 @@ See ochami-smd(1) for more details.`,
 	}
 
 	// Create flags
-	compepGetCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(compepGetCmd)
 	compepGetCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return compepGetCmd

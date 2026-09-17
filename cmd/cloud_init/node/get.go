@@ -58,19 +58,25 @@ See ochami-cloud-init(1) for more details.`,
 		Example: `  # Get data from compute and slurm groups for node x3000c0s0b0n0
   ochami cloud-init node get group x3000c0s0b1n0 compute slurm`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Get node group data
-			results, err := cloudInitClient.GetNodeGroupData(cmd.Context(), cli.Token, args[0], args[1:]...)
+			results, err := cloudInitClient.GetNodeGroupData(cmd.Context(), rt.Token, args[0], args[1:]...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get node group data: %w", err)
 			}
@@ -105,16 +111,22 @@ See ochami-cloud-init(1) for more details.`,
 			// Print each datum
 			for idx, g := range gSlice {
 				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Fprintln(cli.Ios.Out(), g)
+					if err := cli.WriteString(rt.Ios.Out(), g+"\n"); err != nil {
+						return err
+					}
 				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
-					fmt.Fprintln(cli.Ios.Out(), g)
+					if err := cli.WriteString(rt.Ios.Out(), fmt.Sprintf("--- (%d/%d) node=%s group=%s\n%s\n", idx+1, len(gSlice), args[0], args[1+idx], g)); err != nil {
+						return err
+					}
 				} else {
 					if len(gSlice) == 1 {
-						fmt.Fprintln(cli.Ios.Out(), g)
+						if err := cli.WriteString(rt.Ios.Out(), g+"\n"); err != nil {
+							return err
+						}
 					} else {
-						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
-						fmt.Fprintln(cli.Ios.Out(), g)
+						if err := cli.WriteString(rt.Ios.Out(), fmt.Sprintf("--- (%d/%d) node=%s group=%s\n%s\n", idx+1, len(gSlice), args[0], args[1+idx], g)); err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -140,19 +152,25 @@ func newCmdNodeGetMetadata() *cobra.Command {
 
 See ochami-cloud-init(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Get meta-data
-			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitMetaData, cli.Token, args...)
+			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitMetaData, rt.Token, args...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get node meta-data: %w", err)
 			}
@@ -191,18 +209,20 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Print in desired format
-			outBytes, err := client.FormatBody(iiSliceBytes, cli.FormatOutput)
+			outBytes, err := client.FormatBody(iiSliceBytes, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	nodeGetMetadataCmd.PersistentFlags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output")
+	cli.AddFormatOutputFlag(nodeGetMetadataCmd)
 	nodeGetMetadataCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return nodeGetMetadataCmd
@@ -218,19 +238,25 @@ func newCmdNodeGetUserdata() *cobra.Command {
 
 See ochami-cloud-init(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Get user-data
-			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitUserData, cli.Token, args...)
+			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitUserData, rt.Token, args...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get node user-data: %w", err)
 			}
@@ -260,16 +286,22 @@ See ochami-cloud-init(1) for more details.`,
 			// Print each datum
 			for idx, ii := range iiSlice {
 				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Fprintln(cli.Ios.Out(), ii)
+					if err := cli.WriteString(rt.Ios.Out(), ii+"\n"); err != nil {
+						return err
+					}
 				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-					fmt.Fprintln(cli.Ios.Out(), ii)
+					if err := cli.WriteString(rt.Ios.Out(), fmt.Sprintf("--- (%d/%d) node=%s\n%s\n", idx+1, len(iiSlice), args[idx], ii)); err != nil {
+						return err
+					}
 				} else {
 					if len(iiSlice) == 1 {
-						fmt.Fprintln(cli.Ios.Out(), ii)
+						if err := cli.WriteString(rt.Ios.Out(), ii+"\n"); err != nil {
+							return err
+						}
 					} else {
-						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-						fmt.Fprintln(cli.Ios.Out(), ii)
+						if err := cli.WriteString(rt.Ios.Out(), fmt.Sprintf("--- (%d/%d) node=%s\n%s\n", idx+1, len(iiSlice), args[idx], ii)); err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -295,19 +327,25 @@ func newCmdNodeGetVendordata() *cobra.Command {
 
 See ochami-cloud-init(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Get vendor-data
-			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitVendorData, cli.Token, args...)
+			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitVendorData, rt.Token, args...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get node vendor-data: %w", err)
 			}
@@ -337,16 +375,22 @@ See ochami-cloud-init(1) for more details.`,
 			// Print each datum
 			for idx, ii := range iiSlice {
 				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Fprintln(cli.Ios.Out(), ii)
+					if err := cli.WriteString(rt.Ios.Out(), ii+"\n"); err != nil {
+						return err
+					}
 				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-					fmt.Fprintln(cli.Ios.Out(), ii)
+					if err := cli.WriteString(rt.Ios.Out(), fmt.Sprintf("--- (%d/%d) node=%s\n%s\n", idx+1, len(iiSlice), args[idx], ii)); err != nil {
+						return err
+					}
 				} else {
 					if len(iiSlice) == 1 {
-						fmt.Fprintln(cli.Ios.Out(), ii)
+						if err := cli.WriteString(rt.Ios.Out(), ii+"\n"); err != nil {
+							return err
+						}
 					} else {
-						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-						fmt.Fprintln(cli.Ios.Out(), ii)
+						if err := cli.WriteString(rt.Ios.Out(), fmt.Sprintf("--- (%d/%d) node=%s\n%s\n", idx+1, len(iiSlice), args[idx], ii)); err != nil {
+							return err
+						}
 					}
 				}
 			}

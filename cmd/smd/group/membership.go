@@ -6,7 +6,6 @@
 package group
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 
@@ -38,6 +37,11 @@ See ochami-smd(1) for more details.`,
   # and 2000 and are of x86 architecture
   ochami smd group membership --nid-start 1000 --nid-end 2000 --arch X86`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
 
 			params := url.Values{}
 			for _, flag := range []string{
@@ -78,29 +82,30 @@ See ochami-smd(1) for more details.`,
 				}
 			}
 
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
-			httpEnv, err := smdClient.GetGroupMembership(cmd.Context(), params.Encode(), cli.Token)
+			httpEnv, err := smdClient.GetGroupMembership(cmd.Context(), params.Encode(), rt.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "SMD membership request yielded unsuccessful HTTP response", "failed to request membership from SMD")
-
 			}
 
 			// Print output
-			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
@@ -124,8 +129,7 @@ See ochami-smd(1) for more details.`,
 	groupMembershipCmd.Flags().String("partition", "", "restrict search to the given partition")
 	groupMembershipCmd.Flags().String("group", "", "restrict search to the given group label")
 
-	groupMembershipCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
-
+	cli.AddFormatOutputFlag(groupMembershipCmd)
 	groupMembershipCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return groupMembershipCmd

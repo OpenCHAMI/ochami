@@ -14,31 +14,42 @@ import (
 	"github.com/openchami/ochami/pkg/config"
 )
 
-// GetClient sets up the boot-service client with the boot-service base URI and
-// certificates (if necessary) and returns it. This function is used by each
-// subcommand.
-func GetClient(cmd *cobra.Command) (*boot_service.BootServiceClient, error) {
+// GetClientWithRuntime sets up the boot-service client with the boot-service base URI and
+// certificates (if necessary) and returns it. This function uses the provided runtime for configuration.
+func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*boot_service.BootServiceClient, error) {
 	// Without a base URI, we cannot do anything
-	bootServiceBaseURI, err := cli.GetBaseURIBootService(cmd)
+	bootServiceBaseURI, err := rt.GetBaseURI(cmd, config.ServiceBoot)
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for boot-service: %w", err)
 	}
 
-	apiVersion, err := cli.GetAPIVersion(cmd, config.ServiceBoot)
+	apiVersion, err := rt.GetAPIVersion(cmd, config.ServiceBoot)
 	if err != nil {
 		log.Logger.Warn().Err(err).Msgf("failed to determine API version for %s from user, skipping", config.ServiceBoot)
 	}
 
 	// Create client to make request to boot-service
-	bootServiceClient, err := boot_service.NewClient(bootServiceBaseURI, cli.GetTimeout(cmd), apiVersion, log.Logger, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
+	bootServiceClient, err := boot_service.NewClient(bootServiceBaseURI, rt.GetTimeout(cmd), apiVersion, log.Logger.Get(), client.WithInsecure(rt.Insecure), client.WithShowToken(rt.ShowToken(cmd)))
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeGeneric, "error creating new boot-service client: %w", err)
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	if err := cli.UseCACert(bootServiceClient.OchamiClient); err != nil {
+	if err := rt.UseCACert(bootServiceClient.OchamiClient); err != nil {
 		return nil, err
 	}
 
 	return bootServiceClient, nil
+}
+
+// GetClient sets up the boot-service client with the boot-service base URI and
+// certificates (if necessary) and returns it. This function uses the runtime from context.
+// Since cmd/root.go always injects a runtime into context, this will always succeed.
+func GetClient(cmd *cobra.Command) (*boot_service.BootServiceClient, error) {
+	// Get runtime from context (always available since cmd/root.go injects it)
+	rt, err := cli.RuntimeFromCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return GetClientWithRuntime(cmd, rt)
 }

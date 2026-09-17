@@ -26,9 +26,9 @@ type bootConfigAddOptions struct {
 
 // runCoreBootConfigAdd contains the core logic for the boot config add command.
 // It takes the parsed options and performs the actual work of adding boot configurations.
-func runCoreBootConfigAdd(cmd *cobra.Command, opts *bootConfigAddOptions, bootServiceClient *boot_service.BootServiceClient) error {
+func runCoreBootConfigAdd(cmd *cobra.Command, opts *bootConfigAddOptions, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -40,34 +40,34 @@ func runCoreBootConfigAdd(cmd *cobra.Command, opts *bootConfigAddOptions, bootSe
 		// Read boot configuration data
 		bcs := []boot_service_client.CreateBootConfigurationRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[boot_service_client.CreateBootConfigurationRequest](rt, cmd, &bcs); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[boot_service_client.CreateBootConfigurationRequest](rt, cmd, &bcs); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = bootServiceClient.AddBootConfigs(cmd.Context(), cli.Token, bcs)
+		results = bootServiceClient.AddBootConfigs(cmd.Context(), rt.Token, bcs)
 	} else {
 		// Use simple API (spec)
 
 		// Read boot configuration data
 		bcs := []boot_service.BootConfigSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[boot_service.BootConfigSpec](cmd, &bcs); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[boot_service.BootConfigSpec](rt, cmd, &bcs); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[boot_service.BootConfigSpec](cmd, &bcs); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[boot_service.BootConfigSpec](rt, cmd, &bcs); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = bootServiceClient.AddBootConfigSpecs(cmd.Context(), cli.Token, bcs)
+		results = bootServiceClient.AddBootConfigSpecs(cmd.Context(), rt.Token, bcs)
 	}
 
 	// Deal with per-request errors
@@ -171,8 +171,14 @@ See ochami-boot(1) for more details.`,
   echo '<yaml_data>' | ochami boot config add -d @- -f yaml
   echo '<yaml_data>' | ochami boot config add -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -185,14 +191,14 @@ See ochami-boot(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreBootConfigAdd(cmd, opts, bootServiceClient)
+			return runCoreBootConfigAdd(cmd, opts, bootServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	bootConfigAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootConfigAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(bootConfigAddCmd)
 	bootConfigAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return bootConfigAddCmd

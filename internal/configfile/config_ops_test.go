@@ -6,6 +6,7 @@
 package configfile
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -1113,6 +1114,77 @@ func TestWriteConfig(t *testing.T) {
 		err := WriteConfig(t.TempDir(), ko)
 		if err == nil {
 			t.Fatal("WriteConfig(): expected directory error, got nil")
+		}
+	})
+
+	t.Run("failed temporary write preserves old file", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		mustWriteFile(t, path, []byte("old"))
+		opErr := errors.New("temporary write failed")
+		err := writeConfig(path, ko, configWriteOps{
+			stat: os.Stat,
+			createTemp: func(string, string, os.FileMode, []byte) (string, error) {
+				return "", opErr
+			},
+			rename: os.Rename, remove: os.Remove, syncDir: syncParentDirectory,
+		})
+		if !errors.Is(err, opErr) {
+			t.Fatalf("writeConfig() error = %v, want injected error", err)
+		}
+		got, err := os.ReadFile(path)
+		if err != nil || string(got) != "old" {
+			t.Fatalf("old config changed after temporary-write failure: %q, %v", got, err)
+		}
+	})
+
+	t.Run("rename failure cleans temporary file", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "config.yaml")
+		mustWriteFile(t, path, []byte("old"))
+		renameErr := errors.New("rename failed")
+		err := writeConfig(path, ko, configWriteOps{
+			stat: os.Stat, createTemp: writeTemporaryConfig,
+			rename: func(string, string) error { return renameErr },
+			remove: os.Remove, syncDir: syncParentDirectory,
+		})
+		if !errors.Is(err, renameErr) {
+			t.Fatalf("writeConfig() error = %v, want rename error", err)
+		}
+		got, err := os.ReadFile(path)
+		if err != nil || string(got) != "old" {
+			t.Fatalf("old config changed after rename failure: %q, %v", got, err)
+		}
+		matches, err := filepath.Glob(filepath.Join(dir, ".config.yaml.*"))
+		if err != nil || len(matches) != 0 {
+			t.Fatalf("temporary files after failure = %v, %v", matches, err)
+		}
+	})
+
+	t.Run("syncs parent directory after rename", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		var synced string
+		err := writeConfig(path, ko, configWriteOps{
+			stat: os.Stat, createTemp: writeTemporaryConfig, rename: os.Rename,
+			remove:  os.Remove,
+			syncDir: func(path string) error { synced = path; return nil },
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if synced != filepath.Dir(path) {
+			t.Fatalf("synced directory = %q, want %q", synced, filepath.Dir(path))
+		}
+	})
+
+	t.Run("directory sync failure is returned", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		syncErr := errors.New("directory sync failed")
+		err := writeConfig(path, ko, configWriteOps{
+			stat: os.Stat, createTemp: writeTemporaryConfig, rename: os.Rename,
+			remove: os.Remove, syncDir: func(string) error { return syncErr },
+		})
+		if !errors.Is(err, syncErr) {
+			t.Fatalf("writeConfig() error = %v, want sync error", err)
 		}
 	})
 }

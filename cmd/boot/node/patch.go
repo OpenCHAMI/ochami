@@ -64,14 +64,20 @@ See ochami-boot(1) for more details.`,
   echo '<yaml_data>' | ochami boot node patch nod-bc76f7f2 -d @- -f yaml
   echo '<yaml_data>' | ochami boot node patch nod-bc76f7f2 -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -90,17 +96,17 @@ See ochami-boot(1) for more details.`,
 				patchData = pd
 			} else {
 				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &patchData); err != nil {
+					if err := rt.HandlePayload(cmd, &patchData); err != nil {
 						return err
 					}
 				} else {
-					if err := cli.HandlePayloadStdin(cmd, &patchData); err != nil {
+					if err := rt.HandlePayloadStdin(cmd, &patchData); err != nil {
 						return err
 					}
 				}
 			}
 
-			nodePatched, err := bootServiceClient.PatchNode(cmd.Context(), cli.Token, patchMethod, args[0], patchData)
+			nodePatched, err := bootServiceClient.PatchNode(cmd.Context(), rt.Token, patchMethod, args[0], patchData)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to patch node: %w", err)
 			}
@@ -117,14 +123,13 @@ See ochami-boot(1) for more details.`,
 	bootNodePatchCmd.Flags().StringArrayVar(&addList, "add", nil, "add value to array field (field=value)")
 	bootNodePatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field by index (field=index)")
 	bootNodePatchCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootNodePatchCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data for JSON patch formats (json,json-pretty,yaml)")
 	bootNodePatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7386,keyval)")
 
 	for _, flag := range []string{"set", "unset", "add", "remove"} {
-		bootNodePatchCmd.MarkFlagsMutuallyExclusive("format-input", flag)
 		bootNodePatchCmd.MarkFlagsMutuallyExclusive("data", flag)
 	}
 
+	cli.AddFormatInputFlag(bootNodePatchCmd)
 	bootNodePatchCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	bootNodePatchCmd.RegisterFlagCompletionFunc("patch-method", cli.CompletionPatchMethod)
 

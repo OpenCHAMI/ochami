@@ -140,7 +140,6 @@ func TestPrintUsageHandleError(t *testing.T) {
 func TestLogHelpHint(t *testing.T) {
 	cmd := &cobra.Command{Use: "demo"}
 	LogHelpHint(cmd)
-	logHelpHint(cmd)
 }
 
 // TestInitLoggingFlagOverrides covers InitLogging's log-format/level/color
@@ -163,13 +162,14 @@ func TestInitLoggingFlagOverrides(t *testing.T) {
 		t.Fatalf("set log-color: %v", err)
 	}
 
-	if err := InitLogging(cmd); err != nil {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	if err := rt.InitLogging(cmd); err != nil {
 		t.Fatalf("InitLogging = %v, want nil", err)
 	}
-	if activeConfig.Log.Format != "json" {
-		t.Errorf("Log.Format = %q, want json", activeConfig.Log.Format)
+	if rt.Config.Log.Format != "json" {
+		t.Errorf("Log.Format = %q, want json", rt.Config.Log.Format)
 	}
-	if activeConfig.Log.Level != "warning" {
-		t.Errorf("Log.Level = %q, want warning", activeConfig.Log.Level)
+	if rt.Config.Log.Level != "warning" {
+		t.Errorf("Log.Level = %q, want warning", rt.Config.Log.Level)
 	}
 }

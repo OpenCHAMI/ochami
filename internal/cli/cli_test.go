@@ -29,7 +29,7 @@ func TestIOStream_AskToCreate(t *testing.T) {
 		inBuf := &bytes.Buffer{}
 		outBuf := &bytes.Buffer{}
 		errBuf := &bytes.Buffer{}
-		ios := newIOStream(inBuf, outBuf, errBuf)
+		ios := NewIOStreams(inBuf, outBuf, errBuf)
 
 		got, err := ios.AskToCreate("")
 		if got != false {
@@ -57,7 +57,7 @@ func TestIOStream_AskToCreate(t *testing.T) {
 		inBuf := &bytes.Buffer{}
 		outBuf := &bytes.Buffer{}
 		errBuf := &bytes.Buffer{}
-		ios := newIOStream(inBuf, outBuf, errBuf)
+		ios := NewIOStreams(inBuf, outBuf, errBuf)
 
 		got, err := ios.AskToCreate(f)
 		if got != false {
@@ -82,7 +82,7 @@ func TestIOStream_AskToCreate(t *testing.T) {
 		inBuf := bytes.NewBufferString("n\n")
 		outBuf := &bytes.Buffer{}
 		errBuf := &bytes.Buffer{}
-		ios := newIOStream(inBuf, outBuf, errBuf)
+		ios := NewIOStreams(inBuf, outBuf, errBuf)
 
 		got, err := ios.AskToCreate(path)
 		if got != false {
@@ -108,7 +108,7 @@ func TestIOStream_AskToCreate(t *testing.T) {
 		inBuf := bytes.NewBufferString("y\n")
 		outBuf := &bytes.Buffer{}
 		errBuf := &bytes.Buffer{}
-		ios := newIOStream(inBuf, outBuf, errBuf)
+		ios := NewIOStreams(inBuf, outBuf, errBuf)
 
 		got, err := ios.AskToCreate(path)
 		if got != true {
@@ -163,7 +163,7 @@ func TestIOStream_LoopYesNo(t *testing.T) {
 			t.Parallel()
 			inBuf := bytes.NewBufferString(tc.input)
 			errBuf := &bytes.Buffer{}
-			ios := newIOStream(inBuf, io.Discard, errBuf)
+			ios := NewIOStreams(inBuf, io.Discard, errBuf)
 
 			got, err := ios.LoopYesNo("Proceed?")
 			if err != nil {
@@ -182,6 +182,8 @@ func TestIOStream_LoopYesNo(t *testing.T) {
 }
 
 func Test_CreateIfNotExists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "newfile")
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard)
 	type args struct {
 		path string
 	}
@@ -200,21 +202,21 @@ func Test_CreateIfNotExists(t *testing.T) {
 		{
 			name: "create new file",
 			args: args{
-				path: "/tmp/newfile",
+				path: path,
 			},
 			wantErr: false,
 		},
 		{
 			name: "already exists",
 			args: args{
-				path: "/tmp/newfile",
+				path: path,
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := CreateIfNotExists(tt.args.path); (err != nil) != tt.wantErr {
+			if err := rt.CreateIfNotExists(tt.args.path); (err != nil) != tt.wantErr {
 				t.Errorf("CreateIfNotExists() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -267,12 +269,10 @@ func TestCheckToken_ValidToken(t *testing.T) {
 		t.Fatalf("failed to generate test token: %v", err)
 	}
 
-	// Set global Token variable
-	Token = tokenStr
-
-	// Note: We can't actually call CheckToken() here because it calls os.Exit()
-	// In a real test harness, CheckToken should be refactored to return errors
-	t.Log("Testing valid token - CheckToken would succeed without calling os.Exit()")
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard).WithToken(tokenStr)
+	if err := rt.CheckToken(); err != nil {
+		t.Fatalf("CheckToken() error = %v", err)
+	}
 
 	// We'll just verify the token was generated correctly by parsing it
 	// Use WithVerify(false) since we're testing parsing, not signature verification
@@ -373,19 +373,10 @@ func TestCheckToken_ExpiringSoon(t *testing.T) {
 }
 
 func TestCheckToken_EmptyToken(t *testing.T) {
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-
-	Token = ""
-
-	// We can't actually call CheckToken because it calls os.Exit(1)
-	// But we can verify the logic
-	if Token != "" {
-		t.Error("Token should be empty for this test")
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard)
+	if err := rt.CheckToken(); err == nil || ExitCode(err) != CodeAuth {
+		t.Fatalf("CheckToken() error = %v, want CodeAuth", err)
 	}
-
-	t.Log("Verified empty token case - CheckToken would log error and call os.Exit(1)")
 }
 
 func TestCheckToken_MalformedToken(t *testing.T) {
@@ -402,22 +393,19 @@ func TestCheckToken_MalformedToken(t *testing.T) {
 }
 
 func TestSetToken_FromFlag(t *testing.T) {
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-
 	cmd := &cobra.Command{}
 	cmd.Flags().String("token", "", "token flag")
 	if err := cmd.Flags().Set("token", "test-token-from-flag"); err != nil {
 		t.Fatalf("Failed to set flag: %v", err)
 	}
 
-	if err := SetToken(cmd); err != nil {
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard)
+	if err := rt.SetTokenFromFlag(cmd); err != nil {
 		t.Fatalf("SetToken returned unexpected error: %v", err)
 	}
 
-	if Token != "test-token-from-flag" {
-		t.Errorf("Token = %q, want %q", Token, "test-token-from-flag")
+	if rt.Token != "test-token-from-flag" {
+		t.Errorf("Token = %q, want %q", rt.Token, "test-token-from-flag")
 	}
 }
 

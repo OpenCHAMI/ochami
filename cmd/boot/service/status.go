@@ -5,8 +5,6 @@
 package service
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -23,29 +21,36 @@ func newCmdServiceStatus() *cobra.Command {
 
 See ochami-boot(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Make request
-			outbytes, err := bootServiceClient.GetHealth(cmd.Context(), cli.FormatOutput)
+			outbytes, err := bootServiceClient.GetHealth(cmd.Context(), rt.FormatOutput)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get boot-service health", "failed to get boot-service health")
-
 			}
 
 			// Print output
-			fmt.Fprint(cli.Ios.Out(), string(outbytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outbytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	serviceStatusCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(serviceStatusCmd)
 	serviceStatusCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return serviceStatusCmd

@@ -27,7 +27,31 @@ import (
 	version_cmd "github.com/openchami/ochami/cmd/version"
 )
 
+// rootOptions holds the root-level flag values for this command tree.
+// These are owned by the command tree, not global state.
+type rootOptions struct {
+	configFile   string
+	cacertPath   string
+	token        string
+	insecure     bool
+	logFormat    string
+	logLevel     string
+	logColor     string
+	cluster      string
+	clusterURI   string
+	noToken      bool
+	showToken    bool
+	ignoreConfig bool
+	verbose      bool
+}
+
 func NewRootCmd() *cobra.Command {
+	// Create runtime instance for this command tree
+	rt := cli.NewRuntime()
+
+	// root-level options owned by this command tree
+	var rootOpts rootOptions
+
 	// rootCmd represents the base command when called without any subcommands
 	var rootCmd = &cobra.Command{
 		Use:   version.ProgName,
@@ -46,27 +70,59 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// Ask the user in any child commands to create the config file
-			// if missing. If this is undesired, define PersistentPreRunE in
-			// the child command with this line overridden with:
-			//
-			//   cli.InitConfigAndLogging(cmd, false)
-			//
-			if err := cli.InitConfigAndLogging(cmd, true); err != nil {
+			var err error
+			rt, err = cli.RuntimeFromCommand(cmd)
+			if err != nil {
 				return err
 			}
 
-			// Apply the default formats (if the flags aren't changed and the config option is present)
-			// Note that this doesn't cover the case where the variable is checked without the corresponding
-			// flag being defined.
-			inputFormatFlag := cmd.Flag("format-input")
-			if cli.ActiveConfig().DefaultInputFormat != "" && inputFormatFlag != nil && !inputFormatFlag.Changed {
-				cli.FormatInput = cli.ActiveConfig().DefaultInputFormat
+			// Only explicitly changed flags replace values supplied by an injected
+			// runtime. This keeps config defaults and test fixtures intact.
+			if cmd.Flag("config").Changed {
+				rt.ConfigFile = rootOpts.configFile
+			}
+			if cmd.Flag("cacert").Changed {
+				rt.CACertPath = rootOpts.cacertPath
+			}
+			if cmd.Flag("token").Changed {
+				rt.Token = rootOpts.token
+			}
+			if cmd.Flag("insecure").Changed {
+				rt.Insecure = rootOpts.insecure
+			}
+			rt.EarlyVerbose = rootOpts.verbose
+
+			// Production runtimes load normal sources. Test runtimes load only an
+			// explicitly selected source, including built-in defaults requested by
+			// --ignore-config.
+			loadConfig := rt.LoadConfig || cmd.Flag("config").Changed || cmd.Flag("ignore-config").Changed
+			if commandEditsConfig(cmd) {
+				loadConfig = false
+				if rt.UserConfigFile == "" {
+					if err := rt.ResolveUserConfigFile(); err != nil {
+						return cli.Errorf(cli.CodeConfig, "failed to resolve user config path: %w", err)
+					}
+				}
+			}
+			if loadConfig {
+				createConfig := commandMayCreateConfig(cmd)
+				if err := rt.InitConfigAndLogging(cmd, createConfig); err != nil {
+					return err
+				}
 			}
 
+			// Config defaults apply only when the corresponding command flag was
+			// not explicitly supplied.
+			inputFormatFlag := cmd.Flag("format-input")
+			if rt.Config.DefaultInputFormat != "" && (inputFormatFlag == nil || !inputFormatFlag.Changed) {
+				rt.FormatInput = rt.Config.DefaultInputFormat
+			}
 			outputFormatFlag := cmd.Flag("format-output")
-			if cli.ActiveConfig().DefaultOutputFormat != "" && outputFormatFlag != nil && !outputFormatFlag.Changed {
-				cli.FormatOutput = cli.ActiveConfig().DefaultOutputFormat
+			if rt.Config.DefaultOutputFormat != "" && (outputFormatFlag == nil || !outputFormatFlag.Changed) {
+				rt.FormatOutput = rt.Config.DefaultOutputFormat
+			}
+			if err := cli.ApplyFormatFlags(cmd, rt); err != nil {
+				return err
 			}
 
 			return nil
@@ -74,21 +130,22 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 		// With no subcommand, print usage and exit successfully.
 		RunE: cli.PrintUsage,
 	}
+	rootCmd.SetContext(rt.WithContext(rootCmd.Context()))
 
-	// Create root command flags
-	rootCmd.PersistentFlags().StringVarP(&cli.ConfigFile, "config", "c", "", "path to configuration file to use")
-	rootCmd.PersistentFlags().StringP("log-format", "L", "", "log format (json,rfc3339,basic)")
-	rootCmd.PersistentFlags().StringP("log-level", "l", "", "set verbosity of logs (info,warning,debug)")
-	rootCmd.PersistentFlags().String("log-color", "", "set coloring of logs (auto,on,off)")
-	rootCmd.PersistentFlags().StringP("cluster", "C", "", "name of cluster whose config to use for this command")
-	rootCmd.PersistentFlags().StringP("cluster-uri", "u", "", "base URI for OpenCHAMI services, excluding service base path (overrides cluster.uri in config file)")
-	rootCmd.PersistentFlags().StringVar(&cli.CACertPath, "cacert", "", "path to root CA certificate in PEM format")
-	rootCmd.PersistentFlags().StringVarP(&cli.Token, "token", "t", "", "access cli.Token to present for authentication")
-	rootCmd.PersistentFlags().Bool("no-token", false, "do not check for or use an access cli.Token")
-	rootCmd.PersistentFlags().Bool("show-token", false, "show full access token in debug logs instead of a truncated value")
-	rootCmd.PersistentFlags().BoolVarP(&cli.Insecure, "insecure", "k", false, "do not verify TLS certificates")
-	rootCmd.PersistentFlags().Bool("ignore-config", false, "do not use any config file")
-	rootCmd.PersistentFlags().BoolVarP(&log.EarlyLogger.EarlyVerbose, "verbose", "v", false, "be verbose before logging is initialized")
+	// Create root command flags - all bound to command-tree-local rootOpts
+	rootCmd.PersistentFlags().StringVarP(&rootOpts.configFile, "config", "c", "", "path to configuration file to use")
+	rootCmd.PersistentFlags().StringVarP(&rootOpts.logFormat, "log-format", "L", "", "log format (json,rfc3339,basic)")
+	rootCmd.PersistentFlags().StringVarP(&rootOpts.logLevel, "log-level", "l", "", "set verbosity of logs (info,warning,debug)")
+	rootCmd.PersistentFlags().StringVar(&rootOpts.logColor, "log-color", "", "set coloring of logs (auto,on,off)")
+	rootCmd.PersistentFlags().StringVarP(&rootOpts.cluster, "cluster", "C", "", "name of cluster whose config to use for this command")
+	rootCmd.PersistentFlags().StringVarP(&rootOpts.clusterURI, "cluster-uri", "u", "", "base URI for OpenCHAMI services, excluding service base path (overrides cluster.uri in config file)")
+	rootCmd.PersistentFlags().StringVar(&rootOpts.cacertPath, "cacert", "", "path to root CA certificate in PEM format")
+	rootCmd.PersistentFlags().StringVarP(&rootOpts.token, "token", "t", "", "access token to present for authentication")
+	rootCmd.PersistentFlags().BoolVar(&rootOpts.noToken, "no-token", false, "do not check for or use an access token")
+	rootCmd.PersistentFlags().BoolVar(&rootOpts.showToken, "show-token", false, "show full access token in debug logs instead of a truncated value")
+	rootCmd.PersistentFlags().BoolVarP(&rootOpts.insecure, "insecure", "k", false, "do not verify TLS certificates")
+	rootCmd.PersistentFlags().BoolVar(&rootOpts.ignoreConfig, "ignore-config", false, "do not use any config file")
+	rootCmd.PersistentFlags().BoolVarP(&rootOpts.verbose, "verbose", "v", false, "be verbose before logging is initialized")
 
 	// Either use cluster from config file or specify details on CLI
 	rootCmd.MarkFlagsMutuallyExclusive("cluster", "cluster-uri")
@@ -115,6 +172,24 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 	cli.WrapUsageErrors(rootCmd)
 
 	return rootCmd
+}
+
+func commandMayCreateConfig(cmd *cobra.Command) bool {
+	switch cmd.CommandPath() {
+	case "ochami config show", "ochami config unset", "ochami config cluster show", "ochami config cluster unset":
+		return false
+	default:
+		return true
+	}
+}
+
+func commandEditsConfig(cmd *cobra.Command) bool {
+	switch cmd.CommandPath() {
+	case "ochami config set", "ochami config unset", "ochami config cluster set", "ochami config cluster unset", "ochami config cluster delete":
+		return true
+	default:
+		return false
+	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

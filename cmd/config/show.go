@@ -6,7 +6,6 @@
 package config
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/knadh/koanf/v2"
@@ -28,12 +27,6 @@ func newCmdShow() *cobra.Command {
 
 See ochami-config(1) for details on the config commands.
 See ochami-config(5) for details on the configuration options.`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// It doesn't make sense to show the config value from a config
-			// file that doesn't exist, so err if the specified config file
-			// doesn't exist.
-			return cli.InitConfigAndLogging(cmd, false)
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			log.Logger.Debug().Msgf("COMMAND: %v", strings.Split(cmd.CommandPath(), " "))
 			// To mark both persistent and regular flags mutually exclusive,
@@ -45,17 +38,22 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Get the config from the relevant file depending on the flag,
 			// or the merged config if none.
 			var ko *koanf.Koanf
-			var err error
 			if cmd.Flags().Changed("system") {
 				ko, err = configfile.ReadConfigWithDefaults(config.SystemConfigFile)
 				if err != nil {
 					return cli.Errorf(cli.CodeConfig, "failed to read system config file: %w", err)
 				}
 			} else if cmd.Flags().Changed("user") {
-				ko, err = configfile.ReadConfigWithDefaults(cli.UserConfigFile)
+				ko, err = configfile.ReadConfigWithDefaults(rt.UserConfigFile)
 				if err != nil {
 					return cli.Errorf(cli.CodeConfig, "failed to read user config file: %w", err)
 				}
@@ -65,7 +63,7 @@ See ochami-config(5) for details on the configuration options.`,
 					return cli.Errorf(cli.CodeConfig, "failed to read config file %s: %w", cmd.Flag("config").Value.String(), err)
 				}
 			} else {
-				ko = cli.ActiveKoanf()
+				ko = rt.Koanf
 			}
 
 			// Individual key was requested, print value directly
@@ -82,7 +80,9 @@ See ochami-config(5) for details on the configuration options.`,
 				return cli.Errorf(cli.CodeConfig, "failed to get config for key %q: %w", key, err)
 			}
 			if val != "" {
-				fmt.Fprint(cli.Ios.Out(), val)
+				if err := cli.WriteString(rt.Ios.Out(), val); err != nil {
+					return err
+				}
 			}
 
 			return nil

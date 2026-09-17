@@ -26,9 +26,9 @@ type bootNodeSetOptions struct {
 
 // runCoreBootNodeSet contains the core logic for the boot node set command.
 // It takes the parsed options and performs the actual work of setting node details.
-func runCoreBootNodeSet(cmd *cobra.Command, opts *bootNodeSetOptions, args []string, bootServiceClient *boot_service.BootServiceClient) error {
+func runCoreBootNodeSet(cmd *cobra.Command, opts *bootNodeSetOptions, args []string, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -41,34 +41,34 @@ func runCoreBootNodeSet(cmd *cobra.Command, opts *bootNodeSetOptions, args []str
 		// Read node data
 		node := boot_service_client.UpdateNodeRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayload(cmd, &node); err != nil {
+			if err := rt.HandlePayload(cmd, &node); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdin(cmd, &node); err != nil {
+			if err := rt.HandlePayloadStdin(cmd, &node); err != nil {
 				return err
 			}
 		}
 
 		// Send off request
-		nodeSet, reqErr = bootServiceClient.SetNode(cmd.Context(), cli.Token, args[0], node)
+		nodeSet, reqErr = bootServiceClient.SetNode(cmd.Context(), rt.Token, args[0], node)
 	} else {
 		// Use simple API (spec)
 
 		// Read node data
 		spec := api.NodeSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayload(cmd, &spec); err != nil {
+			if err := rt.HandlePayload(cmd, &spec); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+			if err := rt.HandlePayloadStdin(cmd, &spec); err != nil {
 				return err
 			}
 		}
 
 		// Send off request
-		nodeSet, reqErr = bootServiceClient.SetNodeSpec(cmd.Context(), cli.Token, args[0], spec)
+		nodeSet, reqErr = bootServiceClient.SetNodeSpec(cmd.Context(), rt.Token, args[0], spec)
 	}
 	if reqErr != nil {
 		return cli.Errorf(cli.CodeNetwork, "failed to set node: %w", reqErr)
@@ -134,8 +134,14 @@ See ochami-boot(1) for more details.`,
   echo '<yaml_data>' | ochami boot node set -d @- -f yaml nod-bc76f7f2
   echo '<yaml_data>' | ochami boot node set -f yaml nod-bc76f7f2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -148,14 +154,14 @@ See ochami-boot(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreBootNodeSet(cmd, opts, args, bootServiceClient)
+			return runCoreBootNodeSet(cmd, opts, args, bootServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	bootNodeSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootNodeSetCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(bootNodeSetCmd)
 	bootNodeSetCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return bootNodeSetCmd

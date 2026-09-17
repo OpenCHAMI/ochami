@@ -138,8 +138,8 @@ func TestIsAuthorizationHeader(t *testing.T) {
 // header is truncated in debug logs by default (WithShowToken(false)) and shown
 // in full when the client is created with WithShowToken(true).
 func TestMakeRequestRedactsAuthorizationInLogs(t *testing.T) {
-	origLogger := log.Logger
-	defer func() { log.Logger = origLogger }()
+	origLogger := log.Logger.Get()
+	defer log.Logger.Set(origLogger)
 
 	fullToken := "eyJhbGciOiJIUzI1NiJ9.payload.sig"
 
@@ -150,7 +150,7 @@ func TestMakeRequestRedactsAuthorizationInLogs(t *testing.T) {
 
 	run := func(showToken bool) string {
 		var buf bytes.Buffer
-		log.Logger = zerolog.New(&buf).Level(zerolog.DebugLevel)
+		log.Logger.Set(zerolog.New(&buf).Level(zerolog.DebugLevel))
 
 		oc, err := NewOchamiClient("test", ts.URL, WithShowToken(showToken))
 		if err != nil {

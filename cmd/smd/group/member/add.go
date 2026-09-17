@@ -28,19 +28,25 @@ func newCmdGroupMemberAdd() *cobra.Command {
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member add compute x3000c1s7b56n0`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Send off request
-			results, err := smdClient.PostGroupMembers(cmd.Context(), cli.Token, args[0], args[1:]...)
+			results, err := smdClient.PostGroupMembers(cmd.Context(), rt.Token, args[0], args[1:]...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to add group member(s) to group %s in SMD: %w", args[0], err)
 			}

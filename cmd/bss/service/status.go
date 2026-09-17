@@ -7,7 +7,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -32,7 +31,12 @@ type bssStatusClientProvider func(cmd *cobra.Command) (bssStatusClient, error)
 // realBSSStatusClient is the production provider used by newCmdServiceStatus. It
 // delegates to the internal CLI helper that wires up a configured BSS client.
 func realBSSStatusClient(cmd *cobra.Command) (bssStatusClient, error) {
-	return bss_lib.GetClient(cmd)
+	// Get runtime from context (always available since cmd/root.go injects it)
+	rt, err := cli.RuntimeFromCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return bss_lib.GetClientWithRuntime(cmd, rt)
 }
 
 func newCmdServiceStatus() *cobra.Command {
@@ -51,9 +55,20 @@ func newCmdServiceStatusWithClient(getClient bssStatusClientProvider) *cobra.Com
 
 See ochami-bss(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Get client using the injected provider
 			bssClient, err := getClient(cmd)
 			if err != nil {
+				return err
+			}
+
+			// Handle token for this command
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -70,15 +85,16 @@ See ochami-bss(1) for more details.`,
 			}
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS status request yielded unsuccessful HTTP response", "failed to get BSS status")
-
 			}
 
 			// Print output
-			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
@@ -88,8 +104,8 @@ See ochami-bss(1) for more details.`,
 	serviceStatusCmd.Flags().Bool("all", false, "print all status data from BSS")
 	serviceStatusCmd.Flags().Bool("storage", false, "print status of storage backend from BSS")
 	serviceStatusCmd.Flags().Bool("smd", false, "print status of BSS connection to SMD")
-	serviceStatusCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(serviceStatusCmd)
 	serviceStatusCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 	serviceStatusCmd.MarkFlagsMutuallyExclusive("all", "storage", "smd")
 

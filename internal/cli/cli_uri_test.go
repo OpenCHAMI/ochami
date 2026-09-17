@@ -24,9 +24,6 @@ func newURICmd() *cobra.Command {
 }
 
 func TestGetBaseURI(t *testing.T) {
-	orig := activeConfig
-	defer func() { activeConfig = orig }()
-
 	cfg := config.Config{
 		DefaultCluster: "foo",
 		Clusters: []config.ConfigCluster{
@@ -116,14 +113,14 @@ func TestGetBaseURI(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := cfg
 			c.DefaultCluster = tc.defaultClus
-			activeConfig = c
+			rt := NewTestRuntime(nil, nil, nil).WithConfig(c)
 
 			cmd := newURICmd()
 			if tc.setup != nil {
 				tc.setup(cmd)
 			}
 
-			got, err := GetBaseURI(cmd, tc.service)
+			got, err := rt.GetBaseURI(cmd, tc.service)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("GetBaseURI error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -138,24 +135,18 @@ func TestGetBaseURI(t *testing.T) {
 }
 
 func TestGetBaseURI_UnknownServiceWithURIFlag(t *testing.T) {
-	orig := activeConfig
-	defer func() { activeConfig = orig }()
-	activeConfig = config.Config{}
-
+	rt := NewTestRuntime(nil, nil, nil)
 	cmd := newURICmd()
 	if err := cmd.Flags().Set("uri", "https://x.example.com"); err != nil {
 		t.Fatalf("set uri flag: %v", err)
 	}
 
-	if _, err := GetBaseURI(cmd, config.ServiceName("bogus")); err == nil {
+	if _, err := rt.GetBaseURI(cmd, config.ServiceName("bogus")); err == nil {
 		t.Fatal("expected error for unknown service with --uri, got nil")
 	}
 }
 
 func TestGetAPIVersion(t *testing.T) {
-	orig := activeConfig
-	defer func() { activeConfig = orig }()
-
 	cfg := config.Config{
 		DefaultCluster: "foo",
 		Clusters: []config.ConfigCluster{
@@ -230,14 +221,14 @@ func TestGetAPIVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := cfg
 			c.DefaultCluster = tc.defaultClus
-			activeConfig = c
+			rt := NewTestRuntime(nil, nil, nil).WithConfig(c)
 
 			cmd := newURICmd()
 			if tc.setup != nil {
 				tc.setup(cmd)
 			}
 
-			got, err := GetAPIVersion(cmd, tc.service)
+			got, err := rt.GetAPIVersion(cmd, tc.service)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("GetAPIVersion error = %v, wantErr %v", err, tc.wantErr)
 			}

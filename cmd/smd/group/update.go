@@ -26,11 +26,12 @@ type groupUpdateOptions struct {
 	Tags        []string
 }
 
-// runCoreGroupUpdate contains the core logic for the smd group update command.
+// runCoreGroupUpdateWithRuntime contains the core logic for the smd group update command.
 // It takes the parsed options and performs the actual work of updating groups.
-func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []string, smdClient *smd.SMDClient) error {
+// Runtime-aware version.
+func runCoreGroupUpdateWithRuntime(cmd *cobra.Command, opts *groupUpdateOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -39,7 +40,7 @@ func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []str
 
 	// Read payload from file first, allowing overwrites from flags
 	if cmd.Flag("data").Changed {
-		if err := cli.HandlePayload(cmd, &groups); err != nil {
+		if err := rt.HandlePayload(cmd, &groups); err != nil {
 			return err
 		}
 	} else {
@@ -51,7 +52,7 @@ func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []str
 	}
 
 	// Send 'em off
-	results := smdClient.PatchGroups(cmd.Context(), groups, cli.Token)
+	results := smdClient.PatchGroups(cmd.Context(), groups, rt.Token)
 	// Since smdClient.PatchGroups does the edition iteratively, we need to deal with
 	// each error that might have occurred.
 	var errorsOccurred = false
@@ -140,8 +141,14 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -157,7 +164,7 @@ See ochami-smd(1) for more details.`,
 				opts.Tags, _ = cmd.Flags().GetStringSlice("tag") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreGroupUpdate(cmd, opts, args, smdClient)
+			return runCoreGroupUpdateWithRuntime(cmd, opts, args, smdClient, rt)
 		},
 	}
 
@@ -165,8 +172,8 @@ See ochami-smd(1) for more details.`,
 	groupUpdateCmd.Flags().StringP("description", "D", "", "short description to update group with")
 	groupUpdateCmd.Flags().StringSlice("tag", []string{}, "one or more tags to set for group")
 	groupUpdateCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	groupUpdateCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(groupUpdateCmd)
 	groupUpdateCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	groupUpdateCmd.MarkFlagsOneRequired("description", "tag", "data")
 

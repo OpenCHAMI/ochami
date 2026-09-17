@@ -22,24 +22,24 @@ import (
 	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
 
-// getGroupData returns a slice of cloud-init group data for the
-// requested groups.
-func getGroupData(cmd *cobra.Command, args []string) (groupSlice []cistore.GroupData, err error) {
+// getGroupDataWithRuntime returns a slice of cloud-init group data for the
+// requested groups using the provided runtime for configuration.
+func getGroupDataWithRuntime(cmd *cobra.Command, args []string, rt *cli.Runtime) (groupSlice []cistore.GroupData, err error) {
 	// Create client to use for requests
-	cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+	cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 	if err != nil {
 		return nil, err
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return nil, err
 	}
 
 	// Get data
 	if len(args) == 0 {
 		// No args passed, get all group data at once
-		results := cloudInitClient.GetGroups(cmd.Context(), cli.Token)
+		results := cloudInitClient.GetGroups(cmd.Context(), rt.Token)
 		if len(results) != 1 {
 			return nil, cli.Errorf(cli.CodeNetwork, "cloud-init returned %d results for the all-groups request", len(results))
 		}
@@ -63,7 +63,7 @@ func getGroupData(cmd *cobra.Command, args []string) (groupSlice []cistore.Group
 	} else {
 		// One or more arguments (group IDs) provided, get data
 		// for just those groups.
-		results := cloudInitClient.GetGroups(cmd.Context(), cli.Token, args...)
+		results := cloudInitClient.GetGroups(cmd.Context(), rt.Token, args...)
 		// Since the requests are done iteratively, we need to
 		// deal with each error that might have occurred.
 		var errorsOccurred = false
@@ -128,8 +128,14 @@ See ochami-cloud-init(1) for more details.`,
   ochami cloud-init group get config
   ochami cloud-init group get config compute`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Get all data for specified (or unspecified) groups
-			groupSlice, err := getGroupData(cmd, args)
+			groupSlice, err := getGroupDataWithRuntime(cmd, args, rt)
 			if err != nil {
 				return err
 			}
@@ -172,17 +178,22 @@ See ochami-cloud-init(1) for more details.`,
 			// Print cloud-init config(s)
 			for cidx, cfg := range configSlice {
 				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
+					if err := cli.WriteString(rt.Ios.Out(), string(configSlice[cidx].Content)+"\n"); err != nil {
+						return err
+					}
 				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
-					fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
-					fmt.Fprintln(cli.Ios.Out())
+					if err := cli.WriteString(rt.Ios.Out(), fmt.Sprintf("--- (%d/%d) group=%s\n%s\n\n", cidx+1, len(configSlice), cfg.Name, configSlice[cidx].Content)); err != nil {
+						return err
+					}
 				} else {
 					if len(configSlice) == 1 {
-						fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
+						if err := cli.WriteString(rt.Ios.Out(), string(configSlice[cidx].Content)+"\n"); err != nil {
+							return err
+						}
 					} else {
-						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
-						fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
+						if err := cli.WriteString(rt.Ios.Out(), fmt.Sprintf("--- (%d/%d) group=%s\n%s\n", cidx+1, len(configSlice), cfg.Name, configSlice[cidx].Content)); err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -210,8 +221,14 @@ See ochami-cloud-init(1) for more details.`,
   ochami cloud-init group get meta-data
   ochami cloud-init group get meta-data compute`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Get all data for specified (or unspecified) groups
-			groupSlice, err := getGroupData(cmd, args)
+			groupSlice, err := getGroupDataWithRuntime(cmd, args, rt)
 			if err != nil {
 				return err
 			}
@@ -238,18 +255,20 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Print in desired format
-			outBytes, err := client.FormatBody(groupSliceBytes, cli.FormatOutput)
+			outBytes, err := client.FormatBody(groupSliceBytes, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	groupGetMetadataCmd.PersistentFlags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output")
+	cli.AddFormatOutputFlag(groupGetMetadataCmd)
 	groupGetMetadataCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return groupGetMetadataCmd
@@ -267,8 +286,14 @@ See ochami-cloud-init(1) for more details.`,
   ochami cloud-init group get raw
   ochami cloud-init group get raw compute`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Get all data for specified (or unspecified) groups
-			groupSlice, err := getGroupData(cmd, args)
+			groupSlice, err := getGroupDataWithRuntime(cmd, args, rt)
 			if err != nil {
 				return err
 			}
@@ -281,18 +306,20 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Print in desired format
-			outBytes, err := client.FormatBody(groupSliceBytes, cli.FormatOutput)
+			outBytes, err := client.FormatBody(groupSliceBytes, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	groupGetRawCmd.PersistentFlags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output")
+	cli.AddFormatOutputFlag(groupGetRawCmd)
 	groupGetRawCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return groupGetRawCmd

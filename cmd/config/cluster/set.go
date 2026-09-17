@@ -55,24 +55,30 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// We must have a config file in order to write cluster info
 			var fileToModify string
-			if cmd.Flags().Changed("config") {
-				fileToModify = cli.ConfigFile
+			if rt.ConfigFile != "" {
+				fileToModify = rt.ConfigFile
 			} else if cmd.Parent().Parent().Flags().Changed("system") {
 				// Check if --system passed to 'config' command
 				fileToModify = config.SystemConfigFile
 			} else {
-				fileToModify = cli.UserConfigFile
+				fileToModify = rt.UserConfigFile
 			}
 
 			// Ask to create file if it doesn't exist
-			if create, err := cli.Ios.AskToCreate(fileToModify); err != nil {
+			if create, err := rt.Ios.AskToCreate(fileToModify); err != nil {
 				if err != cli.FileExistsError {
 					return cli.Errorf(cli.CodeConfig, "error asking to create file: %w", err)
 				}
 			} else if create {
-				if err := cli.CreateIfNotExists(fileToModify); err != nil {
+				if err := rt.CreateIfNotExists(fileToModify); err != nil {
 					return cli.Errorf(cli.CodeConfig, "error creating file: %w", err)
 				}
 			} else {

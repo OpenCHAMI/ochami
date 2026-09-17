@@ -61,14 +61,20 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | ochami metadata defaults patch clusterdefaults-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata defaults patch clusterdefaults-d614b918 -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -86,17 +92,17 @@ See ochami-metadata(1) for more details.`,
 				patchData = pd
 			} else {
 				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &patchData); err != nil {
+					if err := rt.HandlePayload(cmd, &patchData); err != nil {
 						return err
 					}
 				} else {
-					if err := cli.HandlePayloadStdin(cmd, &patchData); err != nil {
+					if err := rt.HandlePayloadStdin(cmd, &patchData); err != nil {
 						return err
 					}
 				}
 			}
 
-			defaultsPatched, err := metadataServiceClient.PatchDefaults(cmd.Context(), cli.Token, formatPatch, args[0], patchData)
+			defaultsPatched, err := metadataServiceClient.PatchDefaults(cmd.Context(), rt.Token, formatPatch, args[0], patchData)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to patch cluster defaults", "failed to patch cluster defaults")
 
@@ -120,14 +126,13 @@ See ochami-metadata(1) for more details.`,
 	metadataDefaultsPatchCmd.Flags().StringArrayVar(&addList, "add", nil, "add value to array field (field=value)")
 	metadataDefaultsPatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field (field=value)")
 	metadataDefaultsPatchCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	metadataDefaultsPatchCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data for JSON patch formats (json,json-pretty,yaml)")
 	metadataDefaultsPatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7386,keyval)")
 
 	for _, flag := range []string{"set", "unset", "add", "remove"} {
-		metadataDefaultsPatchCmd.MarkFlagsMutuallyExclusive("format-input", flag)
 		metadataDefaultsPatchCmd.MarkFlagsMutuallyExclusive("data", flag)
 	}
 
+	cli.AddFormatInputFlag(metadataDefaultsPatchCmd)
 	metadataDefaultsPatchCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	metadataDefaultsPatchCmd.RegisterFlagCompletionFunc("patch-method", cli.CompletionPatchMethod)
 

@@ -24,12 +24,6 @@ func newCmdClusterDelete() *cobra.Command {
 
 See ochami-config(1) for details on the config commands.
 See ochami-config(5) for details on configuration options.`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// It doesn't make sense to delete a cluster from a
-			// non-existent config file, so err if the config file doesn't
-			// exist.
-			return cli.InitConfigAndLogging(cmd, false)
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// To mark both persistent and regular flags mutually exclusive,
 			// this function must be run before the command is executed. It
@@ -37,27 +31,23 @@ See ochami-config(5) for details on configuration options.`,
 			// present in all child commands.
 			cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
 
-			// First and foremost, make sure config is loaded and logging
-			// works.
-			return cli.InitConfigAndLogging(cmd, true)
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Get root command
-			rootCmd := cmd.Root()
-			_ = rootCmd // read persistent flags, annotations, etc.
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
 
 			// We must have a config file in order to write cluster info
 			var fileToModify string
-			if rootCmd.PersistentFlags().Lookup("config").Changed {
-				var err error
-				if fileToModify, err = rootCmd.PersistentFlags().GetString("config"); err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to get value from --config flag: %w", err)
-				}
+			if rt.ConfigFile != "" {
+				fileToModify = rt.ConfigFile
 			} else if cmd.Parent().Parent().PersistentFlags().Lookup("system").Changed {
 				// Check if --system was passed to the 'config' command
 				fileToModify = config.SystemConfigFile
 			} else {
-				fileToModify = cli.UserConfigFile
+				fileToModify = rt.UserConfigFile
 			}
 
 			// Read in config from file

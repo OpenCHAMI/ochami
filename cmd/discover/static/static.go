@@ -17,6 +17,7 @@ import (
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
+	"github.com/openchami/ochami/pkg/config"
 	"github.com/openchami/ochami/pkg/discover"
 )
 
@@ -137,25 +138,31 @@ nodes:
 
 See ochami-discover(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Without a base URI, we cannot do anything
-			smdBaseURI, err := cli.GetBaseURISMD(cmd)
+			smdBaseURI, err := rt.GetBaseURI(cmd, config.ServiceSMD)
 			if err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to get base URI for SMD: %w", err)
 			}
 
 			// This endpoint requires authentication, so a token is needed
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Create client to make request to SMD
-			smdClient, err := smd.NewClient(smdBaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
+			smdClient, err := smd.NewClient(smdBaseURI, client.WithInsecure(rt.Insecure), client.WithShowToken(rt.ShowToken(cmd)))
 			if err != nil {
 				return cli.Errorf(cli.CodeConfig, "error creating new SMD client: %w", err)
 			}
 
 			// Check if a CA certificate was passed and load it into client if valid
-			if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+			if err := rt.UseCACert(smdClient.OchamiClient); err != nil {
 				return err
 			}
 
@@ -182,11 +189,11 @@ See ochami-discover(1) for more details.`,
 			// discovery method to use.
 			discoveryData := make(map[string]([]map[string]any))
 			if cmd.Flag("data").Changed {
-				if err := cli.HandlePayload(cmd, &discoveryData); err != nil {
+				if err := rt.HandlePayload(cmd, &discoveryData); err != nil {
 					return err
 				}
 			} else {
-				if err := cli.HandlePayloadStdin(cmd, &discoveryData); err != nil {
+				if err := rt.HandlePayloadStdin(cmd, &discoveryData); err != nil {
 					return err
 				}
 			}
@@ -272,7 +279,7 @@ See ochami-discover(1) for more details.`,
 			compErrorsOccurred := false
 			if cmd.Flag("overwrite").Changed {
 				// Send a PUT if --overwrite specified to overwrite any existing components
-				results := smdClient.PutComponents(cmd.Context(), comps, cli.Token)
+				results := smdClient.PutComponents(cmd.Context(), comps, rt.Token)
 				for _, err := range results.Errors() {
 					if err != nil {
 						var errMsg string
@@ -289,13 +296,13 @@ See ochami-discover(1) for more details.`,
 				// The SMD Components API does not modify the NID for
 				// PUTs. Thus, we explicitly do it with a PATCH to a
 				// specific endpoint that does it.
-				if _, err := smdClient.PatchComponentsNID(cmd.Context(), comps, cli.Token); err != nil {
+				if _, err := smdClient.PatchComponentsNID(cmd.Context(), comps, rt.Token); err != nil {
 					log.Logger.Error().Err(err).Msg("failed to update NIDs for components in SMD")
 					compErrorsOccurred = true
 				}
 			} else {
 				// Otherwise send a normal POST
-				_, err = smdClient.PostComponents(cmd.Context(), comps, cli.Token)
+				_, err = smdClient.PostComponents(cmd.Context(), comps, rt.Token)
 				if err != nil {
 					var errMsg string
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
@@ -321,14 +328,14 @@ See ochami-discover(1) for more details.`,
 				// then, if 409 is returned, try to PUT.
 				rfeErrs = upsertOnConflict(rfes.RedfishEndpoints,
 					func(rfe smd.RedfishEndpointV2) client.Result[client.HTTPEnvelope] {
-						results := smdClient.PostRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token)
+						results := smdClient.PostRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, rt.Token)
 						if len(results) != 1 {
 							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("posting redfish endpoint returned %d results, want one", len(results))}
 						}
 						return results[0]
 					},
 					func(rfe smd.RedfishEndpointV2) client.Result[client.HTTPEnvelope] {
-						results := smdClient.PutRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token)
+						results := smdClient.PutRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, rt.Token)
 						if len(results) != 1 {
 							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("updating redfish endpoint returned %d results, want one", len(results))}
 						}
@@ -340,7 +347,7 @@ See ochami-discover(1) for more details.`,
 				}
 			} else {
 				// --overwrite was not passed, perform regular POST.
-				rfeErrs = smdClient.PostRedfishEndpointsV2(cmd.Context(), rfes, cli.Token).Errors()
+				rfeErrs = smdClient.PostRedfishEndpointsV2(cmd.Context(), rfes, rt.Token).Errors()
 				for _, err := range rfeErrs {
 					if err != nil {
 						var errMsg string
@@ -370,14 +377,14 @@ See ochami-discover(1) for more details.`,
 				if cmd.Flag("overwrite").Changed {
 					ifaceErrs = upsertOnConflict(ifaces,
 						func(iface smd.EthernetInterface) client.Result[client.HTTPEnvelope] {
-							results := smdClient.PostEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, cli.Token)
+							results := smdClient.PostEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, rt.Token)
 							if len(results) != 1 {
 								return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("posting ethernet interface returned %d results, want one", len(results))}
 							}
 							return results[0]
 						},
 						func(iface smd.EthernetInterface) client.Result[client.HTTPEnvelope] {
-							results := smdClient.PatchEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, cli.Token)
+							results := smdClient.PatchEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, rt.Token)
 							if len(results) != 1 {
 								return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("updating ethernet interface returned %d results, want one", len(results))}
 							}
@@ -389,7 +396,7 @@ See ochami-discover(1) for more details.`,
 					}
 				} else {
 					// --overwrite was not passed, perform regular POST.
-					ifaceErrs = smdClient.PostEthernetInterfaces(cmd.Context(), ifaces, cli.Token).Errors()
+					ifaceErrs = smdClient.PostEthernetInterfaces(cmd.Context(), ifaces, rt.Token).Errors()
 					for _, err := range ifaceErrs {
 						if err != nil {
 							var errMsg string
@@ -417,14 +424,14 @@ See ochami-discover(1) for more details.`,
 			if cmd.Flag("overwrite").Changed {
 				groupErrs = upsertOnConflict(groupList,
 					func(group smd.Group) client.Result[client.HTTPEnvelope] {
-						results := smdClient.PostGroups(cmd.Context(), []smd.Group{group}, cli.Token)
+						results := smdClient.PostGroups(cmd.Context(), []smd.Group{group}, rt.Token)
 						if len(results) != 1 {
 							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("posting group returned %d results, want one", len(results))}
 						}
 						return results[0]
 					},
 					func(group smd.Group) client.Result[client.HTTPEnvelope] {
-						results := smdClient.PatchGroups(cmd.Context(), []smd.Group{group}, cli.Token)
+						results := smdClient.PatchGroups(cmd.Context(), []smd.Group{group}, rt.Token)
 						if len(results) != 1 {
 							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("updating group returned %d results, want one", len(results))}
 						}
@@ -435,7 +442,7 @@ See ochami-discover(1) for more details.`,
 					groupErrorsOccurred = true
 				}
 			} else {
-				groupErrs = smdClient.PostGroups(cmd.Context(), groupList, cli.Token).Errors()
+				groupErrs = smdClient.PostGroups(cmd.Context(), groupList, rt.Token).Errors()
 				for _, err := range groupErrs {
 					if err != nil {
 						var errMsg string
@@ -474,10 +481,10 @@ See ochami-discover(1) for more details.`,
 	// Create flags
 	staticCmd.Flags().Var(&discoveryVersion, "discovery-version", "set version for discovery method to use")
 	staticCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	staticCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	staticCmd.Flags().Bool("overwrite", false, "overwrite any existing information instead of failing")
 	staticCmd.Flags().String("uri", "", "absolute base URI or relative base path of SMD")
 
+	cli.AddFormatInputFlag(staticCmd)
 	staticCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	staticCmd.RegisterFlagCompletionFunc("discovery-version", cli.CompletionDiscoveryVersion)
 

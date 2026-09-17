@@ -46,15 +46,22 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// We must have a config file in order to write config
+			// For runtime-based approach, prefer rt.ConfigFile if it was set via --config flag
 			var fileToModify string
-			if cmd.Flags().Changed("config") {
-				fileToModify = cli.ConfigFile
-			} else if cmd.Parent().PersistentFlags().Lookup("system").Changed {
+			if rt.ConfigFile != "" {
+				fileToModify = rt.ConfigFile
+			} else if f := cmd.PersistentFlags().Lookup("system"); f != nil && f.Changed {
 				// Check if --system was passed to 'config' command
 				fileToModify = config.SystemConfigFile
 			} else {
-				fileToModify = cli.UserConfigFile
+				fileToModify = rt.UserConfigFile
 			}
 
 			// Refuse to modify config if user tries to modify cluster config
@@ -63,12 +70,12 @@ See ochami-config(5) for details on the configuration options.`,
 			}
 
 			// Ask to create file if it doesn't exist.
-			if create, err := cli.Ios.AskToCreate(fileToModify); err != nil {
+			if create, err := rt.Ios.AskToCreate(fileToModify); err != nil {
 				if err != cli.FileExistsError {
 					return cli.Errorf(cli.CodeConfig, "error asking to create file: %w", err)
 				}
 			} else if create {
-				if err := cli.CreateIfNotExists(fileToModify); err != nil {
+				if err := rt.CreateIfNotExists(fileToModify); err != nil {
 					return cli.Errorf(cli.CodeConfig, "error creating file: %w", err)
 				}
 			} else {

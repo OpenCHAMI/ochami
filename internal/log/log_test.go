@@ -8,7 +8,10 @@ package log
 import (
 	"bytes"
 	"reflect"
+	"sync"
 	"testing"
+
+	"github.com/rs/zerolog"
 )
 
 func TestInit(t *testing.T) {
@@ -428,4 +431,23 @@ func TestInitAllCombos(t *testing.T) {
 	if err := Init("info", "json", "bogus"); err == nil {
 		t.Error("Init(bogus color) = nil, want error")
 	}
+}
+
+func TestConcurrentLoggerReplacement(t *testing.T) {
+	t.Parallel()
+
+	logger := NewConcurrentLogger(zerolog.Nop())
+	var wg sync.WaitGroup
+	for range 10 {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			logger.Set(zerolog.Nop())
+		}()
+		go func() {
+			defer wg.Done()
+			logger.Debug().Msg("concurrent log event")
+		}()
+	}
+	wg.Wait()
 }

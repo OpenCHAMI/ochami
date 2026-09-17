@@ -26,9 +26,9 @@ type bootNodeAddOptions struct {
 
 // runCoreBootNodeAdd contains the core logic for the boot node add command.
 // It takes the parsed options and performs the actual work of adding nodes.
-func runCoreBootNodeAdd(cmd *cobra.Command, opts *bootNodeAddOptions, bootServiceClient *boot_service.BootServiceClient) error {
+func runCoreBootNodeAdd(cmd *cobra.Command, opts *bootNodeAddOptions, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -40,34 +40,34 @@ func runCoreBootNodeAdd(cmd *cobra.Command, opts *bootNodeAddOptions, bootServic
 		// Read node data
 		nodes := []boot_service_client.CreateNodeRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[boot_service_client.CreateNodeRequest](cmd, &nodes); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[boot_service_client.CreateNodeRequest](rt, cmd, &nodes); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateNodeRequest](cmd, &nodes); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[boot_service_client.CreateNodeRequest](rt, cmd, &nodes); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = bootServiceClient.AddNodes(cmd.Context(), cli.Token, nodes)
+		results = bootServiceClient.AddNodes(cmd.Context(), rt.Token, nodes)
 	} else {
 		// Use simple API (spec)
 
 		// Read node data
 		nodes := []boot_service.NodeSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[boot_service.NodeSpec](cmd, &nodes); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[boot_service.NodeSpec](rt, cmd, &nodes); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[boot_service.NodeSpec](cmd, &nodes); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[boot_service.NodeSpec](rt, cmd, &nodes); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = bootServiceClient.AddNodeSpecs(cmd.Context(), cli.Token, nodes)
+		results = bootServiceClient.AddNodeSpecs(cmd.Context(), rt.Token, nodes)
 	}
 
 	// Deal with per-request errors
@@ -180,8 +180,14 @@ See ochami-boot(1) for more details.`,
   echo '<yaml_data>' | ochami boot node add -d @- -f yaml
   echo '<yaml_data>' | ochami boot node add -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -194,14 +200,14 @@ See ochami-boot(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreBootNodeAdd(cmd, opts, bootServiceClient)
+			return runCoreBootNodeAdd(cmd, opts, bootServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	bootNodeAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootNodeAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(bootNodeAddCmd)
 	bootNodeAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return bootNodeAddCmd
