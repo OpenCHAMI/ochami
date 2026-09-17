@@ -26,7 +26,7 @@ func TestPCSTransitionList(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"transitions":[]}`))
+		_, _ = w.Write([]byte(`{"transitions":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -46,7 +46,7 @@ func TestPCSStatusShow(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"status":[{"xname":"x3000c0s15b0","powerState":"on"}]}`))
+		_, _ = w.Write([]byte(`{"status":[{"xname":"x3000c0s15b0","powerState":"on"}]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -67,7 +67,7 @@ func TestPCSStatusShow(t *testing.T) {
 // CodeGeneric (the "no status found" case).
 func TestPCSStatusShowEmpty(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"status":[]}`))
+		_, _ = w.Write([]byte(`{"status":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -113,7 +113,7 @@ func TestCloudInitDefaultsGet(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"cluster-name":"demo"}`))
+		_, _ = w.Write([]byte(`{"cluster-name":"demo"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -133,7 +133,7 @@ func TestCloudInitServiceStatusRunning(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"version":"1.0.0"}`))
+		_, _ = w.Write([]byte(`{"version":"1.0.0"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -198,7 +198,7 @@ func TestMetadataGroupListHTTPError(t *testing.T) {
 func TestMetadataGroupListSuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -218,7 +218,7 @@ func TestPCSTransitionShow(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -237,7 +237,7 @@ func TestPCSTransitionAbort(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -257,7 +257,7 @@ func TestPCSTransitionStart(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -279,7 +279,7 @@ func TestPCSTransitionMonitor(t *testing.T) {
 		gotPath = r.URL.Path
 		// Report completion immediately so the poll loop exits on the first
 		// iteration without sleeping.
-		_, _ = w.Write([]byte(`{"transitionStatus":"completed","taskCounts":{"total":1,"succeeded":1}}`))
+		_, _ = w.Write([]byte(`{"transitionStatus":"completed","taskCounts":{"total":1,"succeeded":1}}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

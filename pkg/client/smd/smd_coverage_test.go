@@ -34,7 +34,7 @@ func TestGetEthernetInterfaceByIDWithIPs(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

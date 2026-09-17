@@ -32,7 +32,7 @@ func TestBootListSuccess(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`[]`))
+				_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -83,7 +83,7 @@ func TestBootListHTTPError(t *testing.T) {
 func TestBootServiceStatus(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -115,7 +115,7 @@ func TestBootGetSuccess(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -158,7 +158,7 @@ func TestBootDeleteNoConfirm(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 

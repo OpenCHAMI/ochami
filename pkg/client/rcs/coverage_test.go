@@ -68,7 +68,7 @@ func TestHeadersForToken(t *testing.T) {
 
 func TestGetStatusSuccess(t *testing.T) {
 	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -90,7 +90,7 @@ func TestGetStatusHTTPError(t *testing.T) {
 
 func TestGetStatusMalformedBody(t *testing.T) {
 	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`not json`))
+		_, _ = w.Write([]byte(`not json`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -101,7 +101,7 @@ func TestGetStatusMalformedBody(t *testing.T) {
 
 func TestListConsolesMalformedBody(t *testing.T) {
 	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`not json`))
+		_, _ = w.Write([]byte(`not json`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 

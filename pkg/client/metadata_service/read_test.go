@@ -22,7 +22,7 @@ func TestGetHealth(t *testing.T) {
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -56,7 +56,7 @@ func TestListEndpoints(t *testing.T) {
 			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 				gotMethod, gotPath = r.Method, r.URL.Path
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`[]`))
+				_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 
@@ -98,7 +98,7 @@ func TestGetEndpoints(t *testing.T) {
 			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 				gotMethod, gotPath = r.Method, r.URL.Path
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 

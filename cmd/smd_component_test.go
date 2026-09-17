@@ -28,7 +28,7 @@ func TestSMDComponentGetAll(t *testing.T) {
 		gotMethod = r.Method
 		gotPath = r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`))
+		_, _ = w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -94,7 +94,11 @@ func TestSMDComponentAddViaFlags(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
 		gotPath = r.URL.Path
-		gotBody, _ = io.ReadAll(r.Body)
+		var err error
+		gotBody, err = io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read request body: %v", err)
+		}
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer srv.Close()

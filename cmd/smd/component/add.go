@@ -6,13 +6,10 @@
 package component
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -112,10 +109,8 @@ See ochami-smd(1) for more details.`,
 			// Send off request
 			_, err = smdClient.PostComponents(compSlice, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "SMD component request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to add component(s) to SMD: %w", err)
+				return cli.ClassifyClientError(err, "SMD component request yielded unsuccessful HTTP response", "failed to add component(s) to SMD")
+
 			}
 
 			return nil

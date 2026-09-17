@@ -16,6 +16,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -125,6 +126,13 @@ func TestPrintUsageHandleError(t *testing.T) {
 	// PrintUsage adapter should behave the same.
 	if err := PrintUsage(cmd, nil); err != nil {
 		t.Errorf("PrintUsage = %v, want nil", err)
+	}
+
+	wantErr := errors.New("usage output failed")
+	cmd.SetUsageFunc(func(*cobra.Command) error { return wantErr })
+	err := PrintUsageHandleError(cmd)
+	if err == nil || ExitCode(err) != CodeGeneric || !errors.Is(err, wantErr) {
+		t.Errorf("PrintUsageHandleError failure = %v, want wrapped CodeGeneric error", err)
 	}
 }
 

@@ -394,7 +394,10 @@ clusters:
 		if err := DeleteConfigCluster(path, "c1", "cluster.uri"); err != nil {
 			t.Fatalf("DeleteConfigCluster(): unexpected error: %v", err)
 		}
-		ko, _ := ReadConfig(path)
+		ko, err := ReadConfig(path)
+		if err != nil {
+			t.Fatalf("ReadConfig(): %v", err)
+		}
 		var cl []config.ConfigCluster
 		if err := ko.Unmarshal("clusters", &cl); err != nil {
 			t.Fatalf("unable to unmarshal clusters: %v", err)

@@ -52,7 +52,7 @@ func TestCloudInitGroupGetRemainingPaths(t *testing.T) {
 		t.Run(subcommand, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = io.WriteString(w, `{}`)
+				_, _ = io.WriteString(w, `{}`) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -85,7 +85,7 @@ func TestRemainingServicePaths(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = io.WriteString(w, tc.body)
+				_, _ = io.WriteString(w, tc.body) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -107,10 +107,13 @@ func TestMetadataPatchPathsAndArrayOperations(t *testing.T) {
 			var gotContentType, gotBody string
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotContentType = r.Header.Get("Content-Type")
-				body, _ := io.ReadAll(r.Body)
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Errorf("read request body: %v", err)
+				}
 				gotBody = string(body)
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = io.WriteString(w, `{"metadata":{"uid":"some-uid","name":"thing"},"spec":{}}`)
+				_, _ = io.WriteString(w, `{"metadata":{"uid":"some-uid","name":"thing"},"spec":{}}`) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -137,8 +140,13 @@ func TestRCSConsoleConnect(t *testing.T) {
 			return
 		}
 		defer conn.Close()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("connected"))
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("connected")); err != nil {
+			t.Errorf("write console message: %v", err)
+			return
+		}
+		if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			t.Errorf("write close message: %v", err)
+		}
 	}))
 	defer srv.Close()
 

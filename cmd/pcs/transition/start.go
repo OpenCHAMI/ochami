@@ -7,13 +7,11 @@ package transition
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
@@ -72,15 +70,13 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Get the list of target components
-			xnames, _ := cmd.Flags().GetStringSlice("xname")
+			xnames, _ := cmd.Flags().GetStringSlice("xname") //nolint:errcheck // flag is registered with the matching type on this command
 
 			// Create transition
 			transitionHttpEnv, err := pcsClient.CreateTransition(operation, nil, xnames, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "PCS transition create request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to create transition: %w", err)
+				return cli.ClassifyClientError(err, "PCS transition create request yielded unsuccessful HTTP response", "failed to create transition")
+
 			}
 
 			// Unmarshall the transition
@@ -95,7 +91,7 @@ See ochami-pcs(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Println(string(outBytes))
+			fmt.Fprintln(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},
@@ -103,7 +99,7 @@ See ochami-pcs(1) for more details.`,
 
 	// Create flags
 	transitionStartCmd.Flags().StringSliceP("xname", "x", []string{}, "The list of target components")
-	_ = transitionStartCmd.MarkFlagRequired("xname")
+	_ = transitionStartCmd.MarkFlagRequired("xname") //nolint:errcheck // xname is registered immediately above
 
 	transitionStartCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 

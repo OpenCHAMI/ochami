@@ -73,7 +73,7 @@ func NewClient(baseURI string, opts ...client.Option) (*RCSClient, error) {
 func headersForToken(token string) (*client.HTTPHeaders, error) {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
 	return headers, nil
@@ -87,7 +87,10 @@ func (c *RCSClient) dialWebSocket(ctx context.Context, nodeID string, query stri
 		return nil, err
 	}
 
-	u, _ := url.Parse(uriStr)
+	u, err := url.Parse(uriStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse console URI: %w", err)
+	}
 	if u.Scheme == "https" {
 		u.Scheme = "wss"
 	} else if u.Scheme == "http" {
@@ -403,7 +406,7 @@ func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token str
 
 	// Restore the terminal when the console session ends, even if there are errors or interrupts.
 	defer func() {
-		_ = restoreTerminal.Restore()
+		_ = restoreTerminal.Restore() //nolint:errcheck // best-effort cleanup after the session's result is known
 	}()
 
 	startConsoleOutputStream(stdout, conn, errChan, done)

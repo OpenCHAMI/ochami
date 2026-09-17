@@ -20,7 +20,7 @@ func GetClient(cmd *cobra.Command) (*rcs.RCSClient, error) {
 		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for remote-console: %w", err)
 	}
 
-	insecure, _ := cmd.Flags().GetBool("insecure")
+	insecure, _ := cmd.Flags().GetBool("insecure") //nolint:errcheck // insecure is registered by the RCS parent command
 
 	rcsClient, err := rcs.NewClient(rcsBaseURI, client.WithInsecure(insecure), client.WithShowToken(cli.ShowToken(cmd)))
 	if err != nil {

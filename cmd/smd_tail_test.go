@@ -23,7 +23,7 @@ func TestSMDComponentGetByXname(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"ID":"x0c0s0b0n0"}`))
+		_, _ = w.Write([]byte(`{"ID":"x0c0s0b0n0"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -42,7 +42,7 @@ func TestSMDComponentGetByNID(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"NID":1}`))
+		_, _ = w.Write([]byte(`{"NID":1}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -59,7 +59,7 @@ func TestSMDComponentGetByNID(t *testing.T) {
 // TestSMDComponentGetFormats verifies output-format variants of get-all.
 func TestSMDComponentGetFormats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`))
+		_, _ = w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

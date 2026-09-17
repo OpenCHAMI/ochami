@@ -6,7 +6,6 @@
 package dumpstate
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -36,10 +35,8 @@ See ochami-bss(1) for more details.`,
 			// Send request
 			httpEnv, err := bssClient.GetDumpstate()
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS dump state request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request dump state from BSS: %w", err)
+				return cli.ClassifyClientError(err, "BSS dump state request yielded unsuccessful HTTP response", "failed to request dump state from BSS")
+
 			}
 
 			// Print output
@@ -47,7 +44,7 @@ See ochami-bss(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Print(string(outBytes))
+			fmt.Fprint(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},

@@ -14,15 +14,29 @@ import (
 	"github.com/openchami/fabrica/pkg/fabrica"
 )
 
+func decodeJSONBody(t *testing.T, r *http.Request, dst any) {
+	t.Helper()
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		t.Errorf("decode request body: %v", err)
+	}
+}
+
+func encodeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
+	t.Helper()
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		t.Errorf("encode response body: %v", err)
+	}
+}
+
 func TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BMC{})
+		encodeJSONResponse(t, w, api.BMC{})
 	})
 	defer srv.Close()
 
@@ -63,9 +77,9 @@ func TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 func TestAddBMCs_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BMC{})
+		encodeJSONResponse(t, w, api.BMC{})
 	})
 	defer srv.Close()
 
@@ -97,7 +111,7 @@ func TestAddBMCSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BMC{Metadata: fabrica.Metadata{Name: "created BMC"}})
+		encodeJSONResponse(t, w, api.BMC{Metadata: fabrica.Metadata{Name: "created BMC"}})
 	})
 	defer srv.Close()
 
@@ -128,7 +142,7 @@ func TestAddBMCs_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BMC{Metadata: fabrica.Metadata{Name: "created BMC"}})
+		encodeJSONResponse(t, w, api.BMC{Metadata: fabrica.Metadata{Name: "created BMC"}})
 	})
 	defer srv.Close()
 
@@ -156,9 +170,9 @@ func TestSetBMCSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BMC{})
+		encodeJSONResponse(t, w, api.BMC{})
 	})
 	defer srv.Close()
 
@@ -206,7 +220,7 @@ func TestEnvelopeSetMethods(t *testing.T) {
 			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 				gotMethod, gotPath, gotAuth = r.Method, r.URL.Path, r.Header.Get("Authorization")
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 			if err := tc.call(c); err != nil {

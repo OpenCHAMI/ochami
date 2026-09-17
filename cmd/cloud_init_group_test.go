@@ -13,7 +13,6 @@ package cmd
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -35,18 +34,18 @@ func ciGroupServer(t *testing.T, groups map[string]any, status int) *httptest.Se
 		}
 		switch {
 		case r.URL.Path == "/admin/groups":
-			_ = json.NewEncoder(w).Encode(groups)
+			writeJSONResponse(t, w, groups)
 		case strings.HasPrefix(r.URL.Path, "/admin/groups/"):
 			name := strings.TrimPrefix(r.URL.Path, "/admin/groups/")
 			if g, ok := groups[name]; ok {
-				_ = json.NewEncoder(w).Encode(g)
+				writeJSONResponse(t, w, g)
 			} else {
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			}
 		default:
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{}`))
+			_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 		}
 	}))
 }
@@ -381,9 +380,9 @@ func TestCloudInitGroupRender(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "compute.yaml"):
-			_, _ = w.Write([]byte(tmpl))
+			_, _ = w.Write([]byte(tmpl)) //nolint:errcheck // test response writes are observed by the client
 		case strings.HasSuffix(r.URL.Path, "meta-data"):
-			_, _ = w.Write([]byte("hostname: node01\n"))
+			_, _ = w.Write([]byte("hostname: node01\n")) //nolint:errcheck // test response writes are observed by the client
 		default:
 			w.WriteHeader(http.StatusOK)
 		}
@@ -407,9 +406,9 @@ func TestCloudInitGroupRenderWithExtraVars(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "compute.yaml"):
-			_, _ = w.Write([]byte(tmpl))
+			_, _ = w.Write([]byte(tmpl)) //nolint:errcheck // test response writes are observed by the client
 		case strings.HasSuffix(r.URL.Path, "meta-data"):
-			_, _ = w.Write([]byte("hostname: node01\n"))
+			_, _ = w.Write([]byte("hostname: node01\n")) //nolint:errcheck // test response writes are observed by the client
 		default:
 			w.WriteHeader(http.StatusOK)
 		}
@@ -452,7 +451,7 @@ func TestCloudInitGroupRenderMetadataHTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "compute.yaml"):
-			_, _ = w.Write([]byte(tmpl))
+			_, _ = w.Write([]byte(tmpl)) //nolint:errcheck // test response writes are observed by the client
 		default:
 			http.Error(w, "bad", http.StatusInternalServerError)
 		}
@@ -493,9 +492,9 @@ func TestCloudInitGroupRenderMalformedExtraVars(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "compute.yaml"):
-			_, _ = w.Write([]byte(tmpl))
+			_, _ = w.Write([]byte(tmpl)) //nolint:errcheck // test response writes are observed by the client
 		case strings.HasSuffix(r.URL.Path, "meta-data"):
-			_, _ = w.Write([]byte("hostname: node01\n"))
+			_, _ = w.Write([]byte("hostname: node01\n")) //nolint:errcheck // test response writes are observed by the client
 		default:
 			w.WriteHeader(http.StatusOK)
 		}

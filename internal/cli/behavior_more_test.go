@@ -66,12 +66,16 @@ func TestGetAPIVersionPrecedenceAndErrors(t *testing.T) {
 		},
 	})
 	cmd := newResolutionCommand()
-	_ = cmd.Flags().Set("cluster", "chosen")
+	if err := cmd.Flags().Set("cluster", "chosen"); err != nil {
+		t.Fatalf("set cluster flag: %v", err)
+	}
 	got, err := GetAPIVersion(cmd, config.ServiceBoot)
 	if err != nil || got != "v2" {
 		t.Fatalf("GetAPIVersion explicit cluster = %q, %v; want v2", got, err)
 	}
-	_ = cmd.Flags().Set("api-version", "v3")
+	if err := cmd.Flags().Set("api-version", "v3"); err != nil {
+		t.Fatalf("set api-version flag: %v", err)
+	}
 	got, err = GetAPIVersion(cmd, config.ServiceBoot)
 	if err != nil || got != "v3" {
 		t.Fatalf("GetAPIVersion flag = %q, %v; want v3", got, err)
@@ -88,7 +92,9 @@ func TestBooleanFlagsUseTheirValue(t *testing.T) {
 		ConfigFile = t.TempDir() + "/missing.yaml"
 		cmd := &cobra.Command{Use: "test"}
 		cmd.Flags().Bool("ignore-config", false, "")
-		_ = cmd.Flags().Set("ignore-config", "false")
+		if err := cmd.Flags().Set("ignore-config", "false"); err != nil {
+			t.Fatalf("set ignore-config flag: %v", err)
+		}
 		if err := InitConfig(cmd, false); err == nil {
 			t.Fatal("InitConfig unexpectedly ignored a false --ignore-config flag")
 		}
@@ -104,7 +110,9 @@ func TestBooleanFlagsUseTheirValue(t *testing.T) {
 		Token = ""
 		_ = os.Unsetenv("AUTH_CLUSTER_ACCESS_TOKEN")
 		cmd := newResolutionCommand()
-		_ = cmd.Flags().Set("no-token", "false")
+		if err := cmd.Flags().Set("no-token", "false"); err != nil {
+			t.Fatalf("set no-token flag: %v", err)
+		}
 		if err := HandleToken(cmd); err == nil || ExitCode(err) != CodeAuth {
 			t.Fatalf("HandleToken error = %v, want CodeAuth", err)
 		}
@@ -144,6 +152,13 @@ func TestPayloadReaderHelpers(t *testing.T) {
 		t.Fatalf("invalid payload error = %v, want CodePayload", err)
 	}
 	restore()
+
+	restore = SetIOStream(strings.NewReader(`{`), &bytes.Buffer{}, &bytes.Buffer{})
+	if err := HandlePayloadStdinSlice(&cobra.Command{}, &many); err == nil || ExitCode(err) != CodePayload {
+		restore()
+		t.Fatalf("invalid slice payload error = %v, want CodePayload", err)
+	}
+	restore()
 }
 
 func TestGetTimeoutAndCompletions(t *testing.T) {
@@ -154,7 +169,9 @@ func TestGetTimeoutAndCompletions(t *testing.T) {
 	if got := GetTimeout(cmd); got != 9*time.Second {
 		t.Errorf("GetTimeout config = %v", got)
 	}
-	_ = cmd.Flags().Set("timeout", "2s")
+	if err := cmd.Flags().Set("timeout", "2s"); err != nil {
+		t.Fatalf("set timeout flag: %v", err)
+	}
 	if got := GetTimeout(cmd); got != 2*time.Second {
 		t.Errorf("GetTimeout flag = %v", got)
 	}

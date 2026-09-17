@@ -35,7 +35,7 @@ func TestGetComponentsAll(t *testing.T) {
 	var gotMethod, gotPath string
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		_, _ = w.Write([]byte(`{"Components":[]}`))
+		_, _ = w.Write([]byte(`{"Components":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -53,7 +53,7 @@ func TestGetComponentsXname(t *testing.T) {
 	var gotPath, gotAuth string
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath, gotAuth = r.URL.Path, r.Header.Get("Authorization")
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -87,7 +87,7 @@ func TestListGettersWithQuery(t *testing.T) {
 			var gotPath, gotQuery string
 			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 				gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 
@@ -109,7 +109,7 @@ func TestGetGroupMembers(t *testing.T) {
 	var gotPath string
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 

@@ -36,7 +36,7 @@ func TestSMDGroupGetFilters(t *testing.T) {
 			var gotQuery url.Values
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotQuery = r.URL.Query()
-				_, _ = w.Write([]byte(`[]`))
+				_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -55,7 +55,7 @@ func TestSMDGroupGetFilters(t *testing.T) {
 // TestSMDGroupGetFormats verifies the output-format variants.
 func TestSMDGroupGetFormats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`[{"label":"compute"}]`))
+		_, _ = w.Write([]byte(`[{"label":"compute"}]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -276,7 +276,7 @@ func TestSMDGroupMembershipFilters(t *testing.T) {
 	var gotQuery url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

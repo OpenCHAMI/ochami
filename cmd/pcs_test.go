@@ -22,7 +22,7 @@ func TestPCSStatusList(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		_, _ = w.Write([]byte(`{"status":[]}`))
+		_, _ = w.Write([]byte(`{"status":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -44,7 +44,7 @@ func TestPCSStatusListWithFilters(t *testing.T) {
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
-		_, _ = w.Write([]byte(`{"status":[]}`))
+		_, _ = w.Write([]byte(`{"status":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -118,7 +118,7 @@ func TestPCSServiceStatusHealth(t *testing.T) {
 		switch r.URL.Path {
 		case "/health":
 			sawHealth = true
-			_, _ = w.Write([]byte(`{"KvStore":"ok","StateManager":"ok","Vault":"ok"}`))
+			_, _ = w.Write([]byte(`{"KvStore":"ok","StateManager":"ok","Vault":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
 		default:
 			// readiness/liveness report ready
 			w.WriteHeader(http.StatusNoContent)

@@ -21,7 +21,7 @@ import (
 // TestSMDCompepGetAllFormats verifies "get" (no args) formats output.
 func TestSMDCompepGetAllFormats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"ComponentEndpoints":[{"ID":"x3000c1s7b56n0"}]}`))
+		_, _ = w.Write([]byte(`{"ComponentEndpoints":[{"ID":"x3000c1s7b56n0"}]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -40,7 +40,7 @@ func TestSMDCompepGetAllFormats(t *testing.T) {
 // aggregates into a ComponentEndpoints array.
 func TestSMDCompepGetByXnames(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"ID":"x3000c1s7b56n0"}`))
+		_, _ = w.Write([]byte(`{"ID":"x3000c1s7b56n0"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

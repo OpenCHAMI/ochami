@@ -175,17 +175,17 @@ See ochami-cloud-init(1) for more details.`,
 			// Print cloud-init config(s)
 			for cidx, cfg := range configSlice {
 				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Println(string(configSlice[cidx].Content))
+					fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
 				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Printf("--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
-					fmt.Println(string(configSlice[cidx].Content))
-					fmt.Println()
+					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
+					fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
+					fmt.Fprintln(cli.Ios.Out())
 				} else {
 					if len(configSlice) == 1 {
-						fmt.Println(string(configSlice[cidx].Content))
+						fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
 					} else {
-						fmt.Printf("--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
-						fmt.Println(string(configSlice[cidx].Content))
+						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
+						fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
 					}
 				}
 			}
@@ -245,7 +245,7 @@ See ochami-cloud-init(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Print(string(outBytes))
+			fmt.Fprint(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},
@@ -288,7 +288,7 @@ See ochami-cloud-init(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Print(string(outBytes))
+			fmt.Fprint(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},

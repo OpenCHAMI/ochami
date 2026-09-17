@@ -40,7 +40,7 @@ See ochami-rcs(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Println(string(outBytes))
+			fmt.Fprintln(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},

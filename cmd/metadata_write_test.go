@@ -39,7 +39,7 @@ func TestMetadataAddSuccess(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -82,7 +82,7 @@ func TestMetadataSetSuccess(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -104,7 +104,7 @@ func TestMetadataDeleteNoConfirm(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 

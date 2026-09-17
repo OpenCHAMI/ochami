@@ -38,7 +38,7 @@ func TestBSSBootParamsGetQuery(t *testing.T) {
 			var gotQuery url.Values
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotQuery = r.URL.Query()
-				_, _ = w.Write([]byte(`[]`))
+				_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -58,7 +58,7 @@ func TestBSSBootParamsGetQuery(t *testing.T) {
 // TestBSSBootParamsGetFormats verifies the output-format variants.
 func TestBSSBootParamsGetFormats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"params":"console=tty0"}]`))
+		_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"params":"console=tty0"}]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
