@@ -22,8 +22,8 @@ import (
 // TestBSSBootParamsGetAll verifies "bss boot params get" issues GET
 // /bootparameters and prints the response body.
 func TestBSSBootParamsGetAll(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -53,8 +53,8 @@ func TestBSSBootParamsGetAll(t *testing.T) {
 // TestBSSBootParamsGetWithMAC verifies that --mac is encoded into the query
 // string sent to /bootparameters.
 func TestBSSBootParamsGetWithMAC(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,8 +78,8 @@ func TestBSSBootParamsGetWithMAC(t *testing.T) {
 // TestBSSBootParamsAddViaFlags verifies "bss boot params add" issues POST
 // /bootparameters with the kernel and macs encoded in the body.
 func TestBSSBootParamsAddViaFlags(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	var gotBody []byte
@@ -121,8 +121,8 @@ func TestBSSBootParamsAddViaFlags(t *testing.T) {
 // TestBSSBootParamsAddMissingSelectors verifies that add without -d and without
 // any of --xname/--nid/--mac is a usage error.
 func TestBSSBootParamsAddMissingSelectors(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "add",
 		"--ignore-config", "--uri", "http://127.0.0.1:0", "--token", "faketoken",
@@ -139,8 +139,8 @@ func TestBSSBootParamsAddMissingSelectors(t *testing.T) {
 // TestBSSBootParamsDeleteNoConfirm verifies "bss boot params delete --no-confirm"
 // issues DELETE /bootparameters.
 func TestBSSBootParamsDeleteNoConfirm(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -168,8 +168,8 @@ func TestBSSBootParamsDeleteNoConfirm(t *testing.T) {
 
 // TestBSSDumpstate verifies "bss dumpstate" issues GET /dumpstate.
 func TestBSSDumpstate(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -190,8 +190,8 @@ func TestBSSDumpstate(t *testing.T) {
 
 // TestBSSHostsGet verifies "bss hosts get" issues GET /hosts.
 func TestBSSHostsGet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -212,8 +212,8 @@ func TestBSSHostsGet(t *testing.T) {
 
 // TestBSSServiceStatus verifies "bss service status" issues GET /service/status.
 func TestBSSServiceStatus(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -235,7 +235,7 @@ func TestBSSServiceStatus(t *testing.T) {
 // TestBSSServiceStatusHTTPError verifies an unsuccessful HTTP response from the
 // status endpoint resolves to CodeHTTP.
 func TestBSSServiceStatusHTTPError(t *testing.T) {
-	
+
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -256,7 +256,7 @@ func TestBSSServiceStatusHTTPError(t *testing.T) {
 // TestBSSBootScriptGet verifies "bss boot script get" issues GET /bootscript
 // with the selector encoded in the query string.
 func TestBSSBootScriptGet(t *testing.T) {
-	
+
 	// t.Parallel()
 
 	var gotPath, gotQuery string
@@ -281,7 +281,7 @@ func TestBSSBootScriptGet(t *testing.T) {
 
 // TestBSSHistoryGet verifies "bss history" issues GET /endpoint-history.
 func TestBSSHistoryGet(t *testing.T) {
-	
+
 	// t.Parallel()
 
 	var gotPath string
@@ -303,7 +303,7 @@ func TestBSSHistoryGet(t *testing.T) {
 // TestBSSStatusDeprecated verifies the deprecated top-level "bss status" command
 // still issues a GET under /service.
 func TestBSSStatusDeprecated(t *testing.T) {
-	
+
 	// t.Parallel()
 
 	var gotPath string
@@ -326,7 +326,7 @@ func TestBSSStatusDeprecated(t *testing.T) {
 // parameters (GET /bootparameters) and writes the updated root back
 // (PUT /bootparameters).
 func TestBSSBootImageSet(t *testing.T) {
-	
+
 	// t.Parallel()
 
 	var methods []string

@@ -12,7 +12,6 @@ package cmd
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -22,8 +21,8 @@ import (
 // TestDefaultClusterURIResolution verifies a command resolves its base URI from
 // the default cluster's cluster.uri in a config file (no --uri flag).
 func TestDefaultClusterURIResolution(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var hit bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -52,8 +51,8 @@ clusters:
 // TestPerServiceURIOverride verifies a per-service URI override in the cluster
 // config is honored.
 func TestPerServiceURIOverride(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -85,8 +84,6 @@ clusters:
 // with enable-auth true and a valid <CLUSTER>_ACCESS_TOKEN env var, the token
 // is read and validated and the request succeeds.
 func TestEnableAuthReadsTokenFromEnv(t *testing.T) {
-	
-	// t.Parallel()
 
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -118,8 +115,6 @@ clusters:
 // TestEnableAuthMissingTokenFails verifies that with enable-auth true and no
 // token available, the command fails with CodeAuth.
 func TestEnableAuthMissingTokenFails(t *testing.T) {
-	
-	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
@@ -134,8 +129,9 @@ clusters:
     enable-auth: true
 `)
 
-	// Ensure the env var is not set.
-	os.Unsetenv("DEMO_ACCESS_TOKEN")
+	// Ensure the env var is not set. This test intentionally remains serial
+	// because environment variables are process-global.
+	t.Setenv("DEMO_ACCESS_TOKEN", "")
 
 	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err == nil {
@@ -149,8 +145,8 @@ clusters:
 // TestEnableAuthDisabledSkipsToken verifies that with enable-auth false, no
 // token is required or sent.
 func TestEnableAuthDisabledSkipsToken(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

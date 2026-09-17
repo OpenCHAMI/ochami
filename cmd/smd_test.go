@@ -22,8 +22,8 @@ import (
 
 // TestSMDGroupGet verifies "smd group get" issues GET /groups.
 func TestSMDGroupGet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -43,8 +43,8 @@ func TestSMDGroupGet(t *testing.T) {
 
 // TestSMDGroupAddViaFlags verifies "smd group add <label>" issues POST /groups.
 func TestSMDGroupAddViaFlags(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -66,8 +66,8 @@ func TestSMDGroupAddViaFlags(t *testing.T) {
 // TestSMDGroupDeleteNoConfirm verifies "smd group delete --no-confirm <label>"
 // issues DELETE /groups/<label>.
 func TestSMDGroupDeleteNoConfirm(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -89,8 +89,8 @@ func TestSMDGroupDeleteNoConfirm(t *testing.T) {
 // TestSMDGroupMembershipGet verifies "smd group membership" issues GET
 // /memberships.
 func TestSMDGroupMembershipGet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -113,8 +113,8 @@ func TestSMDGroupMembershipGet(t *testing.T) {
 // TestSMDGroupMemberGet verifies "smd group member get <label>" issues GET
 // /groups/<label>/members.
 func TestSMDGroupMemberGet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -135,8 +135,8 @@ func TestSMDGroupMemberGet(t *testing.T) {
 // TestSMDGroupMemberSet verifies "smd group member set <label> <comp>..." issues
 // PUT /groups/<label>/members.
 func TestSMDGroupMemberSet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -160,8 +160,8 @@ func TestSMDGroupMemberSet(t *testing.T) {
 // TestSMDIfaceGet verifies "smd iface get" issues GET
 // /Inventory/EthernetInterfaces.
 func TestSMDIfaceGet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

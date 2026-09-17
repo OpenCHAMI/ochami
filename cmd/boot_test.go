@@ -20,8 +20,8 @@ import (
 // bootListSuccess is a table-driven check that a "list" subcommand exits
 // successfully when the service returns an empty JSON array.
 func TestBootListSuccess(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cases := []struct {
 		name string
@@ -54,8 +54,8 @@ func TestBootListSuccess(t *testing.T) {
 // TestBootListHTTPError verifies that an unsuccessful HTTP response from the
 // boot service resolves to a non-success exit code for the "list" subcommands.
 func TestBootListHTTPError(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cases := []struct {
 		name string
@@ -87,8 +87,8 @@ func TestBootListHTTPError(t *testing.T) {
 // TestBootServiceStatus verifies "boot service status" exits successfully when
 // the health endpoint responds OK.
 func TestBootServiceStatus(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -108,8 +108,8 @@ func TestBootServiceStatus(t *testing.T) {
 // TestBootConfigDeleteNoArgs verifies that "boot config delete" with no UID
 // arguments is a usage error (MinimumNArgs(1)).
 func TestBootConfigDeleteNoArgs(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "boot", "config", "delete", "--uri", "http://127.0.0.1:0", "--no-confirm")
 	if res.err == nil {
@@ -123,8 +123,8 @@ func TestBootConfigDeleteNoArgs(t *testing.T) {
 // TestBootGetSuccess verifies "<type> get <uid>" exits successfully for each
 // boot-service resource type.
 func TestBootGetSuccess(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
@@ -148,8 +148,8 @@ func TestBootGetSuccess(t *testing.T) {
 // TestBootGetHTTPError verifies that an unsuccessful HTTP response from a
 // "<type> get" resolves to a non-success exit code for each resource type.
 func TestBootGetHTTPError(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
@@ -172,8 +172,8 @@ func TestBootGetHTTPError(t *testing.T) {
 // TestBootDeleteNoConfirm verifies "<type> delete --no-confirm <uid>" exits
 // successfully for each boot-service resource type.
 func TestBootDeleteNoConfirm(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
