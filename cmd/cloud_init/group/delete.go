@@ -79,10 +79,7 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, err := cmd.Flags().GetBool("no-confirm")
-			if err != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
-			}
+			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")

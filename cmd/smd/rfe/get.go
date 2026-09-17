@@ -48,55 +48,37 @@ See ochami-smd(1) for more details.`,
 				cmd.Flag("fqdn").Changed || cmd.Flag("type").Changed || cmd.Flag("uuid").Changed {
 				values := url.Values{}
 				if cmd.Flag("xname").Changed {
-					s, err := cmd.Flags().GetStringSlice("xname")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch xname list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("xname")
 					for _, x := range s {
 						values.Add("id", x)
 					}
 				}
 				if cmd.Flag("mac").Changed {
-					s, err := cmd.Flags().GetStringSlice("mac")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch mac list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("mac")
 					for _, m := range s {
 						values.Add("macaddr", m)
 					}
 				}
 				if cmd.Flag("ip").Changed {
-					s, err := cmd.Flags().GetStringSlice("ip")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch ip list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("ip")
 					for _, i := range s {
 						values.Add("ipaddress", i)
 					}
 				}
 				if cmd.Flag("fqdn").Changed {
-					s, err := cmd.Flags().GetStringSlice("fqdn")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch fqdn list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("fqdn")
 					for _, f := range s {
 						values.Add("fqdn", f)
 					}
 				}
 				if cmd.Flag("type").Changed {
-					s, err := cmd.Flags().GetStringSlice("type")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch type list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("type")
 					for _, t := range s {
 						values.Add("type", t)
 					}
 				}
 				if cmd.Flag("uuid").Changed {
-					s, err := cmd.Flags().GetStringSlice("uuid")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch uuid list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("uuid")
 					for _, u := range s {
 						values.Add("uuid", u)
 					}

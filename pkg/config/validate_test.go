@@ -6,6 +6,10 @@ package config
 
 import (
 	"testing"
+
+	kyaml "github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/rawbytes"
+	"github.com/knadh/koanf/v2"
 )
 
 func TestCoerceBool(t *testing.T) {
@@ -33,5 +37,43 @@ func TestCoerceBool(t *testing.T) {
 				t.Fatalf("coerceBool(%v) = (%v, %v), want (%v, %v)", tt.in, got, ok, tt.want, tt.wantOK)
 			}
 		})
+	}
+}
+
+func loadKoanfYAML(t *testing.T, yaml string) *koanf.Koanf {
+	t.Helper()
+	ko := koanf.NewWithConf(koanfConf)
+	if err := ko.Load(rawbytes.Provider([]byte(yaml)), kyaml.Parser()); err != nil {
+		t.Fatalf("ko.Load: %v", err)
+	}
+	return ko
+}
+
+func TestValidateConfigErrors(t *testing.T) {
+	// Invalid timeout duration.
+	if err := ValidateConfig(loadKoanfYAML(t, "timeout: not-a-duration\n")); err == nil {
+		t.Error("ValidateConfig(invalid timeout) = nil, want error")
+	}
+
+	// Invalid enable-auth value.
+	yaml := `clusters:
+- name: demo
+  cluster:
+    enable-auth: maybe
+`
+	if err := ValidateConfig(loadKoanfYAML(t, yaml)); err == nil {
+		t.Error("ValidateConfig(invalid enable-auth) = nil, want error")
+	}
+
+	// Valid config passes.
+	valid := `timeout: 30s
+clusters:
+- name: demo
+  cluster:
+    uri: https://demo.example.com
+    enable-auth: true
+`
+	if err := ValidateConfig(loadKoanfYAML(t, valid)); err != nil {
+		t.Errorf("ValidateConfig(valid) = %v, want nil", err)
 	}
 }

@@ -107,10 +107,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Determine how to read payload (simple versus advanced API)
-			envelope, flagErr := cmd.Flags().GetBool("envelope")
-			if flagErr != nil {
-				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
-			}
+			envelope, _ := cmd.Flags().GetBool("envelope")
 
 			var defaultsCreated []api.ClusterDefaults
 			var reqErrs []error
@@ -163,11 +160,7 @@ See ochami-metadata(1) for more details.`,
 			var reqErrorsOccurred = false
 			for _, err := range reqErrs {
 				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("failed to add cluster defaults")
-					} else {
-						log.Logger.Error().Err(err).Msg("failed to add cluster defaults")
-					}
+					log.Logger.Error().Err(err).Msg("failed to add cluster defaults")
 					reqErrorsOccurred = true
 				}
 			}

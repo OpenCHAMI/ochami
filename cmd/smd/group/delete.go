@@ -6,13 +6,10 @@
 package group
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -66,10 +63,7 @@ See ochami-smd(1) for more details.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, err := cmd.Flags().GetBool("no-confirm")
-			if err != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
-			}
+			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
@@ -102,6 +96,12 @@ See ochami-smd(1) for more details.`,
 				if err := cli.HandlePayload(cmd, &groups); err != nil {
 					return err
 				}
+				for _, group := range groups {
+					gLabelSlice = append(gLabelSlice, group.Label)
+				}
+				if len(gLabelSlice) == 0 {
+					return cli.Errorf(cli.CodeUsage, "payload contained no groups to delete")
+				}
 			} else {
 				// ...otherwise, use passed CLI arguments
 				gLabelSlice = args
@@ -114,20 +114,8 @@ See ochami-smd(1) for more details.`,
 			}
 			// Since smdClient.DeleteGroups does the deletion iteratively, we need to deal with
 			// each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("SMD group deletion yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to delete group")
-					}
-					errorsOccurred = true
-				}
-			}
-			// Warn the user if any errors occurred during deletion iterations
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "SMD group deletion completed with errors")
+			if err := cli.AggregateItemErrors(errs, "SMD group deletion"); err != nil {
+				return err
 			}
 
 			return nil

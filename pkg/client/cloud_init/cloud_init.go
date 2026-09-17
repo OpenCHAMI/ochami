@@ -112,9 +112,7 @@ func (cic *CloudInitClient) GetDefaults(token string) (client.HTTPEnvelope, erro
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("GetDefaults(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	henv, err := cic.GetData(CloudInitRelpathDefaults, "", headers)
 	if err != nil {
@@ -134,9 +132,7 @@ func (cic *CloudInitClient) GetGroups(token string, ids ...string) ([]client.HTT
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henvs, errors, fmt.Errorf("GetGroups(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	if len(ids) == 0 {
 		henv, err := cic.GetData(CloudInitRelpathGroups, "", headers)
@@ -188,9 +184,7 @@ func (cic *CloudInitClient) GetNodeData(dataType CIDataType, token string, ids .
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henvs, errors, fmt.Errorf("GetNodeData(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	for _, id := range ids {
 		var henv client.HTTPEnvelope
@@ -234,9 +228,7 @@ func (cic *CloudInitClient) GetNodeGroupData(token, id string, groups ...string)
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henvs, errors, fmt.Errorf("GetNodeGroupData(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	for _, group := range groups {
 		var henv client.HTTPEnvelope
@@ -286,9 +278,7 @@ func (cic *CloudInitClient) PostDefaults(ciDflts cistore.ClusterDefaults, token 
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("PostDefaults(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	henv, err = cic.PostData(CloudInitRelpathDefaults, "", headers, body)
 	if err != nil {
@@ -310,9 +300,7 @@ func (cic *CloudInitClient) PostGroups(ciGroups []cistore.GroupData, token strin
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henvs, errors, fmt.Errorf("PostGroups(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	for _, cig := range ciGroups {
 		var body client.HTTPBody
@@ -348,9 +336,7 @@ func (cic *CloudInitClient) PutGroups(ciGroups []cistore.GroupData, token string
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henvs, errors, fmt.Errorf("PutGroups(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	for _, cig := range ciGroups {
 		var (
@@ -399,9 +385,7 @@ func (cic *CloudInitClient) PutInstanceInfo(instanceInfoList []cistore.OpenCHAMI
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henvs, errors, fmt.Errorf("PutInstanceInfo(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	if len(instanceInfoList) == 0 {
 		return henvs, errors, fmt.Errorf("PutInstanceInfo(): at least one instance info is required")
@@ -458,9 +442,7 @@ func (cic *CloudInitClient) DeleteGroups(token string, groups ...string) ([]clie
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henvs, errors, fmt.Errorf("DeleteGroups(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	for _, group := range groups {
 		finalEP, err := url.JoinPath(CloudInitRelpathGroups, group)

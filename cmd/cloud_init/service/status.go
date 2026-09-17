@@ -38,17 +38,17 @@ See ochami-cloud-init(1) for more details.`,
 				if _, err := cloudInitClient.GetVersion(); err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
 						if !cmd.Flag("quiet").Changed {
-							fmt.Println("cloud-init is running, but not normally")
+							fmt.Fprintln(cli.Ios.Out(), "cloud-init is running, but not normally")
 						}
 						return cli.Errorf(cli.CodeHTTP, "cloud-init status request yielded unsuccessful HTTP response: %w", err)
 					}
 					if !cmd.Flag("quiet").Changed {
-						fmt.Println("cloud-init is not running")
+						fmt.Fprintln(cli.Ios.Out(), "cloud-init is not running")
 					}
 					return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init status: %w", err)
 				}
 				if !cmd.Flag("quiet").Changed {
-					fmt.Println("cloud-init is running")
+					fmt.Fprintln(cli.Ios.Out(), "cloud-init is running")
 				}
 				return nil
 			}
@@ -73,7 +73,7 @@ See ochami-cloud-init(1) for more details.`,
 				if err != nil {
 					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 				}
-				fmt.Print(string(outBytes))
+				fmt.Fprint(cli.Ios.Out(), string(outBytes))
 			}
 
 			if errOccurred {

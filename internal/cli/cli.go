@@ -566,17 +566,9 @@ func HandleToken(cmd *cobra.Command) error {
 		}
 
 		if clusterName != "" {
-			if cl, err := activeConfig.GetCluster(clusterName); err != nil {
-				if errors.Is(err, config.ErrUnknownCluster{}) {
-					// Cluster was not found (this error
-					// should be caught before this function, but
-					// this check is here just in case),
-					// skip token check
-					log.Logger.Warn().Msgf("cluster %q not found, not checking token", clusterName)
-				} else {
-					// Other error occurred, fatal
-					return Errorf(CodeConfig, "failed to get cluster: %w", err)
-				}
+			cl, err := activeConfig.GetCluster(clusterName)
+			if err != nil {
+				return Errorf(CodeConfig, "failed to get cluster: %w", err)
 			} else {
 				// Cluster was found, use enable-auth value to
 				// determine whether to read/check token
