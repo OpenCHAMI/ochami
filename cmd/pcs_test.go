@@ -19,6 +19,9 @@ import (
 
 // TestPCSStatusList verifies "pcs status list" issues GET /power-status.
 func TestPCSStatusList(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -26,7 +29,7 @@ func TestPCSStatusList(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -41,6 +44,9 @@ func TestPCSStatusList(t *testing.T) {
 // TestPCSStatusListWithFilters verifies xname and power/mgmt filters are encoded
 // in the query string.
 func TestPCSStatusListWithFilters(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
@@ -48,7 +54,7 @@ func TestPCSStatusListWithFilters(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"--xname", "x0c0s0b0n0", "--power-filter", "on", "--mgmt-filter", "available")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -61,7 +67,10 @@ func TestPCSStatusListWithFilters(t *testing.T) {
 // TestPCSStatusListInvalidPowerFilter verifies an invalid --power-filter value
 // is a usage error handled before any request.
 func TestPCSStatusListInvalidPowerFilter(t *testing.T) {
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", "http://127.0.0.1:0",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", "http://127.0.0.1:0",
 		"--token", "t", "--power-filter", "bogus")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -74,12 +83,15 @@ func TestPCSStatusListInvalidPowerFilter(t *testing.T) {
 // TestPCSStatusListHTTPError verifies an unsuccessful HTTP response resolves to
 // CodeHTTP.
 func TestPCSStatusListHTTPError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -91,6 +103,9 @@ func TestPCSStatusListHTTPError(t *testing.T) {
 // TestPCSServiceStatus verifies "pcs service status" contacts PCS readiness and
 // exits successfully when PCS reports ready (HTTP 204 on /readiness).
 func TestPCSServiceStatus(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -98,7 +113,7 @@ func TestPCSServiceStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -113,6 +128,9 @@ func TestPCSServiceStatus(t *testing.T) {
 // TestPCSServiceStatusHealth verifies that passing a health flag causes
 // "pcs service status" to query the /health endpoint.
 func TestPCSServiceStatusHealth(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var sawHealth bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -126,7 +144,7 @@ func TestPCSServiceStatusHealth(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--all",
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--all",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)

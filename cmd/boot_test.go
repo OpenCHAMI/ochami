@@ -20,6 +20,9 @@ import (
 // bootListSuccess is a table-driven check that a "list" subcommand exits
 // successfully when the service returns an empty JSON array.
 func TestBootListSuccess(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cases := []struct {
 		name string
 		args []string
@@ -37,7 +40,7 @@ func TestBootListSuccess(t *testing.T) {
 			defer srv.Close()
 
 			args := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "faketoken")
-			res := runOchami(t, args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -51,6 +54,9 @@ func TestBootListSuccess(t *testing.T) {
 // TestBootListHTTPError verifies that an unsuccessful HTTP response from the
 // boot service resolves to a non-success exit code for the "list" subcommands.
 func TestBootListHTTPError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cases := []struct {
 		name string
 		args []string
@@ -67,7 +73,7 @@ func TestBootListHTTPError(t *testing.T) {
 			defer srv.Close()
 
 			args := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "faketoken")
-			res := runOchami(t, args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -81,13 +87,16 @@ func TestBootListHTTPError(t *testing.T) {
 // TestBootServiceStatus verifies "boot service status" exits successfully when
 // the health endpoint responds OK.
 func TestBootServiceStatus(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "boot", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "--ignore-config", "boot", "service", "status", "--uri", srv.URL)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -99,7 +108,10 @@ func TestBootServiceStatus(t *testing.T) {
 // TestBootConfigDeleteNoArgs verifies that "boot config delete" with no UID
 // arguments is a usage error (MinimumNArgs(1)).
 func TestBootConfigDeleteNoArgs(t *testing.T) {
-	res := runOchami(t, "boot", "config", "delete", "--ignore-config", "--uri", "http://127.0.0.1:0", "--no-confirm")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "boot", "config", "delete", "--uri", "http://127.0.0.1:0", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -111,6 +123,9 @@ func TestBootConfigDeleteNoArgs(t *testing.T) {
 // TestBootGetSuccess verifies "<type> get <uid>" exits successfully for each
 // boot-service resource type.
 func TestBootGetSuccess(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +134,7 @@ func TestBootGetSuccess(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -133,6 +148,9 @@ func TestBootGetSuccess(t *testing.T) {
 // TestBootGetHTTPError verifies that an unsuccessful HTTP response from a
 // "<type> get" resolves to a non-success exit code for each resource type.
 func TestBootGetHTTPError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +158,7 @@ func TestBootGetHTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -154,6 +172,9 @@ func TestBootGetHTTPError(t *testing.T) {
 // TestBootDeleteNoConfirm verifies "<type> delete --no-confirm <uid>" exits
 // successfully for each boot-service resource type.
 func TestBootDeleteNoConfirm(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -162,8 +183,8 @@ func TestBootDeleteNoConfirm(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "delete", "--no-confirm", "some-uid",
-				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "delete", "--no-confirm", "some-uid",
+				"--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}

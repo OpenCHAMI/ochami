@@ -33,6 +33,9 @@ func runOchamiWithInput(t *testing.T, input string, args ...string) cmdResult {
 // causes the delete to proceed (a DELETE request is issued) and the command
 // exits successfully.
 func TestDeleteConfirmYes(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -42,8 +45,8 @@ func TestDeleteConfirmYes(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "compute")
+	res := runOchamiWithInputAndRuntime(t, "y\n", "--ignore-config",
+		"smd", "group", "delete", "--uri", srv.URL, "--token", "t", "compute")
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -59,6 +62,9 @@ func TestDeleteConfirmYes(t *testing.T) {
 // TestDeleteConfirmNo verifies that answering "n" aborts the delete: no request
 // is issued and the command exits 0 (user-abort is not an error).
 func TestDeleteConfirmNo(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -68,8 +74,8 @@ func TestDeleteConfirmNo(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "compute")
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--ignore-config",
+		"smd", "group", "delete", "--uri", srv.URL, "--token", "t", "compute")
 
 	if res.err != nil {
 		t.Fatalf("unexpected error on abort: %v (exit %d)", res.err, res.exitCode)
@@ -88,6 +94,9 @@ func TestDeleteConfirmNo(t *testing.T) {
 // TestDeleteConfirmYesComponent covers the same confirm-then-delete flow for a
 // second command family (smd component) to exercise its prompt branch.
 func TestDeleteConfirmYesComponent(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -97,8 +106,8 @@ func TestDeleteConfirmYesComponent(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "component", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
+	res := runOchamiWithInputAndRuntime(t, "y\n", "--ignore-config",
+		"smd", "component", "delete", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -111,6 +120,9 @@ func TestDeleteConfirmYesComponent(t *testing.T) {
 // TestDeleteConfirmNoBSS covers the abort branch for a bss delete command,
 // confirming the pattern holds across services.
 func TestDeleteConfirmNoBSS(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -120,8 +132,8 @@ func TestDeleteConfirmNoBSS(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"bss", "boot", "params", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--ignore-config",
+		"bss", "boot", "params", "delete", "--uri", srv.URL, "--token", "t",
 		"--mac", "de:ad:be:ef:00:00", "--kernel", "https://example.com/vmlinuz")
 
 	if res.err != nil {

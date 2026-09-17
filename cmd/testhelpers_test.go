@@ -13,6 +13,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -119,5 +120,133 @@ func runOchami(t *testing.T, args ...string) cmdResult {
 		err:      runErr,
 		exitCode: cli.ExitCode(runErr),
 		stdout:   captured,
+	}
+}
+
+// runOchamiWithRuntime executes the ochami root command with an isolated Runtime,
+// enabling test isolation and parallel test execution. Each test gets its own Runtime
+// instance with isolated I/O streams, eliminating the need for global state manipulation.
+//
+// This is the runtime-based replacement for runOchami(). Once all tests are migrated
+// to use this function, the old runOchami() and its global state (stdoutMu, testStdin)
+// can be removed.
+//
+// Callers should generally include "--ignore-config" so the command does not
+// read or create real config files, and "--uri <server.URL>" (on commands that
+// accept it) to target an httptest.Server.
+func runOchamiWithRuntime(t *testing.T, args ...string) cmdResult {
+	t.Helper()
+
+	// Create isolated runtime for this test with custom I/O streams
+	// Use a single buffer for both stdout and stderr to match the behavior of runOchami()
+	// which captures both in the same buffer. This is important for tests that check
+	// for interactive prompts (written to stderr via rt.Ios.LoopYesNo) in the stdout.
+	var combinedBuf bytes.Buffer
+	stdinReader := strings.NewReader("")
+
+	// Create runtime with both stdout and stderr pointing to the same buffer
+	rt := cli.NewTestRuntime(stdinReader, &combinedBuf, &combinedBuf)
+
+	// Create root command with runtime in context
+	rootCmd := NewRootCmd()
+	rootCmd.SetContext(rt.WithContext(context.Background()))
+	rootCmd.SetArgs(args)
+	// Set both Cobra's output streams to the same buffer for consistency
+	rootCmd.SetOut(&combinedBuf)
+	rootCmd.SetErr(&combinedBuf)
+
+	// Execute command - runtime is automatically used via context
+	runErr := rootCmd.Execute()
+
+	return cmdResult{
+		err:      runErr,
+		exitCode: cli.ExitCode(runErr),
+		stdout:   combinedBuf.String(),
+	}
+}
+
+// runOchamiWithInputAndRuntime executes the ochami root command with an isolated
+// Runtime and custom stdin input, enabling test isolation and parallel test execution.
+//
+// This is the runtime-based replacement for runOchamiWithInput(). Once all tests are
+// migrated to use this function, the old runOchamiWithInput() can be removed.
+func runOchamiWithInputAndRuntime(t *testing.T, input string, args ...string) cmdResult {
+	t.Helper()
+
+	// Create isolated runtime for this test with custom I/O streams
+	// Use a single buffer for both stdout and stderr to match the behavior of runOchami()
+	// which captures both in the same buffer. This is important for tests that check
+	// for interactive prompts (written to stderr via rt.Ios.LoopYesNo) in the stdout.
+	var combinedBuf bytes.Buffer
+	stdinReader := strings.NewReader(input)
+
+	// Create runtime with both stdout and stderr pointing to the same buffer
+	rt := cli.NewTestRuntime(stdinReader, &combinedBuf, &combinedBuf)
+
+	// Create root command with runtime in context
+	rootCmd := NewRootCmd()
+	rootCmd.SetContext(rt.WithContext(context.Background()))
+	rootCmd.SetArgs(args)
+	// Set both Cobra's output streams to the same buffer for consistency
+	rootCmd.SetOut(&combinedBuf)
+	rootCmd.SetErr(&combinedBuf)
+
+	// Execute command
+	runErr := rootCmd.Execute()
+
+	return cmdResult{
+		err:      runErr,
+		exitCode: cli.ExitCode(runErr),
+		stdout:   combinedBuf.String(),
+	}
+}
+
+// TestRunOchamiWithRuntime_Basic verifies that the runtime-based test helper
+// works correctly for basic command execution.
+func TestRunOchamiWithRuntime_Basic(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	// Test version command which should work without any special setup
+	res := runOchamiWithRuntime(t, "--ignore-config", "version")
+
+	// Version command should succeed
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+
+	// Should have some output
+	if res.stdout == "" {
+		t.Error("expected version output, got empty string")
+	}
+
+	// Output should contain version information
+	if !strings.Contains(res.stdout, "Version:") {
+		t.Errorf("expected output to contain 'Version:', got: %s", res.stdout)
+	}
+}
+
+// TestRunOchamiWithInputAndRuntime_Basic verifies that the runtime-based test
+// helper with input works correctly.
+func TestRunOchamiWithInputAndRuntime_Basic(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	// Test version command with custom input (should be ignored by version)
+	res := runOchamiWithInputAndRuntime(t, "some input", "--ignore-config", "version")
+
+	// Version command should succeed
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+
+	// Should have some output
+	if res.stdout == "" {
+		t.Error("expected version output, got empty string")
+	}
+
+	// Output should contain version information
+	if !strings.Contains(res.stdout, "Version:") {
+		t.Errorf("expected output to contain 'Version:', got: %s", res.stdout)
 	}
 }

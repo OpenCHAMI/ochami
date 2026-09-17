@@ -18,6 +18,9 @@ import (
 )
 
 func TestGetClientNoBaseURI(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cases := [][]string{
 		// cloud-init
 		{"cloud-init", "group", "get", "raw"},
@@ -100,7 +103,7 @@ func TestGetClientNoBaseURI(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an error without a base URI, got nil")
 			}
@@ -117,6 +120,9 @@ func TestGetClientNoBaseURI(t *testing.T) {
 // provided via a config-file cluster so GetClient succeeds and the failure
 // occurs in HandleToken.
 func TestHandleTokenAuthRequired(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -165,7 +171,7 @@ clusters:
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append([]string{"--config", cfg}, args...)
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an auth error, got nil")
 			}
@@ -180,6 +186,9 @@ clusters:
 // with CodePayload when --cacert points at an invalid/nonexistent file. This
 // exercises the shared UseCACert error arm.
 func TestUseCACertInvalid(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -196,7 +205,7 @@ func TestUseCACertInvalid(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"--cacert", "/no/such/ca.pem")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an error for invalid --cacert, got nil")
 			}
@@ -211,6 +220,9 @@ func TestUseCACertInvalid(t *testing.T) {
 // underlying request fails at the transport layer, exercising the CodeNetwork
 // arm shared by many service commands.
 func TestServiceCommandsNetworkError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := okJSONServer(t)
 	url := srv.URL
 	srv.Close() // closed => connection refused
@@ -238,7 +250,7 @@ func TestServiceCommandsNetworkError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", url, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a network error, got nil")
 			}
@@ -252,6 +264,9 @@ func TestServiceCommandsNetworkError(t *testing.T) {
 // TestServiceCommandsHTTPError points commands at a server returning 500 so the
 // HTTP-error mapping arm (CodeHTTP) is exercised broadly.
 func TestServiceCommandsHTTPError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -279,7 +294,7 @@ func TestServiceCommandsHTTPError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an HTTP error, got nil")
 			}
@@ -294,6 +309,9 @@ func TestServiceCommandsHTTPError(t *testing.T) {
 // per-service GetClient's UseCACert step to fail with CodePayload, exercising
 // that shared arm across every service's GetClient.
 func TestGetClientUseCACertInvalid(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -326,7 +344,7 @@ func TestGetClientUseCACertInvalid(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"--cacert", "/no/such/ca.pem")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an error for invalid --cacert, got nil")
 			}
@@ -341,6 +359,9 @@ func TestGetClientUseCACertInvalid(t *testing.T) {
 // resolves to CodePayload across the commands that accept a data payload,
 // exercising the shared HandlePayload error arm.
 func TestMalformedPayloadAcrossCommands(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -363,7 +384,7 @@ func TestMalformedPayloadAcrossCommands(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t", "-d", "not json")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a payload error, got nil")
 			}
@@ -378,6 +399,9 @@ func TestMalformedPayloadAcrossCommands(t *testing.T) {
 // positional arguments is accepted (the extra args are ignored with a warning)
 // across the commands that support -d, exercising that warning arm.
 func TestDataWithExtraArgsAcrossCommands(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -401,7 +425,7 @@ func TestDataWithExtraArgsAcrossCommands(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "t", "-d", tc.data, "extra-arg")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -412,6 +436,9 @@ func TestDataWithExtraArgsAcrossCommands(t *testing.T) {
 // TestWriteCommandsNetworkError points write commands at a closed port so their
 // network-error arms fire (CodeNetwork or the per-item aggregate).
 func TestWriteCommandsNetworkError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := okJSONServer(t)
 	url := srv.URL
 	srv.Close()
@@ -439,7 +466,7 @@ func TestWriteCommandsNetworkError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", url, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a network error, got nil")
 			}
@@ -453,6 +480,9 @@ func TestWriteCommandsNetworkError(t *testing.T) {
 // TestMetadataBootWriteNetworkError points metadata/boot write commands at a
 // closed port so their network-error arms fire across all resource types.
 func TestMetadataBootWriteNetworkError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := okJSONServer(t)
 	url := srv.URL
 	srv.Close()
@@ -483,7 +513,7 @@ func TestMetadataBootWriteNetworkError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", url, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a network error, got nil")
 			}
