@@ -22,8 +22,8 @@ import (
 // TestConfigSetCreatesFileOnConfirm verifies "config set" offers to create a
 // missing config file and, on "y", creates and writes it.
 func TestConfigSetCreatesFileOnConfirm(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
@@ -39,8 +39,8 @@ func TestConfigSetCreatesFileOnConfirm(t *testing.T) {
 // TestConfigSetDeclineCreate verifies that declining to create a missing config
 // file exits without writing the file.
 func TestConfigSetDeclineCreate(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
@@ -54,8 +54,8 @@ func TestConfigSetDeclineCreate(t *testing.T) {
 }
 
 func TestConfigUnsetUnknownKey(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
@@ -69,8 +69,8 @@ func TestConfigUnsetUnknownKey(t *testing.T) {
 }
 
 func TestConfigClusterSetDeclineCreate(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
@@ -89,8 +89,8 @@ func TestConfigClusterSetDeclineCreate(t *testing.T) {
 }
 
 func TestConfigClusterUnsetUnknownKey(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
@@ -110,8 +110,8 @@ func TestConfigClusterUnsetUnknownKey(t *testing.T) {
 // TestConfigClusterShowNonexistentCluster verifies showing a cluster that does
 // not exist in the config.
 func TestConfigClusterShowNonexistentCluster(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "clusters: []\n")
 
@@ -124,8 +124,8 @@ func TestConfigClusterShowNonexistentCluster(t *testing.T) {
 // TestConfigClusterUnsetNonexistent verifies unsetting a key on a nonexistent
 // cluster reports an error rather than panicking.
 func TestConfigClusterUnsetNonexistent(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "clusters: []\n")
 
@@ -141,8 +141,8 @@ func TestConfigClusterUnsetNonexistent(t *testing.T) {
 // TestConfigShowNonexistentKey verifies "config show <key>" for a key not
 // present returns the defaulted or empty value without error.
 func TestConfigShowNonexistentKey(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
@@ -161,8 +161,8 @@ func TestConfigShowNonexistentKey(t *testing.T) {
 // test hermetic while exercising the non-user branch selection is covered by
 // the mutually-exclusive tests.
 func TestConfigSetSystemFlag(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	// Use --config to keep the write hermetic; this still exercises the
 	// config-source selection branch.
@@ -184,8 +184,8 @@ func TestConfigSetSystemFlag(t *testing.T) {
 // TestConfigShowWholeConfigViaConfigFlag verifies "config show" (no key) reads
 // the whole config from an explicit --config file (the --config branch).
 func TestConfigShowWholeConfigViaConfigFlag(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
 
@@ -201,8 +201,8 @@ func TestConfigShowWholeConfigViaConfigFlag(t *testing.T) {
 // TestConfigUnsetViaConfigFlag verifies "config unset <key>" removes a key from
 // an explicit --config file.
 func TestConfigUnsetViaConfigFlag(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
 

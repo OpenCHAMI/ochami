@@ -74,8 +74,8 @@ func TestCloudInitGroupGetRemainingPaths(t *testing.T) {
 }
 
 func TestRemainingServicePaths(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	tests := []struct {
 		name     string
@@ -92,8 +92,8 @@ func TestRemainingServicePaths(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			
-			// t.Parallel()
+
+			t.Parallel()
 
 			var gotPath string
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -116,13 +116,13 @@ func TestRemainingServicePaths(t *testing.T) {
 }
 
 func TestMetadataPatchPathsAndArrayOperations(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	for _, resource := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(resource, func(t *testing.T) {
-			
-			// t.Parallel()
+
+			t.Parallel()
 
 			var gotContentType, gotBody string
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -153,8 +153,8 @@ func TestMetadataPatchPathsAndArrayOperations(t *testing.T) {
 }
 
 func TestRCSConsoleConnect(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	upgrader := websocket.Upgrader{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

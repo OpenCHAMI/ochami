@@ -236,7 +236,7 @@ func TestBSSServiceStatus(t *testing.T) {
 // status endpoint resolves to CodeHTTP.
 func TestBSSServiceStatusHTTPError(t *testing.T) {
 
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
@@ -257,7 +257,7 @@ func TestBSSServiceStatusHTTPError(t *testing.T) {
 // with the selector encoded in the query string.
 func TestBSSBootScriptGet(t *testing.T) {
 
-	// t.Parallel()
+	t.Parallel()
 
 	var gotPath, gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -282,7 +282,7 @@ func TestBSSBootScriptGet(t *testing.T) {
 // TestBSSHistoryGet verifies "bss history" issues GET /endpoint-history.
 func TestBSSHistoryGet(t *testing.T) {
 
-	// t.Parallel()
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -304,7 +304,7 @@ func TestBSSHistoryGet(t *testing.T) {
 // still issues a GET under /service.
 func TestBSSStatusDeprecated(t *testing.T) {
 
-	// t.Parallel()
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -327,7 +327,7 @@ func TestBSSStatusDeprecated(t *testing.T) {
 // (PUT /bootparameters).
 func TestBSSBootImageSet(t *testing.T) {
 
-	// t.Parallel()
+	t.Parallel()
 
 	var methods []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

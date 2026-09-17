@@ -20,8 +20,8 @@ import (
 // TestConfigClusterSetDefault verifies "config cluster set --default" marks the
 // cluster as the default in the config file.
 func TestConfigClusterSetDefault(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
@@ -49,8 +49,8 @@ func TestConfigClusterSetDefault(t *testing.T) {
 
 // TestConfigClusterSetServiceKey verifies setting a per-service URI key.
 func TestConfigClusterSetServiceKey(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
@@ -85,8 +85,8 @@ func TestConfigClusterSetServiceKey(t *testing.T) {
 // TestConfigClusterShowAll verifies "config cluster show" with no args shows all
 // clusters.
 func TestConfigClusterShowAll(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
@@ -109,8 +109,8 @@ func TestConfigClusterShowAll(t *testing.T) {
 // TestConfigClusterShowOne verifies "config cluster show <name>" shows the whole
 // cluster entry.
 func TestConfigClusterShowOne(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
@@ -130,8 +130,8 @@ func TestConfigClusterShowOne(t *testing.T) {
 // TestConfigClusterSetMutuallyExclusiveSources verifies that specifying both
 // --user and --system is a usage error.
 func TestConfigClusterSetMutuallyExclusiveSources(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "config", "cluster", "set", "--user", "--system",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
@@ -143,8 +143,8 @@ func TestConfigClusterSetMutuallyExclusiveSources(t *testing.T) {
 // TestConfigClusterSetCreatesFile verifies "config cluster set" creates a
 // missing config file when the user confirms.
 func TestConfigClusterSetCreatesFile(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	dir := t.TempDir()
 	path := dir + "/sub/config.yaml"
@@ -162,8 +162,8 @@ func TestConfigClusterSetCreatesFile(t *testing.T) {
 // TestConfigClusterDeleteFromExisting verifies deleting a cluster and that the
 // file is updated. (Covers the delete RunE success path with a real file.)
 func TestConfigClusterDeleteFromExistingTwo(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
@@ -193,8 +193,8 @@ func TestConfigClusterDeleteFromExistingTwo(t *testing.T) {
 // TestConfigClusterShowNotFoundErrors verifies "config cluster show <name>" for
 // a nonexistent cluster is a config error.
 func TestConfigClusterShowNotFoundErrors(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
@@ -211,8 +211,8 @@ func TestConfigClusterShowNotFoundErrors(t *testing.T) {
 // TestConfigClusterShowKeyOfCluster verifies "config cluster show <name> <key>"
 // returns the value for a nested key.
 func TestConfigClusterShowKeyOfCluster(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
@@ -231,8 +231,8 @@ func TestConfigClusterShowKeyOfCluster(t *testing.T) {
 
 // TestConfigClusterUnsetKey verifies removing a key from an existing cluster.
 func TestConfigClusterUnsetKey(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar

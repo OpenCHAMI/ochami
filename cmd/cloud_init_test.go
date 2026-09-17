@@ -19,8 +19,8 @@ import (
 // TestCloudInitGroupGet verifies "cloud-init group get raw" issues GET
 // /admin/groups.
 func TestCloudInitGroupGet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -41,8 +41,8 @@ func TestCloudInitGroupGet(t *testing.T) {
 // TestCloudInitGroupAdd verifies "cloud-init group add -d <payload>" issues
 // POST /admin/groups.
 func TestCloudInitGroupAdd(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -64,8 +64,8 @@ func TestCloudInitGroupAdd(t *testing.T) {
 // TestCloudInitGroupSet verifies "cloud-init group set -d <payload>" issues
 // PUT /admin/groups/<name>.
 func TestCloudInitGroupSet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,8 +87,8 @@ func TestCloudInitGroupSet(t *testing.T) {
 // TestCloudInitGroupDeleteNoConfirm verifies "cloud-init group delete
 // --no-confirm <name>" issues DELETE under /admin/groups.
 func TestCloudInitGroupDeleteNoConfirm(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -110,8 +110,8 @@ func TestCloudInitGroupDeleteNoConfirm(t *testing.T) {
 // TestCloudInitNodeSet verifies "cloud-init node set -d <payload>" issues a PUT
 // under /admin/instance-info.
 func TestCloudInitNodeSet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -133,8 +133,8 @@ func TestCloudInitNodeSet(t *testing.T) {
 // TestCloudInitDefaultsSet verifies "cloud-init defaults set -d <payload>"
 // issues POST /admin/cluster-defaults.
 func TestCloudInitDefaultsSet(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -158,8 +158,8 @@ func TestCloudInitDefaultsSet(t *testing.T) {
 // server returns an empty body for the group config fetch, so the command logs
 // a warning and returns without error.
 func TestCloudInitGroupRenderEmptyConfig(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Empty body for the group-config fetch => nothing to render.

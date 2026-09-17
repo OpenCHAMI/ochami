@@ -18,8 +18,8 @@ import (
 )
 
 func TestGetClientNoBaseURI(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	cases := [][]string{
 		// cloud-init
@@ -120,8 +120,8 @@ func TestGetClientNoBaseURI(t *testing.T) {
 // provided via a config-file cluster so GetClient succeeds and the failure
 // occurs in HandleToken.
 func TestHandleTokenAuthRequired(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := okJSONServer(t)
 	defer srv.Close()
@@ -186,8 +186,8 @@ clusters:
 // with CodePayload when --cacert points at an invalid/nonexistent file. This
 // exercises the shared UseCACert error arm.
 func TestUseCACertInvalid(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := okJSONServer(t)
 	defer srv.Close()
@@ -220,8 +220,8 @@ func TestUseCACertInvalid(t *testing.T) {
 // underlying request fails at the transport layer, exercising the CodeNetwork
 // arm shared by many service commands.
 func TestServiceCommandsNetworkError(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := okJSONServer(t)
 	url := srv.URL
@@ -264,8 +264,8 @@ func TestServiceCommandsNetworkError(t *testing.T) {
 // TestServiceCommandsHTTPError points commands at a server returning 500 so the
 // HTTP-error mapping arm (CodeHTTP) is exercised broadly.
 func TestServiceCommandsHTTPError(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
@@ -309,8 +309,8 @@ func TestServiceCommandsHTTPError(t *testing.T) {
 // per-service GetClient's UseCACert step to fail with CodePayload, exercising
 // that shared arm across every service's GetClient.
 func TestGetClientUseCACertInvalid(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := okJSONServer(t)
 	defer srv.Close()
@@ -359,8 +359,8 @@ func TestGetClientUseCACertInvalid(t *testing.T) {
 // resolves to CodePayload across the commands that accept a data payload,
 // exercising the shared HandlePayload error arm.
 func TestMalformedPayloadAcrossCommands(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := okJSONServer(t)
 	defer srv.Close()
@@ -399,8 +399,8 @@ func TestMalformedPayloadAcrossCommands(t *testing.T) {
 // positional arguments is accepted (the extra args are ignored with a warning)
 // across the commands that support -d, exercising that warning arm.
 func TestDataWithExtraArgsAcrossCommands(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -436,8 +436,8 @@ func TestDataWithExtraArgsAcrossCommands(t *testing.T) {
 // TestWriteCommandsNetworkError points write commands at a closed port so their
 // network-error arms fire (CodeNetwork or the per-item aggregate).
 func TestWriteCommandsNetworkError(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := okJSONServer(t)
 	url := srv.URL
@@ -480,8 +480,8 @@ func TestWriteCommandsNetworkError(t *testing.T) {
 // TestMetadataBootWriteNetworkError points metadata/boot write commands at a
 // closed port so their network-error arms fire across all resource types.
 func TestMetadataBootWriteNetworkError(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := okJSONServer(t)
 	url := srv.URL
