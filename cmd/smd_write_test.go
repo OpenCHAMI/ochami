@@ -28,7 +28,7 @@ func TestSMDGroupMemberAdd(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "member", "add", "compute", "x0c0s0b0n0",
 		"--uri", srv.URL, "--token", "t")
@@ -53,7 +53,7 @@ func TestSMDGroupMemberDelete(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "member", "delete", "compute", "x0c0s0b0n0",
 		"--uri", srv.URL, "--token", "t", "--no-confirm")
@@ -77,7 +77,7 @@ func TestSMDGroupUpdate(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "update", "compute",
 		"--description", "compute nodes",
@@ -101,7 +101,7 @@ func TestSMDGroupMemberAddHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "member", "add", "compute", "x0c0s0b0n0",
 		"--uri", srv.URL, "--token", "t")
@@ -123,7 +123,7 @@ func TestSMDRFEDeleteNoConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "rfe", "delete", "x0c0s0b0",
 		"--uri", srv.URL, "--token", "t", "--no-confirm")
@@ -152,7 +152,7 @@ func TestSMDDeleteRejectsEmptyData(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// TODO: Enable t.Parallel() once race conditions are resolved
+			
 			// t.Parallel()
 			res := runOchamiWithRuntime(t, "smd", "--ignore-config", tc.command, "delete",
 				"--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm", "-d", tc.payload)

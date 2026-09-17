@@ -74,7 +74,7 @@ func TestCloudInitGroupGetRemainingPaths(t *testing.T) {
 }
 
 func TestRemainingServicePaths(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	tests := []struct {
@@ -92,7 +92,7 @@ func TestRemainingServicePaths(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// TODO: Enable t.Parallel() once race conditions are resolved
+			
 			// t.Parallel()
 
 			var gotPath string
@@ -116,12 +116,12 @@ func TestRemainingServicePaths(t *testing.T) {
 }
 
 func TestMetadataPatchPathsAndArrayOperations(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	for _, resource := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(resource, func(t *testing.T) {
-			// TODO: Enable t.Parallel() once race conditions are resolved
+			
 			// t.Parallel()
 
 			var gotContentType, gotBody string
@@ -153,7 +153,7 @@ func TestMetadataPatchPathsAndArrayOperations(t *testing.T) {
 }
 
 func TestRCSConsoleConnect(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	upgrader := websocket.Upgrader{}

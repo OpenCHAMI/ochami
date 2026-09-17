@@ -21,7 +21,7 @@ import (
 // TestPCSServiceStatusLivenessFallback verifies that when readiness reports not
 // ready (200) but liveness reports ready (204), the command reports "live".
 func TestPCSServiceStatusLivenessFallback(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +45,7 @@ func TestPCSServiceStatusLivenessFallback(t *testing.T) {
 // TestPCSServiceStatusUnknownState verifies the "unable to get state" path when
 // neither readiness nor liveness reports ready.
 func TestPCSServiceStatusUnknownState(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +65,7 @@ func TestPCSServiceStatusUnknownState(t *testing.T) {
 // TestPCSServiceStatusReadinessHTTPError verifies a failing readiness request
 // resolves to CodeHTTP.
 func TestPCSServiceStatusReadinessHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +85,7 @@ func TestPCSServiceStatusReadinessHTTPError(t *testing.T) {
 // TestPCSServiceStatusHealthHTTPError verifies a failing health request (with a
 // flag provided) resolves to CodeHTTP.
 func TestPCSServiceStatusHealthHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +110,7 @@ func TestPCSServiceStatusHealthHTTPError(t *testing.T) {
 // TestCloudInitServiceVersionHTTPError verifies a failing "cloud-init service
 // version" resolves to CodeHTTP.
 func TestCloudInitServiceVersionHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +130,7 @@ func TestCloudInitServiceVersionHTTPError(t *testing.T) {
 // TestCloudInitServiceStatus verifies "cloud-init service status" reports
 // success against a healthy server.
 func TestCloudInitServiceStatus(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +150,7 @@ func TestCloudInitServiceStatus(t *testing.T) {
 // TestCloudInitServiceStatusHTTPError verifies a responding but unhealthy
 // service is distinguished from a network failure.
 func TestCloudInitServiceStatusHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -173,7 +173,7 @@ func TestCloudInitServiceStatusHTTPError(t *testing.T) {
 // TestCloudInitServiceStatusQuietHTTPError verifies quiet mode suppresses the
 // human-readable status while preserving the exit code.
 func TestCloudInitServiceStatusQuietHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -193,7 +193,7 @@ func TestCloudInitServiceStatusQuietHTTPError(t *testing.T) {
 // TestCloudInitServiceStatusAPI verifies --api prints the returned OpenAPI
 // document through the command's injected output stream.
 func TestCloudInitServiceStatusAPI(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -212,7 +212,7 @@ func TestCloudInitServiceStatusAPI(t *testing.T) {
 
 // TestCloudInitServiceStatusAPIError verifies --api aggregates request errors.
 func TestCloudInitServiceStatusAPIError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -18,7 +18,7 @@ import (
 )
 
 func TestGetClientNoBaseURI(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	cases := [][]string{
@@ -120,7 +120,7 @@ func TestGetClientNoBaseURI(t *testing.T) {
 // provided via a config-file cluster so GetClient succeeds and the failure
 // occurs in HandleToken.
 func TestHandleTokenAuthRequired(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := okJSONServer(t)
@@ -186,7 +186,7 @@ clusters:
 // with CodePayload when --cacert points at an invalid/nonexistent file. This
 // exercises the shared UseCACert error arm.
 func TestUseCACertInvalid(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := okJSONServer(t)
@@ -220,7 +220,7 @@ func TestUseCACertInvalid(t *testing.T) {
 // underlying request fails at the transport layer, exercising the CodeNetwork
 // arm shared by many service commands.
 func TestServiceCommandsNetworkError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := okJSONServer(t)
@@ -264,7 +264,7 @@ func TestServiceCommandsNetworkError(t *testing.T) {
 // TestServiceCommandsHTTPError points commands at a server returning 500 so the
 // HTTP-error mapping arm (CodeHTTP) is exercised broadly.
 func TestServiceCommandsHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -309,7 +309,7 @@ func TestServiceCommandsHTTPError(t *testing.T) {
 // per-service GetClient's UseCACert step to fail with CodePayload, exercising
 // that shared arm across every service's GetClient.
 func TestGetClientUseCACertInvalid(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := okJSONServer(t)
@@ -359,7 +359,7 @@ func TestGetClientUseCACertInvalid(t *testing.T) {
 // resolves to CodePayload across the commands that accept a data payload,
 // exercising the shared HandlePayload error arm.
 func TestMalformedPayloadAcrossCommands(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := okJSONServer(t)
@@ -399,7 +399,7 @@ func TestMalformedPayloadAcrossCommands(t *testing.T) {
 // positional arguments is accepted (the extra args are ignored with a warning)
 // across the commands that support -d, exercising that warning arm.
 func TestDataWithExtraArgsAcrossCommands(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -436,7 +436,7 @@ func TestDataWithExtraArgsAcrossCommands(t *testing.T) {
 // TestWriteCommandsNetworkError points write commands at a closed port so their
 // network-error arms fire (CodeNetwork or the per-item aggregate).
 func TestWriteCommandsNetworkError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := okJSONServer(t)
@@ -480,7 +480,7 @@ func TestWriteCommandsNetworkError(t *testing.T) {
 // TestMetadataBootWriteNetworkError points metadata/boot write commands at a
 // closed port so their network-error arms fire across all resource types.
 func TestMetadataBootWriteNetworkError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	srv := okJSONServer(t)

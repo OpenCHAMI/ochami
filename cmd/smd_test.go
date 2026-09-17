@@ -22,7 +22,7 @@ import (
 
 // TestSMDGroupGet verifies "smd group get" issues GET /groups.
 func TestSMDGroupGet(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotMethod, gotPath string
@@ -43,7 +43,7 @@ func TestSMDGroupGet(t *testing.T) {
 
 // TestSMDGroupAddViaFlags verifies "smd group add <label>" issues POST /groups.
 func TestSMDGroupAddViaFlags(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotMethod, gotPath string
@@ -66,7 +66,7 @@ func TestSMDGroupAddViaFlags(t *testing.T) {
 // TestSMDGroupDeleteNoConfirm verifies "smd group delete --no-confirm <label>"
 // issues DELETE /groups/<label>.
 func TestSMDGroupDeleteNoConfirm(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotMethod, gotPath string
@@ -89,7 +89,7 @@ func TestSMDGroupDeleteNoConfirm(t *testing.T) {
 // TestSMDGroupMembershipGet verifies "smd group membership" issues GET
 // /memberships.
 func TestSMDGroupMembershipGet(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotPath string
@@ -113,7 +113,7 @@ func TestSMDGroupMembershipGet(t *testing.T) {
 // TestSMDGroupMemberGet verifies "smd group member get <label>" issues GET
 // /groups/<label>/members.
 func TestSMDGroupMemberGet(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotPath string
@@ -135,7 +135,7 @@ func TestSMDGroupMemberGet(t *testing.T) {
 // TestSMDGroupMemberSet verifies "smd group member set <label> <comp>..." issues
 // PUT /groups/<label>/members.
 func TestSMDGroupMemberSet(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotMethod, gotPath string
@@ -160,7 +160,7 @@ func TestSMDGroupMemberSet(t *testing.T) {
 // TestSMDIfaceGet verifies "smd iface get" issues GET
 // /Inventory/EthernetInterfaces.
 func TestSMDIfaceGet(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 
 	var gotPath string

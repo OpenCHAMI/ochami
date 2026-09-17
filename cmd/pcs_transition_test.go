@@ -24,7 +24,7 @@ func TestPCSTransitionListFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		// TODO: Enable t.Parallel() once race conditions are resolved
+		
 		// t.Parallel()
 		res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "list", "--uri", srv.URL, "-F", f)
 		if res.err != nil {
@@ -40,7 +40,7 @@ func TestPCSTransitionListHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "list", "--uri", srv.URL)
 	if res.err == nil {
@@ -58,7 +58,7 @@ func TestPCSTransitionShowHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "show", "--uri", srv.URL, "abcd-1234")
 	if res.err == nil {
@@ -76,7 +76,7 @@ func TestPCSTransitionAbortHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "abort", "--uri", srv.URL, "abcd-1234")
 	if res.err == nil {
@@ -94,7 +94,7 @@ func TestPCSTransitionStartHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "start", "--uri", srv.URL,
 		"--xname", "x0c0s0b0n0", "on")
@@ -109,7 +109,7 @@ func TestPCSTransitionStartHTTPError(t *testing.T) {
 // TestPCSTransitionStartMissingXname verifies "start <op>" without the required
 // --xname flag fails (non-success exit).
 func TestPCSTransitionStartMissingXname(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "start", "--uri", "http://127.0.0.1:1", "on")
 	if res.err == nil {

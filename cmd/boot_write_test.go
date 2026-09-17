@@ -32,7 +32,7 @@ func bootAddPayload(typ string) string {
 }
 
 func TestBootAddSuccess(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
+
 // t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
@@ -58,7 +58,7 @@ func TestBootAddSuccess(t *testing.T) {
 }
 
 func TestBootAddHTTPError(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
+
 // t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
@@ -82,7 +82,7 @@ func TestBootAddHTTPError(t *testing.T) {
 }
 
 func TestBootSetSuccess(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
+
 // t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
@@ -107,7 +107,7 @@ func TestBootSetSuccess(t *testing.T) {
 }
 
 func TestBootPatchSuccess(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
+
 // t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {

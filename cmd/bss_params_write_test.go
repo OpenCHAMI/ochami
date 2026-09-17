@@ -17,7 +17,7 @@ import (
 
 // TestBSSBootParamsSet verifies "bss boot params set" issues PUT /bootparameters.
 func TestBSSBootParamsSet(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
+
 // t.Parallel()
 
 	var gotMethod, gotPath string
@@ -44,7 +44,7 @@ func TestBSSBootParamsSet(t *testing.T) {
 // TestBSSBootParamsUpdate verifies "bss boot params update" issues PATCH
 // /bootparameters.
 func TestBSSBootParamsUpdate(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
+
 // t.Parallel()
 
 	var gotMethod, gotPath string
@@ -71,7 +71,7 @@ func TestBSSBootParamsUpdate(t *testing.T) {
 // TestBSSBootParamsSetHTTPError verifies an unsuccessful HTTP response resolves
 // to CodeHTTP.
 func TestBSSBootParamsSetHTTPError(t *testing.T) {
-// TODO: Enable t.Parallel() once race conditions are resolved
+
 // t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

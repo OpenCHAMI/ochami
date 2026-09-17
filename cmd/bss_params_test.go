@@ -23,7 +23,7 @@ import (
 // TestBSSBootParamsGetQuery verifies the query builder emits name/mac/nid query
 // parameters for the corresponding flags.
 func TestBSSBootParamsGetQuery(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	tests := []struct {
 		name    string
@@ -59,7 +59,7 @@ func TestBSSBootParamsGetQuery(t *testing.T) {
 
 // TestBSSBootParamsGetFormats verifies the output-format variants.
 func TestBSSBootParamsGetFormats(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"params":"console=tty0"}]`)) //nolint:errcheck // test response writes are observed by the client
@@ -81,7 +81,7 @@ func TestBSSBootParamsGetFormats(t *testing.T) {
 // TestBSSBootParamsGetHTTPError verifies an unsuccessful HTTP response resolves
 // to CodeHTTP.
 func TestBSSBootParamsGetHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
@@ -101,7 +101,7 @@ func TestBSSBootParamsGetHTTPError(t *testing.T) {
 // TestBSSBootParamsGetNetworkError verifies pointing at a closed port resolves
 // to CodeNetwork.
 func TestBSSBootParamsGetNetworkError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
@@ -120,7 +120,7 @@ func TestBSSBootParamsGetNetworkError(t *testing.T) {
 // TestBSSBootParamsAddDataAndFlags verifies "add -d <payload>" merged with
 // component flags issues a POST (payload read first, then flags applied).
 func TestBSSBootParamsAddDataAndFlags(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -142,7 +142,7 @@ func TestBSSBootParamsAddDataAndFlags(t *testing.T) {
 // TestBSSBootParamsAddMalformedPayload verifies malformed inline payload
 // resolves to CodePayload.
 func TestBSSBootParamsAddMalformedPayload(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
@@ -162,7 +162,7 @@ func TestBSSBootParamsAddMalformedPayload(t *testing.T) {
 // TestBSSBootParamsUpdateHTTPError verifies a failing PATCH resolves to
 // CodeHTTP.
 func TestBSSBootParamsUpdateHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
@@ -183,7 +183,7 @@ func TestBSSBootParamsUpdateHTTPError(t *testing.T) {
 // TestBSSBootParamsAddAllFlags verifies "add" applies every component selector
 // and config-field flag arm.
 func TestBSSBootParamsAddAllFlags(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +208,7 @@ func TestBSSBootParamsAddAllFlags(t *testing.T) {
 // TestBSSBootParamsDeleteAllFlags verifies "delete --no-confirm" applies every
 // selector and config-field flag arm.
 func TestBSSBootParamsDeleteAllFlags(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -234,7 +234,7 @@ func TestBSSBootParamsDeleteAllFlags(t *testing.T) {
 // selector (--xname/--mac/--nid) and every config field (--kernel/--initrd/
 // --params) flag arm.
 func TestBSSBootParamsSetAllSelectorFlags(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -259,7 +259,7 @@ func TestBSSBootParamsSetAllSelectorFlags(t *testing.T) {
 // TestBSSBootParamsUpdateAllSelectorFlags verifies "update" applies every
 // selector and config-field flag arm.
 func TestBSSBootParamsUpdateAllSelectorFlags(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -284,7 +284,7 @@ func TestBSSBootParamsUpdateAllSelectorFlags(t *testing.T) {
 // TestBSSBootParamsSetDataWithFlagOverride verifies "set -d <payload>" merged
 // with flags (which override payload fields) issues a PUT.
 func TestBSSBootParamsSetDataWithFlagOverride(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -308,7 +308,7 @@ func TestBSSBootParamsSetDataWithFlagOverride(t *testing.T) {
 // TestBSSBootParamsDeleteByFlags verifies "delete --no-confirm" with component
 // and config flags issues a DELETE.
 func TestBSSBootParamsDeleteByFlags(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -331,7 +331,7 @@ func TestBSSBootParamsDeleteByFlags(t *testing.T) {
 
 // TestBSSBootParamsDeleteByData verifies "delete -d <payload>" issues a DELETE.
 func TestBSSBootParamsDeleteByData(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -354,7 +354,7 @@ func TestBSSBootParamsDeleteByData(t *testing.T) {
 // TestBSSBootParamsDeleteMissingSelector verifies delete without -d and without
 // a component selector is a usage error.
 func TestBSSBootParamsDeleteMissingSelector(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "params", "delete",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm")
@@ -369,7 +369,7 @@ func TestBSSBootParamsDeleteMissingSelector(t *testing.T) {
 // TestBSSBootParamsDeleteMissingConfig verifies delete with a component selector
 // but no config selector is a usage error.
 func TestBSSBootParamsDeleteMissingConfig(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "params", "delete",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm",
@@ -385,7 +385,7 @@ func TestBSSBootParamsDeleteMissingConfig(t *testing.T) {
 // TestBSSBootParamsDeleteConfirm verifies the interactive confirm path issues
 // the DELETE when the user answers "y".
 func TestBSSBootParamsDeleteConfirm(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -410,7 +410,7 @@ func TestBSSBootParamsDeleteConfirm(t *testing.T) {
 // TestBSSBootParamsDeleteHTTPError verifies a failing DELETE resolves to
 // CodeHTTP.
 func TestBSSBootParamsDeleteHTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusInternalServerError)
@@ -431,7 +431,7 @@ func TestBSSBootParamsDeleteHTTPError(t *testing.T) {
 // TestBSSBootParamsUpdateDataWithFlags verifies "update -d <payload>" combined
 // with CLI flags (which the command warns are ignored) still issues a PATCH.
 func TestBSSBootParamsUpdateDataWithFlags(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -453,7 +453,7 @@ func TestBSSBootParamsUpdateDataWithFlags(t *testing.T) {
 // TestBSSBootParamsUpdateMissingSelector verifies update without -d and without
 // a component selector is a usage error.
 func TestBSSBootParamsUpdateMissingSelector(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "params", "update",
 		"--uri", "http://127.0.0.1:1", "--token", "t")
@@ -465,7 +465,7 @@ func TestBSSBootParamsUpdateMissingSelector(t *testing.T) {
 // TestBSSBootParamsUpdateMissingConfig verifies update with a component selector
 // but no config selector is a usage error.
 func TestBSSBootParamsUpdateMissingConfig(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "params", "update",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "de:ad:be:ef:00:00")
@@ -477,7 +477,7 @@ func TestBSSBootParamsUpdateMissingConfig(t *testing.T) {
 // TestBSSBootParamsSetInvalidMac verifies an invalid MAC address is a usage
 // error for "set".
 func TestBSSBootParamsSetInvalidMac(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "params", "set",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "not-a-mac", "--kernel", "http://k")
@@ -489,7 +489,7 @@ func TestBSSBootParamsSetInvalidMac(t *testing.T) {
 // TestBSSBootParamsUpdateNetworkError verifies a closed port surfaces
 // CodeNetwork for update.
 func TestBSSBootParamsUpdateNetworkError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
@@ -505,7 +505,7 @@ func TestBSSBootParamsUpdateNetworkError(t *testing.T) {
 // TestBSSBootParamsAddInvalidMac verifies an invalid MAC is a usage error for
 // "add".
 func TestBSSBootParamsAddInvalidMac(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "params", "add",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "not-a-mac", "--kernel", "http://k")
@@ -517,7 +517,7 @@ func TestBSSBootParamsAddInvalidMac(t *testing.T) {
 // TestBSSBootParamsAddNetworkError verifies a closed port surfaces CodeNetwork
 // for "add".
 func TestBSSBootParamsAddNetworkError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
@@ -533,7 +533,7 @@ func TestBSSBootParamsAddNetworkError(t *testing.T) {
 // TestBSSBootParamsSetNetworkError verifies a closed port surfaces CodeNetwork
 // for "set".
 func TestBSSBootParamsSetNetworkError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
@@ -549,7 +549,7 @@ func TestBSSBootParamsSetNetworkError(t *testing.T) {
 // TestBSSBootParamsDeleteNetworkError verifies a closed port surfaces
 // CodeNetwork for "delete".
 func TestBSSBootParamsDeleteNetworkError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
+	
 	// t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
