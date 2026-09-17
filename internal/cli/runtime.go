@@ -156,8 +156,8 @@ func WriteString(w io.Writer, s string) error {
 
 // NewRuntime creates a new Runtime instance for production use.
 // It initializes with the current global IOStreams and default formats.
-// This ensures that if SetIOStream() has been called (e.g., by tests),
-// the runtime will use those streams instead of os.Stdin/Stdout/Stderr.
+// Note: In production, the global IOStreams are set to os.Stdin/Stdout/Stderr by default.
+// Tests should use NewTestRuntime() instead and inject the runtime into the command context.
 func NewRuntime() *Runtime {
 	return &Runtime{
 		Ios:          NewIOStreams(os.Stdin, os.Stdout, os.Stderr),
@@ -217,18 +217,6 @@ func (rt *Runtime) WithInsecure(insecure bool) *Runtime {
 // WithConfig sets the configuration for the runtime.
 func (rt *Runtime) WithConfig(cfg config.Config) *Runtime {
 	rt.Config = cfg
-	return rt
-}
-
-// WithKoanf sets the koanf instance for the runtime.
-func (rt *Runtime) WithKoanf(k *koanf.Koanf) *Runtime {
-	rt.Koanf = k
-	return rt
-}
-
-// WithIOStreams sets the I/O streams for the runtime.
-func (rt *Runtime) WithIOStreams(stdin io.Reader, stdout, stderr io.Writer) *Runtime {
-	rt.Ios = NewIOStreams(stdin, stdout, stderr)
 	return rt
 }
 
@@ -374,9 +362,9 @@ func (rt *Runtime) HandleToken(cmd *cobra.Command) error {
 	// Check if enable-auth is set for cluster and only read/check
 	// token if true
 	var clusterName string
-	if cmd.Flag("cluster").Changed {
+	if f := cmd.Flag("cluster"); f != nil && f.Changed {
 		// Use cluster passed via --cluster
-		clusterName = cmd.Flag("cluster").Value.String()
+		clusterName = f.Value.String()
 	} else if rt.Config.DefaultCluster != "" {
 		// Use default cluster
 		clusterName = rt.Config.DefaultCluster
