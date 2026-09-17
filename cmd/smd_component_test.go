@@ -32,8 +32,7 @@ func TestSMDComponentGetAll(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--uri", srv.URL)
 
 	if res.err != nil {
@@ -61,8 +60,7 @@ func TestSMDComponentGetAllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--uri", srv.URL)
 
 	if res.err == nil {
@@ -80,8 +78,7 @@ func TestSMDComponentGetNetworkError(t *testing.T) {
 	url := srv.URL
 	srv.Close() // close immediately so the connection is refused
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--uri", url)
 
 	if res.err == nil {
@@ -109,8 +106,7 @@ func TestSMDComponentAddViaFlags(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "add",
 		"--uri", srv.URL,
 		"--token", "faketoken",
@@ -149,8 +145,7 @@ func TestSMDComponentAddBadPayload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "add",
 		"--uri", srv.URL,
 		"--token", "faketoken",
@@ -170,8 +165,8 @@ func TestSMDComponentAddBadPayload(t *testing.T) {
 // TestSMDComponentAddMissingArgs verifies that invoking add without -d and
 // without the required positional arguments is a usage error (CodeUsage).
 func TestSMDComponentAddMissingArgs(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "add", "--uri", "http://127.0.0.1:0")
 
 	if res.err == nil {
@@ -193,8 +188,7 @@ func TestSMDComponentDeleteNoConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "delete",
 		"--uri", srv.URL,
 		"--token", "faketoken",
@@ -223,8 +217,7 @@ func TestSMDComponentDeleteByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "delete", "--uri", srv.URL,
 		"--token", "faketoken", "--no-confirm", "-d", `{"Components":[{"ID":"x3000c1s7b56n0"}]}`)
 	if res.err != nil {
@@ -245,8 +238,7 @@ func TestSMDComponentDeletePartialFailure(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "delete",
 		"--uri", srv.URL,
 		"--token", "faketoken",
