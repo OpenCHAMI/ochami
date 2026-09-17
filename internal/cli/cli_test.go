@@ -23,6 +23,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type zeroWriter struct{}
+
+func (zeroWriter) Write([]byte) (int, error) { return 0, nil }
+
+type oversizedWriter struct{}
+
+func (oversizedWriter) Write(p []byte) (int, error) { return len(p) + 1, nil }
+
+type errorWriter struct{ err error }
+
+func (w errorWriter) Write([]byte) (int, error) { return 0, w.err }
+
+type errorReader struct{ err error }
+
+func (r errorReader) Read([]byte) (int, error) { return 0, r.err }
+
 func TestIOStream_AskToCreate(t *testing.T) {
 	t.Run("empty path", func(t *testing.T) {
 		t.Parallel()
@@ -179,6 +195,34 @@ func TestIOStream_LoopYesNo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIOStreamErrors(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("stream failure")
+	t.Run("prompt writer", func(t *testing.T) {
+		ios := NewIOStreams(strings.NewReader("y\n"), io.Discard, errorWriter{sentinel})
+		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
+		}
+	})
+	t.Run("input reader", func(t *testing.T) {
+		ios := NewIOStreams(errorReader{sentinel}, io.Discard, io.Discard)
+		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
+		}
+	})
+	t.Run("zero write", func(t *testing.T) {
+		if err := WriteOutput(zeroWriter{}, []byte("data")); !errors.Is(err, io.ErrShortWrite) {
+			t.Fatalf("WriteOutput() error = %v, want io.ErrShortWrite", err)
+		}
+	})
+	t.Run("oversized write", func(t *testing.T) {
+		if err := WriteOutput(oversizedWriter{}, []byte("data")); !errors.Is(err, io.ErrShortWrite) {
+			t.Fatalf("WriteOutput() error = %v, want io.ErrShortWrite", err)
+		}
+	})
 }
 
 func Test_CreateIfNotExists(t *testing.T) {

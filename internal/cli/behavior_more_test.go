@@ -7,6 +7,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -130,6 +131,48 @@ func TestBooleanFlagsUseTheirValue(t *testing.T) {
 			t.Fatalf("HandleToken error = %v, want CodeAuth", err)
 		}
 	})
+}
+
+func TestInitConfigLoadsMergedDefaults(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("ignore-config", false, "")
+
+	if err := rt.InitConfig(cmd, false); err != nil {
+		t.Fatalf("InitConfig() error = %v", err)
+	}
+	if rt.Config.Log.Level == "" {
+		t.Error("InitConfig() did not load global defaults")
+	}
+	if rt.Koanf == nil {
+		t.Fatal("InitConfig() did not retain the effective koanf")
+	}
+	if rt.UserConfigFile == "" {
+		t.Error("InitConfig() did not resolve the user config path")
+	}
+}
+
+func TestInitLoggingAppliesDefaults(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config.Log.Level = ""
+	rt.Config.Log.Format = ""
+	rt.Config.Log.Color = ""
+
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().String("log-level", "", "")
+	cmd.Flags().String("log-format", "", "")
+	cmd.Flags().String("log-color", "", "")
+
+	if err := rt.InitLogging(cmd); err != nil {
+		t.Fatalf("InitLogging() error = %v", err)
+	}
+	if rt.Config.Log.Level == "" || rt.Config.Log.Format == "" || rt.Config.Log.Color == "" {
+		t.Errorf("InitLogging() left empty defaults: %+v", rt.Config.Log)
+	}
 }
 
 func TestPayloadReaderHelpers(t *testing.T) {
