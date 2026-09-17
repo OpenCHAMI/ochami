@@ -18,14 +18,14 @@ import (
 
 // TestPCSTransitionListFormats verifies list output-format variants.
 func TestPCSTransitionListFormats(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"transitions":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		
-		// t.Parallel()
 		res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "list", "--uri", srv.URL, "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
@@ -40,8 +40,7 @@ func TestPCSTransitionListHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "list", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -58,8 +57,7 @@ func TestPCSTransitionShowHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "show", "--uri", srv.URL, "abcd-1234")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -76,8 +74,7 @@ func TestPCSTransitionAbortHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "abort", "--uri", srv.URL, "abcd-1234")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -94,8 +91,7 @@ func TestPCSTransitionStartHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "start", "--uri", srv.URL,
 		"--xname", "x0c0s0b0n0", "on")
 	if res.err == nil {
@@ -109,8 +105,8 @@ func TestPCSTransitionStartHTTPError(t *testing.T) {
 // TestPCSTransitionStartMissingXname verifies "start <op>" without the required
 // --xname flag fails (non-success exit).
 func TestPCSTransitionStartMissingXname(t *testing.T) {
-	
-	// t.Parallel()
+
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "start", "--uri", "http://127.0.0.1:1", "on")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

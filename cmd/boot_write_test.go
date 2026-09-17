@@ -33,7 +33,7 @@ func bootAddPayload(typ string) string {
 
 func TestBootAddSuccess(t *testing.T) {
 
-// t.Parallel()
+	t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestBootAddSuccess(t *testing.T) {
 
 func TestBootAddHTTPError(t *testing.T) {
 
-// t.Parallel()
+	t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestBootAddHTTPError(t *testing.T) {
 
 func TestBootSetSuccess(t *testing.T) {
 
-// t.Parallel()
+	t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestBootSetSuccess(t *testing.T) {
 
 func TestBootPatchSuccess(t *testing.T) {
 
-// t.Parallel()
+	t.Parallel()
 
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {

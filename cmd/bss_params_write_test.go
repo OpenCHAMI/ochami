@@ -18,7 +18,7 @@ import (
 // TestBSSBootParamsSet verifies "bss boot params set" issues PUT /bootparameters.
 func TestBSSBootParamsSet(t *testing.T) {
 
-// t.Parallel()
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +45,7 @@ func TestBSSBootParamsSet(t *testing.T) {
 // /bootparameters.
 func TestBSSBootParamsUpdate(t *testing.T) {
 
-// t.Parallel()
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +72,7 @@ func TestBSSBootParamsUpdate(t *testing.T) {
 // to CodeHTTP.
 func TestBSSBootParamsSetHTTPError(t *testing.T) {
 
-// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
