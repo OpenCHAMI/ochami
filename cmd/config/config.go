@@ -35,12 +35,7 @@ See ochami-config(5) for details on the configuration options.`,
 
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return cli.PrintUsageHandleError(cmd)
-			}
-			return nil
-		},
+		RunE: cli.PrintUsage,
 	}
 
 	// Create flags

@@ -702,6 +702,12 @@ func PrintUsageHandleError(cmd *cobra.Command) error {
 	return nil
 }
 
+// PrintUsage is a Cobra RunE adapter for metacommands whose only direct action
+// is to display their usage.
+func PrintUsage(cmd *cobra.Command, args []string) error {
+	return PrintUsageHandleError(cmd)
+}
+
 // logHelpHint logs a message at error level telling the user to use the
 // '--help' flag of the passed command to get more information on the command.
 // The full command invocation without flags or arguments is printed in the
