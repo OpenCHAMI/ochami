@@ -13,6 +13,7 @@ package cmd
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -119,6 +120,295 @@ func TestBootDelete_NoConfirm(t *testing.T) {
 			}
 			if res.exitCode != cli.CodeSuccess {
 				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
+			}
+		})
+	}
+}
+
+// bootEnvelopePayload returns a minimal envelope-API (metadata+spec) payload for
+// the given boot resource type.
+func bootEnvelopePayload(typ string) string {
+	switch typ {
+	case "config":
+		return `{"metadata":{"name":"compute-boot"},"spec":{"hosts":["x0c0s0b0n0"],"kernel":"http://s3/vmlinuz"}}`
+	case "node":
+		return `{"metadata":{"name":"node-1"},"spec":{"xname":"x0c0s0b0n0"}}`
+	case "bmc":
+		return `{"metadata":{"name":"bmc-1"},"spec":{"xname":"x0c0s0b0"}}`
+	default:
+		return `{"metadata":{"name":"thing-1"},"spec":{}}`
+	}
+}
+
+// TestBootList_Formats verifies list output-format variants across boot types.
+func TestBootList_Formats(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		for _, f := range []string{"json", "json-pretty", "yaml"} {
+			t.Run(typ+"/"+f, func(t *testing.T) {
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.Write([]byte(`[{"metadata":{"name":"thing-1"}}]`))
+				}))
+				defer srv.Close()
+
+				res := runOchami(t, "boot", typ, "list", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+				if res.err != nil {
+					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+				}
+				assertFormattedOutput(t, f, res.stdout, "name", "thing-1")
+			})
+		}
+	}
+}
+
+// TestBootGet_Formats verifies get output-format variants across boot types.
+func TestBootGet_Formats(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		for _, f := range []string{"json", "json-pretty", "yaml"} {
+			t.Run(typ+"/"+f, func(t *testing.T) {
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				}))
+				defer srv.Close()
+
+				res := runOchami(t, "boot", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+				if res.err != nil {
+					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+				}
+				assertFormattedOutput(t, f, res.stdout, "name", "thing-1")
+			})
+		}
+	}
+}
+
+// TestBootAdd_Envelope verifies the envelope (advanced) API path of "add -e"
+// across boot types.
+func TestBootAdd_Envelope(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "boot", typ, "add", "-e",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootEnvelopePayload(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestBootAdd_Stdin verifies add reads payload from stdin when -d is not supplied
+// (simple API path) across boot types.
+func TestBootAdd_Stdin(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, bootAddPayload(typ),
+				"boot", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestBootSet_Envelope verifies the envelope API path of "set -e" across boot
+// types.
+func TestBootSet_Envelope(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "boot", typ, "set", "some-uid", "-e",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootEnvelopePayload(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestBootDelete_ConfirmYes verifies that "boot <type> delete" prompts for
+// confirmation and, on "y", sends the DELETE, for every boot resource type.
+func TestBootDelete_ConfirmYes(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			var deleted bool
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodDelete {
+					deleted = true
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, "y\n", "boot", typ, "delete", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if !strings.Contains(res.stdout, "Really delete?") {
+				t.Errorf("output = %q, want the confirmation prompt", res.stdout)
+			}
+			if !deleted {
+				t.Error("server received no DELETE after the user confirmed")
+			}
+		})
+	}
+}
+
+// TestBootSet_Stdin verifies "set <uid>" reads payload from stdin when -d is not
+// supplied across boot types.
+func TestBootSet_Stdin(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, bootAddPayload(typ),
+				"boot", typ, "set", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestBootPatch_Stdin verifies "patch <uid>" reads payload from stdin when -d is
+// not supplied across boot types.
+func TestBootPatch_Stdin(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, bootAddPayload(typ),
+				"boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestBootAdd_EnvelopeStdin verifies the envelope API path reads from stdin when
+// -d is not supplied across boot types.
+func TestBootAdd_EnvelopeStdin(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, bootEnvelopePayload(typ),
+				"boot", typ, "add", "-e", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestBootSet_EnvelopeStdin verifies the envelope set path reads from stdin when
+// -d is not supplied across boot types.
+func TestBootSet_EnvelopeStdin(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, bootEnvelopePayload(typ),
+				"boot", typ, "set", "some-uid", "-e", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestBootPatch_Keyval verifies the key-value patch path (--set/--unset) across
+// boot types.
+func TestBootPatch_Keyval(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
+				"--set", "description=new", "--unset", "obsolete")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestBootPatch_RFC6902 verifies the rfc6902 patch-method path across boot types.
+func TestBootPatch_RFC6902(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
+				"--patch-method", "rfc6902", "-d", `[{"op":"replace","path":"/description","value":"new"}]`)
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestBootPatch_StdinData verifies patch reads from stdin when -d is not given
+// across boot types.
+func TestBootPatch_StdinData(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, `{"description":"new"}`,
+				"boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
 		})
 	}

@@ -170,3 +170,31 @@ func TestCloudInitIterative_HTTPErrors(t *testing.T) {
 		})
 	}
 }
+
+// TestGetNodeGroupData_Guards verifies the blank-id and empty-groups guards.
+func TestGetNodeGroupData_Guards(t *testing.T) {
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	defer srv.Close()
+
+	if _, _, err := cic.GetNodeGroupData("tok", "  "); err == nil {
+		t.Error("GetNodeGroupData with blank id = nil, want error")
+	}
+	if _, _, err := cic.GetNodeGroupData("tok", "x0c0s0b0n0"); err == nil {
+		t.Error("GetNodeGroupData with no groups = nil, want error")
+	}
+}
+
+// TestPostDefaults_HTTPError verifies that PostDefaults returns an error for an
+// unsuccessful response.
+func TestPostDefaults_HTTPError(t *testing.T) {
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	})
+	defer srv.Close()
+
+	if _, err := cic.PostDefaults(cistore.ClusterDefaults{}, "tok"); err == nil {
+		t.Error("PostDefaults with HTTP error = nil, want error")
+	}
+}

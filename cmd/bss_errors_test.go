@@ -47,3 +47,207 @@ func TestBSSServiceStatus_HTTPError(t *testing.T) {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 	}
 }
+
+// TestBSSBootParamsGet_AllHTTPError verifies an unsuccessful HTTP response resolves
+// to CodeHTTP.
+func TestBSSBootParamsGet_AllHTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "params", "get",
+		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
+// TestBSSBootParamsGet_AllNetworkError verifies pointing at a closed port resolves
+// to CodeNetwork.
+func TestBSSBootParamsGet_AllNetworkError(t *testing.T) {
+	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
+
+	res := runOchami(t, "bss", "boot", "params", "get",
+		"--ignore-config", "--uri", url, "--token", "t")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeNetwork {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+}
+
+// TestBSSBootParamsAdd_MalformedPayload verifies malformed inline payload
+// resolves to CodePayload.
+func TestBSSBootParamsAdd_MalformedPayload(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "params", "add",
+		"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", `not json`)
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodePayload {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+	}
+}
+
+// TestBSSBootParamsUpdate_HTTPError verifies a failing PATCH resolves to
+// CodeHTTP.
+func TestBSSBootParamsUpdate_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "bad", http.StatusBadRequest)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "params", "update",
+		"--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--mac", "de:ad:be:ef:00:00", "--kernel", "https://example.com/vmlinuz")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
+// TestBSSBootParamsDelete_MissingSelector verifies delete without -d and without
+// a component selector is a usage error.
+func TestBSSBootParamsDelete_MissingSelector(t *testing.T) {
+	res := runOchami(t, "bss", "boot", "params", "delete",
+		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm")
+	if res.err == nil {
+		t.Fatal("expected a usage error, got nil")
+	}
+	if res.exitCode != cli.CodeUsage {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestBSSBootParamsDelete_MissingConfig verifies delete with a component selector
+// but no config selector is a usage error.
+func TestBSSBootParamsDelete_MissingConfig(t *testing.T) {
+	res := runOchami(t, "bss", "boot", "params", "delete",
+		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm",
+		"--mac", "de:ad:be:ef:00:00")
+	if res.err == nil {
+		t.Fatal("expected a usage error, got nil")
+	}
+	if res.exitCode != cli.CodeUsage {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestBSSBootParamsDelete_HTTPError verifies a failing DELETE resolves to
+// CodeHTTP.
+func TestBSSBootParamsDelete_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "bad", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "params", "delete",
+		"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm",
+		"--mac", "de:ad:be:ef:00:00", "--kernel", "https://example.com/vmlinuz")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
+// TestBSSBootParamsUpdate_MissingSelector verifies update without -d and without
+// a component selector is a usage error.
+func TestBSSBootParamsUpdate_MissingSelector(t *testing.T) {
+	res := runOchami(t, "bss", "boot", "params", "update", "--ignore-config",
+		"--uri", "http://127.0.0.1:1", "--token", "t")
+	if res.err == nil || res.exitCode != cli.CodeUsage {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestBSSBootParamsUpdate_MissingConfig verifies update with a component selector
+// but no config selector is a usage error.
+func TestBSSBootParamsUpdate_MissingConfig(t *testing.T) {
+	res := runOchami(t, "bss", "boot", "params", "update", "--ignore-config",
+		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "de:ad:be:ef:00:00")
+	if res.err == nil || res.exitCode != cli.CodeUsage {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestBSSBootParamsSet_InvalidMac verifies an invalid MAC address is a usage
+// error for "set".
+func TestBSSBootParamsSet_InvalidMac(t *testing.T) {
+	res := runOchami(t, "bss", "boot", "params", "set", "--ignore-config",
+		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "not-a-mac", "--kernel", "http://k")
+	if res.err == nil || res.exitCode != cli.CodeUsage {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestBSSBootParamsUpdate_NetworkError verifies a closed port surfaces
+// CodeNetwork for update.
+func TestBSSBootParamsUpdate_NetworkError(t *testing.T) {
+	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
+
+	res := runOchami(t, "bss", "boot", "params", "update", "--ignore-config", "--uri", url, "--token", "t",
+		"--mac", "de:ad:be:ef:00:00", "--kernel", "http://k")
+	if res.err == nil || res.exitCode != cli.CodeNetwork {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+}
+
+// TestBSSBootParamsAdd_InvalidMac verifies an invalid MAC is a usage error for
+// "add".
+func TestBSSBootParamsAdd_InvalidMac(t *testing.T) {
+	res := runOchami(t, "bss", "boot", "params", "add", "--ignore-config",
+		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "not-a-mac", "--kernel", "http://k")
+	if res.err == nil || res.exitCode != cli.CodeUsage {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestBSSBootParamsAdd_NetworkError verifies a closed port surfaces CodeNetwork
+// for "add".
+func TestBSSBootParamsAdd_NetworkError(t *testing.T) {
+	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
+
+	res := runOchami(t, "bss", "boot", "params", "add", "--ignore-config", "--uri", url, "--token", "t",
+		"--mac", "de:ad:be:ef:00:00", "--kernel", "http://k")
+	if res.err == nil || res.exitCode != cli.CodeNetwork {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+}
+
+// TestBSSBootParamsSet_NetworkError verifies a closed port surfaces CodeNetwork
+// for "set".
+func TestBSSBootParamsSet_NetworkError(t *testing.T) {
+	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
+
+	res := runOchami(t, "bss", "boot", "params", "set", "--ignore-config", "--uri", url, "--token", "t",
+		"--mac", "de:ad:be:ef:00:00", "--kernel", "http://k")
+	if res.err == nil || res.exitCode != cli.CodeNetwork {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+}
+
+// TestBSSBootParamsDelete_NetworkError verifies a closed port surfaces
+// CodeNetwork for "delete".
+func TestBSSBootParamsDelete_NetworkError(t *testing.T) {
+	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
+
+	res := runOchami(t, "bss", "boot", "params", "delete", "--ignore-config", "--uri", url, "--token", "t",
+		"--no-confirm", "--mac", "de:ad:be:ef:00:00", "--kernel", "http://k")
+	if res.err == nil || res.exitCode != cli.CodeNetwork {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+}
