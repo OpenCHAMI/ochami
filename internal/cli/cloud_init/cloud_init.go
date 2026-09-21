@@ -7,6 +7,7 @@ package cloud_init
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -29,8 +30,14 @@ var (
 		string(CIFlagHeaderMultiple): "Only print headers if multiple items in output",
 		string(CIFlagHeaderNever):    "Never print headers",
 	}
-	CIHeaderWhen CIFlagHeaderWhen = CIFlagHeaderMultiple
 )
+
+// RenderItem is one cloud-init document and the labels used in its header.
+type RenderItem struct {
+	Labels                     string
+	Body                       string
+	BlankLineAfterAlwaysHeader bool
+}
 
 func (cfhw CIFlagHeaderWhen) String() string {
 	return string(cfhw)
@@ -54,6 +61,41 @@ func (cfhw *CIFlagHeaderWhen) Set(v string) error {
 
 func (cfhw CIFlagHeaderWhen) Type() string {
 	return "CIFlagHeaderWhen"
+}
+
+// Render writes cloud-init documents with headers according to headerWhen.
+func Render(w io.Writer, headerWhen CIFlagHeaderWhen, items []RenderItem) error {
+	showHeaders := headerWhen == CIFlagHeaderAlways ||
+		(headerWhen == CIFlagHeaderMultiple && len(items) > 1)
+
+	for idx, item := range items {
+		if showHeaders {
+			if err := writeString(w, fmt.Sprintf("--- (%d/%d) %s\n", idx+1, len(items), item.Labels)); err != nil {
+				return err
+			}
+		}
+		if err := writeString(w, item.Body+"\n"); err != nil {
+			return err
+		}
+		if headerWhen == CIFlagHeaderAlways && item.BlankLineAfterAlwaysHeader {
+			if err := writeString(w, "\n"); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func writeString(w io.Writer, value string) error {
+	n, err := io.WriteString(w, value)
+	if err != nil {
+		return err
+	}
+	if n != len(value) {
+		return io.ErrShortWrite
+	}
+	return nil
 }
 
 func CompletionHeaderWhen(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
