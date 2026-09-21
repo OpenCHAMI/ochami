@@ -28,6 +28,7 @@ require (
 	github.com/openchami/smd/v2 v2.20.5
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.10.2
+	github.com/spf13/pflag v1.0.10
 	github.com/synackd/go-kargs v0.0.1
 	github.com/vbauerster/mpb/v8 v8.16.1
 	golang.org/x/term v0.46.0
@@ -87,7 +88,6 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/vbauerster/cupwriter v0.0.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect

@@ -716,7 +716,9 @@ func TestConfigClusterConfig_BootServiceBaseURIAndMerge(t *testing.T) {
 	})
 }
 
-func TestGetUserConfigPath(t *testing.T) {
+// TestUserConfigPath_UsesHomeConfigDir verifies that UserConfigPath resolves
+// the user config file under $HOME/.config.
+func TestUserConfigPath_UsesHomeConfigDir(t *testing.T) {
 	tmpHome := t.TempDir()
 	// Override HOME for this test.
 	oldHome, had := os.LookupEnv("HOME")
@@ -729,7 +731,7 @@ func TestGetUserConfigPath(t *testing.T) {
 
 	p, err := UserConfigPath()
 	if err != nil {
-		t.Fatalf("getUserConfigPath returned error: %v", err)
+		t.Fatalf("UserConfigPath() error = %v", err)
 	}
 	want := filepath.Join(tmpHome, ".config", "ochami", "config.yaml")
 	if p != want {

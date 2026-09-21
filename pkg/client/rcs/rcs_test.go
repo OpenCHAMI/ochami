@@ -225,3 +225,15 @@ func (s *syncBuffer) String() string {
 	defer s.mu.Unlock()
 	return s.buf.String()
 }
+
+func TestHeadersForToken(t *testing.T) {
+	// Empty token -> headers without Authorization.
+	if h := headersForToken(""); len(*h) != 0 {
+		t.Errorf("headersForToken(\"\") = %v, want no headers", *h)
+	}
+	// Non-empty token -> a bearer Authorization header.
+	h := headersForToken("tok")
+	if got := (*h)["Authorization"]; len(got) != 1 || got[0] != "Bearer tok" {
+		t.Errorf("headersForToken(tok) Authorization = %v, want [Bearer tok]", got)
+	}
+}

@@ -190,6 +190,23 @@ func TestCloudInitServiceStatus_API(t *testing.T) {
 	}
 }
 
+// TestCloudInitServiceStatus_Success verifies "cloud-init service status" reports
+// success against a healthy server.
+func TestCloudInitServiceStatus_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "service", "status", "--ignore-config", "--uri", srv.URL)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "cloud-init is running") {
+		t.Errorf("stdout = %q, want it to report running", res.stdout)
+	}
+}
+
 // TestCloudInitDefaults_Get verifies "cloud-init defaults get" issues GET
 // /admin/cluster-defaults.
 func TestCloudInitDefaults_Get(t *testing.T) {

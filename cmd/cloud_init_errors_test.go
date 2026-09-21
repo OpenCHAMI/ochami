@@ -5,11 +5,80 @@
 package cmd
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
 )
+
+func TestCloudInitServiceVersion_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "service", "version", "--ignore-config", "--uri", srv.URL)
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
+// TestCloudInitServiceStatus_HTTPError verifies a responding but unhealthy
+// service is distinguished from a network failure.
+func TestCloudInitServiceStatus_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "service", "status", "--ignore-config", "--uri", srv.URL)
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+	if !strings.Contains(res.stdout, "running, but not normally") {
+		t.Errorf("stdout = %q, want abnormal-running status", res.stdout)
+	}
+}
+
+// TestCloudInitServiceStatus_QuietHTTPError verifies quiet mode suppresses the
+// human-readable status while preserving the exit code.
+func TestCloudInitServiceStatus_QuietHTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "service", "status", "--quiet", "--ignore-config", "--uri", srv.URL)
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+	if res.stdout != "" {
+		t.Errorf("stdout = %q, want empty output", res.stdout)
+	}
+}
+
+func TestCloudInitServiceStatus_APIError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "service", "status", "--api", "--ignore-config", "--uri", srv.URL)
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
 
 // TestCloudInitServiceStatus_NotRunning verifies that when the service is
 // unreachable, "cloud-init service status" reports not running and resolves to

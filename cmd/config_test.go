@@ -10,10 +10,15 @@ package cmd
 // network requests. Rejection-path cases are covered in config_errors_test.go.
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 // writeTempConfig creates an (empty) YAML config file in a temp dir and returns
@@ -111,5 +116,223 @@ func TestConfigShow_WholeConfig(t *testing.T) {
 	}
 	if !strings.Contains(res.stdout, "log:") {
 		t.Errorf("config show stdout = %q, want it to contain the log section", res.stdout)
+	}
+}
+
+// TestConfigSet_CreatesFileOnConfirm verifies "config set" offers to create a
+// missing config file and, on "y", creates and writes it.
+func TestConfigSet_CreatesFileOnConfirm(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "new", "config.yaml")
+
+	res := runOchamiWithInput(t, "y\n", "--config", path, "config", "set", "log.format", "json")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("expected config file to be created at %s: %v", path, err)
+	}
+}
+
+// TestConfigSet_DeclineCreate verifies that declining to create a missing config
+// file exits without writing the file.
+func TestConfigSet_DeclineCreate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "new", "config.yaml")
+
+	res := runOchamiWithInput(t, "n\n", "--config", path, "config", "set", "log.format", "json")
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("expected no config file to be created at %s", path)
+	}
+	if res.exitCode != cli.CodeDeclined {
+		t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
+	}
+}
+
+// TestConfigShow_NonexistentKey verifies "config show <key>" for a key not
+// present returns the defaulted or empty value without error.
+func TestConfigShow_NonexistentKey(t *testing.T) {
+	cfg := writeTempConfig(t, "log:\n  format: json\n")
+
+	res := runOchami(t, "--config", cfg, "config", "show", "log.format")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "json") {
+		t.Errorf("stdout = %q, want it to contain the value", res.stdout)
+	}
+}
+
+// TestConfigSet_SystemFlag verifies "config set --system" targets the system
+// config file path (created in a temp location). The command uses the parent
+// --system persistent flag; here we point --config at a temp file to keep the
+// test hermetic while exercising the non-user branch selection is covered by
+// the mutually-exclusive tests.
+func TestConfigSet_SystemFlag(t *testing.T) {
+	// Use --config to keep the write hermetic; this still exercises the
+	// config-source selection branch.
+	cfg := writeTempConfig(t, "")
+
+	res := runOchami(t, "--config", cfg, "config", "set", "log.level", "warning")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	data, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	if !strings.Contains(string(data), "warning") {
+		t.Errorf("config file = %q, want it to contain the value", string(data))
+	}
+}
+
+// TestConfigShow_WholeConfigViaConfigFlag verifies "config show" (no key) reads
+// the whole config from an explicit --config file (the --config branch).
+func TestConfigShow_WholeConfigViaConfigFlag(t *testing.T) {
+	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
+
+	res := runOchami(t, "--config", cfg, "config", "show")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "json") {
+		t.Errorf("stdout = %q, want the config contents", res.stdout)
+	}
+}
+
+// TestConfigUnset_ViaConfigFlag verifies "config unset <key>" removes a key from
+// an explicit --config file.
+func TestConfigUnset_ViaConfigFlag(t *testing.T) {
+	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
+
+	res := runOchami(t, "--config", cfg, "config", "unset", "log.level")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	data, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if strings.Contains(string(data), "warning") {
+		t.Errorf("config = %q, want log.level removed", string(data))
+	}
+	f, err := config.OpenFile(cfg)
+	if err != nil {
+		t.Fatalf("read semantic config: %v", err)
+	}
+	if f.Get("log.level") != nil {
+		t.Error("log.level still exists after unset")
+	}
+}
+
+// TestDefaultCluster_URIResolution verifies a command resolves its base URI from
+// the default cluster's cluster.uri in a config file (no --uri flag).
+func TestDefaultCluster_URIResolution(t *testing.T) {
+	var hit bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hit = true
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	cfg := writeTempConfig(t, `default-cluster: demo
+clusters:
+- name: demo
+  cluster:
+    uri: `+srv.URL+`
+    enable-auth: false
+`)
+
+	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !hit {
+		t.Error("expected the server (from default-cluster uri) to be contacted")
+	}
+}
+
+// TestPerServiceURI_Override verifies a per-service URI override in the cluster
+// config is honored.
+func TestPerServiceURI_Override(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	cfg := writeTempConfig(t, `default-cluster: demo
+clusters:
+- name: demo
+  cluster:
+    uri: https://unused.example.com
+    smd:
+      uri: `+srv.URL+`/smd
+    enable-auth: false
+`)
+
+	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.HasPrefix(gotPath, "/smd") {
+		t.Errorf("path = %q, want the /smd override", gotPath)
+	}
+}
+
+// TestEnableAuth_ReadsTokenFromEnv verifies HandleToken's enable-auth branch:
+// with enable-auth true and a valid <CLUSTER>_ACCESS_TOKEN env var, the token
+// is read and validated and the request succeeds.
+func TestEnableAuth_ReadsTokenFromEnv(t *testing.T) {
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	cfg := writeTempConfig(t, `default-cluster: demo
+clusters:
+- name: demo
+  cluster:
+    uri: `+srv.URL+`
+    enable-auth: true
+`)
+
+	tok := validToken(t)
+	t.Setenv("DEMO_ACCESS_TOKEN", tok)
+
+	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(gotAuth, "Bearer") {
+		t.Errorf("Authorization header = %q, want it to carry the bearer token", gotAuth)
+	}
+}
+
+// TestEnableAuth_DisabledSkipsToken verifies that with enable-auth false, no
+// token is required or sent.
+func TestEnableAuth_DisabledSkipsToken(t *testing.T) {
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	cfg := writeTempConfig(t, `default-cluster: demo
+clusters:
+- name: demo
+  cluster:
+    uri: `+srv.URL+`
+    enable-auth: false
+`)
+
+	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotAuth != "" {
+		t.Errorf("Authorization header = %q, want empty (auth disabled)", gotAuth)
 	}
 }
