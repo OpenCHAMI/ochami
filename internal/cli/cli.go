@@ -669,7 +669,7 @@ func HandlePayloadSlice[T any](cmd *cobra.Command, v *[]T) error {
 // HandlePayloadStdin is similar to HandlePayload except the data is read from
 // standard input.
 func HandlePayloadStdin(cmd *cobra.Command, v any) error {
-	if err := client.ReadPayloadStdin(FormatInput, v); err != nil {
+	if err := client.ReadPayloadReader(Ios.In(), FormatInput, v); err != nil {
 		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}
 	return nil
@@ -678,7 +678,7 @@ func HandlePayloadStdin(cmd *cobra.Command, v any) error {
 // HandlePayloadStdinSlice is similar to HandlePayloadStdin except that it
 // unmarshals the payload data into a typed slice.
 func HandlePayloadStdinSlice[T any](cmd *cobra.Command, v *[]T) error {
-	if err := client.ReadPayloadStdinSlice[T](FormatInput, v); err != nil {
+	if err := client.ReadPayloadReaderSlice[T](Ios.In(), FormatInput, v); err != nil {
 		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}
 	return nil

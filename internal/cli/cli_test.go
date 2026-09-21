@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/pkg/config"
+	"github.com/openchami/ochami/pkg/format"
 )
 
 func TestIOStream_AskToCreate(t *testing.T) {
@@ -550,4 +551,42 @@ func TestBooleanFlags_UseTheirValue(t *testing.T) {
 			t.Fatalf("HandleToken error = %v, want CodeAuth", err)
 		}
 	})
+}
+
+// TestPayloadReader_Helpers verifies HandlePayloadStdin/HandlePayloadStdinSlice
+// read from the injected IOStream reader rather than the real os.Stdin, and
+// surface a CodePayload error for malformed input.
+func TestPayloadReader_Helpers(t *testing.T) {
+	origFormat := FormatInput
+	t.Cleanup(func() { FormatInput = origFormat })
+	FormatInput = format.DataFormatJson
+
+	var one map[string]interface{}
+	restore := SetIOStream(strings.NewReader(`{"name":"node"}`), &bytes.Buffer{}, &bytes.Buffer{})
+	if err := HandlePayloadStdin(&cobra.Command{}, &one); err != nil {
+		restore()
+		t.Fatalf("HandlePayloadStdin: %v", err)
+	}
+	restore()
+	if one["name"] != "node" {
+		t.Errorf("payload = %#v", one)
+	}
+
+	var many []map[string]interface{}
+	restore = SetIOStream(strings.NewReader(`{"name":"node"}`), &bytes.Buffer{}, &bytes.Buffer{})
+	if err := HandlePayloadStdinSlice(&cobra.Command{}, &many); err != nil {
+		restore()
+		t.Fatalf("HandlePayloadStdinSlice: %v", err)
+	}
+	restore()
+	if len(many) != 1 {
+		t.Errorf("slice length = %d, want 1", len(many))
+	}
+
+	restore = SetIOStream(strings.NewReader(`{`), &bytes.Buffer{}, &bytes.Buffer{})
+	if err := HandlePayloadStdin(&cobra.Command{}, &one); err == nil || ExitCode(err) != CodePayload {
+		restore()
+		t.Fatalf("invalid payload error = %v, want CodePayload", err)
+	}
+	restore()
 }
