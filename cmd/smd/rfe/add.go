@@ -17,6 +17,57 @@ import (
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
 
+// rfeAddOptions holds the flag values for the smd rfe add command.
+type rfeAddOptions struct {
+	Domain   string
+	Hostname string
+	Username string
+	Password string
+}
+
+// runCoreRfeAdd contains the core logic for the smd rfe add command.
+// It takes the parsed options and performs the actual work of adding redfish endpoints.
+func runCoreRfeAdd(cmd *cobra.Command, opts *rfeAddOptions, args []string, smdClient *smd.SMDClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Check if a CA certificate was passed and load it into client if valid
+	if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+		return err
+	}
+
+	var rfes smd.RedfishEndpointSlice
+	if cmd.Flag("data").Changed {
+		// Use payload file if passed
+		if err := cli.HandlePayload(cmd, &rfes); err != nil {
+			return err
+		}
+	} else {
+		// ...otherwise use CLI options/args
+		rfe := csm.RedfishEndpoint{
+			ID:        args[0],
+			Name:      args[1],
+			IPAddress: args[2],
+			MACAddr:   args[3],
+		}
+		rfe.Domain = opts.Domain
+		rfe.Hostname = opts.Hostname
+		rfe.User = opts.Username
+		rfe.Password = opts.Password
+		rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
+	}
+
+	// Send off request
+	results := smdClient.PostRedfishEndpoints(cmd.Context(), rfes, cli.Token)
+	if err := cli.AggregateItemErrors(results.Errors(), "SMD redfish endpoint addition"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func newCmdRfeAdd() *cobra.Command {
 	// rfeAddCmd represents the "smd rfe add" command
 	var rfeAddCmd = &cobra.Command{
@@ -80,52 +131,24 @@ See ochami-smd(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &rfeAddOptions{}
+			if cmd.Flag("domain").Changed {
+				opts.Domain, _ = cmd.Flags().GetString("domain")
+			}
+			if cmd.Flag("hostname").Changed {
+				opts.Hostname, _ = cmd.Flags().GetString("hostname")
+			}
+			if cmd.Flag("username").Changed {
+				opts.Username, _ = cmd.Flags().GetString("username")
+			}
+			if cmd.Flag("password").Changed {
+				opts.Password, _ = cmd.Flags().GetString("password")
 			}
 
-			// Check if a CA certificate was passed and load it into client if valid
-			if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
-				return err
-			}
-
-			var rfes smd.RedfishEndpointSlice
-			if cmd.Flag("data").Changed {
-				// Use payload file if passed
-				if err := cli.HandlePayload(cmd, &rfes); err != nil {
-					return err
-				}
-			} else {
-				// ...otherwise use CLI options/args
-				rfe := csm.RedfishEndpoint{
-					ID:        args[0],
-					Name:      args[1],
-					IPAddress: args[2],
-					MACAddr:   args[3],
-				}
-				if cmd.Flag("domain").Changed {
-					rfe.Domain, _ = cmd.Flags().GetString("domain")
-				}
-				if cmd.Flag("hostname").Changed {
-					rfe.Hostname, _ = cmd.Flags().GetString("hostname")
-				}
-				if cmd.Flag("username").Changed {
-					rfe.User, _ = cmd.Flags().GetString("username")
-				}
-				if cmd.Flag("password").Changed {
-					rfe.Password, _ = cmd.Flags().GetString("password")
-				}
-				rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
-			}
-
-			// Send off request
-			results := smdClient.PostRedfishEndpoints(cmd.Context(), rfes, cli.Token)
-			if err := cli.AggregateItemErrors(results.Errors(), "SMD redfish endpoint addition"); err != nil {
-				return err
-			}
-
-			return nil
+			return runCoreRfeAdd(cmd, opts, args, smdClient)
 		},
 	}
 
