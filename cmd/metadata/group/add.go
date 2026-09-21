@@ -5,8 +5,6 @@
 package group
 
 import (
-	"errors"
-
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
@@ -158,19 +155,7 @@ See ochami-metadata(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to add groups: %w", reqErr)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to add groups: %w", reqErr)
-			}
-
-			// Deal with per-request errors
-			var reqErrorsOccurred = false
-			for _, err := range reqErrs {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to add group")
-					reqErrorsOccurred = true
-				}
+				return cli.ClassifyClientError(reqErr, "failed to add groups", "failed to add groups")
 			}
 
 			// Print names of created items
@@ -180,9 +165,8 @@ See ochami-metadata(1) for more details.`,
 			}
 			log.Logger.Info().Msgf("Groups created: %q", names)
 
-			// Warn if any request errors occurred
-			if reqErrorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "Group addition completed with errors")
+			if err := cli.AggregateItemErrors(reqErrs, "Group addition"); err != nil {
+				return err
 			}
 
 			return nil

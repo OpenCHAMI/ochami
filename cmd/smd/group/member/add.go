@@ -6,13 +6,11 @@
 package member
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
@@ -42,23 +40,10 @@ See ochami-smd(1) for more details.`,
 			// Send off request
 			_, errs, err := smdClient.PostGroupMembers(cli.Token, args[0], args[1:]...)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add group member(s) to group %s in SMD: %w", args[0], err)
+				return cli.ClassifyClientError(err, fmt.Sprintf("failed to add group member(s) to group %s in SMD", args[0]), fmt.Sprintf("failed to add group member(s) to group %s in SMD", args[0]))
 			}
-			// Since smdClient.PostGroupMembers does the addition iteratively, we need to deal with
-			// each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msgf("SMD group member request for group %s yielded unsuccessful HTTP response", args[0])
-					} else {
-						log.Logger.Error().Err(e).Msgf("failed to add group member(s) to group %s in SMD", args[0])
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "SMD group member addition completed with errors")
+			if err := cli.AggregateItemErrors(errs, "SMD group member addition"); err != nil {
+				return err
 			}
 
 			return nil

@@ -5,14 +5,11 @@
 package peer
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataPeerDelete() *cobra.Command {
@@ -64,27 +61,14 @@ See ochami-metadata(1) for more details.`,
 			// Send off requests
 			peersDeleted, errs, err := metadataServiceClient.DeleteWireGuardPeers(cli.Token, args)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to delete WireGuard peers: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to delete WireGuard peers: %w", err)
-			}
-
-			// Deal with per-request errors
-			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to delete WireGuard peer")
-					errorsOccurred = true
-				}
+				return cli.ClassifyClientError(err, "failed to delete WireGuard peers", "failed to delete WireGuard peers")
 			}
 
 			// Print UIDs of deleted items
 			log.Logger.Info().Msgf("WireGuard peers deleted: %+v", peersDeleted)
 
-			// Warn if any request errors occurred
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "WireGuard peer deletion completed with errors")
+			if err := cli.AggregateItemErrors(errs, "WireGuard peer deletion"); err != nil {
+				return err
 			}
 
 			return nil

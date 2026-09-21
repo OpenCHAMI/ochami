@@ -127,7 +127,7 @@ See ochami-pcs(1) for more details.`,
 			for {
 				transitionHttpEnv, err := pcsClient.GetTransition(transitionID, cli.Token)
 				if err != nil {
-					return cli.Errorf(cli.CodeNetwork, "failed to get transition: %w", err)
+					return cli.ClassifyClientError(err, "failed to get transition", "failed to get transition")
 				}
 
 				// Unmarshal the progress information

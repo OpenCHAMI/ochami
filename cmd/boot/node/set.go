@@ -125,7 +125,7 @@ See ochami-boot(1) for more details.`,
 				nodeSet, reqErr = bootServiceClient.SetNodeSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to set node: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to set node", "failed to set node")
 			}
 
 			log.Logger.Debug().Msgf("node set: %+v", nodeSet)

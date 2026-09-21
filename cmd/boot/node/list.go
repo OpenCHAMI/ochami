@@ -37,7 +37,7 @@ See ochami-boot(1) for more details.`,
 			// Make request
 			outBytes, err := bootServiceClient.ListNodes(cli.Token, cli.FormatOutput)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to list nodes: %w", err)
+				return cli.ClassifyClientError(err, "failed to list nodes", "failed to list nodes")
 			}
 
 			// Print output

@@ -237,6 +237,11 @@ the following codes:
 :  The user declined a confirmation prompt (for example, a deletion
    confirmation or an offer to create a missing config file), so no changes
    were made.
+|  *9*
+:  _CodeMixed_
+:  A command acting on several items had failures that do not share a single
+   code above (for example, some items got an unsuccessful HTTP response and
+   others a network error). The log output identifies which items failed.
 
 # FILES
 

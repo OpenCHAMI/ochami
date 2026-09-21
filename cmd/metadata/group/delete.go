@@ -5,14 +5,11 @@
 package group
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataGroupDelete() *cobra.Command {
@@ -64,27 +61,14 @@ See ochami-metadata(1) for more details.`,
 			// Send off requests
 			groupsDeleted, errs, err := metadataServiceClient.DeleteGroups(cli.Token, args)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to delete groups: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to delete groups: %w", err)
-			}
-
-			// Deal with per-request errors
-			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to delete group")
-					errorsOccurred = true
-				}
+				return cli.ClassifyClientError(err, "failed to delete groups", "failed to delete groups")
 			}
 
 			// Print UIDs of deleted items
 			log.Logger.Info().Msgf("Groups deleted: %+v", groupsDeleted)
 
-			// Warn if any request errors occurred
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "Group deletion completed with errors")
+			if err := cli.AggregateItemErrors(errs, "Group deletion"); err != nil {
+				return err
 			}
 
 			return nil

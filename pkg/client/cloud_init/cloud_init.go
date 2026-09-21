@@ -185,7 +185,7 @@ func (cic *CloudInitClient) GetNodeData(dataType CIDataType, token string, ids .
 		henvs   []client.HTTPEnvelope
 	)
 	if len(ids) == 0 {
-		return henvs, errors, fmt.Errorf("GetNodeData(): at least one ID is required")
+		return henvs, errors, fmt.Errorf("GetNodeData(): %w: at least one ID is required", client.InvalidArgumentError)
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
@@ -228,10 +228,10 @@ func (cic *CloudInitClient) GetNodeGroupData(token, id string, groups ...string)
 		henvs   []client.HTTPEnvelope
 	)
 	if strings.Trim(id, " ") == "" {
-		return henvs, errors, fmt.Errorf("GetNodeGroupData(): group cannot be blank")
+		return henvs, errors, fmt.Errorf("GetNodeGroupData(): %w: group cannot be blank", client.InvalidArgumentError)
 	}
 	if len(groups) == 0 {
-		return henvs, errors, fmt.Errorf("GetNodeGroupData(): at least one group is required")
+		return henvs, errors, fmt.Errorf("GetNodeGroupData(): %w: at least one group is required", client.InvalidArgumentError)
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
@@ -360,7 +360,7 @@ func (cic *CloudInitClient) PutGroups(ciGroups []cistore.GroupData, token string
 			finalEP string
 		)
 		if strings.Trim(cig.Name, " ") == "" {
-			newErr := fmt.Errorf("PutGroups(): group name cannot be blank")
+			newErr := fmt.Errorf("PutGroups(): %w: group name cannot be blank", client.InvalidArgumentError)
 			errors = append(errors, newErr)
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue
@@ -405,7 +405,7 @@ func (cic *CloudInitClient) PutInstanceInfo(instanceInfoList []cistore.OpenCHAMI
 		}
 	}
 	if len(instanceInfoList) == 0 {
-		return henvs, errors, fmt.Errorf("PutInstanceInfo(): at least one instance info is required")
+		return henvs, errors, fmt.Errorf("PutInstanceInfo(): %w: at least one instance info is required", client.InvalidArgumentError)
 	}
 	for _, instanceInfo := range instanceInfoList {
 		var (
@@ -414,7 +414,7 @@ func (cic *CloudInitClient) PutInstanceInfo(instanceInfoList []cistore.OpenCHAMI
 			finalEP string
 		)
 		if strings.Trim(instanceInfo.ID, " ") == "" {
-			newErr := fmt.Errorf("PutInstanceInfo(): id cannot be blank")
+			newErr := fmt.Errorf("PutInstanceInfo(): %w: id cannot be blank", client.InvalidArgumentError)
 			errors = append(errors, newErr)
 			henvs = append(henvs, client.HTTPEnvelope{})
 			continue

@@ -12,8 +12,8 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestSMDGroupMemberAdd_HTTPError verifies an unsuccessful HTTP response resolves
-// to a non-success exit code.
+// TestSMDGroupMemberAdd_HTTPError verifies an unsuccessful HTTP response
+// resolves to CodeHTTP.
 func TestSMDGroupMemberAdd_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "conflict", http.StatusConflict)
@@ -25,7 +25,7 @@ func TestSMDGroupMemberAdd_HTTPError(t *testing.T) {
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
-	if res.exitCode == cli.CodeSuccess {
-		t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 	}
 }

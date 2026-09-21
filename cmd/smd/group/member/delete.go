@@ -6,13 +6,12 @@
 package member
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
@@ -59,24 +58,10 @@ See ochami-smd(1) for more details.`,
 			// Perform deletion from arguments
 			_, errs, err := smdClient.DeleteGroupMembers(cli.Token, args[0], args[1:]...)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to delete members from group %s in SMD: %w", args[0], err)
+				return cli.ClassifyClientError(err, fmt.Sprintf("failed to delete members from group %s in SMD", args[0]), fmt.Sprintf("failed to delete members from group %s in SMD", args[0]))
 			}
-			// Since smdClient.DeleteGroupMembers does the deletion iteratively, we need to deal with
-			// each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("SMD group member deletion yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to delete group member(s)")
-					}
-					errorsOccurred = true
-				}
-			}
-			// Warn the user if any errors occurred during deletion iterations
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "SMD group member deletion completed with errors")
+			if err := cli.AggregateItemErrors(errs, "SMD group member deletion"); err != nil {
+				return err
 			}
 
 			return nil
