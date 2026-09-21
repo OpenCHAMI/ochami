@@ -513,3 +513,41 @@ func TestSetToken_NoTokenNoCluster(t *testing.T) {
 		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(err), CodeAuth)
 	}
 }
+
+// TestBooleanFlags_UseTheirValue verifies InitConfig and HandleToken consult
+// the actual value of --ignore-config/--no-token rather than merely whether
+// the flag was passed at all (a flag passed as --ignore-config=false or
+// --no-token=false must not be treated the same as omitting it).
+func TestBooleanFlags_UseTheirValue(t *testing.T) {
+	t.Run("ignore-config false", func(t *testing.T) {
+		orig := ConfigFile
+		t.Cleanup(func() { ConfigFile = orig })
+		ConfigFile = t.TempDir() + "/missing.yaml"
+		cmd := &cobra.Command{Use: "test"}
+		cmd.Flags().Bool("ignore-config", false, "")
+		_ = cmd.Flags().Set("ignore-config", "false")
+		if err := InitConfig(cmd, false); err == nil {
+			t.Fatal("InitConfig unexpectedly ignored a false --ignore-config flag")
+		}
+	})
+
+	t.Run("no-token false", func(t *testing.T) {
+		origCfg, origToken := ActiveConfig(), Token
+		t.Cleanup(func() { SetActiveConfig(origCfg); Token = origToken })
+		SetActiveConfig(config.Config{
+			DefaultCluster: "auth-cluster",
+			Clusters:       []config.ConfigCluster{{Name: "auth-cluster", Cluster: config.ConfigClusterConfig{EnableAuth: true}}},
+		})
+		Token = ""
+		_ = os.Unsetenv("AUTH_CLUSTER_ACCESS_TOKEN")
+		cmd := &cobra.Command{Use: "test"}
+		cmd.Flags().String("cluster", "", "")
+		cmd.Flags().Bool("no-token", false, "")
+		cmd.Flags().String("token", "", "")
+		cmd.Flags().Bool("show-token", false, "")
+		_ = cmd.Flags().Set("no-token", "false")
+		if err := HandleToken(cmd); err == nil || ExitCode(err) != CodeAuth {
+			t.Fatalf("HandleToken error = %v, want CodeAuth", err)
+		}
+	})
+}

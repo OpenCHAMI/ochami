@@ -32,8 +32,7 @@ import (
 
 var (
 	// Errors
-	FileExistsError   = fmt.Errorf("file exists")
-	NoConfigFileError = fmt.Errorf("no config file to read")
+	FileExistsError = fmt.Errorf("file exists")
 
 	// el is an early logger that has verbosity turned on automatically.
 	// It is for printing log messages before logging has been initialized,
@@ -154,7 +153,7 @@ func (i ioStream) LoopYesNo(p string) (bool, error) {
 // config file if create is true, if it does not already exist.
 func InitConfig(cmd *cobra.Command, create bool) error {
 	// Do not read or write config file if --ignore-config passed
-	if cmd.Flags().Changed("ignore-config") {
+	if f := cmd.Flag("ignore-config"); f != nil && f.Value.String() == "true" {
 		err := loadDefaultConfig()
 		if err != nil {
 			return fmt.Errorf("unable to load default config: %w", err)
@@ -551,7 +550,7 @@ func GetTimeout(cmd *cobra.Command) time.Duration {
 // performs any other setup tasks for tokens. It is called by all commands that
 // require a token.
 func HandleToken(cmd *cobra.Command) error {
-	if cmd.Flag("no-token").Changed {
+	if f := cmd.Flag("no-token"); f != nil && f.Value.String() == "true" {
 		// --no-token overrides any cluster settings
 		log.Logger.Debug().Msg("--no-token passed, not reading or checking for token")
 	} else {
