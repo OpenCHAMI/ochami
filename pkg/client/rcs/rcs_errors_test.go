@@ -5,14 +5,17 @@
 package rcs
 
 // rcs_errors_test.go unit-tests the RCSClient's error arms: a non-2XX
-// response from the plain HTTP endpoints, and a websocket dial failure for the
-// console-streaming endpoints.
+// response from the plain HTTP endpoints, a websocket dial failure for the
+// console-streaming endpoints, malformed response bodies, and
+// websocketDialError's classification of failed dials.
 
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -48,5 +51,83 @@ func TestShowConsole_DialError(t *testing.T) {
 
 	if err := c.ShowConsole(ctx, "x0c0s1b0n0", false, 10, "tok", &bytes.Buffer{}); err == nil {
 		t.Fatal("expected a dial error, got nil")
+	}
+}
+
+// mkResp builds a minimal *http.Response with the given status and body.
+func mkResp(status int, body string) *http.Response {
+	return &http.Response{
+		StatusCode: status,
+		Status:     http.StatusText(status),
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}
+}
+
+// TestWebsocketDial_Error verifies that websocketDialError wraps a dial failure
+// with no response, reports a 409 as the server's message or as the node's
+// console already being in use, and includes any message from other statuses.
+func TestWebsocketDial_Error(t *testing.T) {
+	// nil response -> wraps the dial error.
+	if err := websocketDialError("n0", nil, io.EOF); err == nil {
+		t.Error("nil response = nil, want error")
+	}
+
+	// 409 with a message -> returns the message.
+	if err := websocketDialError("n0", mkResp(http.StatusConflict, "busy"), nil); err == nil || !strings.Contains(err.Error(), "busy") {
+		t.Errorf("409 with message = %v, want it to contain the message", err)
+	}
+
+	// 409 without a message -> "already in use" for the node.
+	if err := websocketDialError("n0", mkResp(http.StatusConflict, ""), nil); err == nil || !strings.Contains(err.Error(), "already in use") {
+		t.Errorf("409 without message = %v, want already-in-use", err)
+	}
+
+	// Non-409 with a message.
+	if err := websocketDialError("n0", mkResp(http.StatusInternalServerError, "oops"), nil); err == nil || !strings.Contains(err.Error(), "oops") {
+		t.Errorf("500 with message = %v, want it to contain the message", err)
+	}
+
+	// Non-409 without a message.
+	if err := websocketDialError("n0", mkResp(http.StatusBadGateway, ""), nil); err == nil {
+		t.Error("502 without message = nil, want error")
+	}
+}
+
+// TestGetStatus_HTTPError verifies that GetStatus returns an error for a
+// non-2XX response.
+func TestGetStatus_HTTPError(t *testing.T) {
+	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	})
+	defer srv.Close()
+
+	if _, err := c.GetStatus("tok"); err == nil {
+		t.Error("GetStatus with HTTP error = nil, want error")
+	}
+}
+
+// TestGetStatus_MalformedBody verifies that GetStatus returns an error when the
+// response body isn't valid JSON.
+func TestGetStatus_MalformedBody(t *testing.T) {
+	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`not json`))
+	})
+	defer srv.Close()
+
+	if _, err := c.GetStatus("tok"); err == nil {
+		t.Error("GetStatus with malformed body = nil, want error")
+	}
+}
+
+// TestListConsoles_MalformedBody verifies that ListConsoles returns an error
+// when the response body isn't valid JSON.
+func TestListConsoles_MalformedBody(t *testing.T) {
+	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`not json`))
+	})
+	defer srv.Close()
+
+	if _, err := c.ListConsoles("tok"); err == nil {
+		t.Error("ListConsoles with malformed body = nil, want error")
 	}
 }

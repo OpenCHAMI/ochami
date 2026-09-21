@@ -723,3 +723,31 @@ func TestDiscoveryInfoV2Deprecated_MultipleNodesPerBMC(t *testing.T) {
 		}
 	}
 }
+
+// TestDiscoveryInfoV2_UndefinedBMC verifies that DiscoveryInfoV2 skips a node
+// whose BMC isn't in the BMC list without failing, and still produces a
+// component for a well-formed node and the Redfish endpoint of its BMC.
+func TestDiscoveryInfoV2_UndefinedBMC(t *testing.T) {
+	base := "http://example.com"
+	di := DiscoveryItems{
+		BMCs: []BMC{
+			{Name: "bmc-1", Xname: "x3000c0s0b0", MACAddr: "10:10:10:10:10:10", IPAddr: "172.16.200.1"},
+		},
+		Nodes: []Node{
+			{Name: "n-bad", NID: 1, Xname: "x9999c9s9b9n9", BMC: "does-not-exist"},
+			{Name: "n-ok", NID: 2, Xname: "x3000c0s0b0n0", BMC: "bmc-1"},
+		},
+	}
+
+	comps, rfes, _, err := DiscoveryInfoV2(base, di)
+	if err != nil {
+		t.Fatalf("DiscoveryInfoV2 returned error: %v", err)
+	}
+	// The good node should still produce a component and be attached to its BMC.
+	if len(comps.Components) == 0 {
+		t.Error("expected at least one component for the well-formed node")
+	}
+	if len(rfes.RedfishEndpoints) != 1 {
+		t.Errorf("RedfishEndpoints = %d, want 1 (the defined BMC)", len(rfes.RedfishEndpoints))
+	}
+}
