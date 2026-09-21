@@ -624,3 +624,14 @@ func TestReadPayloadInterfaceRFC6902Array(t *testing.T) {
 		t.Fatalf("got %#v, want %#v", got, want)
 	}
 }
+
+// TestCheckPathSegment_ValidIDs verifies that CheckPathSegment accepts IDs that
+// name a single resource, including ones that contain dots or characters
+// url.JoinPath escapes.
+func TestCheckPathSegment_ValidIDs(t *testing.T) {
+	for _, seg := range []string{"x3000c1s7b56n0", "decafc0ffee", "compute", "x0.1", "...", "a b", "x0?all"} {
+		if err := CheckPathSegment("ID", seg); err != nil {
+			t.Errorf("CheckPathSegment(%q) = %v, want nil", seg, err)
+		}
+	}
+}

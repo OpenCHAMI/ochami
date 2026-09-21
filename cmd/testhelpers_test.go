@@ -13,6 +13,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -176,5 +177,25 @@ func TestRunOchami_ResetsFormatFlagsBetweenCalls(t *testing.T) {
 	}
 	if !strings.Contains(res.stdout, `"version":"1.0.0"`) {
 		t.Errorf("stdout = %q, want plain JSON (a leaked --format-output yaml from the setup call would render this as YAML instead)", res.stdout)
+	}
+}
+
+// assertFormattedOutput checks that out shows the key/value pair in the given
+// output format: compact JSON, indented JSON, or YAML.
+func assertFormattedOutput(t *testing.T, format, out, key, value string) {
+	t.Helper()
+	var want string
+	switch format {
+	case "json":
+		want = fmt.Sprintf("%q:%q", key, value)
+	case "json-pretty":
+		want = fmt.Sprintf("%q: %q", key, value)
+	case "yaml":
+		want = key + ": " + value
+	default:
+		t.Fatalf("unknown output format %q", format)
+	}
+	if !strings.Contains(out, want) {
+		t.Errorf("format %s: output = %q, want it to contain %q", format, out, want)
 	}
 }

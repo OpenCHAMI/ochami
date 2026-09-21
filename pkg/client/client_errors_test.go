@@ -47,3 +47,19 @@ func TestUseCACert_RejectsInvalidPEM(t *testing.T) {
 		t.Fatal("UseCACert accepted invalid PEM")
 	}
 }
+
+// TestCheckPathSegment_Rejects verifies that CheckPathSegment rejects, with an
+// error wrapping InvalidArgumentError, every ID that url.JoinPath would not
+// resolve to a single resource below the endpoint.
+func TestCheckPathSegment_Rejects(t *testing.T) {
+	for _, seg := range []string{"", " ", "\t", ".", "..", "/", "x0/", "x0/..", "a/b"} {
+		err := CheckPathSegment("component ID", seg)
+		if !errors.Is(err, InvalidArgumentError) {
+			t.Errorf("CheckPathSegment(%q) = %v, want an error wrapping InvalidArgumentError", seg, err)
+			continue
+		}
+		if !strings.Contains(err.Error(), "component ID") {
+			t.Errorf("CheckPathSegment(%q) = %q, want it to name the component ID", seg, err)
+		}
+	}
+}

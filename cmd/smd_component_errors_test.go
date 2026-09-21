@@ -110,3 +110,24 @@ func TestSMDComponentDelete_PartialFailure(t *testing.T) {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 	}
 }
+
+// TestSMDComponentDelete_Abort verifies answering "n" aborts without a request.
+func TestSMDComponentDelete_Abort(t *testing.T) {
+	var deletes int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deletes++
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithInput(t, "n\n",
+		"smd", "component", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
+	if res.exitCode != cli.CodeDeclined {
+		t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
+	}
+	if deletes != 0 {
+		t.Errorf("DELETE count = %d, want 0", deletes)
+	}
+}

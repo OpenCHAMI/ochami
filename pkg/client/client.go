@@ -135,6 +135,22 @@ func (oc *OchamiClient) GetURI(endpoint, query string) (string, error) {
 	return uri.String(), err
 }
 
+// CheckPathSegment returns an error wrapping InvalidArgumentError if seg
+// cannot name a single resource below an endpoint: if it is blank, is "." or
+// "..", or contains "/". url.JoinPath resolves each of these to the endpoint
+// itself or to a different path, and a DELETE to a collection endpoint can
+// delete every resource in it. what names seg in the error message (e.g.
+// "component ID").
+func CheckPathSegment(what, seg string) error {
+	switch {
+	case strings.TrimSpace(seg) == "":
+		return fmt.Errorf("%w: %s cannot be blank", InvalidArgumentError, what)
+	case seg == "." || seg == ".." || strings.Contains(seg, "/"):
+		return fmt.Errorf("%w: %s %q is not a single path segment", InvalidArgumentError, what, seg)
+	}
+	return nil
+}
+
 // GetData is a wrapper around MakeOchamiRequest that sends a GET request to
 // endpoint, using an optional token and optional headers, and returns an
 // HTTPEnvelope containg the response metadata and the data received in the

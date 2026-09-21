@@ -35,3 +35,17 @@ func GetClient(cmd *cobra.Command) (*smd.SMDClient, error) {
 
 	return smdClient, nil
 }
+
+// CheckIDs returns a CodeUsage error for the first of ids that cannot name a
+// single SMD resource (see client.CheckPathSegment), so that a delete command
+// can reject its whole selection before sending any request. what names the
+// IDs in the error message (e.g. "component ID"), which also gives the
+// 1-based position of the rejected ID.
+func CheckIDs(what string, ids []string) error {
+	for i, id := range ids {
+		if err := client.CheckPathSegment(what, id); err != nil {
+			return cli.Errorf(cli.CodeUsage, "%w (item %d of %d)", err, i+1, len(ids))
+		}
+	}
+	return nil
+}

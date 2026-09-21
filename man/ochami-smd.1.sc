@@ -260,6 +260,10 @@ Subcommands for this command are as follows:
 	In the fifth form of the command, the payload data is read from standard
 	input.
 
+	Only the ID of each payload item is used. If any ID, whether from the
+	payload or the command line, is blank, is "." or "..", or contains "/",
+	nothing is deleted and the command exits with a usage error.
+
 	This command sends one or more DELETE requests to SMD's /ComponentEndpoints
 	endpoint.
 
@@ -387,6 +391,10 @@ Subcommands for this command are as follows:
 	of dealing with many components at once.
 
 	In the fifth form of the command, the payload is read from standard input.
+
+	Only the ID of each payload item is used. If any ID, whether from the
+	payload or the command line, is blank, is "." or "..", or contains "/",
+	nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /Components
 	endpoint.
@@ -562,6 +570,10 @@ Subcommands for this command are as follows:
 	In the third form of the command, a file containing the payload data is
 	passed. This is convenient in cases of dealing with many components at once.
 
+	Only the ID of each payload item is used. If any ID, whether from the
+	payload or the command line, is blank, is "." or "..", or contains "/",
+	nothing is deleted and the command exits with a usage error.
+
 	This command sends one or more DELETE requests to SMD's /RedfishEndpoints
 	endpoint. An access token is required.
 
@@ -710,6 +722,10 @@ Subcommands for this command are as follows:
 
 	In the fourth form of the command, the payload data is read from standard
 	input.
+
+	Only the label of each payload item is used. If any label, whether from the
+	payload or the command line, is blank, is "." or "..", or contains "/",
+	nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /groups endpoint.
 
@@ -916,6 +932,9 @@ Subcommands for this command are as follows:
 
 *delete* _group_name_ _xname_...
 	Delete one or more components from an existing SMD group.
+
+	If the group name or any _xname_ is blank, is "." or "..", or contains "/",
+	nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to the members subendpoint
 	under SMD's /groups endpoint.

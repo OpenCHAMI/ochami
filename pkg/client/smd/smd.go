@@ -1030,6 +1030,10 @@ func (sc *SMDClient) PatchGroups(groups []Group, token string) ([]client.HTTPEnv
 // these should correspond. If an error in the function itself occurred, a
 // separate error is returned. This is to distinguish HTTP request errors from
 // control flow errors.
+//
+// An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (sc *SMDClient) DeleteComponents(token string, xnames ...string) ([]client.HTTPEnvelope, []error, error) {
 	var (
 		errors  []error
@@ -1043,6 +1047,11 @@ func (sc *SMDClient) DeleteComponents(token string, xnames ...string) ([]client.
 		}
 	}
 	for _, xname := range xnames {
+		if err := client.CheckPathSegment("component ID", xname); err != nil {
+			henvs = append(henvs, client.HTTPEnvelope{})
+			errors = append(errors, fmt.Errorf("DeleteComponents(): %w", err))
+			continue
+		}
 		xnamePath, err := url.JoinPath(SMDRelpathComponents, xname)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteComponents(): failed join component path (%s) with xname (%s): %w", SMDRelpathComponents, xname, err)
@@ -1096,6 +1105,10 @@ func (sc *SMDClient) DeleteComponentsAll(token string) (client.HTTPEnvelope, err
 // these should correspond. If an error in the function itself occurred, a
 // separate error is returned. This is to distinguish HTTP request errors from
 // control flow errors.
+//
+// An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (sc *SMDClient) DeleteRedfishEndpoints(token string, xnames ...string) ([]client.HTTPEnvelope, []error, error) {
 	var (
 		errors  []error
@@ -1109,6 +1122,11 @@ func (sc *SMDClient) DeleteRedfishEndpoints(token string, xnames ...string) ([]c
 		}
 	}
 	for _, xname := range xnames {
+		if err := client.CheckPathSegment("redfish endpoint ID", xname); err != nil {
+			henvs = append(henvs, client.HTTPEnvelope{})
+			errors = append(errors, fmt.Errorf("DeleteRedfishEndpoints(): %w", err))
+			continue
+		}
 		xnamePath, err := url.JoinPath(SMDRelpathRedfishEndpoints, xname)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteRedfishEndpoints(): failed join redfish endpoint path (%s) with xname (%s): %w", SMDRelpathRedfishEndpoints, xname, err)
@@ -1164,6 +1182,10 @@ func (sc *SMDClient) DeleteRedfishEndpointsAll(token string) (client.HTTPEnvelop
 // correspond. If an error in the function itself occurred, a separate error is
 // returned. This is to distinguish HTTP request errors from control flow
 // errors.
+//
+// An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (sc *SMDClient) DeleteEthernetInterfaces(token string, eIds ...string) ([]client.HTTPEnvelope, []error, error) {
 	var (
 		errors  []error
@@ -1177,6 +1199,11 @@ func (sc *SMDClient) DeleteEthernetInterfaces(token string, eIds ...string) ([]c
 		}
 	}
 	for _, eId := range eIds {
+		if err := client.CheckPathSegment("ethernet interface ID", eId); err != nil {
+			henvs = append(henvs, client.HTTPEnvelope{})
+			errors = append(errors, fmt.Errorf("DeleteEthernetInterfaces(): %w", err))
+			continue
+		}
 		eIdPath, err := url.JoinPath(SMDRelpathEthernetInterfaces, eId)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteEthernetInterfaces(): failed join ethernet interface path (%s) with ethernet interface %s: %w", SMDRelpathEthernetInterfaces, eId, err)
@@ -1231,6 +1258,10 @@ func (sc *SMDClient) DeleteEthernetInterfacesAll(token string) (client.HTTPEnvel
 // deletion. The indexes of these should correspond. If an error in the
 // function itself occurred, a separate error is returned. This is to
 // distinguish HTTP request errors from control flow errors.
+//
+// An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (sc *SMDClient) DeleteComponentEndpoints(token string, xnames ...string) ([]client.HTTPEnvelope, []error, error) {
 	var (
 		errors  []error
@@ -1244,6 +1275,11 @@ func (sc *SMDClient) DeleteComponentEndpoints(token string, xnames ...string) ([
 		}
 	}
 	for _, xname := range xnames {
+		if err := client.CheckPathSegment("component endpoint ID", xname); err != nil {
+			henvs = append(henvs, client.HTTPEnvelope{})
+			errors = append(errors, fmt.Errorf("DeleteComponentEndpoints(): %w", err))
+			continue
+		}
 		finalEP, err := url.JoinPath(SMDRelpathComponentEndpoints, xname)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteComponentEndpoints(): failed join component endpoint path (%s) with xname %s: %w", SMDRelpathComponentEndpoints, xname, err)
@@ -1298,6 +1334,10 @@ func (sc *SMDClient) DeleteComponentEndpointsAll(token string) (client.HTTPEnvel
 // these should correspond. If an error in the function itself occurred, a
 // separate error is returned. This is to distinguish HTTP request errors from
 // control flow errors.
+//
+// An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (sc *SMDClient) DeleteGroups(token string, groupLabels ...string) ([]client.HTTPEnvelope, []error, error) {
 	var (
 		errors  []error
@@ -1311,6 +1351,11 @@ func (sc *SMDClient) DeleteGroups(token string, groupLabels ...string) ([]client
 		}
 	}
 	for _, label := range groupLabels {
+		if err := client.CheckPathSegment("group label", label); err != nil {
+			henvs = append(henvs, client.HTTPEnvelope{})
+			errors = append(errors, fmt.Errorf("DeleteGroups(): %w", err))
+			continue
+		}
 		labelPath, err := url.JoinPath(SMDRelpathGroups, label)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteGroups(): failed join group path (%s) with group label (%s): %w", SMDRelpathGroups, label, err)
@@ -1339,12 +1384,19 @@ func (sc *SMDClient) DeleteGroups(token string, groupLabels ...string) ([]client
 // each deletion. The indexes of these should correspond. If an error in the
 // function itself occurred, a separate error is returned. This is to
 // distinguish HTTP request errors from control flow errors.
+//
+// A group label that client.CheckPathSegment rejects is a function-level
+// error, and no request is sent. A member ID that it rejects is reported as
+// that item's error, and no request is sent for it.
 func (sc *SMDClient) DeleteGroupMembers(token, group string, members ...string) ([]client.HTTPEnvelope, []error, error) {
 	var (
 		errors  []error
 		henvs   []client.HTTPEnvelope
 		headers *client.HTTPHeaders
 	)
+	if err := client.CheckPathSegment("group label", group); err != nil {
+		return henvs, errors, fmt.Errorf("DeleteGroupMembers(): %w", err)
+	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
 		if err := headers.SetAuthorization(token); err != nil {
@@ -1352,6 +1404,11 @@ func (sc *SMDClient) DeleteGroupMembers(token, group string, members ...string) 
 		}
 	}
 	for _, member := range members {
+		if err := client.CheckPathSegment("group member", member); err != nil {
+			henvs = append(henvs, client.HTTPEnvelope{})
+			errors = append(errors, fmt.Errorf("DeleteGroupMembers(): %w", err))
+			continue
+		}
 		memberPath, err := url.JoinPath(SMDRelpathGroups, group, "members", member)
 		if err != nil {
 			newErr := fmt.Errorf("DeleteGroupMembers(): failed join group path (%s) with group %s and member %s: %w", SMDRelpathGroups, group, member, err)

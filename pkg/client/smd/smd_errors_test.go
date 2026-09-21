@@ -313,3 +313,82 @@ func TestSMDClient_RejectsBlankRequiredFields(t *testing.T) {
 		t.Fatalf("blank group errors = %v, %v", errs, err)
 	}
 }
+
+// TestIterativeDeletes_InvalidID verifies that each iterative delete reports
+// an ID that is blank or is not a single path segment as that item's error,
+// wrapping client.InvalidArgumentError, without sending a request for it,
+// while still deleting the valid IDs.
+func TestIterativeDeletes_InvalidID(t *testing.T) {
+	cases := []struct {
+		name string
+		call func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error)
+	}{
+		{"components", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteComponents("tok", "", "x0c0s0b0n0", "x0/..")
+		}},
+		{"rfe", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteRedfishEndpoints("tok", "", "x0c0s0b0", ".")
+		}},
+		{"iface", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteEthernetInterfaces("tok", "", "decafc0ffee", "..")
+		}},
+		{"compendpoints", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteComponentEndpoints("tok", "", "x0c0s0b0n0", "a/b")
+		}},
+		{"groups", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteGroups("tok", "", "compute", " ")
+		}},
+		{"groupmembers", func(sc *SMDClient) ([]client.HTTPEnvelope, []error, error) {
+			return sc.DeleteGroupMembers("tok", "compute", "", "x0c0s0b0n0", "x0/..")
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var paths []string
+			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+				paths = append(paths, r.URL.Path)
+				w.WriteHeader(http.StatusOK)
+			})
+			defer srv.Close()
+
+			henvs, errs, err := tc.call(sc)
+			if err != nil {
+				t.Fatalf("control-flow error = %v, want nil", err)
+			}
+			if len(errs) != 3 || len(henvs) != 3 {
+				t.Fatalf("got %d errors and %d envelopes, want 3 of each", len(errs), len(henvs))
+			}
+			for _, i := range []int{0, 2} {
+				if !errors.Is(errs[i], client.InvalidArgumentError) {
+					t.Errorf("errs[%d] = %v, want it to wrap client.InvalidArgumentError", i, errs[i])
+				}
+			}
+			if errs[1] != nil {
+				t.Errorf("errs[1] = %v, want nil for the valid ID", errs[1])
+			}
+			if len(paths) != 1 {
+				t.Errorf("requests = %v, want exactly one, for the valid ID", paths)
+			}
+		})
+	}
+}
+
+// TestDeleteGroupMembers_InvalidGroupLabel verifies that DeleteGroupMembers
+// rejects a group label that is blank or is not a single path segment with a
+// control-flow error wrapping client.InvalidArgumentError, without sending a
+// request.
+func TestDeleteGroupMembers_InvalidGroupLabel(t *testing.T) {
+	for _, label := range []string{"", "..", "compute/x"} {
+		requestMade := false
+		sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) { requestMade = true })
+
+		_, _, err := sc.DeleteGroupMembers("tok", label, "x0c0s0b0n0")
+		srv.Close()
+		if !errors.Is(err, client.InvalidArgumentError) {
+			t.Errorf("DeleteGroupMembers(%q) error = %v, want it to wrap client.InvalidArgumentError", label, err)
+		}
+		if requestMade {
+			t.Errorf("DeleteGroupMembers(%q) sent a request", label)
+		}
+	}
+}
