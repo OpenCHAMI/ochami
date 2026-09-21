@@ -17,11 +17,7 @@ import (
 	"github.com/openchami/ochami/pkg/format"
 )
 
-var xnames []string
-
 type PowerFilter string
-
-var powerFilter PowerFilter = ""
 
 const (
 	powerOn        PowerFilter = "on"
@@ -65,8 +61,6 @@ func pcsStatusListPowerFilterCompletion(cmd *cobra.Command, args []string, toCom
 
 type MgmtFilter string
 
-var mgmtFilter MgmtFilter = ""
-
 func (l *MgmtFilter) String() string {
 	return string(*l)
 }
@@ -101,6 +95,9 @@ func pcsStatusListMgmtFilterCompletion(cmd *cobra.Command, args []string, toComp
 }
 
 func newCmdStatusList() *cobra.Command {
+	var xnames []string
+	var powerFilter PowerFilter
+	var mgmtFilter MgmtFilter
 
 	// pcsStatusListCmd represents the "pcs status list" command
 	var pcsStatusListCmd = &cobra.Command{
