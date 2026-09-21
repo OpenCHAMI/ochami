@@ -10,6 +10,7 @@ package pcs
 // headers. Error-arm behavior is covered in pcs_errors_test.go.
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -37,9 +38,9 @@ func TestReadinessLivenessHealth(t *testing.T) {
 		call     func(pc *PCSClient) error
 		wantPath string
 	}{
-		{"liveness", func(pc *PCSClient) error { _, e := pc.GetLiveness(); return e }, "/liveness"},
-		{"readiness", func(pc *PCSClient) error { _, e := pc.GetReadiness(); return e }, "/readiness"},
-		{"health", func(pc *PCSClient) error { _, e := pc.GetHealth(); return e }, "/health"},
+		{"liveness", func(pc *PCSClient) error { _, e := pc.GetLiveness(context.Background()); return e }, "/liveness"},
+		{"readiness", func(pc *PCSClient) error { _, e := pc.GetReadiness(context.Background()); return e }, "/readiness"},
+		{"health", func(pc *PCSClient) error { _, e := pc.GetHealth(context.Background()); return e }, "/health"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -68,7 +69,7 @@ func TestGetTransitions(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.GetTransitions("tok"); err != nil {
+	if _, err := pc.GetTransitions(context.Background(), "tok"); err != nil {
 		t.Fatalf("GetTransitions: %v", err)
 	}
 	if gotMethod != http.MethodGet || gotPath != "/transitions" {
@@ -88,7 +89,7 @@ func TestGetTransition_ByID(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.GetTransition("abc-123", "tok"); err != nil {
+	if _, err := pc.GetTransition(context.Background(), "abc-123", "tok"); err != nil {
 		t.Fatalf("GetTransition: %v", err)
 	}
 	if gotPath != "/transitions/abc-123" {
@@ -105,7 +106,7 @@ func TestDeleteTransition(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.DeleteTransition("abc-123", "tok"); err != nil {
+	if _, err := pc.DeleteTransition(context.Background(), "abc-123", "tok"); err != nil {
 		t.Fatalf("DeleteTransition: %v", err)
 	}
 	if gotMethod != http.MethodDelete || gotPath != "/transitions/abc-123" {
@@ -130,7 +131,7 @@ func TestCreateTransition(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.CreateTransition("on", nil, []string{"x0c0s0b0n0", "x0c0s0b0n1"}, "tok"); err != nil {
+	if _, err := pc.CreateTransition(context.Background(), "on", nil, []string{"x0c0s0b0n0", "x0c0s0b0n1"}, "tok"); err != nil {
 		t.Fatalf("CreateTransition: %v", err)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/transitions" {
@@ -161,7 +162,7 @@ func TestGetStatus_Query(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := pc.GetStatus([]string{"x0c0s0b0"}, "on", "available", "tok"); err != nil {
+	if _, err := pc.GetStatus(context.Background(), []string{"x0c0s0b0"}, "on", "available", "tok"); err != nil {
 		t.Fatalf("GetStatus: %v", err)
 	}
 	if gotPath != "/power-status" {

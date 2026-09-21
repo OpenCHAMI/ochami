@@ -45,7 +45,7 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send off request
-			henv, err := smdClient.PutGroupMembers(cli.Token, args[0], args[1:]...)
+			henv, err := smdClient.PutGroupMembers(cmd.Context(), cli.Token, args[0], args[1:]...)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
 					log.Logger.Error().Err(err).

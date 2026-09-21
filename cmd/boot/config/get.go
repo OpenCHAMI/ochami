@@ -39,7 +39,7 @@ See ochami-boot(1) for more details.`,
 			uid := args[0]
 
 			// Make request
-			outBytes, err := bootServiceClient.GetBootConfig(cli.Token, cli.FormatOutput, uid)
+			outBytes, err := bootServiceClient.GetBootConfig(cmd.Context(), cli.Token, cli.FormatOutput, uid)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get boot configuration for %s: %w", uid, err)
 			}

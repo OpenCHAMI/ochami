@@ -96,7 +96,7 @@ See ochami-metadata(1) for more details.`,
 				}
 			}
 
-			peerPatched, err := metadataServiceClient.PatchWireGuardPeer(cli.Token, formatPatch, args[0], patchData)
+			peerPatched, err := metadataServiceClient.PatchWireGuardPeer(cmd.Context(), cli.Token, formatPatch, args[0], patchData)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to patch WireGuard peer", "failed to patch WireGuard peer")
 

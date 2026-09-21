@@ -47,7 +47,7 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Get status
-			statusHttpEnv, err := pcsClient.GetStatus([]string{xname}, "", "", cli.Token)
+			statusHttpEnv, err := pcsClient.GetStatus(cmd.Context(), []string{xname}, "", "", cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "PCS status request yielded unsuccessful HTTP response", "failed to get power status")
 

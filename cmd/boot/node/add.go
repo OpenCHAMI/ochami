@@ -5,14 +5,14 @@
 package node
 
 import (
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
-
-	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
@@ -120,9 +120,7 @@ See ochami-boot(1) for more details.`,
 			// Determine how to read payload (simple versus advanced API)
 			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
 
-			var nodesCreated []*api.Node
-			var reqErrs []error
-			var reqErr error
+			var results client.BatchResult[*api.Node]
 			if envelope {
 				// Use advanced API (spec, metadata, annotations)
 
@@ -139,7 +137,7 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off requests
-				nodesCreated, reqErrs, reqErr = bootServiceClient.AddNodes(cli.Token, nodes)
+				results = bootServiceClient.AddNodes(cmd.Context(), cli.Token, nodes)
 			} else {
 				// Use simple API (spec)
 
@@ -156,24 +154,19 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off requests
-				nodesCreated, reqErrs, reqErr = bootServiceClient.AddNodeSpecs(cli.Token, nodes)
-			}
-
-			// Handle any non-request error
-			if reqErr != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add nodes: %w", reqErr)
+				results = bootServiceClient.AddNodeSpecs(cmd.Context(), cli.Token, nodes)
 			}
 
 			// Deal with per-request errors
 			var reqErrorsOccurred = false
-			for _, e := range reqErrs {
+			for _, e := range results.Errors() {
 				if e != nil {
 					log.Logger.Error().Err(e).Msg("failed to add node")
 					reqErrorsOccurred = true
 				}
 			}
 			var names []string
-			for _, node := range nodesCreated {
+			for _, node := range results.Values() {
 				names = append(names, node.Metadata.Name)
 			}
 			log.Logger.Debug().Msgf("nodes created: %q", names)

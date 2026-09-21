@@ -87,7 +87,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off request
-				groupSet, reqErr = metadataServiceClient.SetGroup(cli.Token, args[0], group)
+				groupSet, reqErr = metadataServiceClient.SetGroup(cmd.Context(), cli.Token, args[0], group)
 			} else {
 				// Use simple API (spec)
 
@@ -104,7 +104,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off request
-				groupSet, reqErr = metadataServiceClient.SetGroupSpec(cli.Token, args[0], spec)
+				groupSet, reqErr = metadataServiceClient.SetGroupSpec(cmd.Context(), cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
 				return cli.ClassifyClientError(reqErr, "failed to set group", "failed to set group")

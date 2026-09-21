@@ -105,7 +105,7 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off request
-				cfgSet, reqErr = bootServiceClient.SetBootConfig(cli.Token, args[0], bcs)
+				cfgSet, reqErr = bootServiceClient.SetBootConfig(cmd.Context(), cli.Token, args[0], bcs)
 			} else {
 				// Use simple API (spec)
 
@@ -122,7 +122,7 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off request
-				cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cli.Token, args[0], spec)
+				cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cmd.Context(), cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to set boot configuration: %w", reqErr)

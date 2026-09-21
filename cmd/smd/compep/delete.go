@@ -116,7 +116,7 @@ See ochami-smd(1) for more details.`,
 			// Perform deletion
 			if cmd.Flag("all").Changed {
 				// If --all passed, we don't care about any passed arguments
-				_, err := smdClient.DeleteComponentEndpointsAll(cli.Token)
+				_, err := smdClient.DeleteComponentEndpointsAll(cmd.Context(), cli.Token)
 				if err != nil {
 					return cli.ClassifyClientError(err,
 						"SMD component endpoint deletion yielded unsuccessful HTTP response",
@@ -124,13 +124,10 @@ See ochami-smd(1) for more details.`,
 				}
 			} else {
 				// If --all not passed, pass argument list to deletion logic
-				_, errs, err := smdClient.DeleteComponentEndpoints(cli.Token, xnameSlice...)
-				if err != nil {
-					return cli.Errorf(cli.CodeNetwork, "failed to delete component endpoints in SMD: %w", err)
-				}
+				results := smdClient.DeleteComponentEndpoints(cmd.Context(), cli.Token, xnameSlice...)
 				// Since smdClient.DeleteComponentEndpoints does the deletion iteratively, we need to
 				// deal with each error that might have occurred.
-				if err := cli.AggregateItemErrors(errs, "SMD component endpoint deletion"); err != nil {
+				if err := cli.AggregateItemErrors(results.Errors(), "SMD component endpoint deletion"); err != nil {
 					return err
 				}
 			}

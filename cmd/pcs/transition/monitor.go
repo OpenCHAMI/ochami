@@ -6,6 +6,7 @@
 package transition
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -56,7 +57,7 @@ type transitionProgress struct {
 // monitor" command depends on. Defining it here lets tests drive the polling
 // loop with a fake that returns a scripted sequence of transition states.
 type pcsTransitionClient interface {
-	GetTransition(transitionID, token string) (client.HTTPEnvelope, error)
+	GetTransition(context.Context, string, string) (client.HTTPEnvelope, error)
 }
 
 // pcsTransitionClientProvider builds a pcsTransitionClient from the command
@@ -124,7 +125,7 @@ See ochami-pcs(1) for more details.`,
 
 			// Poll transition state until it is complete or aborted
 			for {
-				transitionHttpEnv, err := pcsClient.GetTransition(transitionID, cli.Token)
+				transitionHttpEnv, err := pcsClient.GetTransition(cmd.Context(), transitionID, cli.Token)
 				if err != nil {
 					return cli.Errorf(cli.CodeNetwork, "failed to get transition: %w", err)
 				}

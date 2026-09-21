@@ -35,7 +35,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Make request
-			outBytes, err := metadataServiceClient.ListDefaults(cli.Token, cli.FormatOutput)
+			outBytes, err := metadataServiceClient.ListDefaults(cmd.Context(), cli.Token, cli.FormatOutput)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to list cluster defaults", "failed to list cluster defaults")
 

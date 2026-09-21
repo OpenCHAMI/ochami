@@ -12,6 +12,7 @@ package cloud_init
 // is covered in cloud_init_errors_test.go.
 
 import (
+	"context"
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
@@ -39,9 +40,9 @@ func TestSimpleGetters(t *testing.T) {
 		call     func(cic *CloudInitClient) error
 		wantPath string
 	}{
-		{"version", func(cic *CloudInitClient) error { _, e := cic.GetVersion(); return e }, "/version"},
-		{"api", func(cic *CloudInitClient) error { _, e := cic.GetAPI(); return e }, "/openapi.json"},
-		{"defaults", func(cic *CloudInitClient) error { _, e := cic.GetDefaults("tok"); return e }, "/admin/cluster-defaults"},
+		{"version", func(cic *CloudInitClient) error { _, e := cic.GetVersion(context.Background()); return e }, "/version"},
+		{"api", func(cic *CloudInitClient) error { _, e := cic.GetAPI(context.Background()); return e }, "/openapi.json"},
+		{"defaults", func(cic *CloudInitClient) error { _, e := cic.GetDefaults(context.Background(), "tok"); return e }, "/admin/cluster-defaults"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -72,15 +73,12 @@ func TestGetGroups_All(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, errs, err := cic.GetGroups("tok")
-	if err != nil {
-		t.Fatalf("GetGroups func error: %v", err)
-	}
+	results := cic.GetGroups(context.Background(), "tok")
 	if gotPath != "/admin/groups" {
 		t.Errorf("path = %q, want /admin/groups", gotPath)
 	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single nil error", results)
 	}
 }
 
@@ -94,12 +92,9 @@ func TestGetGroups_ByID(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, errs, err := cic.GetGroups("tok", "compute", "storage")
-	if err != nil {
-		t.Fatalf("GetGroups func error: %v", err)
-	}
-	if len(errs) != 2 {
-		t.Fatalf("per-item errors length = %d, want 2", len(errs))
+	results := cic.GetGroups(context.Background(), "tok", "compute", "storage")
+	if len(results) != 2 {
+		t.Fatalf("results length = %d, want 2", len(results))
 	}
 	want := []string{"/admin/groups/compute", "/admin/groups/storage"}
 	if len(paths) != 2 || paths[0] != want[0] || paths[1] != want[1] {
@@ -117,12 +112,12 @@ func TestGetNodeData_Success(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, errs, err := cic.GetNodeData(CloudInitUserData, "tok", "x0c0s0b0n0")
+	results, err := cic.GetNodeData(context.Background(), CloudInitUserData, "tok", "x0c0s0b0n0")
 	if err != nil {
 		t.Fatalf("GetNodeData func error: %v", err)
 	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single nil error", results)
 	}
 	if gotPath != "/admin/impersonation/x0c0s0b0n0/user-data" {
 		t.Errorf("path = %q, want /admin/impersonation/x0c0s0b0n0/user-data", gotPath)
@@ -137,7 +132,7 @@ func TestPostDefaults_Success(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	if _, err := cic.PostDefaults(cistore.ClusterDefaults{ClusterName: "demo"}, "tok"); err != nil {
+	if _, err := cic.PostDefaults(context.Background(), cistore.ClusterDefaults{ClusterName: "demo"}, "tok"); err != nil {
 		t.Fatalf("PostDefaults: %v", err)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/admin/cluster-defaults" {
@@ -154,12 +149,9 @@ func TestPostGroups(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 	})
 	defer srv.Close()
-	_, errs, err := cic.PostGroups([]cistore.GroupData{{Name: "compute"}}, "tok")
-	if err != nil {
-		t.Fatalf("PostGroups: %v", err)
-	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	results := cic.PostGroups(context.Background(), []cistore.GroupData{{Name: "compute"}}, "tok")
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single nil error", results)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/admin/groups" {
 		t.Errorf("request = %s %s, want POST /admin/groups", gotMethod, gotPath)
@@ -174,12 +166,9 @@ func TestPutGroups_Success(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	_, errs, err := cic.PutGroups([]cistore.GroupData{{Name: "compute"}}, "tok")
-	if err != nil {
-		t.Fatalf("PutGroups: %v", err)
-	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	results := cic.PutGroups(context.Background(), []cistore.GroupData{{Name: "compute"}}, "tok")
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single nil error", results)
 	}
 	if gotMethod != http.MethodPut || !strings.HasPrefix(gotPath, "/admin/groups/compute") {
 		t.Errorf("request = %s %s, want PUT /admin/groups/compute", gotMethod, gotPath)
@@ -195,12 +184,12 @@ func TestPutInstanceInfo_Success(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	_, errs, err := cic.PutInstanceInfo([]cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}}, "tok")
+	results, err := cic.PutInstanceInfo(context.Background(), []cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}}, "tok")
 	if err != nil {
 		t.Fatalf("PutInstanceInfo: %v", err)
 	}
-	if len(errs) != 1 || errs[0] != nil {
-		t.Errorf("per-item errors = %v, want a single nil", errs)
+	if len(results) != 1 || results[0].Err != nil {
+		t.Errorf("results = %v, want a single nil error", results)
 	}
 	if gotMethod != http.MethodPut || !strings.HasPrefix(gotPath, "/admin/instance-info/x0c0s0b0n0") {
 		t.Errorf("request = %s %s, want PUT /admin/instance-info/x0c0s0b0n0", gotMethod, gotPath)
@@ -218,12 +207,9 @@ func TestDeleteGroups(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer srv.Close()
-	_, errs, err := cic.DeleteGroups("tok", "compute", "storage")
-	if err != nil {
-		t.Fatalf("DeleteGroups: %v", err)
-	}
-	if len(errs) != 2 {
-		t.Fatalf("per-item errors length = %d, want 2", len(errs))
+	results := cic.DeleteGroups(context.Background(), "tok", "compute", "storage")
+	if len(results) != 2 {
+		t.Fatalf("results length = %d, want 2", len(results))
 	}
 	want := []string{"/admin/groups/compute", "/admin/groups/storage"}
 	if len(paths) != 2 || paths[0] != want[0] || paths[1] != want[1] {

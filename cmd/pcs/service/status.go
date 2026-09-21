@@ -6,6 +6,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,8 +40,8 @@ type commandOutput struct {
 }
 
 // Get the status of PCS either "live" or "ready"
-func getStatus(pcsClient *pcs.PCSClient) (string, error) {
-	httpEnv, err := pcsClient.GetReadiness()
+func getStatus(ctx context.Context, pcsClient *pcs.PCSClient) (string, error) {
+	httpEnv, err := pcsClient.GetReadiness(ctx)
 	if err != nil {
 		if errors.Is(err, client.UnsuccessfulHTTPError) {
 			return "", cli.Errorf(cli.CodeHTTP, "PCS status (readiness) request yielded unsuccessful HTTP response: %w", err)
@@ -54,7 +55,7 @@ func getStatus(pcsClient *pcs.PCSClient) (string, error) {
 	}
 
 	// If we are not "ready" then check our "liveness"
-	httpEnv, err = pcsClient.GetLiveness()
+	httpEnv, err = pcsClient.GetLiveness(ctx)
 	if err != nil {
 		if errors.Is(err, client.UnsuccessfulHTTPError) {
 			return "", cli.Errorf(cli.CodeHTTP, "PCS status (liveness) request yielded unsuccessful HTTP response: %w", err)
@@ -110,7 +111,7 @@ See ochami-pcs(1) for more details.`,
 
 			var health healthOutput
 			if flagsProvided {
-				healthHttpEnv, err := pcsClient.GetHealth()
+				healthHttpEnv, err := pcsClient.GetHealth(cmd.Context())
 				if err != nil {
 					return cli.ClassifyClientError(err, "PCS status (health) request yielded unsuccessful HTTP response", "failed to get PCS status (health)")
 
@@ -148,7 +149,7 @@ See ochami-pcs(1) for more details.`,
 
 			// Now deal with the PCS status
 			if reportPCSState {
-				status, err := getStatus(pcsClient)
+				status, err := getStatus(cmd.Context(), pcsClient)
 				if err != nil {
 					return err
 				}

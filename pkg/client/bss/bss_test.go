@@ -10,6 +10,7 @@ package bss
 // bss_errors_test.go.
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -43,7 +44,7 @@ func TestGetBootParams(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := bc.GetBootParams("name=x0c0s0b0n0", "tok"); err != nil {
+	if _, err := bc.GetBootParams(context.Background(), "name=x0c0s0b0n0", "tok"); err != nil {
 		t.Fatalf("GetBootParams: %v", err)
 	}
 	if gotMethod != http.MethodGet {
@@ -77,7 +78,7 @@ func TestPostBootParams(t *testing.T) {
 	defer srv.Close()
 
 	bp := bssTypes.BootParams{Kernel: "https://example/vmlinuz", Macs: []string{"de:ad:be:ef:00:00"}}
-	if _, err := bc.PostBootParams(bp, "tok"); err != nil {
+	if _, err := bc.PostBootParams(context.Background(), bp, "tok"); err != nil {
 		t.Fatalf("PostBootParams: %v", err)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/bootparameters" {
@@ -100,9 +101,18 @@ func TestPutPatchDeleteBootParams(t *testing.T) {
 		call       func(bc *BSSClient) error
 		wantMethod string
 	}{
-		{"put", func(bc *BSSClient) error { _, e := bc.PutBootParams(bssTypes.BootParams{}, "tok"); return e }, http.MethodPut},
-		{"patch", func(bc *BSSClient) error { _, e := bc.PatchBootParams(bssTypes.BootParams{}, "tok"); return e }, http.MethodPatch},
-		{"delete", func(bc *BSSClient) error { _, e := bc.DeleteBootParams(bssTypes.BootParams{}, "tok"); return e }, http.MethodDelete},
+		{"put", func(bc *BSSClient) error {
+			_, e := bc.PutBootParams(context.Background(), bssTypes.BootParams{}, "tok")
+			return e
+		}, http.MethodPut},
+		{"patch", func(bc *BSSClient) error {
+			_, e := bc.PatchBootParams(context.Background(), bssTypes.BootParams{}, "tok")
+			return e
+		}, http.MethodPatch},
+		{"delete", func(bc *BSSClient) error {
+			_, e := bc.DeleteBootParams(context.Background(), bssTypes.BootParams{}, "tok")
+			return e
+		}, http.MethodDelete},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -148,7 +158,7 @@ func TestGetStatus_Components(t *testing.T) {
 			})
 			defer srv.Close()
 
-			if _, err := bc.GetStatus(tc.component); err != nil {
+			if _, err := bc.GetStatus(context.Background(), tc.component); err != nil {
 				t.Fatalf("GetStatus(%q): %v", tc.component, err)
 			}
 			if gotPath != tc.wantPath {
@@ -165,10 +175,10 @@ func TestSimpleGetters(t *testing.T) {
 		call     func(bc *BSSClient) error
 		wantPath string
 	}{
-		{"dumpstate", func(bc *BSSClient) error { _, e := bc.GetDumpstate(); return e }, "/dumpstate"},
-		{"hosts", func(bc *BSSClient) error { _, e := bc.GetHosts(""); return e }, "/hosts"},
-		{"bootscript", func(bc *BSSClient) error { _, e := bc.GetBootScript(""); return e }, "/bootscript"},
-		{"endpoint-history", func(bc *BSSClient) error { _, e := bc.GetEndpointHistory(""); return e }, "/endpoint-history"},
+		{"dumpstate", func(bc *BSSClient) error { _, e := bc.GetDumpstate(context.Background()); return e }, "/dumpstate"},
+		{"hosts", func(bc *BSSClient) error { _, e := bc.GetHosts(context.Background(), ""); return e }, "/hosts"},
+		{"bootscript", func(bc *BSSClient) error { _, e := bc.GetBootScript(context.Background(), ""); return e }, "/bootscript"},
+		{"endpoint-history", func(bc *BSSClient) error { _, e := bc.GetEndpointHistory(context.Background(), ""); return e }, "/endpoint-history"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

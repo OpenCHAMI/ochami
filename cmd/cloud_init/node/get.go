@@ -70,14 +70,14 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get node group data
-			henvs, errs, err := cloudInitClient.GetNodeGroupData(cli.Token, args[0], args[1:]...)
+			results, err := cloudInitClient.GetNodeGroupData(cmd.Context(), cli.Token, args[0], args[1:]...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get node group data: %w", err)
 			}
 			// Since the requests are done iteratively, we need to
 			// deal with each error that might have occurred.
 			var errorsOccurred = false
-			for _, e := range errs {
+			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(e).Msg("cloud-init node group request yielded unsuccessful HTTP response")
@@ -93,7 +93,7 @@ See ochami-cloud-init(1) for more details.`,
 
 			// Collect node group data into string array
 			var gSlice []string
-			for idx, henv := range henvs {
+			for idx, henv := range results.Values() {
 				// Warn and don't add to list if cloud-config is empty for group
 				if len(henv.Body) == 0 {
 					log.Logger.Warn().Msgf("cloud-config for group %s was empty, not printing for node %s", args[1+idx], args[0])
@@ -152,14 +152,14 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get meta-data
-			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitMetaData, cli.Token, args...)
+			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitMetaData, cli.Token, args...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get node meta-data: %w", err)
 			}
 			// Since the requests are done iteratively, we need to
 			// deal with each error that might have occurred.
 			var errorsOccurred = false
-			for _, e := range errs {
+			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(e).Msg("cloud-init node meta-data request yielded unsuccessful HTTP response")
@@ -176,7 +176,7 @@ See ochami-cloud-init(1) for more details.`,
 			// Collect node data into YAML array
 			var iiSlice []map[string]interface{}
 			errorsOccurred = false
-			for _, henv := range henvs {
+			for _, henv := range results.Values() {
 				var ii map[string]interface{}
 				if err := yaml.Unmarshal(henv.Body, &ii); err != nil {
 					log.Logger.Error().Err(err).Msg("failed to unmarshal HTTP body into group")
@@ -236,14 +236,14 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get user-data
-			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitUserData, cli.Token, args...)
+			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitUserData, cli.Token, args...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get node user-data: %w", err)
 			}
 			// Since the requests are done iteratively, we need to
 			// deal with each error that might have occurred.
 			var errorsOccurred = false
-			for _, e := range errs {
+			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(e).Msg("cloud-init node user-data request yielded unsuccessful HTTP response")
@@ -259,7 +259,7 @@ See ochami-cloud-init(1) for more details.`,
 
 			// Collect node data into string array
 			var iiSlice []string
-			for _, henv := range henvs {
+			for _, henv := range results.Values() {
 				iiSlice = append(iiSlice, string(henv.Body))
 			}
 
@@ -313,14 +313,14 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get vendor-data
-			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitVendorData, cli.Token, args...)
+			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitVendorData, cli.Token, args...)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get node vendor-data: %w", err)
 			}
 			// Since the requests are done iteratively, we need to
 			// deal with each error that might have occurred.
 			var errorsOccurred = false
-			for _, e := range errs {
+			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
 						log.Logger.Error().Err(e).Msg("cloud-init node vendor-data request yielded unsuccessful HTTP response")
@@ -336,7 +336,7 @@ See ochami-cloud-init(1) for more details.`,
 
 			// Collect node data into string array
 			var iiSlice []string
-			for _, henv := range henvs {
+			for _, henv := range results.Values() {
 				iiSlice = append(iiSlice, string(henv.Body))
 			}
 

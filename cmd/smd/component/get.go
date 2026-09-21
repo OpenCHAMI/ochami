@@ -43,7 +43,7 @@ See ochami-smd(1) for more details.`,
 					return err
 				}
 
-				httpEnv, err = smdClient.GetComponentsXname(cmd.Flag("xname").Value.String(), cli.Token)
+				httpEnv, err = smdClient.GetComponentsXname(cmd.Context(), cmd.Flag("xname").Value.String(), cli.Token)
 			} else if cmd.Flag("nid").Changed {
 				// This endpoint requires authentication, so a token is needed
 				if err := cli.SetToken(cmd); err != nil {
@@ -58,9 +58,9 @@ See ochami-smd(1) for more details.`,
 				if err != nil {
 					return cli.Errorf(cli.CodeUsage, "error getting nid from flag: %w", err)
 				}
-				httpEnv, err = smdClient.GetComponentsNid(nid, cli.Token)
+				httpEnv, err = smdClient.GetComponentsNid(cmd.Context(), nid, cli.Token)
 			} else {
-				httpEnv, err = smdClient.GetComponentsAll()
+				httpEnv, err = smdClient.GetComponentsAll(cmd.Context())
 			}
 			if err != nil {
 				return cli.ClassifyClientError(err, "SMD component request yielded unsuccessful HTTP response", "failed to request components from SMD")

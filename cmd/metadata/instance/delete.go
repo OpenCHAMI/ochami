@@ -57,15 +57,11 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			instancesDeleted, errs, err := metadataServiceClient.DeleteInstanceInfos(cli.Token, args)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to delete instance infos", "failed to delete instance infos")
-
-			}
+			results := metadataServiceClient.DeleteInstanceInfos(cmd.Context(), cli.Token, args)
 
 			// Deal with per-request errors
 			var errorsOccurred = false
-			for _, err := range errs {
+			for _, err := range results.Errors() {
 				if err != nil {
 					log.Logger.Error().Err(err).Msg("failed to delete instance info")
 					errorsOccurred = true
@@ -73,7 +69,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Print UIDs of deleted items
-			log.Logger.Info().Msgf("Instance infos deleted: %+v", instancesDeleted)
+			log.Logger.Info().Msgf("Instance infos deleted: %+v", results.Values())
 
 			// Warn if any request errors occurred
 			if errorsOccurred {

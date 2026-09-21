@@ -75,7 +75,7 @@ See ochami-bss(1) for more details.`,
 			}
 			qstr := values.Encode()
 
-			httpEnv, err := bssClient.GetBootScript(qstr)
+			httpEnv, err := bssClient.GetBootScript(cmd.Context(), qstr)
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS boot script request yielded unsuccessful HTTP response", "failed to request boot script from BSS")
 

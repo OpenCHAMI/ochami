@@ -33,7 +33,7 @@ See ochami-bss(1) for more details.`,
 			}
 
 			// Determine which component to get status for and send request
-			httpEnv, err := bssClient.GetStatus("version")
+			httpEnv, err := bssClient.GetStatus(cmd.Context(), "version")
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS version request yielded unsuccessful HTTP response", "failed to get BSS version")
 

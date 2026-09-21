@@ -6,6 +6,7 @@ package boot_service
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/openchami/ochami/pkg/format"
 )
 
+// TestNewClientPropagatesShowToken verifies generated-client logging honors token visibility settings.
 func TestNewClientPropagatesShowToken(t *testing.T) {
 	const token = "eyJhbGciOiJIUzI1NiJ9.payload.sig"
 
@@ -62,7 +64,7 @@ func TestNewClientPropagatesShowToken(t *testing.T) {
 				t.Fatalf("failed to create client: %v", err)
 			}
 
-			if _, err := c.ListNodes(token, format.DataFormatJson); err != nil {
+			if _, err := c.ListNodes(context.Background(), token, format.DataFormatJson); err != nil {
 				t.Fatalf("failed to list nodes: %v", err)
 			}
 
