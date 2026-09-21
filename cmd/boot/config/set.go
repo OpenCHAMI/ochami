@@ -11,9 +11,73 @@ import (
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/boot_service"
+
+	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 )
+
+// bootConfigSetOptions holds the flag values for the boot config set command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type bootConfigSetOptions struct {
+	Envelope bool
+}
+
+// runCoreBootConfigSet contains the core logic for the boot config set command.
+// It takes the parsed options and performs the actual work of setting boot configuration details.
+func runCoreBootConfigSet(cmd *cobra.Command, opts *bootConfigSetOptions, args []string, bootServiceClient *boot_service.BootServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var cfgSet *api.BootConfiguration
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read boot configuration data
+		bcs := boot_service_client.UpdateBootConfigurationRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &bcs); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &bcs); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		cfgSet, reqErr = bootServiceClient.SetBootConfig(cmd.Context(), cli.Token, args[0], bcs)
+	} else {
+		// Use simple API (spec)
+
+		// Read boot configuration data
+		spec := api.BootConfigurationSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cmd.Context(), cli.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.Errorf(cli.CodeNetwork, "failed to set boot configuration: %w", reqErr)
+	}
+
+	log.Logger.Debug().Msgf("boot config set: %+v", cfgSet)
+
+	return nil
+}
 
 func newCmdBootConfigSet() *cobra.Command {
 	// bootConfigSetCmd represents the "boot config set" command
@@ -79,58 +143,15 @@ See ochami-boot(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &bootConfigSetOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
-
-			var cfgSet *api.BootConfiguration
-			var reqErr error
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read boot configuration data
-				bcs := boot_service_client.UpdateBootConfigurationRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &bcs); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &bcs); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				cfgSet, reqErr = bootServiceClient.SetBootConfig(cmd.Context(), cli.Token, args[0], bcs)
-			} else {
-				// Use simple API (spec)
-
-				// Read boot configuration data
-				spec := api.BootConfigurationSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &spec); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cmd.Context(), cli.Token, args[0], spec)
-			}
-			if reqErr != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to set boot configuration: %w", reqErr)
-			}
-
-			log.Logger.Debug().Msgf("boot config set: %+v", cfgSet)
-
-			return nil
+			return runCoreBootConfigSet(cmd, opts, args, bootServiceClient)
 		},
 	}
 

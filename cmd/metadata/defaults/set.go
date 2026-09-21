@@ -11,9 +11,79 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/metadata_service"
+
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 )
+
+// metadataDefaultsSetOptions holds the flag values for the metadata defaults set command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type metadataDefaultsSetOptions struct {
+	Envelope bool
+}
+
+// runCoreMetadataDefaultsSet contains the core logic for the metadata defaults set command.
+// It takes the parsed options and performs the actual work of setting cluster defaults.
+func runCoreMetadataDefaultsSet(cmd *cobra.Command, opts *metadataDefaultsSetOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var defaultsSet *api.ClusterDefaults
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read cluster defaults data
+		defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &defaults); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &defaults); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		defaultsSet, reqErr = metadataServiceClient.SetDefaults(cmd.Context(), cli.Token, args[0], defaults)
+	} else {
+		// Use simple API (spec)
+
+		// Read cluster defaults data
+		spec := api.ClusterDefaultsSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cmd.Context(), cli.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.ClassifyClientError(reqErr, "failed to set cluster defaults", "failed to set cluster defaults")
+
+	}
+
+	// Check that a modified item was returned
+	if defaultsSet == nil {
+		return cli.Errorf(cli.CodeGeneric, "cluster defaults set returned no resource")
+	}
+
+	log.Logger.Debug().Msgf("cluster defaults set: %+v", defaultsSet)
+
+	return nil
+}
 
 func newCmdMetadataDefaultsSet() *cobra.Command {
 	// metadataDefaultsSetCmd represents the "metadata defaults set" command
@@ -64,65 +134,15 @@ See ochami-metadata(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &metadataDefaultsSetOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
-
-			var defaultsSet *api.ClusterDefaults
-			var reqErr error
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read cluster defaults data
-				defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &defaults); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &defaults); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				defaultsSet, reqErr = metadataServiceClient.SetDefaults(cmd.Context(), cli.Token, args[0], defaults)
-			} else {
-				// Use simple API (spec)
-
-				// Read cluster defaults data
-				spec := api.ClusterDefaultsSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &spec); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cmd.Context(), cli.Token, args[0], spec)
-			}
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to set cluster defaults", "failed to set cluster defaults")
-
-			}
-
-			// Check that a modified item was returned
-			if defaultsSet == nil {
-				return cli.Errorf(cli.CodeGeneric, "cluster defaults set returned no resource")
-			}
-
-			// Print UIDs of modified items
-			log.Logger.Info().Msgf("Cluster defaults set: %+v", []string{defaultsSet.Metadata.UID})
-
-			return nil
+			return runCoreMetadataDefaultsSet(cmd, opts, args, metadataServiceClient)
 		},
 	}
 

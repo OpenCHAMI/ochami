@@ -18,6 +18,67 @@ import (
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
 
+// groupAddOptions holds the flag values for the smd group add command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type groupAddOptions struct {
+	Description    string
+	Tags           []string
+	ExclusiveGroup string
+	Members        []string
+}
+
+// runCoreGroupAdd contains the core logic for the smd group add command.
+// It takes the parsed options and performs the actual work of adding groups.
+func runCoreGroupAdd(cmd *cobra.Command, opts *groupAddOptions, args []string, smdClient *smd.SMDClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Check if a CA certificate was passed and load it into client if valid
+	if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+		return err
+	}
+
+	var groups []smd.Group
+	if cmd.Flag("data").Changed {
+		// Use payload file if passed
+		if err := cli.HandlePayload(cmd, &groups); err != nil {
+			return err
+		}
+	} else {
+		// ...otherwise use CLI options/args
+		group := smd.Group{Label: args[0]}
+		group.Description = opts.Description
+		group.Tags = opts.Tags
+		group.ExclusiveGroup = opts.ExclusiveGroup
+		group.Members.IDs = opts.Members
+		groups = append(groups, group)
+	}
+
+	// Send off request
+	results := smdClient.PostGroups(cmd.Context(), groups, cli.Token)
+	// Since smdClient.PostGroups does the addition iteratively, we need to deal with
+	// each error that might have occurred.
+	var errorsOccurred = false
+	for _, e := range results.Errors() {
+		if e != nil {
+			if errors.Is(e, client.UnsuccessfulHTTPError) {
+				log.Logger.Error().Err(e).Msg("SMD group request yielded unsuccessful HTTP response")
+			} else {
+				log.Logger.Error().Err(e).Msg("failed to add group(s) to SMD")
+			}
+			errorsOccurred = true
+		}
+	}
+	if errorsOccurred {
+		return cli.Errorf(cli.CodeHTTP, "SMD group addition completed with errors")
+	}
+
+	return nil
+}
+
 func newCmdGroupAdd() *cobra.Command {
 	// groupAddCmd represents the "smd group add" command
 	var groupAddCmd = &cobra.Command{
@@ -89,60 +150,24 @@ See ochami-smd(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &groupAddOptions{}
+			if cmd.Flag("description").Changed {
+				opts.Description, _ = cmd.Flags().GetString("description") //nolint:errcheck // Flag registered with matching type, error impossible
+			}
+			if cmd.Flag("tag").Changed {
+				opts.Tags, _ = cmd.Flags().GetStringSlice("tag") //nolint:errcheck // Flag registered with matching type, error impossible
+			}
+			if cmd.Flag("exclusive-group").Changed {
+				opts.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group") //nolint:errcheck // Flag registered with matching type, error impossible
+			}
+			if cmd.Flag("member").Changed {
+				opts.Members, _ = cmd.Flags().GetStringSlice("member") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// Check if a CA certificate was passed and load it into client if valid
-			if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
-				return err
-			}
-
-			var groups []smd.Group
-			if cmd.Flag("data").Changed {
-				// Use payload file if passed
-				if err := cli.HandlePayload(cmd, &groups); err != nil {
-					return err
-				}
-			} else {
-				// ...otherwise use CLI options/args
-				group := smd.Group{Label: args[0]}
-				if cmd.Flag("description").Changed {
-					group.Description, _ = cmd.Flags().GetString("description") //nolint:errcheck // flag is registered with the matching type on this command
-				}
-				if cmd.Flag("tag").Changed {
-					group.Tags, _ = cmd.Flags().GetStringSlice("tag") //nolint:errcheck // flag is registered with the matching type on this command
-				}
-				if cmd.Flag("exclusive-group").Changed {
-					group.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group") //nolint:errcheck // flag is registered with the matching type on this command
-				}
-				if cmd.Flag("member").Changed {
-					group.Members.IDs, _ = cmd.Flags().GetStringSlice("member") //nolint:errcheck // flag is registered with the matching type on this command
-				}
-				groups = append(groups, group)
-			}
-
-			// Send off request
-			results := smdClient.PostGroups(cmd.Context(), groups, cli.Token)
-			// Since smdClient.PostGroups does the addition iteratively, we need to deal with
-			// each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range results.Errors() {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("SMD group request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to add group(s) to SMD")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "SMD group addition completed with errors")
-			}
-
-			return nil
+			return runCoreGroupAdd(cmd, opts, args, smdClient)
 		},
 	}
 

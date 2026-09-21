@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/pkg/client/pcs"
 	"github.com/openchami/ochami/pkg/format"
 
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
@@ -33,10 +34,55 @@ func isValidOperation(operation string) bool {
 	return false
 }
 
+// transitionStartOptions holds the flag values for the pcs transition start command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type transitionStartOptions struct {
+	Xnames []string
+}
+
 // createOutput represents the output of the start transition command
 type createOutput struct {
 	TransitionID string
 	Operation    string
+}
+
+// runCoreTransitionStart contains the core logic for the pcs transition start command.
+// It takes the parsed options and performs the actual work of starting a transition.
+func runCoreTransitionStart(cmd *cobra.Command, opts *transitionStartOptions, args []string, pcsClient *pcs.PCSClient) error {
+	operation := args[0]
+
+	if !isValidOperation(operation) {
+		// Include invalid operation in error message
+		return cli.Errorf(cli.CodeUsage, "invalid operation: %s", operation)
+	}
+
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Create transition
+	transitionHttpEnv, err := pcsClient.CreateTransition(cmd.Context(), operation, nil, opts.Xnames, cli.Token)
+	if err != nil {
+		return cli.ClassifyClientError(err, "PCS transition create request yielded unsuccessful HTTP response", "failed to create transition")
+	}
+
+	// Unmarshall the transition
+	var output createOutput
+	err = json.Unmarshal(transitionHttpEnv.Body, &output)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to unmarshal output: %w", err)
+	}
+
+	// Print output
+	outBytes, err := format.MarshalData(output, cli.FormatOutput)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+	}
+	fmt.Fprintln(cli.Ios.Out(), string(outBytes))
+
+	return nil
 }
 
 func newCmdTransitionStart() *cobra.Command {
@@ -51,55 +97,27 @@ See ochami-pcs(1) for more details.`,
 		Example: `  # Turn on a set of nodes
   ochami pcs transition start --xname "x0c0s7b0n1,x0c0s7b0n0,x0c0s4b0n1" on`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			operation := args[0]
-
-			if !isValidOperation(operation) {
-				// Include invalid operation in error message
-				return cli.Errorf(cli.CodeUsage, "invalid operation: %s", operation)
-			}
-
 			// Create client to use for requests
 			pcsClient, err := pcs_lib.GetClient(cmd)
 			if err != nil {
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &transitionStartOptions{}
+			if cmd.Flag("xname").Changed {
+				opts.Xnames, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// Get the list of target components
-			xnames, _ := cmd.Flags().GetStringSlice("xname") //nolint:errcheck // flag is registered with the matching type on this command
-
-			// Create transition
-			transitionHttpEnv, err := pcsClient.CreateTransition(cmd.Context(), operation, nil, xnames, cli.Token)
-			if err != nil {
-				return cli.ClassifyClientError(err, "PCS transition create request yielded unsuccessful HTTP response", "failed to create transition")
-
-			}
-
-			// Unmarshall the transition
-			var output createOutput
-			err = json.Unmarshal(transitionHttpEnv.Body, &output)
-			if err != nil {
-				return cli.Errorf(cli.CodePayload, "failed to unmarshal output: %w", err)
-			}
-
-			// Print output
-			outBytes, err := format.MarshalData(output, cli.FormatOutput)
-			if err != nil {
-				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
-			}
-			fmt.Fprintln(cli.Ios.Out(), string(outBytes))
-
-			return nil
+			return runCoreTransitionStart(cmd, opts, args, pcsClient)
 		},
 	}
 
 	// Create flags
 	transitionStartCmd.Flags().StringSliceP("xname", "x", []string{}, "The list of target components")
-	_ = transitionStartCmd.MarkFlagRequired("xname") //nolint:errcheck // xname is registered immediately above
+	_ = transitionStartCmd.MarkFlagRequired("xname") //nolint:errcheck // Flag registered immediately above, error impossible
 
 	transitionStartCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 

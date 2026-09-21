@@ -11,9 +11,79 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/metadata_service"
+
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 )
+
+// metadataPeerSetOptions holds the flag values for the metadata peer set command.
+// This struct is used to avoid ignored errors by providing a clean interface
+// for accessing flag values that are registered with the correct types.
+type metadataPeerSetOptions struct {
+	Envelope bool
+}
+
+// runCoreMetadataPeerSet contains the core logic for the metadata peer set command.
+// It takes the parsed options and performs the actual work of setting WireGuard peer details.
+func runCoreMetadataPeerSet(cmd *cobra.Command, opts *metadataPeerSetOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var peerSet *api.WireGuardPeer
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read peer data
+		peer := metadata_service_client.UpdateWireGuardPeerRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &peer); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &peer); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		peerSet, reqErr = metadataServiceClient.SetWireGuardPeer(cmd.Context(), cli.Token, args[0], peer)
+	} else {
+		// Use simple API (spec)
+
+		// Read peer data
+		spec := api.WireGuardPeerSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		peerSet, reqErr = metadataServiceClient.SetWireGuardPeerSpec(cmd.Context(), cli.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.ClassifyClientError(reqErr, "failed to set WireGuard peer", "failed to set WireGuard peer")
+
+	}
+
+	// Check that a modified item was returned
+	if peerSet == nil {
+		return cli.Errorf(cli.CodeGeneric, "WireGuard peer set returned no resource")
+	}
+
+	log.Logger.Debug().Msgf("WireGuard peer set: %+v", peerSet)
+
+	return nil
+}
 
 func newCmdMetadataPeerSet() *cobra.Command {
 	// metadataPeerSetCmd represents the "metadata peer set" command
@@ -69,65 +139,15 @@ See ochami-metadata(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so we ignore errors with explicit comments
+			opts := &metadataPeerSetOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
-
-			var peerSet *api.WireGuardPeer
-			var reqErr error
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read peer data
-				peer := metadata_service_client.UpdateWireGuardPeerRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &peer); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &peer); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				peerSet, reqErr = metadataServiceClient.SetWireGuardPeer(cmd.Context(), cli.Token, args[0], peer)
-			} else {
-				// Use simple API (spec)
-
-				// Read peer data
-				spec := api.WireGuardPeerSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &spec); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				peerSet, reqErr = metadataServiceClient.SetWireGuardPeerSpec(cmd.Context(), cli.Token, args[0], spec)
-			}
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to set WireGuard peer", "failed to set WireGuard peer")
-
-			}
-
-			// Check that a modified item was returned
-			if peerSet == nil {
-				return cli.Errorf(cli.CodeGeneric, "WireGuard peer set returned no resource")
-			}
-
-			// Print UIDs of modified items
-			log.Logger.Info().Msgf("WireGuard peers set: %+v", []string{peerSet.Metadata.UID})
-
-			return nil
+			return runCoreMetadataPeerSet(cmd, opts, args, metadataServiceClient)
 		},
 	}
 
