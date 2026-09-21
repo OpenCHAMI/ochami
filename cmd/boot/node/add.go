@@ -10,11 +10,75 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
+
+	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 )
+
+// bootNodeAddOptions holds the flag values for the boot node add command.
+type bootNodeAddOptions struct {
+	Envelope bool
+}
+
+// runCoreBootNodeAdd contains the core logic for the boot node add command.
+// It takes the parsed options and performs the actual work of adding nodes.
+func runCoreBootNodeAdd(cmd *cobra.Command, opts *bootNodeAddOptions, bootServiceClient *boot_service.BootServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var results client.BatchResult[*api.Node]
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read node data
+		nodes := []boot_service_client.CreateNodeRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[boot_service_client.CreateNodeRequest](cmd, &nodes); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateNodeRequest](cmd, &nodes); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = bootServiceClient.AddNodes(cmd.Context(), cli.Token, nodes)
+	} else {
+		// Use simple API (spec)
+
+		// Read node data
+		nodes := []boot_service.NodeSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[boot_service.NodeSpec](cmd, &nodes); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[boot_service.NodeSpec](cmd, &nodes); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = bootServiceClient.AddNodeSpecs(cmd.Context(), cli.Token, nodes)
+	}
+
+	var names []string
+	for _, node := range results.Values() {
+		names = append(names, node.Metadata.Name)
+	}
+	log.Logger.Debug().Msgf("nodes created: %q", names)
+	if err := cli.AggregateItemErrors(results.Errors(), "node addition"); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func newCmdBootNodeAdd() *cobra.Command {
 	// bootNodeAddCmd represents the "boot node add" command
@@ -112,61 +176,15 @@ See ochami-boot(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &bootNodeAddOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope")
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope")
-
-			var results client.BatchResult[*api.Node]
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read node data
-				nodes := []boot_service_client.CreateNodeRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[boot_service_client.CreateNodeRequest](cmd, &nodes); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateNodeRequest](cmd, &nodes); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = bootServiceClient.AddNodes(cmd.Context(), cli.Token, nodes)
-			} else {
-				// Use simple API (spec)
-
-				// Read node data
-				nodes := []boot_service.NodeSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[boot_service.NodeSpec](cmd, &nodes); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[boot_service.NodeSpec](cmd, &nodes); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = bootServiceClient.AddNodeSpecs(cmd.Context(), cli.Token, nodes)
-			}
-
-			var names []string
-			for _, node := range results.Values() {
-				names = append(names, node.Metadata.Name)
-			}
-			log.Logger.Debug().Msgf("nodes created: %q", names)
-			if err := cli.AggregateItemErrors(results.Errors(), "node addition"); err != nil {
-				return err
-			}
-
-			return nil
+			return runCoreBootNodeAdd(cmd, opts, bootServiceClient)
 		},
 	}
 
