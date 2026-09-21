@@ -30,12 +30,7 @@ func NewCmd() *cobra.Command {
 		Long: `Communicate with the metadata service.
 
 See ochami-metadata(1) for more details.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return cli.PrintUsageHandleError(cmd)
-			}
-			return nil
-		},
+		RunE: cli.PrintUsage,
 	}
 
 	// Create flags

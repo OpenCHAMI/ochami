@@ -27,11 +27,6 @@ import (
 	version_cmd "github.com/openchami/ochami/cmd/version"
 )
 
-var (
-	logLevel  string
-	logFormat string
-)
-
 func NewRootCmd() *cobra.Command {
 	// rootCmd represents the base command when called without any subcommands
 	var rootCmd = &cobra.Command{
@@ -76,10 +71,8 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// With no subcommand, print usage and exit successfully.
-			return cli.PrintUsageHandleError(cmd)
-		},
+		// With no subcommand, print usage and exit successfully.
+		RunE: cli.PrintUsage,
 	}
 
 	// Create root command flags
