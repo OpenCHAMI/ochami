@@ -7,6 +7,7 @@ package client
 import (
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -45,5 +46,39 @@ func TestUseCACert_RejectsInvalidPEM(t *testing.T) {
 	}
 	if err := c.UseCACert(path); err == nil {
 		t.Fatal("UseCACert accepted invalid PEM")
+	}
+}
+
+// closedServerClient returns a client whose base URI points at a server that
+// has been closed, so every request fails at the transport layer.
+func closedServerClient(t *testing.T) *OchamiClient {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	url := srv.URL
+	srv.Close()
+	oc, err := NewOchamiClient("test", url, WithInsecure(true))
+	if err != nil {
+		t.Fatalf("NewOchamiClient: %v", err)
+	}
+	return oc
+}
+
+func TestDataWrappers_RequestErrors(t *testing.T) {
+	oc := closedServerClient(t)
+
+	if _, err := oc.GetData("/x", "", nil); err == nil {
+		t.Error("GetData against closed server = nil, want error")
+	}
+	if _, err := oc.PostData("/x", "", nil, []byte(`{}`)); err == nil {
+		t.Error("PostData against closed server = nil, want error")
+	}
+	if _, err := oc.PutData("/x", "", nil, []byte(`{}`)); err == nil {
+		t.Error("PutData against closed server = nil, want error")
+	}
+	if _, err := oc.PatchData("/x", "", nil, []byte(`{}`)); err == nil {
+		t.Error("PatchData against closed server = nil, want error")
+	}
+	if _, err := oc.DeleteData("/x", "", nil, nil); err == nil {
+		t.Error("DeleteData against closed server = nil, want error")
 	}
 }

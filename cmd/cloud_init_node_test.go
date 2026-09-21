@@ -92,3 +92,206 @@ func TestCloudInitNodeGetData_HTTPError(t *testing.T) {
 		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
 	}
 }
+
+// TestCloudInitNodeGet_MetadataFormats verifies the output-format variants of
+// "node get meta-data".
+func TestCloudInitNodeGet_MetadataFormats(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("hostname: node01\n"))
+	}))
+	defer srv.Close()
+
+	for _, f := range []string{"json", "json-pretty", "yaml"} {
+		res := runOchami(t, "cloud-init", "node", "get", "meta-data", "--ignore-config",
+			"--uri", srv.URL, "--token", "t", "-F", f, "x0c0s0b0n0")
+		if res.err != nil {
+			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
+		}
+		if !strings.Contains(res.stdout, "node01") {
+			t.Errorf("format %s: stdout = %q, want it to contain the hostname", f, res.stdout)
+		}
+	}
+}
+
+// TestCloudInitNodeGet_Userdata verifies "node get user-data" prints the raw
+// user-data for the node.
+func TestCloudInitNodeGet_Userdata(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n"))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "node", "get", "user-data", "--ignore-config",
+		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "foo: bar") {
+		t.Errorf("stdout = %q, want the user-data content", res.stdout)
+	}
+}
+
+// TestCloudInitNodeGet_Vendordata verifies "node get vendor-data" prints the raw
+// vendor-data for the node.
+func TestCloudInitNodeGet_Vendordata(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("#cloud-config\nvendor: acme\n"))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "node", "get", "vendor-data", "--ignore-config",
+		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "vendor: acme") {
+		t.Errorf("stdout = %q, want the vendor-data content", res.stdout)
+	}
+}
+
+// TestCloudInitNodeGet_MetadataHTTPError verifies a failing meta-data fetch
+// resolves to CodeHTTP via the aggregate.
+func TestCloudInitNodeGet_MetadataHTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "node", "get", "meta-data", "--ignore-config",
+		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestCloudInitNodeGet_UserdataHTTPError verifies a failing user-data fetch
+// resolves to CodeHTTP.
+func TestCloudInitNodeGet_UserdataHTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "node", "get", "user-data", "--ignore-config",
+		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestCloudInitNodeGet_GroupHTTPError verifies a failing node-group fetch
+// resolves to CodeHTTP via the aggregate.
+func TestCloudInitNodeGet_GroupHTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "node", "get", "group", "--ignore-config",
+		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0", "compute")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestCloudInitNodeSet_Stdin verifies "node set" reads payload from stdin when -d
+// is not supplied.
+func TestCloudInitNodeSet_Stdin(t *testing.T) {
+	var gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithInput(t, `[{"id":"x0c0s0b0n0"}]`,
+		"cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodPut {
+		t.Errorf("method = %q, want PUT", gotMethod)
+	}
+}
+
+// TestCloudInitNodeSet_HTTPError verifies a failing "node set" resolves to
+// CodeHTTP via the aggregate.
+func TestCloudInitNodeSet_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "bad", http.StatusBadRequest)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"-d", `[{"id":"x0c0s0b0n0"}]`)
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestCloudInitNodeSet_MalformedPayload verifies malformed inline payload
+// resolves to CodePayload.
+func TestCloudInitNodeSet_MalformedPayload(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"-d", `not json`)
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodePayload {
+		t.Errorf("exit code = %d, want %d (CodePayload)", res.exitCode, cli.CodePayload)
+	}
+}
+
+// TestCloudInitNodeGet_DataHeaderModes verifies the --headers always/never modes
+// for user-data and vendor-data over multiple nodes (exercising the
+// header-printing arms).
+func TestCloudInitNodeGet_DataHeaderModes(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n"))
+	}))
+	defer srv.Close()
+
+	for _, sub := range []string{"user-data", "vendor-data"} {
+		for _, mode := range []string{"always", "never", "multiple"} {
+			res := runOchami(t, "cloud-init", "node", "get", sub, "--ignore-config",
+				"--uri", srv.URL, "--token", "t", "--headers", mode, "x0c0s0b0n0", "x0c0s0b0n1")
+			if res.err != nil {
+				t.Fatalf("%s headers=%s: unexpected error: %v (exit %d)", sub, mode, res.err, res.exitCode)
+			}
+		}
+	}
+}
+
+// TestCloudInitNodeGet_GroupHeaderModes verifies the --headers modes for the node
+// group data over multiple groups.
+func TestCloudInitNodeGet_GroupHeaderModes(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n"))
+	}))
+	defer srv.Close()
+
+	for _, mode := range []string{"always", "never", "multiple"} {
+		res := runOchami(t, "cloud-init", "node", "get", "group", "--ignore-config",
+			"--uri", srv.URL, "--token", "t", "--headers", mode, "x0c0s0b0n0", "compute", "storage")
+		if res.err != nil {
+			t.Fatalf("headers=%s: unexpected error: %v (exit %d)", mode, res.err, res.exitCode)
+		}
+	}
+}

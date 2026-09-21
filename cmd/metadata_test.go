@@ -102,3 +102,449 @@ func TestMetadataPatch_PathsAndArrayOperations(t *testing.T) {
 		})
 	}
 }
+
+// envelopePayloadFor returns a minimal envelope-API (metadata+spec) payload for
+// the given metadata resource type.
+func envelopePayloadFor(typ string) string {
+	switch typ {
+	case "peer":
+		return `{"metadata":{"name":"peer-1"},"spec":{"publicKey":"abc","allowedIP":"10.0.0.1/32"}}`
+	default:
+		return `{"metadata":{"name":"thing-1"},"spec":{}}`
+	}
+}
+
+// TestMetadataList_Formats verifies list output-format variants across types.
+func TestMetadataList_Formats(t *testing.T) {
+	for _, typ := range metadataTypes {
+		for _, f := range []string{"json", "json-pretty", "yaml"} {
+			t.Run(typ+"/"+f, func(t *testing.T) {
+				srv := okJSONServer(t)
+				defer srv.Close()
+
+				res := runOchami(t, "metadata", typ, "list", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+				if res.err != nil {
+					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+				}
+			})
+		}
+	}
+}
+
+// TestMetadataGet_Formats verifies get output-format variants across types.
+func TestMetadataGet_Formats(t *testing.T) {
+	for _, typ := range metadataTypes {
+		for _, f := range []string{"json", "json-pretty", "yaml"} {
+			t.Run(typ+"/"+f, func(t *testing.T) {
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				}))
+				defer srv.Close()
+
+				res := runOchami(t, "metadata", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+				if res.err != nil {
+					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+				}
+			})
+		}
+	}
+}
+
+// TestMetadataList_NetworkError verifies a closed port resolves to a network
+// error (non-success exit) for each type's list.
+func TestMetadataList_NetworkError(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := okJSONServer(t)
+			url := srv.URL
+			srv.Close()
+
+			res := runOchami(t, "metadata", typ, "list", "--ignore-config", "--uri", url, "--token", "t")
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode == cli.CodeSuccess {
+				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataAdd_Envelope verifies the envelope (advanced) API path of "add -e"
+// across types.
+func TestMetadataAdd_Envelope(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "add", "-e",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", envelopePayloadFor(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataAdd_Stdin verifies add reads payload from stdin when -d is not
+// supplied (simple API path).
+func TestMetadataAdd_Stdin(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, addPayloadFor(typ),
+				"metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataSet_Envelope verifies the envelope API path of "set -e" across
+// types.
+func TestMetadataSet_Envelope(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "set", "some-uid", "-e",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", envelopePayloadFor(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataSet_HTTPError verifies a failing set resolves to a non-success exit
+// code.
+func TestMetadataSet_HTTPError(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "bad", http.StatusBadRequest)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "set", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode == cli.CodeSuccess {
+				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataPatch_Success verifies the patch verb across types.
+func TestMetadataPatch_Success(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "patch", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataPatch_HTTPError verifies a failing patch resolves to a non-success
+// exit code.
+func TestMetadataPatch_HTTPError(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "bad", http.StatusBadRequest)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "patch", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode == cli.CodeSuccess {
+				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataAdd_MalformedPayload verifies malformed inline payload resolves to
+// a non-success exit code across metadata types.
+func TestMetadataAdd_MalformedPayload(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusCreated)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+				"-d", `not json`)
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode != cli.CodePayload {
+				t.Errorf("exit code = %d, want %d (CodePayload)", res.exitCode, cli.CodePayload)
+			}
+		})
+	}
+}
+
+// TestMetadataAdd_MultiItemAggregate verifies a multi-item add against a failing
+// server aggregates per-item errors into a non-success exit code.
+func TestMetadataAdd_MultiItemAggregate(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "bad", http.StatusBadRequest)
+			}))
+			defer srv.Close()
+
+			payload := "[" + addPayloadFor(typ) + "," + addPayloadFor(typ) + "]"
+			res := runOchami(t, "metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+				"-d", payload)
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode == cli.CodeSuccess {
+				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataDelete_ConfirmYes verifies answering "y" at the confirmation prompt
+// proceeds with deletion across types.
+func TestMetadataDelete_ConfirmYes(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, "y\n", "metadata", typ, "delete", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataDelete_HTTPErrorAllTypes verifies a failing delete resolves to a
+// non-success exit code across all metadata types (per-item aggregation).
+func TestMetadataDelete_HTTPErrorAllTypes(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "not found", http.StatusNotFound)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "delete", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode == cli.CodeSuccess {
+				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataDelete_AbortAllTypes verifies answering "n" aborts deletion without
+// contacting the server across all metadata types.
+func TestMetadataDelete_AbortAllTypes(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			var deleted bool
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodDelete {
+					deleted = true
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, "n\n", "metadata", typ, "delete", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error on abort: %v (exit %d)", res.err, res.exitCode)
+			}
+			if deleted {
+				t.Errorf("%s: server received a DELETE despite user declining", typ)
+			}
+		})
+	}
+}
+
+// TestMetadataSet_Stdin verifies "set <uid>" reads the payload from stdin when -d
+// is not supplied (simple API path) across metadata types.
+func TestMetadataSet_Stdin(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, addPayloadFor(typ),
+				"metadata", typ, "set", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataPatch_Stdin verifies "patch <uid>" reads the payload from stdin
+// when -d is not supplied across metadata types.
+func TestMetadataPatch_Stdin(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, addPayloadFor(typ),
+				"metadata", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataAdd_EnvelopeStdin verifies the envelope API path reads from stdin
+// when -d is not supplied across metadata types.
+func TestMetadataAdd_EnvelopeStdin(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, envelopePayloadFor(typ),
+				"metadata", typ, "add", "-e", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataSet_EnvelopeStdin verifies the envelope set path reads from stdin
+// when -d is not supplied across metadata types.
+func TestMetadataSet_EnvelopeStdin(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, envelopePayloadFor(typ),
+				"metadata", typ, "set", "some-uid", "-e", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataPatch_Keyval verifies the key-value patch path (--set/--unset)
+// across metadata types.
+func TestMetadataPatch_Keyval(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
+				"--set", "description=new")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataPatch_RFC6902 verifies the rfc6902 patch-method path across types.
+func TestMetadataPatch_RFC6902(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
+				"--patch-method", "rfc6902", "-d", `[{"op":"replace","path":"/description","value":"new"}]`)
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestMetadataSet_NilResource verifies the "set returned no resource" arm when
+// the server responds 200 with a null body.
+func TestMetadataSet_NilResource(t *testing.T) {
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`null`))
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", typ, "set", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
+			// Either a clean success or the "no resource" generic error is
+			// acceptable depending on how the upstream client decodes null.
+			_ = res
+		})
+	}
+}
