@@ -45,16 +45,10 @@ func transitionProvider(c pcsTransitionClient, err error) pcsTransitionClientPro
 func runMonitor(t *testing.T, provider pcsTransitionClientProvider, args ...string) error {
 	t.Helper()
 	cmd := newCmdTransitionMonitorWithClient(provider)
-
-	// Speed up any polling that does occur. This must happen after the
-	// command is built: newCmdTransitionMonitorWithClient registers
-	// --poll-interval via IntVarP, which resets pollInterval to its default
-	// (1) as a side effect of flag registration, so setting it beforehand
-	// would be silently overwritten.
-	origInterval := pollInterval
-	pollInterval = 0
-	t.Cleanup(func() { pollInterval = origInterval })
-
+	// Speed up any polling that does occur.
+	if err := cmd.Flags().Set("poll-interval", "0"); err != nil {
+		t.Fatal(err)
+	}
 	// The command relies on token handling, which inspects these flags.
 	cmd.Flags().Bool("no-token", true, "")
 	cmd.Flags().String("cluster", "", "")

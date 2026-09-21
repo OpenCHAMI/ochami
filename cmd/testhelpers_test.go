@@ -101,7 +101,7 @@ func runOchamiWithStdin(t *testing.T, stdin io.Reader, args ...string) cmdResult
 
 	// Known limitation: some commands bind other pflag.Value-typed flags the
 	// same VarP way to a var scoped to their own subpackage rather than to
-	// internal/cli (e.g. cmd/pcs/status's powerFilter/mgmtFilter), which is
+	// internal/cli (e.g. the boot patch commands' formatPatch), which is
 	// unexported and so cannot be reset from here. No test in this package
 	// currently exercises one of those flags with a non-default value, so
 	// this is dormant, not observed; the general fix is to move those
