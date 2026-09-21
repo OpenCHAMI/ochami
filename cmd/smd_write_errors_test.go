@@ -29,3 +29,32 @@ func TestSMDGroupMemberAdd_HTTPError(t *testing.T) {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 	}
 }
+
+// TestSMDDelete_RejectsEmptyData verifies an explicit empty payload cannot
+// turn a requested deletion into a silent no-op.
+func TestSMDDelete_RejectsEmptyData(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		payload string
+	}{
+		{name: "interface", command: "iface", payload: `[]`},
+		{name: "group", command: "group", payload: `[]`},
+		{name: "redfish endpoint", command: "rfe", payload: `{"RedfishEndpoints":[]}`},
+		{name: "component endpoint", command: "compep", payload: `[]`},
+		{name: "component", command: "component", payload: `{"Components":[]}`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			res := runOchami(t, "smd", tc.command, "delete", "--ignore-config",
+				"--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm", "-d", tc.payload)
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode != cli.CodeUsage {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+		})
+	}
+}
