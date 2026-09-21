@@ -5,8 +5,14 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
+	"math/rand/v2"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	kyaml "github.com/knadh/koanf/parsers/yaml"
@@ -36,10 +42,13 @@ var fileConf = koanf.Conf{Delim: ".", StrictMerge: false}
 // configuration file programmatically.
 //
 // Mutations are transactional: every mutating method runs as (or inside) an
-// Update, which stages changes on a copy of the in-memory state, writes the
-// copy to disk, and only then adopts it as f's state. A mutation that rejects
-// its input or fails to write therefore leaves f's in-memory state exactly as
-// it was.
+// Update, which stages changes on a copy of the in-memory state, persists the
+// copy durably, and only then adopts it as f's state. A mutation that rejects
+// its input or fails to write therefore leaves both the file on disk and f's
+// in-memory state exactly as they were. The one exception is a failure to
+// sync the file's directory after the new contents replaced the file: f then
+// adopts the new contents, so its state still matches the file, and the
+// error is still returned.
 //
 // A cluster name must be unique within a file. If a file defines a cluster
 // more than once (e.g. after a manual edit), any method that would have to
@@ -54,6 +63,10 @@ type File struct {
 	// staging holds the working copy of the Update call in progress, which
 	// mutations change and reads observe. It is nil outside Update.
 	staging *koanf.Koanf
+
+	// writeOps overrides the durable-write primitives save uses; nil means
+	// defaultWriteOps. Tests set it to inject write failures.
+	writeOps *fileWriteOps
 }
 
 // OpenFile opens the config file at path for reading and editing. The file
@@ -109,22 +122,245 @@ func (f *File) current() *koanf.Koanf {
 	return f.ko
 }
 
-// save marshals ko to YAML and writes it to f.path, preserving the file's
-// existing mode if it exists. It does not mutate f; Update promotes ko into
+// save marshals ko to YAML and writes it to f.path (or, if f.path is a
+// symbolic link, to the file it links to), preserving the file's existing
+// mode and owner if it exists. It does not mutate f; Update promotes ko into
 // f.ko only once save has succeeded.
 func (f *File) save(ko *koanf.Koanf) error {
 	b, err := ko.Marshal(fileParser)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config for writing: %w", err)
 	}
+	path, err := resolveSymlinks(f.path)
+	if err != nil {
+		return fmt.Errorf("failed to resolve config file path %s: %w", f.path, err)
+	}
+	ops := defaultWriteOps
+	if f.writeOps != nil {
+		ops = *f.writeOps
+	}
+	return writeFile(path, b, ops)
+}
 
-	var fmode os.FileMode = 0o644
-	if finfo, err := os.Stat(f.path); err == nil {
-		fmode = finfo.Mode()
+// maxSymlinks bounds how many symbolic links resolveSymlinks follows, so a
+// link cycle fails instead of looping forever.
+const maxSymlinks = 40
+
+// resolveSymlinks returns the file that path ultimately names, following
+// symbolic links (including a final link whose target doesn't exist yet).
+// writeFile replaces its destination by renaming over it, which would replace
+// a symlinked config file with a regular file; writing to the resolved path
+// updates the link's target and leaves the link in place.
+//
+// Each step resolves the parent directory before joining the final element,
+// and a relative link target is appended without cleaning it. Cleaning first
+// would drop a ".." lexically before the symbolic link preceding it was
+// followed, selecting a different file from the one the kernel opens.
+func resolveSymlinks(path string) (string, error) {
+	for range maxSymlinks {
+		dir, base := filepath.Split(path)
+		if dir == "" {
+			dir = "."
+		}
+		realDir, err := filepath.EvalSymlinks(dir)
+		if errors.Is(err, fs.ErrNotExist) {
+			return path, nil
+		}
+		if err != nil {
+			return "", err
+		}
+		path = filepath.Join(realDir, base)
+		finfo, err := os.Lstat(path)
+		if errors.Is(err, fs.ErrNotExist) {
+			return path, nil
+		}
+		if err != nil {
+			return "", err
+		}
+		if finfo.Mode()&fs.ModeSymlink == 0 {
+			return path, nil
+		}
+		target, err := os.Readlink(path)
+		if err != nil {
+			return "", err
+		}
+		if !filepath.IsAbs(target) {
+			target = realDir + string(filepath.Separator) + target
+		}
+		path = target
+	}
+	return "", fmt.Errorf("%s: too many levels of symbolic links", path)
+}
+
+// temporaryFile is the subset of *os.File that writeFile needs, narrow enough
+// to fake in tests without touching a real filesystem.
+type temporaryFile interface {
+	io.Writer
+	Stat() (os.FileInfo, error)
+	Chown(uid, gid int) error
+	Chmod(os.FileMode) error
+	Sync() error
+	Close() error
+	Name() string
+}
+
+// fileWriteOps are the durable-write primitives writeFile uses, injected so
+// each failure point (create, chown, chmod, write, sync, close, rename,
+// directory sync) can be exercised in tests without depending on real
+// filesystem failure conditions.
+type fileWriteOps struct {
+	stat       func(string) (os.FileInfo, error)
+	createTemp func(dir, pattern string, perm os.FileMode) (temporaryFile, error)
+	rename     func(string, string) error
+	remove     func(string) error
+	syncDir    func(string) error
+}
+
+// maxTempAttempts bounds how many names createTemporaryFile tries before
+// giving up, so a directory full of colliding names fails instead of looping.
+const maxTempAttempts = 10000
+
+// createTemporaryFile is the production adapter for creating a temporary
+// file. Like os.CreateTemp, it replaces the last "*" in pattern with a random
+// string and never opens an existing file, but it creates the file with perm,
+// to which the operating system applies the process umask, instead of 0600.
+func createTemporaryFile(dir, pattern string, perm os.FileMode) (temporaryFile, error) {
+	prefix, suffix := pattern, ""
+	if i := strings.LastIndex(pattern, "*"); i >= 0 {
+		prefix, suffix = pattern[:i], pattern[i+1:]
+	}
+	for range maxTempAttempts {
+		name := filepath.Join(dir, prefix+strconv.FormatUint(uint64(rand.Uint32()), 10)+suffix)
+		f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, perm)
+		if errors.Is(err, fs.ErrExist) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		return f, nil
+	}
+	return nil, &fs.PathError{Op: "createtemp", Path: filepath.Join(dir, pattern), Err: fs.ErrExist}
+}
+
+// defaultWriteOps are the durable-write primitives File uses in production.
+var defaultWriteOps = fileWriteOps{
+	stat:       os.Stat,
+	createTemp: createTemporaryFile,
+	rename:     os.Rename,
+	remove:     os.Remove,
+	syncDir:    syncParentDirectory,
+}
+
+// dirSyncError reports that writeFile replaced the file but couldn't sync
+// its parent directory: the file holds the new contents, but the rename may
+// not survive a crash.
+type dirSyncError struct {
+	path string
+	err  error
+}
+
+func (e *dirSyncError) Error() string {
+	return fmt.Sprintf("failed to sync parent directory for config file %s: %v", e.path, e.err)
+}
+
+func (e *dirSyncError) Unwrap() error { return e.err }
+
+// writeFile durably writes data to path: it writes beside the destination
+// through a synced, closed temporary file, renames it into place, and syncs
+// the parent directory, so a crash or power loss during the write can never
+// leave path corrupt, half-written, or (after the rename) pointing at a
+// directory entry that didn't survive the crash.
+//
+// If path exists, the new file gets its mode and owner; if the owner can't be
+// kept (e.g. a user other than the owner can write the file but not chown
+// it), writeFile fails and leaves path unchanged rather than handing the file
+// to a different owner or group. A new file is created with mode 0644 minus
+// the process umask, as os.WriteFile would create it.
+func writeFile(path string, data []byte, ops fileWriteOps) error {
+	// An existing file's replacement starts private and only gains the
+	// file's mode once it has the file's owner.
+	var perm os.FileMode = 0o644
+	existing, err := ops.stat(path)
+	if err == nil {
+		perm = 0o600
+	} else {
+		existing = nil
 	}
 
-	if err := os.WriteFile(f.path, b, fmode); err != nil {
-		return fmt.Errorf("failed to write config to file %s: %w", f.path, err)
+	tmp, err := ops.createTemp(filepath.Dir(path), "."+filepath.Base(path)+".*", perm)
+	if err != nil {
+		return fmt.Errorf("failed to create temporary config file for %s: %w", path, err)
+	}
+	tmpPath := tmp.Name()
+	defer ops.remove(tmpPath) //nolint:errcheck // best-effort cleanup after rename or failure
+	if err := writeTemporaryConfig(tmp, existing, data); err != nil {
+		return fmt.Errorf("failed to write temporary config file for %s: %w", path, err)
+	}
+
+	if err := ops.rename(tmpPath, path); err != nil {
+		return fmt.Errorf("failed to replace config file %s: %w", path, err)
+	}
+	if err := ops.syncDir(filepath.Dir(path)); err != nil {
+		return &dirSyncError{path: path, err: err}
+	}
+
+	return nil
+}
+
+// writeTemporaryConfig gives a previously created temporary file the owner
+// and mode of existing (if non-nil), then writes and durably closes it. On
+// failures before Close, it makes a best-effort Close so the caller can
+// remove the file.
+func writeTemporaryConfig(tmp temporaryFile, existing os.FileInfo, data []byte) (retErr error) {
+	closeAttempted := false
+	defer func() {
+		if retErr != nil && !closeAttempted {
+			_ = tmp.Close()
+		}
+	}()
+	if existing != nil {
+		// Chown before Chmod: changing the owner can clear mode bits.
+		if err := preserveOwner(tmp, existing); err != nil {
+			return err
+		}
+		if err := tmp.Chmod(existing.Mode().Perm()); err != nil {
+			return fmt.Errorf("set permissions: %w", err)
+		}
+	}
+	n, err := tmp.Write(data)
+	if err != nil {
+		return fmt.Errorf("write data: %w", err)
+	}
+	if n != len(data) {
+		return fmt.Errorf("write data: %w", io.ErrShortWrite)
+	}
+	if err := tmp.Sync(); err != nil {
+		return fmt.Errorf("sync data: %w", err)
+	}
+	closeAttempted = true
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close file: %w", err)
+	}
+	return nil
+}
+
+// preserveOwner gives tmp the user and group that own existing, when the
+// platform reports file ownership and tmp doesn't already have them.
+func preserveOwner(tmp temporaryFile, existing os.FileInfo) error {
+	uid, gid, ok := fileOwner(existing)
+	if !ok {
+		return nil
+	}
+	tinfo, err := tmp.Stat()
+	if err != nil {
+		return fmt.Errorf("check owner: %w", err)
+	}
+	if tuid, tgid, ok := fileOwner(tinfo); ok && tuid == uid && tgid == gid {
+		return nil
+	}
+	if err := tmp.Chown(uid, gid); err != nil {
+		return fmt.Errorf("keep owner (uid %d, gid %d): %w", uid, gid, err)
 	}
 	return nil
 }
@@ -141,7 +377,9 @@ func (f *File) save(ko *koanf.Koanf) error {
 // returns an error, nothing is written to disk and f's in-memory state is
 // left exactly as it was before Update was called. A failed save likewise
 // discards the copy, so f's state never reflects a change that did not reach
-// disk.
+// disk. If the new contents replaced the file but its directory couldn't be
+// synced, f adopts the copy to stay in step with the file, and Update still
+// returns the error.
 func (f *File) Update(fn func(f *File) error) error {
 	if f.staging != nil {
 		// Already inside an outer Update call; let it save.
@@ -153,6 +391,12 @@ func (f *File) Update(fn func(f *File) error) error {
 		return err
 	}
 	if err := f.save(f.staging); err != nil {
+		var syncErr *dirSyncError
+		if errors.As(err, &syncErr) {
+			// The new contents already replaced the file; only the rename's
+			// durability is in doubt. Keep f in step with the file.
+			f.ko = f.staging
+		}
 		return fmt.Errorf("failed to write modified config to %s: %w", f.path, err)
 	}
 	f.ko = f.staging
