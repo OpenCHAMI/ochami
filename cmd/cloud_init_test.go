@@ -173,3 +173,20 @@ func TestCloudInitGroupGet_RemainingPaths(t *testing.T) {
 		})
 	}
 }
+
+// TestCloudInitServiceStatus_API verifies --api prints the returned OpenAPI
+// document through the command's injected output stream.
+func TestCloudInitServiceStatus_API(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"openapi":"3.0.0"}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "cloud-init", "service", "status", "--api", "--ignore-config", "--uri", srv.URL)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "openapi") {
+		t.Errorf("stdout = %q, want OpenAPI document", res.stdout)
+	}
+}
