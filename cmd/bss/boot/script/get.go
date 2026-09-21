@@ -79,7 +79,7 @@ See ochami-bss(1) for more details.`,
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS boot script request yielded unsuccessful HTTP response", "failed to request boot script from BSS")
 			}
-			fmt.Println(string(httpEnv.Body))
+			fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
 
 			return nil
 		},

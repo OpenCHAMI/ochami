@@ -58,7 +58,7 @@ See ochami-smd(1) for more details.`,
 				if err != nil {
 					return cli.ClassifyClientError(err, "SMD ethernet interface request by ID yielded unsuccessful HTTP response", "failed to request ethernet interfaces by ID from SMD")
 				}
-				fmt.Println(string(httpEnv.Body))
+				fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
 				return nil
 			} else if cmd.Flag("by-ip").Changed {
 				return cli.Errorf(cli.CodeUsage, "--by-ip can only be used with --id")
@@ -119,7 +119,7 @@ See ochami-smd(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Print(string(outBytes))
+			fmt.Fprint(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},

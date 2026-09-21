@@ -6,9 +6,6 @@
 package group
 
 import (
-	"bufio"
-	"os"
-
 	"gopkg.in/yaml.v3"
 
 	"github.com/nikolalohinski/gonja/v2"
@@ -106,14 +103,8 @@ See ochami-cloud-init(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to create template: %w", err)
 			}
-			out := bufio.NewWriter(os.Stdout)
-			if err := tpl.Execute(out, refData); err != nil {
+			if err := tpl.Execute(cli.Ios.Out(), refData); err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to render template: %w", err)
-			}
-
-			// Write rendered template to stdout
-			if err := out.Flush(); err != nil {
-				return cli.Errorf(cli.CodePayload, "failed to write rendered template: %w", err)
 			}
 
 			return nil

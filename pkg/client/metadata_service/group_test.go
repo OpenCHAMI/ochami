@@ -5,7 +5,6 @@
 package metadata_service
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -37,9 +36,9 @@ func TestAddGroupSpecs_OmitsLabels(t *testing.T) {
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeMetadataTestJSON(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Group{})
+		encodeMetadataTestJSON(t, w, api.Group{})
 	})
 	defer srv.Close()
 
@@ -80,9 +79,9 @@ func TestAddGroupSpecs_OmitsLabels(t *testing.T) {
 func TestAddGroups_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeMetadataTestJSON(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Group{})
+		encodeMetadataTestJSON(t, w, api.Group{})
 	})
 	defer srv.Close()
 
@@ -113,7 +112,7 @@ func TestSetGroupSpec_UsesUIDEndpoint(t *testing.T) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Group{})
+		encodeMetadataTestJSON(t, w, api.Group{})
 	})
 	defer srv.Close()
 

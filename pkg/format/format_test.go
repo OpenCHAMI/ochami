@@ -11,6 +11,12 @@ import (
 	"testing"
 )
 
+type testYAMLMarshalerError struct{}
+
+func (testYAMLMarshalerError) MarshalYAML() (interface{}, error) {
+	return nil, fmt.Errorf("intentional YAML marshal failure")
+}
+
 // TestDataFormat_String verifies the string form of each DataFormat.
 func TestDataFormat_String(t *testing.T) {
 	tests := []struct {
@@ -79,7 +85,8 @@ func TestDataFormat_Type(t *testing.T) {
 }
 
 // TestMarshalData verifies that MarshalData produces JSON, pretty-printed JSON,
-// and YAML.
+// and YAML, and that it returns marshalling errors and rejects an unknown
+// format.
 func TestMarshalData(t *testing.T) {
 	type args struct {
 		data      interface{}
@@ -146,6 +153,26 @@ arr:
 `),
 			wantErr: false,
 		},
+		{
+			name:    "json marshal error",
+			args:    args{data: make(chan int), outFormat: DataFormatJson},
+			wantErr: true,
+		},
+		{
+			name:    "pretty json marshal error",
+			args:    args{data: make(chan int), outFormat: DataFormatJsonPretty},
+			wantErr: true,
+		},
+		{
+			name:    "yaml marshal error",
+			args:    args{data: testYAMLMarshalerError{}, outFormat: DataFormatYaml},
+			wantErr: true,
+		},
+		{
+			name:    "unknown format",
+			args:    args{data: struct{}{}, outFormat: DataFormat("toml")},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -161,7 +188,7 @@ arr:
 }
 
 // TestUnmarshalData verifies that UnmarshalData reads JSON, pretty-printed
-// JSON, and YAML.
+// JSON, and YAML, and rejects malformed input and an unknown format.
 func TestUnmarshalData(t *testing.T) {
 	type args struct {
 		data     []byte
@@ -218,6 +245,21 @@ arr:
 				inFormat: DataFormatYaml,
 			},
 			wantErr: false,
+		},
+		{
+			name:    "malformed json",
+			args:    args{data: []byte(`{"key":`), inFormat: DataFormatJson},
+			wantErr: true,
+		},
+		{
+			name:    "malformed yaml",
+			args:    args{data: []byte("key: [\n"), inFormat: DataFormatYaml},
+			wantErr: true,
+		},
+		{
+			name:    "unknown format",
+			args:    args{data: []byte(`{}`), inFormat: DataFormat("toml")},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

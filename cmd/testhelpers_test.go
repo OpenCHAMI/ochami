@@ -13,6 +13,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,33 +27,39 @@ import (
 	"github.com/openchami/ochami/pkg/format"
 )
 
+func writeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
+	t.Helper()
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		t.Errorf("encode test response: %v", err)
+	}
+}
+
 // cmdResult captures everything a command-level test needs to assert on after
 // running the CLI: the error returned from Execute, the exit code that error
-// resolves to, and whatever the command wrote to os.Stdout. Interactive
-// prompt/error text written via cli.Ios is captured into the same stdout
-// field (see runOchamiWithStdin's cli.SetIOStream call) rather than a
-// separate stream, so an assertion against stdout may also match text a real
-// terminal would show on stderr.
+// resolves to, and everything the command wrote to its output and error
+// streams. Both streams (cli.Ios and Cobra's own output) are captured into
+// the same stdout field rather than separate ones, so an assertion against
+// stdout may also match text a real terminal would show on stderr.
 type cmdResult struct {
 	err      error
 	exitCode int
 	stdout   string
 }
 
-// stdoutMu serializes tests that capture os.Stdout. Because commands print
-// directly to os.Stdout (via fmt.Print), and Go runs tests within a package
-// sequentially by default but subtests/parallel tests could interleave, we
-// guard the global swap with a mutex. This also makes runOchamiWithStdin safe
-// to call from a t.Parallel() test today (calls simply serialize through the
-// lock, including the cli.Token reset below) — though none of the tests in
-// this package currently do, since running them in parallel for real needs
-// per-invocation state in place of internal/cli's package globals.
-var stdoutMu sync.Mutex
+// globalsMu serializes command runs. Each run swaps cli.Ios and resets
+// internal/cli's other package globals (cli.Token and the format flags), so
+// concurrent runs would see each other's streams and flag values. The lock
+// also makes runOchamiWithStdin safe to call from a t.Parallel() test (calls
+// simply run one at a time), though none of the tests in this package do,
+// since running them in parallel for real needs per-invocation state in
+// place of internal/cli's package globals.
+var globalsMu sync.Mutex
 
 // runOchami executes the ochami root command with the provided arguments and
-// an empty interactive input stream, capturing anything written to
-// os.Stdout during execution. It returns a cmdResult with the command error,
-// the exit code cli.ExitCode maps that error to, and the captured stdout.
+// an empty interactive input stream, capturing everything the command writes
+// to its output and error streams. It returns a cmdResult with the command
+// error, the exit code cli.ExitCode maps that error to, and the captured
+// output.
 //
 // Callers should generally include "--ignore-config" so the command does not
 // read or create real config files, and "--uri <server.URL>" (on commands that
@@ -69,23 +76,23 @@ func runOchami(t *testing.T, args ...string) cmdResult {
 func runOchamiWithStdin(t *testing.T, stdin io.Reader, args ...string) cmdResult {
 	t.Helper()
 
-	stdoutMu.Lock()
-	defer stdoutMu.Unlock()
+	globalsMu.Lock()
+	defer globalsMu.Unlock()
 
-	// Redirect os.Stdout to a pipe so we can capture command output.
-	origStdout := os.Stdout
+	// Capture command output through a pipe.
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("failed to create pipe: %v", err)
 	}
-	os.Stdout = w
 
 	// Drain the pipe in a goroutine so a command writing more than the pipe
 	// buffer does not deadlock.
 	outCh := make(chan string, 1)
 	go func() {
 		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
+		if _, err := io.Copy(&buf, r); err != nil {
+			t.Errorf("copy command output: %v", err)
+		}
 		outCh <- buf.String()
 	}()
 
@@ -100,9 +107,9 @@ func runOchamiWithStdin(t *testing.T, stdin io.Reader, args ...string) cmdResult
 	cli.FormatInput = format.DataFormatJson
 	cli.FormatOutput = format.DataFormatJson
 
-	// Redirect the interactive I/O stream to the same capture pipe so output
-	// written via cli.Ios.Out() (e.g. "rcs console show") and any interactive
-	// prompt text are captured in the returned stdout.
+	// Point the I/O stream at the capture pipe so output written via
+	// cli.Ios.Out() and any interactive prompt text are captured in the
+	// returned stdout.
 	restoreIos := cli.SetIOStream(stdin, w, w)
 	defer restoreIos()
 
@@ -115,9 +122,8 @@ func runOchamiWithStdin(t *testing.T, stdin io.Reader, args ...string) cmdResult
 
 	runErr := rootCmd.Execute()
 
-	// Restore os.Stdout and collect captured output.
+	// Collect captured output.
 	_ = w.Close()
-	os.Stdout = origStdout
 	captured := <-outCh
 	_ = r.Close()
 

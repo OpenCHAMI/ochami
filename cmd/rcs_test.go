@@ -53,9 +53,14 @@ func TestRCSConsoleShow_Success(t *testing.T) {
 			return
 		}
 		defer conn.Close()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("console output line"))
-		_ = conn.WriteMessage(websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("console output line")); err != nil {
+			t.Errorf("write console message: %v", err)
+			return
+		}
+		if err := conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			t.Errorf("write close message: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -82,8 +87,13 @@ func TestRCSConsoleConnect_NormalClose(t *testing.T) {
 			return
 		}
 		defer conn.Close()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("connected"))
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("connected")); err != nil {
+			t.Errorf("write console message: %v", err)
+			return
+		}
+		if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			t.Errorf("write close message: %v", err)
+		}
 	}))
 	defer srv.Close()
 

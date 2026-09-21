@@ -13,7 +13,6 @@ package cmd
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -33,11 +32,11 @@ func ciGroupServer(t *testing.T, groups map[string]any, status int) *httptest.Se
 		}
 		switch {
 		case r.URL.Path == "/admin/groups":
-			_ = json.NewEncoder(w).Encode(groups)
+			writeJSONResponse(t, w, groups)
 		case strings.HasPrefix(r.URL.Path, "/admin/groups/"):
 			name := strings.TrimPrefix(r.URL.Path, "/admin/groups/")
 			if g, ok := groups[name]; ok {
-				_ = json.NewEncoder(w).Encode(g)
+				writeJSONResponse(t, w, g)
 			} else {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{}`))
