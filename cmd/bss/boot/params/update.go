@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 	"github.com/openchami/ochami/pkg/client/bss"
@@ -40,9 +39,9 @@ func (opts *bootParamsUpdateOptions) toBootParams() bssTypes.BootParams {
 
 // runCoreBootParamsUpdate contains the core logic for the bss boot params update command.
 // It takes the parsed options and performs the actual work of updating boot parameters.
-func runCoreBootParamsUpdate(cmd *cobra.Command, opts *bootParamsUpdateOptions, bssClient *bss.BSSClient) error {
+func runCoreBootParamsUpdate(cmd *cobra.Command, opts *bootParamsUpdateOptions, bssClient *bss.BSSClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -51,7 +50,7 @@ func runCoreBootParamsUpdate(cmd *cobra.Command, opts *bootParamsUpdateOptions, 
 
 	// Read payload from file first, allowing overwrites from flags
 	if cmd.Flag("data").Changed {
-		if err := cli.HandlePayload(cmd, &bp); err != nil {
+		if err := rt.HandlePayload(cmd, &bp); err != nil {
 			return err
 		}
 	}
@@ -64,7 +63,7 @@ func runCoreBootParamsUpdate(cmd *cobra.Command, opts *bootParamsUpdateOptions, 
 	}
 
 	// Send 'em off
-	_, err := bssClient.PatchBootParams(cmd.Context(), bp, cli.Token)
+	_, err := bssClient.PatchBootParams(cmd.Context(), bp, rt.Token)
 	if err != nil {
 		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to update boot parameters in BSS")
 	}
@@ -87,7 +86,7 @@ func validateBootParamsUpdateFlags(cmd *cobra.Command, args []string) error {
 	if cmd.Flag("data").Changed {
 		// -d/--data trumps all, ignore values of other flags if specified
 		if anyChanged("xname", "nid", "mac", "kernel", "initrd", "params") {
-			log.Logger.Warn().Msg("raw data passed, ignoring CLI configuration")
+			cli.LoggerFromCommand(cmd).Warn().Msg("raw data passed, ignoring CLI configuration")
 		}
 	} else {
 		// If -d/--data not passed, then at least one of --xname/--nid/--mac must
@@ -138,8 +137,14 @@ See ochami-bss(1) for details.`,
   echo '<yaml_data>' | ochami bss boot params update -d @- -f yaml`,
 		PreRunE: validateBootParamsUpdateFlags,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			bssClient, err := bss_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -167,7 +172,7 @@ See ochami-bss(1) for details.`,
 				opts.Params, _ = cmd.Flags().GetString("params")
 			}
 
-			return runCoreBootParamsUpdate(cmd, opts, bssClient)
+			return runCoreBootParamsUpdate(cmd, opts, bssClient, rt)
 		},
 	}
 
@@ -179,8 +184,8 @@ See ochami-bss(1) for details.`,
 	bootParamsUpdateCmd.Flags().StringSliceP("mac", "m", []string{}, "one or more MAC addresses whose boot parameters to update")
 	bootParamsUpdateCmd.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to update")
 	bootParamsUpdateCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootParamsUpdateCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(bootParamsUpdateCmd)
 	bootParamsUpdateCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return bootParamsUpdateCmd

@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/cloud_init"
 
@@ -38,19 +37,25 @@ See ochami-cloud-init(1) for more details.`,
   ochami -k cloud-init group render --extra-vars @- compute x1000c0s0b0n0
   ochami -k cloud-init group render --extra-vars '{"key":"value"}' compute x1000c0s0b0n0`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Get group config
-			results, err := cloudInitClient.GetNodeGroupData(cmd.Context(), cli.Token, args[1], args[0])
+			results, err := cloudInitClient.GetNodeGroupData(cmd.Context(), rt.Token, args[1], args[0])
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get cloud-init group", "failed to get cloud-init group")
 			}
@@ -61,12 +66,12 @@ See ochami-cloud-init(1) for more details.`,
 
 			// Don't try to get meta-data and render if config is empty
 			if len(ciConfigFileBytes) == 0 {
-				log.Logger.Warn().Msgf("cloud-config for group %s was empty, cannot render for node %s", args[0], args[1])
+				rt.Logger.Warn().Msgf("cloud-config for group %s was empty, cannot render for node %s", args[0], args[1])
 				return nil
 			}
 
 			// Get node instance data
-			results, err = cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitMetaData, cli.Token, args[1])
+			results, err = cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitMetaData, rt.Token, args[1])
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get cloud-init node meta-data", "failed to get cloud-init node meta-data")
 			}
@@ -80,12 +85,12 @@ See ochami-cloud-init(1) for more details.`,
 			}
 			dsWrapper["ds"] = map[string]interface{}{"meta_data": ciData}
 
-			// Read any extra variables specified (This is mostly copy-pasted from cli.HandlePayload)
+			// Read any extra variables specified (This is mostly copy-pasted from rt.HandlePayload)
 			// The primary difference is the flag name
 			extraVarsMap := make(map[string]interface{})
 			if cmd.Flag("extra-vars").Changed {
 				extraVars := cmd.Flag("extra-vars").Value.String()
-				if err := client.ReadPayload(extraVars, cli.FormatInput, &extraVarsMap); err != nil {
+				if err := client.ReadPayloadWithReader(extraVars, rt.Ios.In(), rt.FormatInput, &extraVarsMap); err != nil {
 					return cli.Errorf(cli.CodePayload, "unable to read extra variable data or file: %w", err)
 				}
 			}
@@ -103,7 +108,7 @@ See ochami-cloud-init(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to create template: %w", err)
 			}
-			if err := tpl.Execute(cli.Ios.Out(), refData); err != nil {
+			if err := tpl.Execute(rt.Ios.Out(), refData); err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to render template: %w", err)
 			}
 
@@ -112,9 +117,9 @@ See ochami-cloud-init(1) for more details.`,
 	}
 
 	// Create flags
-	groupRenderCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	groupRenderCmd.Flags().StringP("extra-vars", "e", "", "extra variables to be passed to the template renderer or (if starting with @) file containing extra variables (can be - to read from stdin)")
 
+	cli.AddFormatInputFlag(groupRenderCmd)
 	groupRenderCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return groupRenderCmd

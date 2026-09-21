@@ -20,8 +20,8 @@ func TestSMDGroupMemberAdd_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "member", "add", "compute", "x0c0s0b0n0",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "member", "add", "compute", "x0c0s0b0n0",
+		"--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -47,7 +47,7 @@ func TestSMDDelete_RejectsEmptyData(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			res := runOchami(t, "smd", tc.command, "delete", "--ignore-config",
+			res := runOchamiWithRuntime(t, "smd", "--ignore-config", tc.command, "delete",
 				"--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm", "-d", tc.payload)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")

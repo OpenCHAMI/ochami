@@ -46,6 +46,7 @@ const discoveryPayload = `{
 // issuing POST requests for the discovered structures, and exits successfully
 // when the server accepts them.
 func TestDiscoverStatic_Success(t *testing.T) {
+
 	sawPost := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
@@ -57,7 +58,7 @@ func TestDiscoverStatic_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload,
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload,
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -70,13 +71,14 @@ func TestDiscoverStatic_Success(t *testing.T) {
 // TestDiscoverStatic_Overwrite verifies the --overwrite path, which PUTs/PATCHes
 // existing structures instead of only POSTing.
 func TestDiscoverStatic_Overwrite(t *testing.T) {
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`[]`))
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -163,7 +165,7 @@ func TestDiscoverStatic_OverwriteFallback(t *testing.T) {
 	srv := smdOverwriteServer(t, rec)
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -185,7 +187,7 @@ func TestDiscoverStatic_V1Overwrite(t *testing.T) {
 	srv := smdOverwriteServer(t, rec)
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--discovery-version", "1",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
@@ -215,7 +217,7 @@ func TestDiscoverStatic_V1(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload,
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload,
 		"--discovery-version", "1",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
@@ -245,7 +247,7 @@ func TestDiscoverStatic_Stdin(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, discoveryPayload,
+	res := runOchamiWithInputAndRuntime(t, discoveryPayload,
 		"discover", "static", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -289,7 +291,7 @@ func TestDiscoverStatic_DeprecatedFormatE2E(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", deprecatedPayload,
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", deprecatedPayload,
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)

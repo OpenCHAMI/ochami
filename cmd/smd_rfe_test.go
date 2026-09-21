@@ -43,8 +43,8 @@ func TestSMDRFEGet_Filters(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append([]string{"smd", "rfe", "get", "--ignore-config", "--uri", srv.URL, "--token", "t"}, tc.args...)
-			res := runOchami(t, args...)
+			args := append([]string{"--ignore-config", "smd", "rfe", "get", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -63,7 +63,7 @@ func TestSMDRFEGet_Formats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		res := runOchami(t, "smd", "rfe", "get", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+		res := runOchamiWithRuntime(t, "smd", "rfe", "get", "--uri", srv.URL, "--token", "t", "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
 		}
@@ -83,7 +83,7 @@ func TestSMDRFEAdd_ByFlagsWithOptional(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "add", "--uri", srv.URL, "--token", "t",
 		"--domain", "example.com", "--hostname", "bmc56", "--username", "root", "--password", "pw",
 		"x3000c1s7b56", "bmc-node56", "172.16.0.156", "de:ca:fc:0f:fe:ee")
 	if res.err != nil {
@@ -103,7 +103,7 @@ func TestSMDRFEAdd_ByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "add", "--uri", srv.URL, "--token", "t",
 		"-d", `{"RedfishEndpoints":[{"ID":"x3000c1s7b56","Name":"bmc","IPAddress":"172.16.0.156","MACAddr":"de:ca:fc:0f:fe:ee"}]}`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -125,7 +125,7 @@ func TestSMDRFEDelete_ByXnames(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "x3000c1s7b56", "x3000c1s7b57")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -146,7 +146,7 @@ func TestSMDRFEDelete_ByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "rfe", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "rfe", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `{"RedfishEndpoints":[{"ID":"x3000c1s7b56"}]}`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -168,8 +168,8 @@ func TestSMDRFEDelete_AllConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "rfe", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "--all")
+	res := runOchamiWithInputAndRuntime(t, "y\n",
+		"--ignore-config", "smd", "rfe", "delete", "--uri", srv.URL, "--token", "t", "--all")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}

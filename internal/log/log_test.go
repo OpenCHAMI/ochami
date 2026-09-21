@@ -13,72 +13,6 @@ import (
 	"testing"
 )
 
-func TestInit_Table(t *testing.T) {
-	type args struct {
-		ll string
-		lf string
-		lc string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "supported level and format",
-			args: args{
-				ll: "warning",
-				lf: "basic",
-				lc: "auto",
-			},
-			wantErr: false,
-		},
-		{
-			name: "unsupported level and supported format",
-			args: args{
-				ll: "unsupported",
-				lf: "basic",
-				lc: "auto",
-			},
-			wantErr: true,
-		},
-		{
-			name: "supported level and unsupported format",
-			args: args{
-				ll: "warning",
-				lf: "unsupported",
-				lc: "auto",
-			},
-			wantErr: true,
-		},
-		{
-			name: "unsupported level and unsupported format",
-			args: args{
-				ll: "unsupported",
-				lf: "unsupported",
-				lc: "auto",
-			},
-			wantErr: true,
-		},
-		{
-			name: "supported level and format, unsupported color",
-			args: args{
-				ll: "warning",
-				lf: "basic",
-				lc: "unsupported",
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := Init(tt.args.ll, tt.args.lf, tt.args.lc); (err != nil) != tt.wantErr {
-				t.Errorf("Init() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestNewBasicLogger(t *testing.T) {
 	type args struct {
 		prefix  string
@@ -405,6 +339,21 @@ func TestBasicLogger_BasicLogf(t *testing.T) {
 	}
 }
 
+func TestNew_UsesProvidedWriter(t *testing.T) {
+	t.Parallel()
+
+	var output bytes.Buffer
+	logger, err := New(&output, "debug", "basic", "off")
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	logger.Debug().Msg("writer-owned message")
+
+	if got := output.String(); !strings.Contains(got, "writer-owned message") {
+		t.Fatalf("logger output = %q, want provided writer to receive message", got)
+	}
+}
+
 // TestNewDefault verifies the pre-initialization logger writes plain,
 // program-prefixed lines at warning level and above.
 func TestNewDefault(t *testing.T) {
@@ -422,32 +371,5 @@ func TestNewDefault(t *testing.T) {
 	}
 	if strings.Contains(got, "{") {
 		t.Errorf("output = %q, want non-JSON output", got)
-	}
-}
-
-// TestInit_AllCombos exercises every valid level/color/format combination so all
-// switch arms of Init are covered.
-func TestInit_AllCombos(t *testing.T) {
-	levels := []string{"error", "warning", "info", "debug"}
-	colors := []string{"", "auto", "on", "off"}
-	formats := []string{"rfc3339", "basic", "json"}
-	for _, ll := range levels {
-		for _, lc := range colors {
-			for _, lf := range formats {
-				if err := Init(ll, lf, lc); err != nil {
-					t.Errorf("Init(%q,%q,%q) = %v, want nil", ll, lf, lc, err)
-				}
-			}
-		}
-	}
-	// Invalid values exercise the error arms.
-	if err := Init("bogus", "json", "off"); err == nil {
-		t.Error("Init(bogus level) = nil, want error")
-	}
-	if err := Init("info", "bogus", "off"); err == nil {
-		t.Error("Init(bogus format) = nil, want error")
-	}
-	if err := Init("info", "json", "bogus"); err == nil {
-		t.Error("Init(bogus color) = nil, want error")
 	}
 }

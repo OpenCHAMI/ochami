@@ -23,15 +23,16 @@ import (
 // TestConfigClusterSet_Default verifies "config cluster set --default" marks the
 // cluster as the default in the config file.
 func TestConfigClusterSet_Default(t *testing.T) {
+
 	cfg := writeTempConfig(t, "")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "set", "--default",
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "set", "--default",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
 
-	showRes := runOchami(t, "--config", cfg, "config", "show")
+	showRes := runOchamiWithRuntime(t, "--config", cfg, "config", "show")
 	if showRes.err != nil {
 		t.Fatalf("config show: unexpected error: %v (exit %d)", showRes.err, showRes.exitCode)
 	}
@@ -49,15 +50,16 @@ func TestConfigClusterSet_Default(t *testing.T) {
 
 // TestConfigClusterSet_ServiceKey verifies setting a per-service URI key.
 func TestConfigClusterSet_ServiceKey(t *testing.T) {
+
 	cfg := writeTempConfig(t, "")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "set",
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "set",
 		"foobar", "cluster.smd.uri", "https://foobar.openchami.cluster/smd")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
 
-	showRes := runOchami(t, "--config", cfg, "config", "cluster", "show", "foobar", "cluster.smd.uri")
+	showRes := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "foobar", "cluster.smd.uri")
 	if showRes.err != nil {
 		t.Fatalf("config cluster show: unexpected error: %v (exit %d)", showRes.err, showRes.exitCode)
 	}
@@ -80,6 +82,7 @@ func TestConfigClusterSet_ServiceKey(t *testing.T) {
 // TestConfigClusterShow_All verifies "config cluster show" with no args shows all
 // clusters.
 func TestConfigClusterShow_All(t *testing.T) {
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
@@ -89,7 +92,7 @@ func TestConfigClusterShow_All(t *testing.T) {
     uri: https://bazqux.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -101,13 +104,14 @@ func TestConfigClusterShow_All(t *testing.T) {
 // TestConfigClusterShow_One verifies "config cluster show <name>" shows the whole
 // cluster entry.
 func TestConfigClusterShow_One(t *testing.T) {
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
     uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show", "foobar")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "foobar")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -119,10 +123,11 @@ func TestConfigClusterShow_One(t *testing.T) {
 // TestConfigClusterSet_CreatesFile verifies "config cluster set" creates a
 // missing config file when the user confirms.
 func TestConfigClusterSet_CreatesFile(t *testing.T) {
+
 	dir := t.TempDir()
 	path := dir + "/sub/config.yaml"
 
-	res := runOchamiWithInput(t, "y\ny\n", "--config", path, "config", "cluster", "set",
+	res := runOchamiWithInputAndRuntime(t, "y\ny\n", "--config", path, "config", "cluster", "set",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -135,6 +140,7 @@ func TestConfigClusterSet_CreatesFile(t *testing.T) {
 // TestConfigClusterDelete_FromExistingTwo verifies deleting a cluster and that
 // the file is updated. (Covers the delete RunE success path with a real file.)
 func TestConfigClusterDelete_FromExistingTwo(t *testing.T) {
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
@@ -144,7 +150,7 @@ func TestConfigClusterDelete_FromExistingTwo(t *testing.T) {
     uri: https://bazqux.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "delete", "foobar")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "delete", "foobar")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -163,13 +169,14 @@ func TestConfigClusterDelete_FromExistingTwo(t *testing.T) {
 // TestConfigClusterShow_KeyOfCluster verifies "config cluster show <name> <key>"
 // returns the value for a nested key.
 func TestConfigClusterShow_KeyOfCluster(t *testing.T) {
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
     uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show", "foobar", "cluster.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "foobar", "cluster.uri")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -180,6 +187,7 @@ func TestConfigClusterShow_KeyOfCluster(t *testing.T) {
 
 // TestConfigClusterUnset_Key verifies removing a key from an existing cluster.
 func TestConfigClusterUnset_Key(t *testing.T) {
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
@@ -188,7 +196,7 @@ func TestConfigClusterUnset_Key(t *testing.T) {
       uri: /smd
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -204,9 +212,10 @@ func TestConfigClusterUnset_Key(t *testing.T) {
 // TestConfigClusterSet_ThenShow verifies that "config cluster set" adds a cluster
 // entry and "config cluster show" reads it back.
 func TestConfigClusterSet_ThenShow(t *testing.T) {
+
 	cfg := writeTempConfig(t, "")
 
-	setRes := runOchami(t, "--config", cfg, "config", "cluster", "set",
+	setRes := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "set",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
 	if setRes.err != nil {
 		t.Fatalf("config cluster set: unexpected error: %v (exit %d)", setRes.err, setRes.exitCode)
@@ -220,7 +229,7 @@ func TestConfigClusterSet_ThenShow(t *testing.T) {
 		t.Errorf("config file = %q, want it to contain the cluster name", string(data))
 	}
 
-	showRes := runOchami(t, "--config", cfg, "config", "cluster", "show", "foobar")
+	showRes := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "foobar")
 	if showRes.err != nil {
 		t.Fatalf("config cluster show: unexpected error: %v (exit %d)", showRes.err, showRes.exitCode)
 	}
@@ -232,6 +241,7 @@ func TestConfigClusterSet_ThenShow(t *testing.T) {
 // TestConfigClusterUnset_Success verifies that "config cluster unset" removes a key from
 // an existing cluster entry in the config file.
 func TestConfigClusterUnset_Success(t *testing.T) {
+
 	// Seed a config file with a cluster that has a uri and a smd uri.
 	cfg := writeTempConfig(t, `clusters:
   - name: foobar
@@ -241,7 +251,7 @@ func TestConfigClusterUnset_Success(t *testing.T) {
         uri: /hsm/v2
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
 	if res.err != nil {
 		t.Fatalf("config cluster unset: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -262,13 +272,14 @@ func TestConfigClusterUnset_Success(t *testing.T) {
 // TestConfigClusterDelete_Success verifies that "config cluster delete" removes a whole
 // cluster entry from the config file.
 func TestConfigClusterDelete_Success(t *testing.T) {
+
 	cfg := writeTempConfig(t, `clusters:
   - name: foobar
     cluster:
       uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "delete", "foobar")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "delete", "foobar")
 	if res.err != nil {
 		t.Fatalf("config cluster delete: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -287,9 +298,9 @@ func TestConfigClusterDelete_Success(t *testing.T) {
 func TestConfigClusterSet_DeclineCreate(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
-	res := runOchamiWithInput(t, "n\n", "--config", path, "config", "cluster", "set",
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--config", path, "config", "cluster", "set",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
-	if res.err == nil || res.exitCode != cli.CodeDeclined {
+	if res.exitCode != cli.CodeDeclined {
 		t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {

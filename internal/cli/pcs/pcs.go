@@ -11,25 +11,31 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/pcs"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 // GetClient sets up the PCS client with the PCS base URI and certificates
-// (if necessary) and returns it. This function is used by each subcommand.
-func GetClient(cmd *cobra.Command) (*pcs.PCSClient, error) {
+// (if necessary) and returns it.
+func GetClient(cmd *cobra.Command, rt *cli.Runtime) (*pcs.PCSClient, error) {
 	// Without a base URI, we cannot do anything
-	pcsBaseURI, err := cli.GetBaseURIPCS(cmd)
+	pcsBaseURI, err := rt.GetBaseURI(cmd, config.ServicePCS)
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for PCS: %w", err)
 	}
 
 	// Create client to make request to PCS
-	pcsClient, err := pcs.NewClient(pcsBaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
+	pcsClient, err := pcs.NewClient(
+		pcsBaseURI,
+		client.WithInsecure(rt.Insecure),
+		client.WithShowToken(rt.ShowToken(cmd)),
+		client.WithLogger(rt.Logger),
+	)
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeGeneric, "error creating new PCS client: %w", err)
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	if err := cli.UseCACert(pcsClient.OchamiClient); err != nil {
+	if err := rt.UseCACert(pcsClient.OchamiClient); err != nil {
 		return nil, err
 	}
 

@@ -14,7 +14,7 @@ import (
 // ConfigFileToModify resolves which config file a "config"/"config cluster"
 // editing subcommand (set, unset, delete) should target, in precedence order:
 //
-//  1. ConfigFile, if --config was passed.
+//  1. rt.ConfigFile, if --config was passed.
 //  2. The system config file, if --system was passed.
 //  3. Otherwise, the user config file (the default).
 //
@@ -22,14 +22,14 @@ import (
 // is correct regardless of how deeply cmd is nested under "config" (unlike
 // walking a fixed number of cmd.Parent() calls, which silently breaks if a
 // command is ever nested at a different depth).
-func ConfigFileToModify(cmd *cobra.Command) string {
-	if ConfigFile != "" {
-		return ConfigFile
+func (rt *Runtime) ConfigFileToModify(cmd *cobra.Command) string {
+	if rt.ConfigFile != "" {
+		return rt.ConfigFile
 	}
 	if f := cmd.Flag("system"); f != nil && f.Changed {
 		return config.SystemConfigFile
 	}
-	return UserConfigFile
+	return rt.UserConfigFile
 }
 
 // ResolveShowEffective resolves the config.Effective a "config show"/"config
@@ -38,13 +38,13 @@ func ConfigFileToModify(cmd *cobra.Command) string {
 //  1. The system config file, if --system was passed.
 //  2. The user config file, if --user was passed.
 //  3. The file at --config, if passed.
-//  4. Otherwise, the already-loaded effective view (ActiveEffective()).
+//  4. Otherwise, the runtime's already-loaded effective view (rt.Effective).
 //
 // Each of the first three cases reads and applies defaults to a single file
 // via configfile.ReadConfigWithDefaults; the fourth reflects the merged
 // system+user (or --ignore-config default-only) view InitConfig already
 // produced.
-func ResolveShowEffective(cmd *cobra.Command) (config.Effective, error) {
+func (rt *Runtime) ResolveShowEffective(cmd *cobra.Command) (config.Effective, error) {
 	// cmd.Flag (rather than cmd.Flags().Changed) is used throughout, since it
 	// resolves an inherited persistent flag (e.g. "system", defined on the
 	// parent "config" command) regardless of nesting depth or of whether
@@ -57,7 +57,7 @@ func ResolveShowEffective(cmd *cobra.Command) (config.Effective, error) {
 		}
 		return eff, nil
 	case cmd.Flag("user") != nil && cmd.Flag("user").Changed:
-		eff, err := configfile.ReadConfigWithDefaults(UserConfigFile)
+		eff, err := configfile.ReadConfigWithDefaults(rt.UserConfigFile)
 		if err != nil {
 			return config.Effective{}, Errorf(CodeConfig, "failed to read user config file: %w", err)
 		}
@@ -70,6 +70,6 @@ func ResolveShowEffective(cmd *cobra.Command) (config.Effective, error) {
 		}
 		return eff, nil
 	default:
-		return ActiveEffective(), nil
+		return rt.Effective, nil
 	}
 }

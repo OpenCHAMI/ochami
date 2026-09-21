@@ -23,7 +23,7 @@ func TestPCSTransitionList_Formats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		res := runOchami(t, "pcs", "transition", "list", "--ignore-config", "--uri", srv.URL, "-F", f)
+		res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "list", "--uri", srv.URL, "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
 		}
@@ -32,6 +32,7 @@ func TestPCSTransitionList_Formats(t *testing.T) {
 
 // TestPCSTransitionList_Success verifies "pcs transition list" issues GET /transitions.
 func TestPCSTransitionList_Success(t *testing.T) {
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -40,7 +41,7 @@ func TestPCSTransitionList_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "list", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "list", "--uri", srv.URL)
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -60,7 +61,7 @@ func TestPCSTransitionShow_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "show", "--ignore-config", "--uri", srv.URL, "abc-123")
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "show", "--uri", srv.URL, "abc-123")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -79,7 +80,7 @@ func TestPCSTransitionAbort_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "abort", "--ignore-config", "--uri", srv.URL, "abc-123")
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "abort", "--uri", srv.URL, "abc-123")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -99,7 +100,7 @@ func TestPCSTransitionStart_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "start", "--ignore-config", "--uri", srv.URL,
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "start", "--uri", srv.URL,
 		"--xname", "x0c0s0b0n0", "on")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -121,7 +122,7 @@ func TestPCSTransitionMonitor_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "monitor", "--ignore-config", "--uri", srv.URL, "abc-123")
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "monitor", "--uri", srv.URL, "abc-123")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}

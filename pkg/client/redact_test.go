@@ -14,8 +14,6 @@ import (
 	"testing"
 
 	"github.com/rs/zerolog"
-
-	"github.com/openchami/ochami/internal/log"
 )
 
 func TestRedactToken(t *testing.T) {
@@ -138,9 +136,6 @@ func TestIsAuthorizationHeader(t *testing.T) {
 // header is truncated in debug logs by default (WithShowToken(false)) and shown
 // in full when the client is created with WithShowToken(true).
 func TestMakeRequestRedactsAuthorizationInLogs(t *testing.T) {
-	origLogger := log.Logger
-	defer func() { log.Logger = origLogger }()
-
 	fullToken := "eyJhbGciOiJIUzI1NiJ9.payload.sig"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -150,9 +145,9 @@ func TestMakeRequestRedactsAuthorizationInLogs(t *testing.T) {
 
 	run := func(showToken bool) string {
 		var buf bytes.Buffer
-		log.Logger = zerolog.New(&buf).Level(zerolog.DebugLevel)
+		logger := zerolog.New(&buf).Level(zerolog.DebugLevel)
 
-		oc, err := NewOchamiClient("test", ts.URL, WithShowToken(showToken))
+		oc, err := NewOchamiClient("test", ts.URL, WithShowToken(showToken), WithLogger(logger))
 		if err != nil {
 			t.Fatalf("failed to create client: %v", err)
 		}

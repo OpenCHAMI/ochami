@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rs/zerolog"
+
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/pkg/client"
@@ -97,7 +99,7 @@ func TestAggregateItemErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := AggregateItemErrors(tc.errs, "resource update")
+			err := AggregateItemErrors(zerolog.Nop(), tc.errs, "resource update")
 			if code := ExitCode(err); code != tc.wantCode {
 				t.Errorf("ExitCode() = %d, want %d", code, tc.wantCode)
 			}
