@@ -45,8 +45,8 @@ func TestSMDIfaceGet_Filters(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append([]string{"smd", "iface", "get", "--ignore-config", "--uri", srv.URL, "--token", "t"}, tc.args...)
-			res := runOchami(t, args...)
+			args := append([]string{"smd", "--ignore-config", "iface", "get", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -65,7 +65,7 @@ func TestSMDIfaceGet_Formats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+		res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL, "--token", "t", "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
 		}
@@ -83,7 +83,7 @@ func TestSMDIfaceGet_ByID(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", srv.URL,
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL,
 		"--token", validToken(t), "--id", "decafc0ffeee")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -103,7 +103,7 @@ func TestSMDIfaceGet_ByIDWithByIP(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", srv.URL,
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL,
 		"--token", validToken(t), "--id", "decafc0ffeee", "--by-ip")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -122,7 +122,7 @@ func TestSMDIfaceAdd_ByFlags(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b55n0", "de:ca:fc:0f:fe:ee", "NMN,172.16.0.55")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -141,7 +141,7 @@ func TestSMDIfaceAdd_ByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"ComponentID":"x0c0s0b0n0","MACAddress":"de:ad:be:ef:00:00"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -163,7 +163,7 @@ func TestSMDIfaceDelete_ByIDs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "decafc0ffeee", "de:ad:be:ee:ee:ef")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -185,8 +185,8 @@ func TestSMDIfaceDelete_AllConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "--all")
+	res := runOchamiWithInputAndRuntime(t, "y\n",
+		"smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t", "--all")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -209,7 +209,7 @@ func TestSMDIfaceDelete_ByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `[{"ID":"decafc0ffeee"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)

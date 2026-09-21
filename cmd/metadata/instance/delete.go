@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
@@ -21,32 +20,32 @@ type metadataInstanceDeleteOptions struct {
 
 // runCoreMetadataInstanceDelete contains the core logic for the metadata instance delete command.
 // It takes the parsed options and performs the actual work of deleting instance infos.
-func runCoreMetadataInstanceDelete(cmd *cobra.Command, opts *metadataInstanceDeleteOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+func runCoreMetadataInstanceDelete(cmd *cobra.Command, opts *metadataInstanceDeleteOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
-		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 		} else if !respDelete {
 			return cli.Errorf(cli.CodeDeclined, "user aborted instance info deletion")
 		} else {
-			log.Logger.Debug().Msg("user answered affirmatively to delete instance infos")
+			rt.Logger.Debug().Msg("user answered affirmatively to delete instance infos")
 		}
 	}
 
 	// Send off requests
-	results := metadataServiceClient.DeleteInstanceInfos(cmd.Context(), cli.Token, args)
+	results := metadataServiceClient.DeleteInstanceInfos(cmd.Context(), rt.Token, args)
 
 	// Print UIDs of deleted items
-	log.Logger.Info().Msgf("Instance infos deleted: %+v", results.Values())
+	rt.Logger.Info().Msgf("Instance infos deleted: %+v", results.Values())
 
-	if err := cli.AggregateItemErrors(results.Errors(), "Instance info deletion"); err != nil {
+	if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "Instance info deletion"); err != nil {
 		return err
 	}
 
@@ -71,8 +70,14 @@ See ochami-metadata(1) for more details.`,
   # Don't confirm deletion
   ochami metadata instance delete --no-confirm instanceinfo-d614b918`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -85,7 +90,7 @@ See ochami-metadata(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm")
 			}
 
-			return runCoreMetadataInstanceDelete(cmd, opts, args, metadataServiceClient)
+			return runCoreMetadataInstanceDelete(cmd, opts, args, metadataServiceClient, rt)
 		},
 	}
 

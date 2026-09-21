@@ -9,9 +9,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/config"
 )
@@ -37,7 +37,7 @@ const (
 	// otherwise invalid token).
 	CodeAuth = 4
 	// CodePayload indicates a payload, (un)marshalling, input, or output
-	// formatting error.
+	// error, including a failure to write command output.
 	CodePayload = 5
 	// CodeHTTP indicates the server returned an unsuccessful HTTP response.
 	CodeHTTP = 6
@@ -171,10 +171,10 @@ func (e *itemErrors) Unwrap() []error { return e.errs }
 // AggregateItemErrors logs each non-nil error from a multi-item operation
 // (one error per item, nil for items that succeeded) and returns
 // CombineItemErrors(errs, msg).
-func AggregateItemErrors(errs []error, msg string) error {
+func AggregateItemErrors(logger zerolog.Logger, errs []error, msg string) error {
 	for _, err := range errs {
 		if err != nil {
-			log.Logger.Error().Err(err).Msgf("%s failed", msg)
+			logger.Error().Err(err).Msgf("%s failed", msg)
 		}
 	}
 	return CombineItemErrors(errs, msg)

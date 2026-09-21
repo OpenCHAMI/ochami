@@ -20,8 +20,8 @@ func TestCloudInitNodeGetData_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "meta-data", "x3000c0s0b0n0",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "node", "get", "meta-data", "x3000c0s0b0n0",
+		"--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -38,7 +38,7 @@ func TestCloudInitNodeGet_MetadataHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "meta-data", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "meta-data", "--ignore-config",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -56,7 +56,7 @@ func TestCloudInitNodeGet_UserdataHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "user-data", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "user-data", "--ignore-config",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -74,7 +74,7 @@ func TestCloudInitNodeGet_GroupHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "get", "group", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "group", "--ignore-config",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -92,7 +92,7 @@ func TestCloudInitNodeSet_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"id":"x0c0s0b0n0"}]`)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -110,7 +110,7 @@ func TestCloudInitNodeSet_MalformedPayload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"-d", `not json`)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

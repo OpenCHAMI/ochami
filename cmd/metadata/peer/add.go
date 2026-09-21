@@ -11,7 +11,6 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 
@@ -25,9 +24,9 @@ type metadataPeerAddOptions struct {
 
 // runCoreMetadataPeerAdd contains the core logic for the metadata peer add command.
 // It takes the parsed options and performs the actual work of adding WireGuard peers.
-func runCoreMetadataPeerAdd(cmd *cobra.Command, opts *metadataPeerAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+func runCoreMetadataPeerAdd(cmd *cobra.Command, opts *metadataPeerAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -39,42 +38,42 @@ func runCoreMetadataPeerAdd(cmd *cobra.Command, opts *metadataPeerAddOptions, me
 		// Read peer data
 		peers := []metadata_service_client.CreateWireGuardPeerRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers); err != nil {
+			if err := cli.HandlePayloadSlice[metadata_service_client.CreateWireGuardPeerRequest](rt, cmd, &peers); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers); err != nil {
+			if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateWireGuardPeerRequest](rt, cmd, &peers); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = metadataServiceClient.AddWireGuardPeers(cmd.Context(), cli.Token, peers)
+		results = metadataServiceClient.AddWireGuardPeers(cmd.Context(), rt.Token, peers)
 	} else {
 		// Use simple API (spec)
 
 		// Read peer data
 		peers := []metadata_service.WireGuardPeerSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[metadata_service.WireGuardPeerSpec](cmd, &peers); err != nil {
+			if err := cli.HandlePayloadSlice[metadata_service.WireGuardPeerSpec](rt, cmd, &peers); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[metadata_service.WireGuardPeerSpec](cmd, &peers); err != nil {
+			if err := cli.HandlePayloadStdinSlice[metadata_service.WireGuardPeerSpec](rt, cmd, &peers); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = metadataServiceClient.AddWireGuardPeerSpecs(cmd.Context(), cli.Token, peers)
+		results = metadataServiceClient.AddWireGuardPeerSpecs(cmd.Context(), rt.Token, peers)
 	}
 
 	var names []string
 	for _, peer := range results.Values() {
 		names = append(names, peer.Metadata.Name)
 	}
-	log.Logger.Info().Msgf("WireGuard peers created: %q", names)
-	if err := cli.AggregateItemErrors(results.Errors(), "WireGuard peer addition"); err != nil {
+	rt.Logger.Info().Msgf("WireGuard peers created: %q", names)
+	if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "WireGuard peer addition"); err != nil {
 		return err
 	}
 
@@ -157,8 +156,14 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | ochami metadata peer add -f yaml -d @-
   echo '<yaml_data>' | ochami metadata peer add -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -171,14 +176,14 @@ See ochami-metadata(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope")
 			}
 
-			return runCoreMetadataPeerAdd(cmd, opts, metadataServiceClient)
+			return runCoreMetadataPeerAdd(cmd, opts, metadataServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	metadataPeerAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	metadataPeerAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(metadataPeerAddCmd)
 	metadataPeerAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return metadataPeerAddCmd

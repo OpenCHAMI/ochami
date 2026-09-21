@@ -6,6 +6,8 @@
 package cluster
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -57,16 +59,22 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// We must have a config file in order to write cluster info
-			fileToModify := cli.ConfigFileToModify(cmd)
+			fileToModify := rt.ConfigFileToModify(cmd)
 
 			// Ask to create file if it doesn't exist
-			if create, err := cli.Ios.AskToCreate(fileToModify); err != nil {
-				if err != cli.FileExistsError {
+			if create, err := rt.AskToCreate(fileToModify); err != nil {
+				if !errors.Is(err, cli.ErrFileExists) {
 					return cli.Errorf(cli.CodeConfig, "error asking to create file: %w", err)
 				}
 			} else if create {
-				if err := cli.CreateIfNotExists(fileToModify); err != nil {
+				if err := rt.CreateIfNotExists(fileToModify); err != nil {
 					return cli.Errorf(cli.CodeConfig, "error creating file: %w", err)
 				}
 			} else {
@@ -83,6 +91,13 @@ See ochami-config(5) for details on the configuration options.`,
 			if err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to open config file: %w", err)
 			}
+			// Commands that edit the config file don't load it, so warn here
+			// about any cluster the file defines more than once.
+			dups, err := f.DuplicateClusters()
+			if err != nil {
+				return cli.Errorf(cli.CodeConfig, "failed to read clusters from config file: %w", err)
+			}
+			rt.WarnDuplicateClusters(dups)
 
 			// If the key is "name", this is a rename. The new name is taken
 			// as the raw argument rather than run through StringToType, since

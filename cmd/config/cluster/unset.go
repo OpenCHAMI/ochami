@@ -24,12 +24,6 @@ if the file defines the cluster more than once.
 See ochami-config(1) for details on the config commands.
 See ochami-config(5) for details on the configuration options.`,
 		Example: `  ochami config cluster unset foobar cluster.smd.uri`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// It doesn't make sense to unset a cluster config from a
-			// non-existent config file, so err if the specified config
-			// file doesn't exist.
-			return cli.InitConfigAndLogging(cmd, false)
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// To mark both persistent and regular flags mutually exclusive,
 			// this function must be run before the command is executed. It
@@ -40,14 +34,26 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// We must have a config file in order to write cluster info
-			fileToModify := cli.ConfigFileToModify(cmd)
+			fileToModify := rt.ConfigFileToModify(cmd)
 
 			// Perform modification
 			f, err := config.OpenFile(fileToModify)
 			if err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to open config file: %w", err)
 			}
+			// Commands that edit the config file don't load it, so warn here
+			// about any cluster the file defines more than once.
+			dups, err := f.DuplicateClusters()
+			if err != nil {
+				return cli.Errorf(cli.CodeConfig, "failed to read clusters from config file: %w", err)
+			}
+			rt.WarnDuplicateClusters(dups)
 			if err := f.UnsetClusterKey(args[0], args[1]); err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}

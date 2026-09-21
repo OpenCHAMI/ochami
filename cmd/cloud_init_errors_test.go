@@ -21,7 +21,7 @@ func TestCloudInitServiceVersion_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "version", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "version", "--ignore-config", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -39,7 +39,7 @@ func TestCloudInitServiceStatus_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "status", "--ignore-config", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -59,7 +59,7 @@ func TestCloudInitServiceStatus_QuietHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "status", "--quiet", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "status", "--quiet", "--ignore-config", "--uri", srv.URL)
 	if res.exitCode != cli.CodeHTTP {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 	}
@@ -76,7 +76,7 @@ func TestCloudInitServiceStatus_APIError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "status", "--api", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "status", "--api", "--ignore-config", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -91,7 +91,7 @@ func TestCloudInitServiceStatus_APIError(t *testing.T) {
 func TestCloudInitServiceStatus_NotRunning(t *testing.T) {
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-	res := runOchami(t, "cloud-init", "service", "status", "--ignore-config", "--uri", url)
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "service", "status", "--uri", url)
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

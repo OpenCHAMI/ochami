@@ -22,9 +22,10 @@ import (
 // cluster config (which belongs to "config cluster set") and reports a usage
 // error.
 func TestConfigSet_RejectsClusterKey(t *testing.T) {
+
 	cfg := writeTempConfig(t, "")
 
-	res := runOchami(t, "--config", cfg, "config", "set", "clusters.foo", "bar")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "set", "clusters.foo", "bar")
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -38,9 +39,10 @@ func TestConfigSet_RejectsClusterKey(t *testing.T) {
 // rejected with a config error, since cluster keys must be read via
 // "config cluster show".
 func TestConfigShow_RejectsClusterKey(t *testing.T) {
+
 	cfg := writeTempConfig(t, "")
 
-	res := runOchami(t, "--config", cfg, "config", "show", "clusters.foo")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show", "clusters.foo")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -68,7 +70,7 @@ clusters:
 	// Ensure the env var is not set.
 	os.Unsetenv("DEMO_ACCESS_TOKEN")
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err == nil {
 		t.Fatal("expected an auth error, got nil")
 	}
@@ -82,7 +84,7 @@ clusters:
 func TestConfigUnset_UnknownKey(t *testing.T) {
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
-	res := runOchami(t, "--config", cfg, "config", "unset", "log.does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.does-not-exist")
 	if res.err == nil || res.exitCode != cli.CodeConfig {
 		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
 	}

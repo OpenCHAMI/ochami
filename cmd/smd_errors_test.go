@@ -11,6 +11,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -26,7 +27,7 @@ func TestSMDDeprecatedStatus_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "smd", "service", "status", "--ignore-config", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -36,10 +37,11 @@ func TestSMDDeprecatedStatus_HTTPError(t *testing.T) {
 }
 
 // TestSMDServiceStatus_DuplicateCluster verifies that "smd service status"
-// fails with a config error, without contacting SMD, when the cluster
-// selected through default-cluster or --cluster is defined more than once in
-// the config file, even when --uri is also passed.
+// warns about and then fails with a config error, without contacting SMD,
+// when the cluster selected through default-cluster or --cluster is defined
+// more than once in the config file, even when --uri is also passed.
 func TestSMDServiceStatus_DuplicateCluster(t *testing.T) {
+	t.Parallel()
 	var requests atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
@@ -52,12 +54,15 @@ func TestSMDServiceStatus_DuplicateCluster(t *testing.T) {
 		{"--config", cfg, "smd", "service", "status", "--cluster", "demo"},
 		{"--config", cfg, "smd", "service", "status", "--uri", srv.URL},
 	} {
-		res := runOchami(t, args...)
+		res := runOchamiWithRuntime(t, args...)
 		if !errors.As(res.err, &config.ErrDuplicateCluster{}) {
 			t.Errorf("%v: error = %v, want ErrDuplicateCluster", args, res.err)
 		}
 		if res.exitCode != cli.CodeConfig {
 			t.Errorf("%v: exit code = %d, want %d (%s)", args, res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
+		}
+		if strings.Count(res.stdout, "WRN") != 1 || !strings.Contains(res.stdout, `cluster "demo" is defined 2 times`) {
+			t.Errorf("%v: output = %q, want one warning about cluster demo", args, res.stdout)
 		}
 	}
 	if n := requests.Load(); n != 0 {

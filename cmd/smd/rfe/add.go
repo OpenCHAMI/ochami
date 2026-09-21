@@ -11,7 +11,6 @@ import (
 	"github.com/openchami/schemas/schemas/csm"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/smd"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -27,21 +26,21 @@ type rfeAddOptions struct {
 
 // runCoreRfeAdd contains the core logic for the smd rfe add command.
 // It takes the parsed options and performs the actual work of adding redfish endpoints.
-func runCoreRfeAdd(cmd *cobra.Command, opts *rfeAddOptions, args []string, smdClient *smd.SMDClient) error {
+func runCoreRfeAdd(cmd *cobra.Command, opts *rfeAddOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+	if err := rt.UseCACert(smdClient.OchamiClient); err != nil {
 		return err
 	}
 
 	var rfes smd.RedfishEndpointSlice
 	if cmd.Flag("data").Changed {
 		// Use payload file if passed
-		if err := cli.HandlePayload(cmd, &rfes); err != nil {
+		if err := rt.HandlePayload(cmd, &rfes); err != nil {
 			return err
 		}
 	} else {
@@ -60,8 +59,8 @@ func runCoreRfeAdd(cmd *cobra.Command, opts *rfeAddOptions, args []string, smdCl
 	}
 
 	// Send off request
-	results := smdClient.PostRedfishEndpoints(cmd.Context(), rfes, cli.Token)
-	if err := cli.AggregateItemErrors(results.Errors(), "SMD redfish endpoint addition"); err != nil {
+	results := smdClient.PostRedfishEndpoints(cmd.Context(), rfes, rt.Token)
+	if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "SMD redfish endpoint addition"); err != nil {
 		return err
 	}
 
@@ -118,15 +117,21 @@ See ochami-smd(1) for more details.`,
 				}
 			} else {
 				if len(args) > 0 {
-					log.Logger.Warn().Msgf("raw data passed, ignoring extra arguments: %v", args)
+					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring extra arguments: %v", args)
 				}
 			}
 
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -148,7 +153,7 @@ See ochami-smd(1) for more details.`,
 				opts.Password, _ = cmd.Flags().GetString("password")
 			}
 
-			return runCoreRfeAdd(cmd, opts, args, smdClient)
+			return runCoreRfeAdd(cmd, opts, args, smdClient, rt)
 		},
 	}
 
@@ -158,8 +163,8 @@ See ochami-smd(1) for more details.`,
 	rfeAddCmd.Flags().String("username", "", "username to use when interrogating endpoint")
 	rfeAddCmd.Flags().String("password", "", "password to use when interrogating endpoint")
 	rfeAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	rfeAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(rfeAddCmd)
 	rfeAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	rfeAddCmd.MarkFlagsMutuallyExclusive("domain", "data")
 	rfeAddCmd.MarkFlagsMutuallyExclusive("hostname", "data")

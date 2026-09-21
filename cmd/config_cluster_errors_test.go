@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -19,7 +18,8 @@ import (
 // TestConfigClusterSet_MutuallyExclusiveSources verifies that passing both
 // --user and --system is a usage error.
 func TestConfigClusterSet_MutuallyExclusiveSources(t *testing.T) {
-	res := runOchami(t, "config", "cluster", "set", "--user", "--system",
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "config", "cluster", "set", "--user", "--system",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -32,9 +32,10 @@ func TestConfigClusterSet_MutuallyExclusiveSources(t *testing.T) {
 // TestConfigClusterDelete_NotFound verifies that deleting a non-existent cluster
 // resolves to a config error.
 func TestConfigClusterDelete_NotFound(t *testing.T) {
+
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "delete", "does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "delete", "does-not-exist")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -52,7 +53,7 @@ func TestConfigClusterUnset_UnknownKey(t *testing.T) {
     uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
 	if res.err == nil || res.exitCode != cli.CodeConfig {
 		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
 	}
@@ -66,7 +67,7 @@ func TestConfigClusterUnset_UnknownKey(t *testing.T) {
 func TestConfigClusterShow_NonexistentCluster(t *testing.T) {
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
 	if res.exitCode != cli.CodeConfig {
 		t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
 	}
@@ -77,7 +78,7 @@ func TestConfigClusterShow_NonexistentCluster(t *testing.T) {
 func TestConfigClusterUnset_Nonexistent(t *testing.T) {
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "nope", "cluster.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "nope", "cluster.uri")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -103,19 +104,22 @@ clusters:
 `
 
 // requireDuplicateClusterRejected runs ochami with args against a config file
-// that defines cluster "demo" twice and fails t unless the command fails with
-// ErrDuplicateCluster and a config error exit code and leaves the file
-// unchanged.
+// that defines cluster "demo" twice and fails t unless the command warns once
+// about the duplicated cluster, fails with ErrDuplicateCluster and a config
+// error exit code, and leaves the file unchanged.
 func requireDuplicateClusterRejected(t *testing.T, args ...string) {
 	t.Helper()
 	cfg := writeTempConfig(t, duplicateClusterConfig)
 
-	res := runOchami(t, append([]string{"--config", cfg}, args...)...)
+	res := runOchamiWithRuntime(t, append([]string{"--config", cfg}, args...)...)
 	if !errors.As(res.err, &config.ErrDuplicateCluster{}) {
 		t.Fatalf("error = %v, want ErrDuplicateCluster", res.err)
 	}
 	if res.exitCode != cli.CodeConfig {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
+	}
+	if strings.Count(res.stdout, "WRN") != 1 || !strings.Contains(res.stdout, `cluster "demo" is defined 2 times`) {
+		t.Errorf("output = %q, want one warning about cluster demo", res.stdout)
 	}
 	data, err := os.ReadFile(cfg)
 	if err != nil {
@@ -130,13 +134,17 @@ func requireDuplicateClusterRejected(t *testing.T, args ...string) {
 // renaming, or making default a cluster defined more than once in the config
 // file fails with a config error and leaves the file unchanged.
 func TestConfigClusterSet_DuplicateCluster(t *testing.T) {
+	t.Parallel()
 	t.Run("key", func(t *testing.T) {
+		t.Parallel()
 		requireDuplicateClusterRejected(t, "config", "cluster", "set", "demo", "cluster.uri", "https://new.example")
 	})
 	t.Run("rename", func(t *testing.T) {
+		t.Parallel()
 		requireDuplicateClusterRejected(t, "config", "cluster", "set", "demo", "name", "prod")
 	})
 	t.Run("default", func(t *testing.T) {
+		t.Parallel()
 		requireDuplicateClusterRejected(t, "config", "cluster", "set", "-d", "demo", "cluster.uri", "https://new.example")
 	})
 }
@@ -145,6 +153,7 @@ func TestConfigClusterSet_DuplicateCluster(t *testing.T) {
 // cluster defined more than once in the config file fails with a config error
 // and leaves the file unchanged.
 func TestConfigClusterUnset_DuplicateCluster(t *testing.T) {
+	t.Parallel()
 	requireDuplicateClusterRejected(t, "config", "cluster", "unset", "demo", "cluster.bss.uri")
 }
 
@@ -152,39 +161,31 @@ func TestConfigClusterUnset_DuplicateCluster(t *testing.T) {
 // defined more than once in the config file fails with a config error and
 // leaves the file unchanged.
 func TestConfigClusterDelete_DuplicateCluster(t *testing.T) {
+	t.Parallel()
 	requireDuplicateClusterRejected(t, "config", "cluster", "delete", "demo")
 }
 
 // TestConfigClusterShow_DuplicateCluster verifies that showing a single
-// cluster defined more than once in a config file fails with a config error,
-// whether reading the merged system and user configuration or a single file.
+// cluster, or one of its keys, warns about and then fails with a config error
+// when a config file defines the cluster more than once, without showing any
+// configuration.
 func TestConfigClusterShow_DuplicateCluster(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	// An absolute XDG_CONFIG_HOME would take precedence over HOME.
-	t.Setenv("XDG_CONFIG_HOME", "")
-	userDir := filepath.Join(home, ".config", "ochami")
-	if err := os.MkdirAll(userDir, 0o755); err != nil {
-		t.Fatalf("failed to create user config dir: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(userDir, "config.yaml"), []byte(duplicateClusterConfig), 0o644); err != nil {
-		t.Fatalf("failed to write user config: %v", err)
-	}
+	t.Parallel()
 	cfg := writeTempConfig(t, duplicateClusterConfig)
 
 	for _, args := range [][]string{
-		{"config", "cluster", "show", "demo"},
+		{"--config", cfg, "config", "cluster", "show", "demo"},
 		{"--config", cfg, "config", "cluster", "show", "demo", "cluster.uri"},
 	} {
-		res := runOchami(t, args...)
+		res := runOchamiWithRuntime(t, args...)
 		if !errors.As(res.err, &config.ErrDuplicateCluster{}) {
 			t.Errorf("%v: error = %v, want ErrDuplicateCluster", args, res.err)
 		}
 		if res.exitCode != cli.CodeConfig {
 			t.Errorf("%v: exit code = %d, want %d (%s)", args, res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
 		}
-		if res.stdout != "" {
-			t.Errorf("%v: stdout = %q, want nothing shown", args, res.stdout)
+		if strings.Count(res.stdout, "WRN") != 1 || strings.Contains(res.stdout, "example") {
+			t.Errorf("%v: output = %q, want one warning and no configuration shown", args, res.stdout)
 		}
 	}
 }

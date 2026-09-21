@@ -20,7 +20,7 @@ func TestBSSBootParamsSet_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "boot", "params", "set",
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "set",
 		"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 		"--mac", "de:ad:be:ef:00:00", "--kernel", "https://example.com/vmlinuz")
 	if res.err == nil {

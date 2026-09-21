@@ -33,8 +33,9 @@ These configuration options are global configuration options.
 	definitions:
 
 	- Every command that loads the configuration (any command run without
-	  *--ignore-config*) prints a warning naming the cluster, the file, and
-	  the positions of its entries in *clusters*.
+	  *--ignore-config*), and every *ochami config* command that edits the
+	  file, prints a warning naming the cluster, the file, and the positions
+	  of its entries in *clusters*.
 	- Commands that use the cluster, whether selected with *--cluster* or
 	  through *default-cluster*, fail with exit status 3, even if
 	  *--cluster-uri* or *--uri* is also passed.

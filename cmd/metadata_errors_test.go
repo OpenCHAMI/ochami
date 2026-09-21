@@ -26,7 +26,7 @@ func TestMetadataList_HTTPError(t *testing.T) {
 
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
-			res := runOchami(t, "metadata", typ, "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "metadata", typ, "list", "--uri", srv.URL, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -47,7 +47,7 @@ func TestMetadataGet_HTTPError(t *testing.T) {
 
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
-			res := runOchami(t, "metadata", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "metadata", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -65,7 +65,7 @@ func TestMetadataList_NetworkError(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-			res := runOchami(t, "metadata", typ, "list", "--ignore-config", "--uri", url, "--token", "t")
+			res := runOchamiWithRuntime(t, "metadata", typ, "list", "--ignore-config", "--uri", url, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -85,7 +85,7 @@ func TestMetadataSet_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "set", "some-uid",
+			res := runOchamiWithRuntime(t, "metadata", typ, "set", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -106,7 +106,7 @@ func TestMetadataPatch_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "patch", "some-uid",
+			res := runOchamiWithRuntime(t, "metadata", typ, "patch", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", addPayloadFor(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -128,7 +128,7 @@ func TestMetadataAdd_MalformedPayload(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"-d", `not json`)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -151,7 +151,7 @@ func TestMetadataAdd_MultiItemAggregate(t *testing.T) {
 			defer srv.Close()
 
 			payload := "[" + addPayloadFor(typ) + "," + addPayloadFor(typ) + "]"
-			res := runOchami(t, "metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "metadata", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"-d", payload)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")

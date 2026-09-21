@@ -31,8 +31,14 @@ This command sends a GET to BSS. An access token is not required.
 See ochami-bss(1) for more details.`,
 		Example: `  ochami boot script get --mac 00:c0:ff:ee:00:00`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			bssClient, err := bss_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -79,7 +85,9 @@ See ochami-bss(1) for more details.`,
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS boot script request yielded unsuccessful HTTP response", "failed to request boot script from BSS")
 			}
-			fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
+			if err := cli.WriteString(rt.Ios.Out(), string(httpEnv.Body)+"\n"); err != nil {
+				return err
+			}
 
 			return nil
 		},

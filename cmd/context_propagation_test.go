@@ -17,14 +17,15 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-// TestContextPropagation_CancellationWiring verifies a context cancelled
-// before command execution prevents the request from completing
-// successfully, proving cancellation is wired through to the client.
+// TestContextPropagation_CancellationWiring verifies a command executed with
+// an already-cancelled context fails with context.Canceled from its request,
+// proving cancellation is wired through to the client.
 func TestContextPropagation_CancellationWiring(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -37,7 +38,7 @@ func TestContextPropagation_CancellationWiring(t *testing.T) {
 
 	rootCmd := NewRootCmd()
 	rootCmd.SetArgs([]string{"smd", "component", "get", "--ignore-config", "--uri", srv.URL})
-	if err := rootCmd.ExecuteContext(ctx); err == nil {
-		t.Error("expected an error executing with an already-cancelled context, got nil")
+	if err := rootCmd.ExecuteContext(ctx); !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled executing with an already-cancelled context, got %v", err)
 	}
 }
