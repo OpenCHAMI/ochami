@@ -73,9 +73,7 @@ func NewClient(baseURI string, opts ...client.Option) (*RCSClient, error) {
 func headersForToken(token string) (*client.HTTPHeaders, error) {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return nil, fmt.Errorf("failed to set token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 
 	return headers, nil
