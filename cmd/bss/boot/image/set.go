@@ -81,10 +81,7 @@ See ochami-bss(1) for more details.`,
 			qstr := values.Encode()
 			httpEnv, err := bssClient.GetBootParams(qstr, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS boot parameter request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request boot parameters from BSS: %w", err)
+				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
 			}
 			var bps []bssTypes.BootParams
 			if err := format.UnmarshalData(httpEnv.Body, &bps, format.DataFormatJson); err != nil {
@@ -143,13 +140,13 @@ See ochami-bss(1) for more details.`,
 				}
 			}
 
-			errorsOccurred := false
+			var itemErrs []error
 			for bpIdx, bp := range bps {
 				// Edit parameters for nodes
 				k := kargs.NewKargs([]byte(bp.Params))
 				if err := k.SetKarg("root", args[0]); err != nil {
 					log.Logger.Error().Err(err).Msg("failed to set 'root' kernel argument")
-					errorsOccurred = true
+					itemErrs = append(itemErrs, err)
 					continue
 				}
 				bps[bpIdx].Params = k.String()
@@ -162,11 +159,11 @@ See ochami-bss(1) for more details.`,
 					} else {
 						log.Logger.Error().Err(err).Msg("failed to set boot parameters in BSS")
 					}
-					errorsOccurred = true
+					itemErrs = append(itemErrs, err)
 				}
 			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "updating boot images completed with errors")
+			if err := cli.CombineItemErrors(itemErrs, "updating boot images"); err != nil {
+				return err
 			}
 
 			return nil

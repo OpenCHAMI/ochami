@@ -41,7 +41,7 @@ See ochami-boot(1) for more details.`,
 			// Make request
 			outBytes, err := bootServiceClient.GetNode(cli.Token, cli.FormatOutput, uid)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to get node for %s: %w", uid, err)
+				return cli.ClassifyClientError(err, fmt.Sprintf("failed to get node for %s", uid), fmt.Sprintf("failed to get node for %s", uid))
 			}
 
 			// Print output

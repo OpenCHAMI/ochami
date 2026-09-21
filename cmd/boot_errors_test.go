@@ -16,7 +16,7 @@ import (
 )
 
 // TestBootList_HTTPError verifies that an unsuccessful HTTP response from the
-// boot service resolves to a non-success exit code for the "list" subcommands.
+// boot service resolves to CodeHTTP for the "list" subcommands.
 func TestBootList_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
@@ -30,15 +30,15 @@ func TestBootList_HTTPError(t *testing.T) {
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
-			if res.exitCode == cli.CodeSuccess {
-				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 			}
 		})
 	}
 }
 
 // TestBootGet_HTTPError verifies that an unsuccessful HTTP response from a
-// "<type> get" resolves to a non-success exit code for each resource type.
+// "<type> get" resolves to CodeHTTP for each resource type.
 func TestBootGet_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -51,8 +51,8 @@ func TestBootGet_HTTPError(t *testing.T) {
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
-			if res.exitCode == cli.CodeSuccess {
-				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 			}
 		})
 	}

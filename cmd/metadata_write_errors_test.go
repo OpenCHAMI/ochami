@@ -26,8 +26,8 @@ func TestMetadataAdd_HTTPError(t *testing.T) {
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
-			if res.exitCode == cli.CodeSuccess {
-				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 			}
 		})
 	}
@@ -68,7 +68,7 @@ func TestMetadataDelete_HTTPError(t *testing.T) {
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
-	if res.exitCode == cli.CodeSuccess {
-		t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 	}
 }

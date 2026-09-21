@@ -20,8 +20,8 @@ func TestPCSStatusList_InvalidPowerFilter(t *testing.T) {
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
-	if res.exitCode == cli.CodeSuccess {
-		t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+	if res.exitCode != cli.CodeUsage {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
 	}
 }
 

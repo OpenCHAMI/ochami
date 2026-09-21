@@ -28,8 +28,8 @@ func TestGetNodeData_RequiresID(t *testing.T) {
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) { requestMade = true })
 	defer srv.Close()
 
-	if _, _, err := cic.GetNodeData(CloudInitMetaData, "tok"); err == nil {
-		t.Fatal("expected an error when no IDs are supplied, got nil")
+	if _, _, err := cic.GetNodeData(CloudInitMetaData, "tok"); !errors.Is(err, client.InvalidArgumentError) {
+		t.Fatalf("GetNodeData() error = %v, want client.InvalidArgumentError", err)
 	}
 	if requestMade {
 		t.Error("a request was made despite no IDs being supplied")
