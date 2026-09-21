@@ -38,6 +38,11 @@ Missing system-wide and user-level configuration files are skipped. If a file
 exists but cannot be read, parsed, validated, or merged, *ochami* reports the
 error and exits instead of silently ignoring the invalid configuration.
 
+Modification commands replace the configuration file atomically: they write
+the new contents to a temporary file in the same directory and rename it over
+the original, so that directory must be writable. If the configuration file
+is a symbolic link, the file it points to is replaced and the link is kept.
+
 The format of _key_ uses a period (*.*) to delimit subkeys, following a
 *<superkey>.<subkey>* syntax. For example, in order to reference the *format*
 key under the *log* key, the key reference path would be *log.format*.
