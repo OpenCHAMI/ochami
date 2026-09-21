@@ -130,3 +130,48 @@ func TestSetGroupSpec_UsesUIDEndpoint(t *testing.T) {
 		t.Errorf("path = %q, want /groups/grp-abc", gotPath)
 	}
 }
+
+// TestEnvelopeSetMethods verifies advanced updates use the correct endpoint and
+// bearer token.
+func TestEnvelopeSetMethods(t *testing.T) {
+	tests := []struct {
+		name     string
+		wantPath string
+		call     func(*MetadataServiceClient) error
+	}{
+		{"defaults", "/clusterdefaultss/uid", func(c *MetadataServiceClient) error {
+			_, err := c.SetDefaults("tok", "uid", metadata_service_client.UpdateClusterDefaultsRequest{})
+			return err
+		}},
+		{"group", "/groups/uid", func(c *MetadataServiceClient) error {
+			_, err := c.SetGroup("tok", "uid", metadata_service_client.UpdateGroupRequest{})
+			return err
+		}},
+		{"instance", "/instanceinfos/uid", func(c *MetadataServiceClient) error {
+			_, err := c.SetInstanceInfo("tok", "uid", metadata_service_client.UpdateInstanceInfoRequest{})
+			return err
+		}},
+		{"peer", "/wireguardpeers/uid", func(c *MetadataServiceClient) error {
+			_, err := c.SetWireGuardPeer("tok", "uid", metadata_service_client.UpdateWireGuardPeerRequest{})
+			return err
+		}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotMethod, gotPath, gotAuth string
+			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				gotMethod, gotPath, gotAuth = r.Method, r.URL.Path, r.Header.Get("Authorization")
+				w.Header().Set("Content-Type", "application/json")
+				io.WriteString(w, `{}`)
+			})
+			defer srv.Close()
+			if err := tc.call(c); err != nil {
+				t.Fatalf("set: %v", err)
+			}
+			if gotMethod != http.MethodPut || gotPath != tc.wantPath || gotAuth != "Bearer tok" {
+				t.Errorf("request = %s %s auth=%q, want PUT %s", gotMethod, gotPath, gotAuth, tc.wantPath)
+			}
+		})
+	}
+}

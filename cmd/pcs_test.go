@@ -4,12 +4,109 @@
 
 package cmd
 
+// pcs_test.go exercises "pcs status" and "pcs service" commands end-to-end
+// against an httptest.Server. Transition commands are covered in
+// pcs_transition_test.go.
+
 import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/openchami/ochami/internal/cli"
 )
+
+// TestPCSStatusList_Success verifies "pcs status list" issues GET /power-status.
+func TestPCSStatusList_Success(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.Write([]byte(`{"status":[]}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodGet {
+		t.Errorf("method = %q, want GET", gotMethod)
+	}
+	if gotPath != "/power-status" {
+		t.Errorf("path = %q, want /power-status", gotPath)
+	}
+}
+
+// TestPCSStatusList_WithFilters verifies xname and power/mgmt filters are encoded
+// in the query string.
+func TestPCSStatusList_WithFilters(t *testing.T) {
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.Write([]byte(`{"status":[]}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--xname", "x0c0s0b0n0", "--power-filter", "on", "--mgmt-filter", "available")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	for _, want := range []string{"xname=x0c0s0b0n0", "powerStateFilter=on", "managementStateFilter=available"} {
+		if !strings.Contains(gotQuery, want) {
+			t.Errorf("query = %q, want it to contain %q", gotQuery, want)
+		}
+	}
+}
+
+// TestPCSServiceStatus_Success verifies "pcs service status" contacts PCS readiness and
+// exits successfully when PCS reports ready (HTTP 204 on /readiness).
+func TestPCSServiceStatus_Success(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if res.exitCode != cli.CodeSuccess {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
+	}
+	if gotPath != "/readiness" {
+		t.Errorf("path = %q, want /readiness", gotPath)
+	}
+}
+
+// TestPCSServiceStatus_Health verifies that passing a health flag causes
+// "pcs service status" to query the /health endpoint.
+func TestPCSServiceStatus_Health(t *testing.T) {
+	var sawHealth bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/health":
+			sawHealth = true
+			w.Write([]byte(`{"KvStore":"ok","StateManager":"ok","Vault":"ok"}`))
+		default:
+			// readiness/liveness report ready
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "service", "status", "--all",
+		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !sawHealth {
+		t.Error("server never received a request to /health")
+	}
+}
 
 // TestPCSStatusShow_Success verifies "pcs status show <xname>" issues GET /power-status
 // and prints the first status entry.

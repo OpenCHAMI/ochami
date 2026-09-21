@@ -26,7 +26,8 @@ func writeCfg(t *testing.T, content string) string {
 
 // TestReadConfigWithDefaults_Validation verifies that ReadConfigWithDefaults
 // rejects null, empty, or malformed timeout, enable-auth, and log values with
-// ErrInvalidConfigVal, coerces a quoted enable-auth, and accepts a valid file.
+// ErrInvalidConfigVal, a cluster without a name, and malformed YAML, coerces a
+// quoted enable-auth, and accepts a valid file.
 func TestReadConfigWithDefaults_Validation(t *testing.T) {
 	t.Run("null timeout rejected", func(t *testing.T) {
 		path := writeCfg(t, "timeout:\n")
@@ -138,6 +139,20 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 		}
 		if eicv.Key != "log.format" {
 			t.Errorf("error key = %q, want log.format", eicv.Key)
+		}
+	})
+
+	t.Run("cluster missing name rejected", func(t *testing.T) {
+		path := writeCfg(t, "clusters:\n  - cluster:\n      uri: https://foo.example.com\n")
+		if _, err := ReadConfigWithDefaults(path); err == nil {
+			t.Fatal("expected error for cluster missing name, got nil")
+		}
+	})
+
+	t.Run("malformed yaml rejected", func(t *testing.T) {
+		path := writeCfg(t, "clusters: [unterminated\n")
+		if _, err := ReadConfigWithDefaults(path); err == nil {
+			t.Fatal("expected error for malformed YAML, got nil")
 		}
 	})
 }
