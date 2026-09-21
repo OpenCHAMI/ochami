@@ -391,23 +391,8 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 		clusterConfig config.ConfigClusterConfig
 		clusterList   = activeConfig.Clusters
 	)
-	if activeConfig.DefaultCluster != "" {
-		// 3. Check 'default-cluster'.
-		clusterName = activeConfig.DefaultCluster
-		clusterList = activeConfig.Clusters
-		log.Logger.Debug().Msgf("using base URI from default cluster %s", clusterName)
-		for _, c := range clusterList {
-			if c.Name == clusterName {
-				clusterToUse = c
-				break
-			}
-		}
-		if clusterToUse == (config.ConfigCluster{}) {
-			return "", fmt.Errorf("default cluster %s not found", clusterName)
-		}
-		clusterConfig = clusterToUse.Cluster
-	} else if cmd.Flag("cluster").Changed {
-		// 2. Check --cluster (overrides "default-cluster").
+	if cmd.Flag("cluster").Changed {
+		// An explicit cluster overrides the configured default cluster.
 		clusterName = cmd.Flag("cluster").Value.String()
 		log.Logger.Debug().Msgf("reading URI from cluster %s passed from command line", clusterName)
 		for _, c := range clusterList {
@@ -421,8 +406,23 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 		}
 
 		clusterConfig = clusterToUse.Cluster
+	} else if activeConfig.DefaultCluster != "" {
+		// Check 'default-cluster' when --cluster was not passed.
+		clusterName = activeConfig.DefaultCluster
+		clusterList = activeConfig.Clusters
+		log.Logger.Debug().Msgf("using base URI from default cluster %s", clusterName)
+		for _, c := range clusterList {
+			if c.Name == clusterName {
+				clusterToUse = c
+				break
+			}
+		}
+		if clusterToUse == (config.ConfigCluster{}) {
+			return "", fmt.Errorf("default cluster %s not found", clusterName)
+		}
+		clusterConfig = clusterToUse.Cluster
 	}
-	// 1. Check flags (--cluster-uri and/or --uri) and override any
+	// Check flags (--cluster-uri and/or --uri) and override any
 	// previously-set values while leaving unspecified ones alone.
 	if cmd.Flag("cluster-uri").Changed || (cmd.Flag("uri") != nil && cmd.Flag("uri").Changed) {
 		log.Logger.Debug().Msg("using base URI passed on command line")
@@ -482,23 +482,8 @@ func GetAPIVersion(cmd *cobra.Command, serviceName config.ServiceName) (string, 
 		clusterConfig config.ConfigClusterConfig
 		clusterList   = activeConfig.Clusters
 	)
-	if activeConfig.DefaultCluster != "" {
-		// 3. Check 'default-cluster'
-		clusterName = activeConfig.DefaultCluster
-		clusterList = activeConfig.Clusters
-		log.Logger.Debug().Msgf("using API version from %s in default cluster %s", serviceName, clusterName)
-		for _, c := range clusterList {
-			if c.Name == clusterName {
-				clusterToUse = c
-				break
-			}
-		}
-		if clusterToUse == (config.ConfigCluster{}) {
-			return "", fmt.Errorf("default cluster %s not found", clusterName)
-		}
-		clusterConfig = clusterToUse.Cluster
-	} else if cmd.Flag("cluster").Changed {
-		// 2. Check --cluster (overrides "default-cluster").
+	if cmd.Flag("cluster").Changed {
+		// An explicit cluster overrides the configured default cluster.
 		clusterName = cmd.Flag("cluster").Value.String()
 		log.Logger.Debug().Msgf("reading API version for %s from cluster %s passed from command line", serviceName, clusterName)
 		for _, c := range clusterList {
@@ -511,6 +496,21 @@ func GetAPIVersion(cmd *cobra.Command, serviceName config.ServiceName) (string, 
 			return "", fmt.Errorf("cluster %s not found", clusterName)
 		}
 
+		clusterConfig = clusterToUse.Cluster
+	} else if activeConfig.DefaultCluster != "" {
+		// Check 'default-cluster' when --cluster was not passed.
+		clusterName = activeConfig.DefaultCluster
+		clusterList = activeConfig.Clusters
+		log.Logger.Debug().Msgf("using API version from %s in default cluster %s", serviceName, clusterName)
+		for _, c := range clusterList {
+			if c.Name == clusterName {
+				clusterToUse = c
+				break
+			}
+		}
+		if clusterToUse == (config.ConfigCluster{}) {
+			return "", fmt.Errorf("default cluster %s not found", clusterName)
+		}
 		clusterConfig = clusterToUse.Cluster
 	}
 
