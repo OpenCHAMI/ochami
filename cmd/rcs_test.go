@@ -4,11 +4,10 @@
 
 package cmd
 
-// rcs_test.go exercises the non-interactive "rcs console" subcommands end-to-end:
-// "list" (plain HTTP) and "show" (websocket streamed to captured stdout). The
-// interactive "connect" command requires terminal/stdin injection and is
-// covered after the refactor on the follow-up branch. HTTP-failure cases are
-// covered in rcs_errors_test.go.
+// rcs_test.go exercises the "rcs console" subcommands end-to-end: "list"
+// (plain HTTP), "show" (websocket streamed to captured stdout), and
+// "connect" (interactive websocket session). HTTP-failure cases are covered
+// in rcs_errors_test.go.
 
 import (
 	"net/http"
@@ -70,5 +69,27 @@ func TestRCSConsoleShow_Success(t *testing.T) {
 	}
 	if !strings.Contains(res.stdout, "console output line") {
 		t.Errorf("stdout = %q, want it to contain the streamed console output", res.stdout)
+	}
+}
+
+// TestRCSConsole_Connect verifies that a normal websocket close during an
+// interactive console session is treated as a clean exit, not an error.
+func TestRCSConsole_Connect(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		_ = conn.WriteMessage(websocket.TextMessage, []byte("connected"))
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithInput(t, "", "rcs", "console", "connect", "x0c0s1b0n0",
+		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
 }
