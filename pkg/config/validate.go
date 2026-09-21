@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/v2"
 )
 
@@ -33,7 +34,7 @@ func coerceBool(v any) (bool, bool) {
 
 // requiredGlobalScalars lists the global scalar keys that must never be
 // explicitly null in a config source. These correspond to required values with
-// defaults in DefaultConfigMap.
+// defaults in DefaultGlobalMap.
 var requiredGlobalScalars = []string{
 	"log.format",
 	"log.level",
@@ -44,9 +45,10 @@ var requiredGlobalScalars = []string{
 }
 
 // checkGlobalNulls returns an ErrInvalidConfigVal if any required global scalar
-// key exists in ko but is explicitly null or an empty string. This is checked per-source
-// before merging so that a clean validation error is surfaced instead of the cryptic
-// type-mismatch error StrictMerge would otherwise produce.
+// key exists in ko but is explicitly null or an empty string. This is checked
+// per-source before merging so that a clean validation error is surfaced
+// instead of the cryptic type-mismatch error StrictMerge would otherwise
+// produce.
 func checkGlobalNulls(ko *koanf.Koanf) error {
 	for _, key := range requiredGlobalScalars {
 		if ko.Exists(key) {
@@ -120,7 +122,7 @@ func validateConfig(ko *koanf.Koanf) error {
 // boolean cluster keys into actual booleans within a cluster's "cluster"
 // sub-map, mutating it in place. This is applied before the config is merged so
 // that StrictMerge does not fail on a string-vs-bool mismatch against the
-// DefaultClusterConfigMap default.
+// DefaultClusterMap default.
 //
 // If a known boolean key is present but explicitly null or otherwise not
 // coercible to a boolean, an ErrInvalidConfigVal is returned so a clean error
@@ -138,4 +140,57 @@ func normalizeClusterBools(name string, cluster map[string]any) error {
 		cluster["enable-auth"] = b
 	}
 	return nil
+}
+
+// clusterAccumulator merges cluster configurations by name across multiple
+// sources while preserving the order in which cluster names are first seen.
+// This provides deterministic output regardless of Go's map iteration order.
+type clusterAccumulator struct {
+	conf   koanf.Conf              // koanf configuration for per-cluster instances
+	order  []string                // cluster names in first-seen order
+	byName map[string]*koanf.Koanf // per-cluster merged koanf instance
+}
+
+// newClusterAccumulator returns an initialized clusterAccumulator that builds
+// per-cluster koanf instances using conf.
+func newClusterAccumulator(conf koanf.Conf) *clusterAccumulator {
+	return &clusterAccumulator{conf: conf, byName: map[string]*koanf.Koanf{}}
+}
+
+// Add merges a single cluster's config (the "cluster" sub-map) into the
+// accumulator under the given name, applying DefaultClusterMap the first time a
+// name is seen. Later calls for the same name merge on top of earlier ones
+// (higher-priority sources should be added last).
+func (ca *clusterAccumulator) Add(name string, cluster map[string]any) error {
+	if ca.byName[name] == nil {
+		ca.order = append(ca.order, name)
+		ca.byName[name] = koanf.NewWithConf(ca.conf)
+		if err := ca.byName[name].Load(confmap.Provider(DefaultClusterMap(), "."), nil); err != nil {
+			return fmt.Errorf("unable to load default cluster config: %w", err)
+		}
+	}
+	// Coerce string booleans (e.g. "true") into real booleans so that
+	// StrictMerge does not fail merging against the typed defaults in
+	// DefaultClusterMap. This also rejects null/invalid boolean values with
+	// a clean error.
+	if err := normalizeClusterBools(name, cluster); err != nil {
+		return err
+	}
+	if err := ca.byName[name].Load(confmap.Provider(cluster, ""), nil); err != nil {
+		return fmt.Errorf("unable to merge cluster '%s': %w", name, err)
+	}
+	return nil
+}
+
+// Slice returns the accumulated clusters as a slice of maps suitable for
+// koanf.Set("clusters", ...), in first-seen order.
+func (ca *clusterAccumulator) Slice() []map[string]any {
+	clusterSlice := make([]map[string]any, 0, len(ca.order))
+	for _, name := range ca.order {
+		clusterSlice = append(clusterSlice, map[string]any{
+			"name":    name,
+			"cluster": ca.byName[name].Raw(),
+		})
+	}
+	return clusterSlice
 }

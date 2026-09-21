@@ -102,7 +102,8 @@ the array containing a *cluster* mapping with the below configuration options.
 
 *name:* _cluster_name_
 	The name of the cluster. This is what *--cluster* and the *default-cluster*
-	key use to identify the cluster.
+	key use to identify the cluster. It must be non-empty and must not contain a
+	period (*.*), which delimits keys.
 
 *<service>*
 	The service-specific configuration for *<service>*. Currently recognized
