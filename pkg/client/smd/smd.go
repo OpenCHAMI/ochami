@@ -200,7 +200,7 @@ func (sc *SMDClient) GetComponentsXname(xname, token string) (client.HTTPEnvelop
 	finalEP := SMDRelpathComponents + "/" + xname
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err := sc.GetData(finalEP, "", headers)
 	if err != nil {
@@ -217,7 +217,7 @@ func (sc *SMDClient) GetComponentsNid(nid int32, token string) (client.HTTPEnvel
 	finalEP := SMDRelpathComponents + "/ByNID/" + fmt.Sprint(nid)
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err := sc.GetData(finalEP, "", headers)
 	if err != nil {
@@ -239,7 +239,7 @@ func (sc *SMDClient) GetRedfishEndpoints(query, token string) (client.HTTPEnvelo
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = sc.GetData(SMDRelpathRedfishEndpoints, query, headers)
 	if err != nil {
@@ -275,7 +275,7 @@ func (sc *SMDClient) GetEthernetInterfaceByID(id, token string, getIPs bool) (cl
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	if getIPs {
 		if ep, err = url.JoinPath(SMDRelpathEthernetInterfaces, id); err != nil {
@@ -309,7 +309,7 @@ func (sc *SMDClient) GetComponentEndpoints(token string, xnames ...string) ([]cl
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, xname := range xnames {
 		henv, err := sc.GetData(SMDRelpathComponentEndpoints+"/"+xname, "", headers)
@@ -337,7 +337,7 @@ func (sc *SMDClient) GetComponentEndpointsAll(token string) (client.HTTPEnvelope
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = sc.GetData(SMDRelpathComponentEndpoints, "", headers)
 	if err != nil {
@@ -360,7 +360,7 @@ func (sc *SMDClient) GetGroups(query, token string) (client.HTTPEnvelope, error)
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = sc.GetData(SMDRelpathGroups, query, headers)
 	if err != nil {
@@ -384,7 +384,7 @@ func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, 
 	}
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err := sc.GetData(finalEP, "", headers)
 	if err != nil {
@@ -401,7 +401,7 @@ func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, 
 func (sc *SMDClient) GetGroupMembership(qstr, token string) (client.HTTPEnvelope, error) {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err := sc.GetData(SMDRelpathMemberships, qstr, headers)
 	if err != nil {
@@ -427,7 +427,7 @@ func (sc *SMDClient) PostComponents(compSlice ComponentSlice, token string) (cli
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = sc.PostData(SMDRelpathComponents, "", headers, body)
 	if err != nil {
@@ -449,7 +449,7 @@ func (sc *SMDClient) PostRedfishEndpoints(rfes RedfishEndpointSlice, token strin
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, rfe := range rfes.RedfishEndpoints {
 		var body client.HTTPBody
@@ -483,7 +483,7 @@ func (sc *SMDClient) PostRedfishEndpointsV2(rfes RedfishEndpointSliceV2, token s
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, rfe := range rfes.RedfishEndpoints {
 		var body client.HTTPBody
@@ -519,7 +519,7 @@ func (sc *SMDClient) PostEthernetInterfaces(eis []EthernetInterface, token strin
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, ei := range eis {
 		var body client.HTTPBody
@@ -555,7 +555,7 @@ func (sc *SMDClient) PostGroups(groups []Group, token string) ([]client.HTTPEnve
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, group := range groups {
 		var body client.HTTPBody
@@ -598,7 +598,7 @@ func (sc *SMDClient) PostGroupMembers(token, group string, members ...string) ([
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, member := range members {
 		groupPath, err := url.JoinPath(SMDRelpathGroups, group, "members")
@@ -647,7 +647,7 @@ func (sc *SMDClient) PutComponents(compSlice ComponentSlice, token string) ([]cl
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, comp := range compSlice.Components {
 		if comp.ID == "" {
@@ -696,7 +696,7 @@ func (sc *SMDClient) PutRedfishEndpoints(rfes RedfishEndpointSlice, token string
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, rfe := range rfes.RedfishEndpoints {
 		var body client.HTTPBody
@@ -743,7 +743,7 @@ func (sc *SMDClient) PutRedfishEndpointsV2(rfes RedfishEndpointSliceV2, token st
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, rfe := range rfes.RedfishEndpoints {
 		var body client.HTTPBody
@@ -803,7 +803,7 @@ func (sc *SMDClient) PutGroupMembers(token, group string, members ...string) (cl
 	// Add token to headers
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
 	// Calculate endpoint path for group
@@ -838,7 +838,7 @@ func (sc *SMDClient) PatchComponentsNID(comps ComponentSlice, token string) (cli
 	// Set token in request headers
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
 	// Create base path
@@ -883,7 +883,7 @@ func (sc *SMDClient) PatchEthernetInterfaces(eis []EthernetInterface, token stri
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, ei := range eis {
 		var body client.HTTPBody
@@ -943,7 +943,7 @@ func (sc *SMDClient) PatchGroups(groups []Group, token string) ([]client.HTTPEnv
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, group := range groups {
 		if group.Label == "" {
@@ -998,7 +998,7 @@ func (sc *SMDClient) DeleteComponents(token string, xnames ...string) ([]client.
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, xname := range xnames {
 		if err := client.CheckPathSegment("component ID", xname); err != nil {
@@ -1039,7 +1039,7 @@ func (sc *SMDClient) DeleteComponentsAll(token string) (client.HTTPEnvelope, err
 
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = sc.DeleteData(SMDRelpathComponents, "", headers, nil)
 	if err != nil {
@@ -1069,7 +1069,7 @@ func (sc *SMDClient) DeleteRedfishEndpoints(token string, xnames ...string) ([]c
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, xname := range xnames {
 		if err := client.CheckPathSegment("redfish endpoint ID", xname); err != nil {
@@ -1111,7 +1111,7 @@ func (sc *SMDClient) DeleteRedfishEndpointsAll(token string) (client.HTTPEnvelop
 
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = sc.DeleteData(SMDRelpathRedfishEndpoints, "", headers, nil)
 	if err != nil {
@@ -1142,7 +1142,7 @@ func (sc *SMDClient) DeleteEthernetInterfaces(token string, eIds ...string) ([]c
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, eId := range eIds {
 		if err := client.CheckPathSegment("ethernet interface ID", eId); err != nil {
@@ -1184,7 +1184,7 @@ func (sc *SMDClient) DeleteEthernetInterfacesAll(token string) (client.HTTPEnvel
 
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = sc.DeleteData(SMDRelpathEthernetInterfaces, "", headers, nil)
 	if err != nil {
@@ -1214,7 +1214,7 @@ func (sc *SMDClient) DeleteComponentEndpoints(token string, xnames ...string) ([
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, xname := range xnames {
 		if err := client.CheckPathSegment("component endpoint ID", xname); err != nil {
@@ -1256,7 +1256,7 @@ func (sc *SMDClient) DeleteComponentEndpointsAll(token string) (client.HTTPEnvel
 
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = sc.DeleteData(SMDRelpathComponentEndpoints, "", headers, nil)
 	if err != nil {
@@ -1286,7 +1286,7 @@ func (sc *SMDClient) DeleteGroups(token string, groupLabels ...string) ([]client
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, label := range groupLabels {
 		if err := client.CheckPathSegment("group label", label); err != nil {
@@ -1337,7 +1337,7 @@ func (sc *SMDClient) DeleteGroupMembers(token, group string, members ...string) 
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, member := range members {
 		if err := client.CheckPathSegment("group member", member); err != nil {

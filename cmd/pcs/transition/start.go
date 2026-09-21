@@ -90,7 +90,7 @@ See ochami-pcs(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Println(string(outBytes))
+			fmt.Fprintln(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},
@@ -98,7 +98,7 @@ See ochami-pcs(1) for more details.`,
 
 	// Create flags
 	transitionStartCmd.Flags().StringSliceP("xname", "x", []string{}, "The list of target components")
-	_ = transitionStartCmd.MarkFlagRequired("xname")
+	_ = transitionStartCmd.MarkFlagRequired("xname") //nolint:errcheck // xname is registered immediately above
 
 	transitionStartCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
