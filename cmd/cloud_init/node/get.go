@@ -7,7 +7,6 @@ package node
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"gopkg.in/yaml.v3"
@@ -72,23 +71,10 @@ See ochami-cloud-init(1) for more details.`,
 			// Get node group data
 			henvs, errs, err := cloudInitClient.GetNodeGroupData(cli.Token, args[0], args[1:]...)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to get node group data: %w", err)
+				return cli.ClassifyClientError(err, "failed to get node group data", "failed to get node group data")
 			}
-			// Since the requests are done iteratively, we need to
-			// deal with each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("cloud-init node group request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to get cloud-init node group data")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "cloud-init node group data retrieval completed with errors")
+			if err := cli.AggregateItemErrors(errs, "cloud-init node group data retrieval"); err != nil {
+				return err
 			}
 
 			// Collect node group data into string array
@@ -154,38 +140,25 @@ See ochami-cloud-init(1) for more details.`,
 			// Get meta-data
 			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitMetaData, cli.Token, args...)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to get node meta-data: %w", err)
+				return cli.ClassifyClientError(err, "failed to get node meta-data", "failed to get node meta-data")
 			}
-			// Since the requests are done iteratively, we need to
-			// deal with each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("cloud-init node meta-data request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to get cloud-init node meta-data")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "cloud-init node meta-data retrieval completed with errors")
+			if err := cli.AggregateItemErrors(errs, "cloud-init node meta-data retrieval"); err != nil {
+				return err
 			}
 
 			// Collect node data into YAML array
 			var iiSlice []map[string]interface{}
-			errorsOccurred = false
+			var itemErrs []error
 			for _, henv := range henvs {
 				var ii map[string]interface{}
 				if err := yaml.Unmarshal(henv.Body, &ii); err != nil {
 					log.Logger.Error().Err(err).Msg("failed to unmarshal HTTP body into group")
-					errorsOccurred = true
+					itemErrs = append(itemErrs, err)
 				} else {
 					iiSlice = append(iiSlice, ii)
 				}
 			}
-			if errorsOccurred {
+			if len(itemErrs) > 0 {
 				return cli.Errorf(cli.CodePayload, "not all instance info was collected due to errors")
 			}
 
@@ -238,23 +211,10 @@ See ochami-cloud-init(1) for more details.`,
 			// Get user-data
 			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitUserData, cli.Token, args...)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to get node user-data: %w", err)
+				return cli.ClassifyClientError(err, "failed to get node user-data", "failed to get node user-data")
 			}
-			// Since the requests are done iteratively, we need to
-			// deal with each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("cloud-init node user-data request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to get cloud-init node user-data")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "cloud-init node user-data retrieval completed with errors")
+			if err := cli.AggregateItemErrors(errs, "cloud-init node user-data retrieval"); err != nil {
+				return err
 			}
 
 			// Collect node data into string array
@@ -315,23 +275,10 @@ See ochami-cloud-init(1) for more details.`,
 			// Get vendor-data
 			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitVendorData, cli.Token, args...)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to get node vendor-data: %w", err)
+				return cli.ClassifyClientError(err, "failed to get node vendor-data", "failed to get node vendor-data")
 			}
-			// Since the requests are done iteratively, we need to
-			// deal with each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("cloud-init node vendor-data request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to get cloud-init node vendor-data")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "cloud-init node vendor-data retrieval completed with errors")
+			if err := cli.AggregateItemErrors(errs, "cloud-init node vendor-data retrieval"); err != nil {
+				return err
 			}
 
 			// Collect node data into string array

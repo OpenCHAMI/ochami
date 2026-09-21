@@ -7,7 +7,6 @@ package group
 
 import (
 	"bufio"
-	"errors"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -56,13 +55,10 @@ See ochami-cloud-init(1) for more details.`,
 			// Get group config
 			henvs, errs, err := cloudInitClient.GetNodeGroupData(cli.Token, args[1], args[0])
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init group: %w", err)
+				return cli.ClassifyClientError(err, "failed to get cloud-init group", "failed to get cloud-init group")
 			}
 			if errs[0] != nil {
-				if errors.Is(errs[0], client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "cloud-init group request yielded unsuccessful HTTP response: %w", errs[0])
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init group: %w", errs[0])
+				return cli.ClassifyClientError(errs[0], "cloud-init group request yielded unsuccessful HTTP response", "failed to get cloud-init group")
 			}
 			ciConfigFileBytes := henvs[0].Body
 
@@ -75,13 +71,10 @@ See ochami-cloud-init(1) for more details.`,
 			// Get node instance data
 			henvs, errs, err = cloudInitClient.GetNodeData(cloud_init.CloudInitMetaData, cli.Token, args[1])
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init node meta-data: %w", err)
+				return cli.ClassifyClientError(err, "failed to get cloud-init node meta-data", "failed to get cloud-init node meta-data")
 			}
 			if errs[0] != nil {
-				if errors.Is(errs[0], client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "cloud-init node meta-data request yielded unsuccessful HTTP response: %w", errs[0])
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init node meta-data: %w", errs[0])
+				return cli.ClassifyClientError(errs[0], "cloud-init node meta-data request yielded unsuccessful HTTP response", "failed to get cloud-init node meta-data")
 			}
 			var ciData map[string]interface{}
 			dsWrapper := make(map[string]interface{})

@@ -60,7 +60,7 @@ See ochami-smd(1) for more details.`,
 					log.Logger.Info().Msg("  - SMD base URI misconfiguration (should include /hsm/v2)")
 					return cli.Errorf(cli.CodeHTTP, "SMD group member set request failed with HTTP error: %w", err)
 				}
-				return cli.Errorf(cli.CodeNetwork, "failed to set group membership in SMD: %w", err)
+				return cli.ClassifyClientError(err, "failed to set group membership in SMD", "failed to set group membership in SMD")
 			}
 
 			// Success, log confirmation

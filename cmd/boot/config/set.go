@@ -128,7 +128,7 @@ See ochami-boot(1) for more details.`,
 				cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to set boot configuration: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to set boot configuration", "failed to set boot configuration")
 			}
 
 			log.Logger.Debug().Msgf("boot config set: %+v", cfgSet)

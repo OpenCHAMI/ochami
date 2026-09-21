@@ -6,14 +6,11 @@
 package compep
 
 import (
-	"errors"
-
 	"github.com/openchami/smd/v2/pkg/sm"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
@@ -117,33 +114,16 @@ See ochami-smd(1) for more details.`,
 				// If --all passed, we don't care about any passed arguments
 				_, err := smdClient.DeleteComponentEndpointsAll(cli.Token)
 				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						return cli.Errorf(cli.CodeHTTP, "SMD component endpoint deletion yielded unsuccessful HTTP response: %w", err)
-					}
-					return cli.Errorf(cli.CodeNetwork, "failed to delete component endpoints in SMD: %w", err)
+					return cli.ClassifyClientError(err, "SMD component endpoint deletion yielded unsuccessful HTTP response", "failed to delete component endpoints in SMD")
 				}
 			} else {
 				// If --all not passed, pass argument list to deletion logic
 				_, errs, err := smdClient.DeleteComponentEndpoints(cli.Token, xnameSlice...)
 				if err != nil {
-					return cli.Errorf(cli.CodeNetwork, "failed to delete component endpoints in SMD: %w", err)
+					return cli.ClassifyClientError(err, "failed to delete component endpoints in SMD", "failed to delete component endpoints in SMD")
 				}
-				// Since smdClient.DeleteComponentEndpoints does the deletion iteratively, we need to
-				// deal with each error that might have occurred.
-				var errorsOccurred = false
-				for _, e := range errs {
-					if e != nil {
-						if errors.Is(e, client.UnsuccessfulHTTPError) {
-							log.Logger.Error().Err(e).Msg("SMD component endpoint deletion yielded unsuccessful HTTP response")
-						} else {
-							log.Logger.Error().Err(e).Msg("failed to delete component endpoints")
-						}
-						errorsOccurred = true
-					}
-				}
-				// Warn the user if any errors occurred during deletion iterations
-				if errorsOccurred {
-					return cli.Errorf(cli.CodeHTTP, "SMD component endpoint deletion completed with errors")
+				if err := cli.AggregateItemErrors(errs, "SMD component endpoint deletion"); err != nil {
+					return err
 				}
 			}
 
