@@ -10,7 +10,6 @@ package rcs
 
 import (
 	"errors"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +19,7 @@ import (
 // error channel and stops forwarding.
 func TestStreamRawConsoleInput_WriteError(t *testing.T) {
 	fw := &fakeMessageWriter{err: errors.New("write failed")}
-	interrupt := make(chan os.Signal, 1)
+	interrupt := make(chan struct{}, 1)
 	errChan := make(chan error, 1)
 
 	go streamRawConsoleInput(strings.NewReader("x"), fw, interrupt, errChan)
