@@ -13,6 +13,7 @@ package configfile
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -96,6 +97,32 @@ func EffectiveKoanf(paths ...string) (*koanf.Koanf, error) {
 // WriteConfig marshals the koanf instance to YAML and writes it to path,
 // preserving the file's existing mode if it exists.
 func WriteConfig(path string, k *koanf.Koanf) error {
+	return writeConfig(path, k, configWriteOps{
+		stat:       os.Stat,
+		createTemp: createTemporaryFile,
+		rename:     os.Rename,
+		remove:     os.Remove,
+		syncDir:    syncParentDirectory,
+	})
+}
+
+type temporaryFile interface {
+	io.Writer
+	Chmod(os.FileMode) error
+	Sync() error
+	Close() error
+	Name() string
+}
+
+type configWriteOps struct {
+	stat       func(string) (os.FileInfo, error)
+	createTemp func(string, string) (temporaryFile, error)
+	rename     func(string, string) error
+	remove     func(string) error
+	syncDir    func(string) error
+}
+
+func writeConfig(path string, k *koanf.Koanf, ops configWriteOps) error {
 	if path == "" {
 		return fmt.Errorf("no configuration file path passed")
 	}
@@ -107,38 +134,64 @@ func WriteConfig(path string, k *koanf.Koanf) error {
 
 	// Get mode if file exists.
 	var fmode os.FileMode = 0o644
-	if finfo, err := os.Stat(path); err == nil {
+	if finfo, err := ops.stat(path); err == nil {
 		fmode = finfo.Mode().Perm()
 	}
 
 	// Write beside the destination and rename only after the complete file has
 	// reached disk. This prevents a failed write from truncating a valid config.
-	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
+	tmp, err := ops.createTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary config file for %s: %w", path, err)
 	}
 	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath) //nolint:errcheck // best-effort cleanup after rename or failure
-
-	if err := tmp.Chmod(fmode); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("failed to set permissions on temporary config file for %s: %w", path, err)
-	}
-	if _, err := tmp.Write(c); err != nil {
-		_ = tmp.Close()
+	defer ops.remove(tmpPath) //nolint:errcheck // best-effort cleanup after rename or failure
+	if err := writeTemporaryConfig(tmp, fmode, c); err != nil {
 		return fmt.Errorf("failed to write temporary config file for %s: %w", path, err)
 	}
-	if err := tmp.Sync(); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("failed to sync temporary config file for %s: %w", path, err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("failed to close temporary config file for %s: %w", path, err)
-	}
-	if err := os.Rename(tmpPath, path); err != nil {
+
+	if err := ops.rename(tmpPath, path); err != nil {
 		return fmt.Errorf("failed to replace config file %s: %w", path, err)
 	}
+	if err := ops.syncDir(filepath.Dir(path)); err != nil {
+		return fmt.Errorf("failed to sync parent directory for config file %s: %w", path, err)
+	}
 
+	return nil
+}
+
+// createTemporaryFile is the production adapter for creating a temporary file.
+func createTemporaryFile(dir, pattern string) (temporaryFile, error) {
+	return os.CreateTemp(dir, pattern)
+}
+
+// writeTemporaryConfig writes and durably closes a previously created
+// temporary file. On failures before Close, it makes a best-effort Close so the
+// caller can remove the file.
+func writeTemporaryConfig(tmp temporaryFile, mode os.FileMode, data []byte) (retErr error) {
+	closeAttempted := false
+	defer func() {
+		if retErr != nil && !closeAttempted {
+			_ = tmp.Close()
+		}
+	}()
+	if err := tmp.Chmod(mode); err != nil {
+		return fmt.Errorf("set permissions: %w", err)
+	}
+	n, err := tmp.Write(data)
+	if err != nil {
+		return fmt.Errorf("write data: %w", err)
+	}
+	if n != len(data) {
+		return fmt.Errorf("write data: %w", io.ErrShortWrite)
+	}
+	if err := tmp.Sync(); err != nil {
+		return fmt.Errorf("sync data: %w", err)
+	}
+	closeAttempted = true
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close file: %w", err)
+	}
 	return nil
 }
 
