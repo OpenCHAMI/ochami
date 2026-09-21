@@ -589,3 +589,162 @@ func TestPayloadReader_Helpers(t *testing.T) {
 	}
 	restore()
 }
+
+// TestGetTimeout_ConfigAndFlag verifies GetTimeout falls back to the active
+// config's timeout and honors an explicit --timeout flag override.
+func TestGetTimeout_ConfigAndFlag(t *testing.T) {
+	orig := ActiveConfig()
+	t.Cleanup(func() { SetActiveConfig(orig) })
+	SetActiveConfig(config.Config{Timeout: 9 * time.Second})
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Duration("timeout", 0, "")
+	if got := GetTimeout(cmd); got != 9*time.Second {
+		t.Errorf("GetTimeout config = %v", got)
+	}
+	if err := cmd.Flags().Set("timeout", "2s"); err != nil {
+		t.Fatal(err)
+	}
+	if got := GetTimeout(cmd); got != 2*time.Second {
+		t.Errorf("GetTimeout flag = %v", got)
+	}
+}
+
+// TestShellCompletions_ReturnDefaultValues verifies the format/discovery/patch
+// shell-completion functions return a non-empty, default-directive value set.
+func TestShellCompletions_ReturnDefaultValues(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	for name, fn := range map[string]func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective){
+		"format":    CompletionFormatData,
+		"discovery": CompletionDiscoveryVersion,
+		"patch":     CompletionPatchMethod,
+	} {
+		values, directive := fn(cmd, nil, "")
+		if len(values) == 0 || directive != cobra.ShellCompDirectiveDefault {
+			t.Errorf("%s completion = %v, %v", name, values, directive)
+		}
+	}
+}
+
+// tokenTestCmd returns a command with the flags the token helpers inspect.
+func tokenTestCmd() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Flags().String("token", "", "")
+	cmd.Flags().String("cluster", "", "")
+	cmd.Flags().Bool("no-token", false, "")
+	cmd.Flags().Bool("show-token", false, "")
+	return cmd
+}
+
+func TestCheckToken_Behavior(t *testing.T) {
+	now := time.Now()
+
+	valid, err := generateTestToken(now.Add(time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("generate valid token: %v", err)
+	}
+	expired, err := generateTestToken(now.Add(-time.Hour), now.Add(-2*time.Hour), now.Add(-2*time.Hour))
+	if err != nil {
+		t.Fatalf("generate expired token: %v", err)
+	}
+	notYet, err := generateTestToken(now.Add(2*time.Hour), now.Add(time.Hour), now)
+	if err != nil {
+		t.Fatalf("generate not-yet-valid token: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		token    string
+		wantErr  bool
+		wantCode int
+	}{
+		{"valid", valid, false, CodeSuccess},
+		{"empty", "", true, CodeAuth},
+		{"malformed", "not-a-jwt", true, CodeAuth},
+		{"expired", expired, true, CodeAuth},
+		{"not yet valid", notYet, true, CodeAuth},
+	}
+
+	origToken := Token
+	t.Cleanup(func() { Token = origToken })
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Token = tt.token
+			err := CheckToken(tokenTestCmd())
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("CheckToken(): expected error, got nil")
+				}
+				if got := ExitCode(err); got != tt.wantCode {
+					t.Errorf("exit code = %d, want %d", got, tt.wantCode)
+				}
+			} else if err != nil {
+				t.Fatalf("CheckToken(): unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+// TestHandleToken_NoTokenFlag verifies that --no-token short-circuits token
+// handling entirely (no error even with no config).
+func TestHandleToken_NoTokenFlag(t *testing.T) {
+	cmd := tokenTestCmd()
+	if err := cmd.Flags().Set("no-token", "true"); err != nil {
+		t.Fatalf("set no-token: %v", err)
+	}
+	if err := HandleToken(cmd); err != nil {
+		t.Fatalf("HandleToken(): unexpected error with --no-token: %v", err)
+	}
+}
+
+// TestHandleToken_AuthDisabledCluster verifies that a cluster with auth disabled
+// does not require a token.
+func TestHandleToken_AuthDisabledCluster(t *testing.T) {
+	origCfg := ActiveConfig()
+	t.Cleanup(func() { SetActiveConfig(origCfg) })
+
+	SetActiveConfig(config.Config{
+		DefaultCluster: "foo",
+		Clusters: []config.ConfigCluster{
+			{Name: "foo", Cluster: config.ConfigClusterConfig{EnableAuth: false}},
+		},
+	})
+
+	if err := HandleToken(tokenTestCmd()); err != nil {
+		t.Fatalf("HandleToken(): unexpected error for auth-disabled cluster: %v", err)
+	}
+}
+
+// TestHandleToken_AuthEnabledWithEnvToken verifies that an auth-enabled cluster
+// reads its token from the <CLUSTER>_ACCESS_TOKEN environment variable.
+func TestHandleToken_AuthEnabledWithEnvToken(t *testing.T) {
+	origCfg := ActiveConfig()
+	origToken := Token
+	t.Cleanup(func() {
+		SetActiveConfig(origCfg)
+		Token = origToken
+	})
+
+	now := time.Now()
+	valid, err := generateTestToken(now.Add(time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("generate valid token: %v", err)
+	}
+
+	SetActiveConfig(config.Config{
+		DefaultCluster: "my-cluster",
+		Clusters: []config.ConfigCluster{
+			{Name: "my-cluster", Cluster: config.ConfigClusterConfig{EnableAuth: true}},
+		},
+	})
+	Token = ""
+	// Dashes in the cluster name become underscores, uppercased.
+	t.Setenv("MY_CLUSTER_ACCESS_TOKEN", valid)
+
+	if err := HandleToken(tokenTestCmd()); err != nil {
+		t.Fatalf("HandleToken(): unexpected error: %v", err)
+	}
+	if Token != valid {
+		t.Errorf("Token not populated from environment variable")
+	}
+}

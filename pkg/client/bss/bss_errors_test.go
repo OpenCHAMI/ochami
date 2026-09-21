@@ -5,13 +5,16 @@
 package bss
 
 // bss_errors_test.go unit-tests the BSSClient wrapper methods' error arms:
-// input rejected before a request is made, and a non-2XX response surfacing as
-// an UnsuccessfulHTTPError.
+// input rejected before a request is made, and a non-2XX response surfacing
+// (across every wrapper, not just a representative one) as an
+// UnsuccessfulHTTPError.
 
 import (
 	"errors"
 	"net/http"
 	"testing"
+
+	bssTypes "github.com/openchami/bss/pkg/bssTypes"
 
 	"github.com/openchami/ochami/pkg/client"
 )
@@ -31,24 +34,41 @@ func TestGetStatus_UnknownComponent(t *testing.T) {
 	}
 }
 
-// TestGetBootParams_UnsuccessfulHTTP verifies a non-2XX response surfaces as an
-// UnsuccessfulHTTPError so callers can map it to the CodeHTTP exit code.
-func TestGetBootParams_UnsuccessfulHTTP(t *testing.T) {
-	bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "nope", http.StatusInternalServerError)
-	})
-	defer srv.Close()
+// TestBSSWrappers_HTTPError verifies every BSSClient wrapper method surfaces a
+// non-2XX response as an error wrapping client.UnsuccessfulHTTPError.
+func TestBSSWrappers_HTTPError(t *testing.T) {
+	bp := bssTypes.BootParams{Hosts: []string{"x0c0s0b0n0"}}
 
-	_, err := bc.GetBootParams("", "")
-	if err == nil {
-		t.Fatal("expected an error, got nil")
+	cases := []struct {
+		name string
+		call func(bc *BSSClient) (client.HTTPEnvelope, error)
+	}{
+		{"PostBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.PostBootParams(bp, "tok") }},
+		{"PutBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.PutBootParams(bp, "tok") }},
+		{"PatchBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.PatchBootParams(bp, "tok") }},
+		{"DeleteBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.DeleteBootParams(bp, "tok") }},
+		{"GetBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetBootParams("", "tok") }},
+		{"GetBootScript", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetBootScript("") }},
+		{"GetDumpstate", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetDumpstate() }},
+		{"GetEndpointHistory", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetEndpointHistory("") }},
+		{"GetHosts", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetHosts("") }},
+		{"GetStatus", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetStatus("all") }},
 	}
-	if !isUnsuccessfulHTTP(err) {
-		t.Errorf("error = %v, want it to wrap client.UnsuccessfulHTTPError", err)
-	}
-}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("boom"))
+			})
+			defer srv.Close()
 
-// isUnsuccessfulHTTP reports whether err wraps client.UnsuccessfulHTTPError.
-func isUnsuccessfulHTTP(err error) bool {
-	return err != nil && errors.Is(err, client.UnsuccessfulHTTPError)
+			_, err := tc.call(bc)
+			if err == nil {
+				t.Fatalf("%s: expected error on HTTP failure, got nil", tc.name)
+			}
+			if !errors.Is(err, client.UnsuccessfulHTTPError) {
+				t.Errorf("%s: error = %v, want Is(UnsuccessfulHTTPError)", tc.name, err)
+			}
+		})
+	}
 }

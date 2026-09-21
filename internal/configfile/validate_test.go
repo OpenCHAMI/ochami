@@ -137,4 +137,18 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 			t.Errorf("error key = %q, want log.format", eicv.Key)
 		}
 	})
+
+	t.Run("cluster missing name rejected", func(t *testing.T) {
+		path := writeCfg(t, "clusters:\n  - cluster:\n      uri: https://foo.example.com\n")
+		if _, err := ReadConfigWithDefaults(path); err == nil {
+			t.Fatal("expected error for cluster missing name, got nil")
+		}
+	})
+
+	t.Run("malformed yaml rejected", func(t *testing.T) {
+		path := writeCfg(t, "clusters: [unterminated\n")
+		if _, err := ReadConfigWithDefaults(path); err == nil {
+			t.Fatal("expected error for malformed YAML, got nil")
+		}
+	})
 }
