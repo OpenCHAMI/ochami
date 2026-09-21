@@ -75,6 +75,33 @@ func buildGroupList(nodesCommon []nodeCommon) []smd.Group {
 	return groupList
 }
 
+func singleBatchResult(henvs []client.HTTPEnvelope, errs []error, err error) (client.HTTPEnvelope, error) {
+	if err != nil {
+		return client.HTTPEnvelope{}, err
+	}
+	if len(henvs) != 1 || len(errs) != 1 {
+		return client.HTTPEnvelope{}, fmt.Errorf("batch returned %d envelopes and %d errors, want one of each", len(henvs), len(errs))
+	}
+	return henvs[0], errs[0]
+}
+
+func upsertOnConflict[T any](items []T, create, update func(T) (client.HTTPEnvelope, error)) []error {
+	var errs []error
+	for _, item := range items {
+		henv, err := create(item)
+		if err == nil {
+			continue
+		}
+		if errors.Is(err, client.UnsuccessfulHTTPError) && henv.StatusCode == 409 {
+			_, err = update(item)
+		}
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errs
+}
+
 func NewCmd() *cobra.Command {
 	discoveryVersion := discover.DiscoveryMethodV2
 
@@ -298,7 +325,6 @@ See ochami-discover(1) for more details.`,
 			// Send RedfishEndpoint requests
 			var (
 				rfeErrorsOccurred bool = false
-				rfeHenvs          []client.HTTPEnvelope
 				rfeErrs           []error
 				rfeErr            error
 			)
@@ -308,57 +334,18 @@ See ochami-discover(1) for more details.`,
 				// _first_ before PUTting. This means that, to get
 				// normal PUT behavior, we have to first try to POST,
 				// then, if 409 is returned, try to PUT.
-				for _, rfe := range rfes.RedfishEndpoints {
-					// Attempt to POST the redfish endpoint
-					rfeListWrapper := smd.RedfishEndpointSliceV2{
-						RedfishEndpoints: []smd.RedfishEndpointV2{rfe},
-					}
-					rfeHenvs, rfeErrs, rfeErr = smdClient.PostRedfishEndpointsV2(rfeListWrapper, cli.Token)
-
-					if rfeErr != nil {
-						// An error in the function occurred,
-						// err for this redfish endpoint and
-						// move on.
-						log.Logger.Error().Err(rfeErr).Msg("failed to add redfish endpoint to SMD")
-						rfeErrorsOccurred = true
-						continue
-					}
-
-					if rfeErrs[0] != nil {
-						// An HTTP error occurred
-						if errors.Is(rfeErrs[0], client.UnsuccessfulHTTPError) {
-							if rfeHenvs[0].StatusCode == 409 {
-								// RFE exists, PUT it
-								log.Logger.Info().Msgf("redfish endpoint %s exists, attempting to update it", rfe.ID)
-								_, putErrs, putErr := smdClient.PutRedfishEndpointsV2(rfeListWrapper, cli.Token)
-								if putErr != nil {
-									log.Logger.Error().Err(putErr).Msg("failed to update existing redfish endpoint in SMD")
-									rfeErrorsOccurred = true
-									continue
-								}
-								if putErrs[0] != nil {
-									var errMsg string
-									if errors.Is(putErrs[0], client.UnsuccessfulHTTPError) {
-										errMsg = "SMD redfish endpoint PUT yielded unsuccessful HTTP response"
-									} else {
-										errMsg = "failed to update existing redfish endpoint in SMD"
-									}
-									log.Logger.Error().Err(putErrs[0]).Msg(errMsg)
-									rfeErrorsOccurred = true
-									continue
-								}
-							} else {
-								// Some other HTTP error occurred, err
-								log.Logger.Error().Err(rfeErrs[0]).Msg("SMD redfish endpoint POST yielded non-409 (duplicate) failure")
-								rfeErrorsOccurred = true
-								continue
-							}
-						} else {
-							log.Logger.Error().Err(rfeErrs[0]).Msg("failed to add redfish endpoint to SMD")
-							rfeErrorsOccurred = true
-							continue
-						}
-					}
+				rfeErrs = upsertOnConflict(rfes.RedfishEndpoints,
+					func(rfe smd.RedfishEndpointV2) (client.HTTPEnvelope, error) {
+						henvs, errs, err := smdClient.PostRedfishEndpointsV2(smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token)
+						return singleBatchResult(henvs, errs, err)
+					},
+					func(rfe smd.RedfishEndpointV2) (client.HTTPEnvelope, error) {
+						henvs, errs, err := smdClient.PutRedfishEndpointsV2(smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token)
+						return singleBatchResult(henvs, errs, err)
+					})
+				for _, err := range rfeErrs {
+					log.Logger.Error().Err(err).Msg("failed to add or update redfish endpoint in SMD")
+					rfeErrorsOccurred = true
 				}
 			} else {
 				// --overwrite was not passed, perform regular POST.
@@ -388,7 +375,6 @@ See ochami-discover(1) for more details.`,
 			// Send EthernetInterface requests
 			var (
 				ifaceErrorsOccurred bool = false
-				ifaceHenvs          []client.HTTPEnvelope
 				ifaceErrs           []error
 				ifaceErr            error
 			)
@@ -396,59 +382,18 @@ See ochami-discover(1) for more details.`,
 			// Send EthernetInterfaces to SMD if discoverVersion is 1.
 			if discoveryVersion == discover.DiscoveryMethodV1 {
 				if cmd.Flag("overwrite").Changed {
-					// SMD's EthernetInterface API does not allow the PUT
-					// method. Instead, we loop over each ethernet interface
-					// to add and attempt a POST. If a 409 is returned for
-					// that interface, a PATCH is attempted. Otherwise, an
-					// error has occurred.
-					for _, iface := range ifaces {
-						// Attempt to POST the ethernet interface
-						ifaceListWrapper := []smd.EthernetInterface{iface}
-						ifaceHenvs, ifaceErrs, ifaceErr = smdClient.PostEthernetInterfaces(ifaceListWrapper, cli.Token)
-
-						if ifaceErr != nil {
-							// An error in the function occurred, err for
-							// this interface and move on.
-							log.Logger.Error().Err(ifaceErr).Msg("failed to add ethernet interface to SMD")
-							ifaceErrorsOccurred = true
-							continue
-						}
-
-						if ifaceErrs[0] != nil {
-							// An HTTP error occurred
-							if errors.Is(ifaceErrs[0], client.UnsuccessfulHTTPError) {
-								if ifaceHenvs[0].StatusCode == 409 {
-									// Ethernet interface exists, patch it
-									log.Logger.Info().Msgf("ethernet interface with MAC address %s exists, attempting to update it", iface.MACAddress)
-									_, patchErrs, patchErr := smdClient.PatchEthernetInterfaces(ifaceListWrapper, cli.Token)
-									if patchErr != nil {
-										log.Logger.Error().Err(patchErr).Msg("failed to update existing ethernet interface in SMD")
-										ifaceErrorsOccurred = true
-										continue
-									}
-									if patchErrs[0] != nil {
-										var errMsg string
-										if errors.Is(patchErrs[0], client.UnsuccessfulHTTPError) {
-											errMsg = "SMD ethernet interface PATCH yielded unsuccessful HTTP response"
-										} else {
-											errMsg = "failed to update existing ethernet interface in SMD"
-										}
-										log.Logger.Error().Err(patchErrs[0]).Msg(errMsg)
-										ifaceErrorsOccurred = true
-										continue
-									}
-								} else {
-									// Some other HTTP error occurred, err
-									log.Logger.Error().Err(ifaceErrs[0]).Msg("SMD ethernet interface POST yield non-409 (duplicate) failure")
-									ifaceErrorsOccurred = true
-									continue
-								}
-							} else {
-								log.Logger.Error().Err(ifaceErrs[0]).Msg("failed to add ethernet interface to SMD")
-								ifaceErrorsOccurred = true
-								continue
-							}
-						}
+					ifaceErrs = upsertOnConflict(ifaces,
+						func(iface smd.EthernetInterface) (client.HTTPEnvelope, error) {
+							henvs, errs, err := smdClient.PostEthernetInterfaces([]smd.EthernetInterface{iface}, cli.Token)
+							return singleBatchResult(henvs, errs, err)
+						},
+						func(iface smd.EthernetInterface) (client.HTTPEnvelope, error) {
+							henvs, errs, err := smdClient.PatchEthernetInterfaces([]smd.EthernetInterface{iface}, cli.Token)
+							return singleBatchResult(henvs, errs, err)
+						})
+					for _, err := range ifaceErrs {
+						log.Logger.Error().Err(err).Msg("failed to add or update ethernet interface in SMD")
+						ifaceErrorsOccurred = true
 					}
 				} else {
 					// --overwrite was not passed, perform regular POST.
@@ -479,63 +424,22 @@ See ochami-discover(1) for more details.`,
 			// Add groups and components to those groups
 			var (
 				groupErrorsOccurred bool = false
-				groupHenvs          []client.HTTPEnvelope
 				groupErrs           []error
 				groupErr            error
 			)
 			if cmd.Flag("overwrite").Changed {
-				// SMD's groups API does not allow the PUT method.
-				// Instead, we loop over each group to add and attempt a
-				// POST. Iff a 409 is returned for that interface, a
-				// PATCH is attempted. Otherwise, an error has occurred.
-				for _, group := range groupList {
-					// Attempt to POST the group
-					groupListWrapper := []smd.Group{group}
-					groupHenvs, groupErrs, groupErr = smdClient.PostGroups(groupListWrapper, cli.Token)
-
-					if groupErr != nil {
-						// An error in the function occurred,
-						// err for this group and move on.
-						log.Logger.Error().Err(groupErr).Msg("failed to add group to SMD")
-						groupErrorsOccurred = true
-						continue
-					}
-
-					if groupErrs[0] != nil {
-						// An HTTP error occurred
-						if errors.Is(groupErrs[0], client.UnsuccessfulHTTPError) {
-							if groupHenvs[0].StatusCode == 409 {
-								// Group exists, patch it
-								log.Logger.Info().Msgf("group %s exists, attempting to update it", group.Label)
-								_, patchErrs, patchErr := smdClient.PatchGroups(groupListWrapper, cli.Token)
-								if patchErr != nil {
-									log.Logger.Error().Err(patchErr).Msg("failed to update existing group in SMD")
-									groupErrorsOccurred = true
-									continue
-								}
-								if patchErrs[0] != nil {
-									var errMsg string
-									if errors.Is(patchErrs[0], client.UnsuccessfulHTTPError) {
-										errMsg = "SMD group PATCH yielded unsuccessful HTTP response"
-									} else {
-										errMsg = "failed to update existing group in SMD"
-									}
-									log.Logger.Error().Err(patchErrs[0]).Msg(errMsg)
-									groupErrorsOccurred = true
-									continue
-								}
-							} else {
-								// Some other HTTP error occurred, err
-								log.Logger.Error().Err(groupErrs[0]).Msg("SMD group POST yielded non-409 (duplicate) failure")
-								groupErrorsOccurred = true
-								continue
-							}
-						} else {
-							log.Logger.Error().Err(groupErrs[0]).Msg("failed to add group to SMD")
-							groupErrorsOccurred = true
-							continue
-						}
-					}
+				groupErrs = upsertOnConflict(groupList,
+					func(group smd.Group) (client.HTTPEnvelope, error) {
+						henvs, errs, err := smdClient.PostGroups([]smd.Group{group}, cli.Token)
+						return singleBatchResult(henvs, errs, err)
+					},
+					func(group smd.Group) (client.HTTPEnvelope, error) {
+						henvs, errs, err := smdClient.PatchGroups([]smd.Group{group}, cli.Token)
+						return singleBatchResult(henvs, errs, err)
+					})
+				for _, err := range groupErrs {
+					log.Logger.Error().Err(err).Msg("failed to add or update group in SMD")
+					groupErrorsOccurred = true
 				}
 			} else {
 				_, groupErrs, groupErr = smdClient.PostGroups(groupList, cli.Token)

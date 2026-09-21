@@ -13,6 +13,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/openchami/ochami/internal/configfile"
 )
 
 // TestConfigClusterSet_Default verifies "config cluster set --default" marks the
@@ -33,6 +35,13 @@ func TestConfigClusterSet_Default(t *testing.T) {
 	if !strings.Contains(showRes.stdout, "foobar") {
 		t.Errorf("config show stdout = %q, want it to reference the default cluster", showRes.stdout)
 	}
+	ko, err := configfile.ReadConfig(cfg)
+	if err != nil {
+		t.Fatalf("read semantic config: %v", err)
+	}
+	if got := ko.String("default-cluster"); got != "foobar" {
+		t.Errorf("default-cluster = %q, want foobar", got)
+	}
 }
 
 // TestConfigClusterSet_ServiceKey verifies setting a per-service URI key.
@@ -51,6 +60,19 @@ func TestConfigClusterSet_ServiceKey(t *testing.T) {
 	}
 	if !strings.Contains(showRes.stdout, "foobar.openchami.cluster/smd") {
 		t.Errorf("stdout = %q, want the service URI", showRes.stdout)
+	}
+	ko, err := configfile.ReadConfig(cfg)
+	if err != nil {
+		t.Fatalf("read semantic config: %v", err)
+	}
+	var clusters []map[string]any
+	if err := ko.Unmarshal("clusters", &clusters); err != nil {
+		t.Fatalf("unmarshal clusters: %v", err)
+	}
+	cluster := clusters[0]["cluster"].(map[string]any)
+	smd := cluster["smd"].(map[string]any)
+	if got := smd["uri"]; got != "https://foobar.openchami.cluster/smd" {
+		t.Errorf("cluster.smd.uri = %v, want configured service URI", got)
 	}
 }
 

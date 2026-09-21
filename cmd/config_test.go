@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/internal/configfile"
 )
 
 // writeTempConfig creates an (empty) YAML config file in a temp dir and returns
@@ -319,6 +320,13 @@ func TestConfigUnset_ViaConfigFlag(t *testing.T) {
 	if strings.Contains(string(data), "warning") {
 		t.Errorf("config = %q, want log.level removed", string(data))
 	}
+	ko, err := configfile.ReadConfig(cfg)
+	if err != nil {
+		t.Fatalf("read semantic config: %v", err)
+	}
+	if ko.Exists("log.level") {
+		t.Error("log.level still exists after unset")
+	}
 }
 
 // TestDefaultClusterURIResolution verifies a command resolves its base URI from
@@ -460,5 +468,52 @@ clusters:
 	}
 	if gotAuth != "" {
 		t.Errorf("Authorization header = %q, want empty (auth disabled)", gotAuth)
+	}
+}
+
+// TestConfigUnset_UnknownKey verifies "config unset" rejects a key that does
+// not exist in the config file.
+func TestConfigUnset_UnknownKey(t *testing.T) {
+	cfg := writeTempConfig(t, "log:\n  format: json\n")
+
+	res := runOchami(t, "--config", cfg, "config", "unset", "log.does-not-exist")
+	if res.err == nil || res.exitCode != cli.CodeConfig {
+		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.err.Error(), "does not exist") {
+		t.Errorf("error = %q, want missing-key context", res.err)
+	}
+}
+
+// TestConfigClusterSet_DeclineCreate verifies declining to create a missing
+// config file leaves no file behind.
+func TestConfigClusterSet_DeclineCreate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "new", "config.yaml")
+
+	res := runOchamiWithInput(t, "n\n", "--config", path, "config", "cluster", "set",
+		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
+	if res.err == nil || res.exitCode != cli.CodeConfig {
+		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("config path stat error = %v, want not-exist", err)
+	}
+}
+
+// TestConfigClusterUnset_UnknownKey verifies "config cluster unset" rejects a
+// key that does not exist for the named cluster.
+func TestConfigClusterUnset_UnknownKey(t *testing.T) {
+	cfg := writeTempConfig(t, `clusters:
+- name: foobar
+  cluster:
+    uri: https://foobar.openchami.cluster
+`)
+
+	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	if res.err == nil || res.exitCode != cli.CodeConfig {
+		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.err.Error(), "doesn't exist") {
+		t.Errorf("error = %q, want missing-key context", res.err)
 	}
 }

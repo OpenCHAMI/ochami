@@ -34,7 +34,7 @@ See ochami-rcs(1) for more details.`,
 			if err != nil {
 				return err
 			}
-			consoles, err := rcsClient.ListConsoles(cli.Token)
+			consoles, err := rcsClient.ListConsoles(cmd.Context(), cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
 					return cli.Errorf(cli.CodeHTTP, "failed to list consoles: %w", err)

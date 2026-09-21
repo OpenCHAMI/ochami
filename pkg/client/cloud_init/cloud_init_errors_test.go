@@ -14,6 +14,7 @@ package cloud_init
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/openchami/cloud-init/pkg/cistore"
@@ -131,33 +132,56 @@ func TestPutInstanceInfo_EdgeCases(t *testing.T) {
 	}
 }
 
-func TestCloudInitIterativeHTTPErrors(t *testing.T) {
+func TestCloudInitIterative_MixedResults(t *testing.T) {
 	cases := []struct {
-		name string
-		call func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error)
+		name       string
+		wantMethod string
+		call       func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error)
 	}{
-		{"PostGroups", func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.PostGroups([]cistore.GroupData{{Name: "compute"}}, "tok")
+		{"PostGroups", http.MethodPost, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.PostGroups([]cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
 		}},
-		{"DeleteGroups", func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+		{"PutGroups", http.MethodPut, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.PutGroups([]cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		}},
+		{"PutInstanceInfo", http.MethodPut, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.PutInstanceInfo([]cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}, {ID: "x0c0s0b0n1"}}, "tok")
+		}},
+		{"DeleteGroups", http.MethodDelete, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
 			return cic.DeleteGroups("tok", "compute", "storage")
 		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
 			cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusInternalServerError)
+				requests++
+				if r.Method != tc.wantMethod {
+					t.Errorf("request method = %s, want %s", r.Method, tc.wantMethod)
+				}
+				if got := r.Header.Get("Authorization"); got != "Bearer tok" {
+					t.Errorf("Authorization = %q, want %q", got, "Bearer tok")
+				}
+				if requests == 1 {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+				http.Error(w, "boom", http.StatusInternalServerError)
 			})
 			defer srv.Close()
 
-			_, errs, err := tc.call(cic)
+			henvs, errs, err := tc.call(cic)
 			if err != nil {
 				t.Fatalf("%s: control-flow error = %v", tc.name, err)
 			}
-			for i, e := range errs {
-				if e == nil {
-					t.Errorf("%s: per-item error[%d] = nil, want non-nil", tc.name, i)
-				}
+			if len(henvs) != 2 || len(errs) != 2 {
+				t.Fatalf("%s: result lengths = (%d, %d), want (2, 2)", tc.name, len(henvs), len(errs))
+			}
+			if errs[0] != nil || henvs[0].StatusCode != http.StatusOK {
+				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, henvs[0].StatusCode, errs[0])
+			}
+			if !errors.Is(errs[1], client.UnsuccessfulHTTPError) || henvs[1].StatusCode != http.StatusInternalServerError {
+				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, henvs[1].StatusCode, errs[1])
 			}
 		})
 	}
@@ -308,5 +332,49 @@ func TestGetNodeDataSuccess(t *testing.T) {
 
 	if _, errs, err := cic.GetNodeData(CloudInitMetaData, "tok", "x0c0s0b0n0"); err != nil || (len(errs) == 1 && errs[0] != nil) {
 		t.Errorf("GetNodeData success = (err=%v, errs=%v), want no errors", err, errs)
+	}
+}
+
+// TestCloudConfigGetters_PreserveMalformedBodies verifies that successful GETs
+// return server data unchanged. Parsing remains the caller's responsibility,
+// so malformed cloud-config can be diagnosed without losing the response.
+func TestCloudConfigGetters_PreserveMalformedBodies(t *testing.T) {
+	const malformed = "not-base64!"
+	tests := []struct {
+		name string
+		call func(*CloudInitClient) ([]client.HTTPEnvelope, []error, error)
+	}{
+		{name: "node data", call: func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.GetNodeData(CloudInitUserData, "tok", "x0c0s0b0n0")
+		}},
+		{name: "node group data", call: func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
+			return cic.GetNodeGroupData("tok", "x0c0s0b0n0", "compute")
+		}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+				if got := r.Header.Get("Authorization"); got != "Bearer tok" {
+					t.Errorf("Authorization = %q, want %q", got, "Bearer tok")
+				}
+				_, _ = w.Write([]byte(malformed)) //nolint:errcheck // test response writes are observed by the client
+			})
+			defer srv.Close()
+
+			henvs, errs, err := tc.call(cic)
+			if err != nil {
+				t.Fatalf("control-flow error = %v", err)
+			}
+			if len(henvs) != 1 || len(errs) != 1 || errs[0] != nil {
+				t.Fatalf("results = (%v, %v), want one successful response", henvs, errs)
+			}
+			if got := string(henvs[0].Body); got != malformed {
+				t.Errorf("body = %q, want %q", got, malformed)
+			}
+			if _, err := DecodeCloudConfig(cistore.CloudConfigFile{Content: []byte(malformed), Encoding: "base64"}); err == nil || !strings.Contains(err.Error(), "base64 decode") {
+				t.Errorf("DecodeCloudConfig() error = %v, want contextual base64 error", err)
+			}
+		})
 	}
 }

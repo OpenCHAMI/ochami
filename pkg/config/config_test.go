@@ -718,6 +718,7 @@ func TestConfigClusterConfig_BootServiceBaseURIAndMerge(t *testing.T) {
 
 func TestGetUserConfigPath(t *testing.T) {
 	tmpHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", "")
 	// Override HOME for this test.
 	oldHome, had := os.LookupEnv("HOME")
 	os.Setenv("HOME", tmpHome)
@@ -734,6 +735,21 @@ func TestGetUserConfigPath(t *testing.T) {
 	want := filepath.Join(tmpHome, ".config", "ochami", "config.yaml")
 	if p != want {
 		t.Fatalf("path = %s, want %s", p, want)
+	}
+}
+
+func TestUserConfigPathPrefersXDGConfigHome(t *testing.T) {
+	xdgHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdgHome)
+	t.Setenv("HOME", t.TempDir())
+
+	p, err := UserConfigPath()
+	if err != nil {
+		t.Fatalf("UserConfigPath() error = %v", err)
+	}
+	want := filepath.Join(xdgHome, "ochami", "config.yaml")
+	if p != want {
+		t.Fatalf("UserConfigPath() = %q, want %q", p, want)
 	}
 }
 

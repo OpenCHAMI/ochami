@@ -35,7 +35,7 @@ See ochami-rcs(1) for more details.`,
 				return err
 			}
 
-			status, err := rcsClient.GetStatus(cli.Token)
+			status, err := rcsClient.GetStatus(cmd.Context(), cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
 					return cli.Errorf(cli.CodeHTTP, "failed to get console service status: %w", err)

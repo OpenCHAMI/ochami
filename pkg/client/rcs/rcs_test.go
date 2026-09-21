@@ -45,7 +45,7 @@ func TestGetStatus_RequestPath(t *testing.T) {
 	})
 	defer srv.Close()
 
-	resp, err := c.GetStatus("tok")
+	resp, err := c.GetStatus(context.Background(), "tok")
 	if err != nil {
 		t.Fatalf("GetStatus: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestListConsoles_Success(t *testing.T) {
 	})
 	defer srv.Close()
 
-	consoles, err := c.ListConsoles("tok")
+	consoles, err := c.ListConsoles(context.Background(), "tok")
 	if err != nil {
 		t.Fatalf("ListConsoles: %v", err)
 	}
