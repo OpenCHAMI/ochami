@@ -5,6 +5,7 @@
 package config
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 )
@@ -125,5 +126,42 @@ func TestFile_RejectedMutationLeavesNoStagedState(t *testing.T) {
 	}
 	if got := reopened.Raw(); len(got) != 1 || reopened.Get("log.level") != "debug" {
 		t.Fatalf("persisted config = %v, want only log.level", got)
+	}
+}
+
+// TestFile_DirectorySyncFailureKeepsStateWithFile verifies that when the new
+// contents replace the file but syncing its directory fails, the mutation
+// returns the error and f's in-memory state matches the replaced file, so a
+// later write doesn't undo the change.
+func TestFile_DirectorySyncFailureKeepsStateWithFile(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	f, err := CreateFile(path)
+	if err != nil {
+		t.Fatalf("CreateFile(): %v", err)
+	}
+
+	syncErr := errors.New("directory sync failed")
+	ops := defaultWriteOps
+	ops.syncDir = func(string) error { return syncErr }
+	f.writeOps = &ops
+	if err := f.SetKey("default-cluster", "first"); !errors.Is(err, syncErr) {
+		t.Fatalf("SetKey() error = %v, want directory sync error", err)
+	}
+	if got := f.Get("default-cluster"); got != "first" {
+		t.Fatalf("in-memory default-cluster = %v, want %q (the file already holds it)", got, "first")
+	}
+
+	f.writeOps = nil
+	if err := f.SetKey("log.level", "debug"); err != nil {
+		t.Fatalf("SetKey() after recovery: %v", err)
+	}
+	reopened, err := OpenFile(path)
+	if err != nil {
+		t.Fatalf("OpenFile(): %v", err)
+	}
+	if got := reopened.Get("default-cluster"); got != "first" {
+		t.Fatalf("persisted default-cluster = %v, want %q (a later write must keep it)", got, "first")
 	}
 }
