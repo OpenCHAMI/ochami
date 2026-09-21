@@ -100,14 +100,6 @@ func runOchamiWithStdin(t *testing.T, stdin io.Reader, args ...string) cmdResult
 	cli.FormatInput = format.DataFormatJson
 	cli.FormatOutput = format.DataFormatJson
 
-	// Known limitation: some commands bind other pflag.Value-typed flags the
-	// same VarP way to a var scoped to their own subpackage rather than to
-	// internal/cli (e.g. cmd/pcs/status's powerFilter/mgmtFilter), which is
-	// unexported and so cannot be reset from here. No test in this package
-	// currently exercises one of those flags with a non-default value, so
-	// this is dormant, not observed; the general fix is to move those
-	// variables into their command constructors.
-
 	// Redirect the interactive I/O stream to the same capture pipe so output
 	// written via cli.Ios.Out() (e.g. "rcs console show") and any interactive
 	// prompt text are captured in the returned stdout.
