@@ -9,6 +9,7 @@ package cmd
 // outbound request method/path and the resolved exit code.
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -151,6 +152,27 @@ func TestCloudInitGroupRender_EmptyConfig(t *testing.T) {
 		"compute", "x0c0s0b0n0")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+}
+
+// TestCloudInitGroupGet_ConfigAndMetaData verifies that "cloud-init group get
+// config" and "cloud-init group get meta-data" succeed against a service that
+// returns no groups.
+func TestCloudInitGroupGet_ConfigAndMetaData(t *testing.T) {
+	for _, subcommand := range []string{"config", "meta-data"} {
+		t.Run(subcommand, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				io.WriteString(w, `{}`)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "cloud-init", "group", "get", subcommand,
+				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
 	}
 }
 
