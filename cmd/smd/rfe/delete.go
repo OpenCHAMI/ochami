@@ -64,13 +64,11 @@ See ochami-smd(1) for more details.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, err := cmd.Flags().GetBool("no-confirm")
-			if err != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
-			}
+			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				var respDelete bool
+				var err error
 				if cmd.Flag("all").Changed {
 					respDelete, err = cli.Ios.LoopYesNo("Really delete ALL REDFISH ENDPOINTS?")
 				} else {
@@ -104,6 +102,12 @@ See ochami-smd(1) for more details.`,
 				if err := cli.HandlePayload(cmd, &rfeSlice); err != nil {
 					return err
 				}
+				for _, rfe := range rfeSlice.RedfishEndpoints {
+					xnameSlice = append(xnameSlice, rfe.ID)
+				}
+				if len(xnameSlice) == 0 {
+					return cli.Errorf(cli.CodeUsage, "payload contained no redfish endpoints to delete")
+				}
 			} else {
 				// ...otherwise, use passed CLI arguments
 				xnameSlice = args
@@ -114,7 +118,9 @@ See ochami-smd(1) for more details.`,
 				// If --all passed, we don't care about any passed arguments
 				_, err := smdClient.DeleteRedfishEndpointsAll(cli.Token)
 				if err != nil {
-					return cli.ClassifyClientError(err, "SMD redfish endpoint deletion yielded unsuccessful HTTP response", "failed to delete redfish endpoints in SMD")
+					return cli.ClassifyClientError(err,
+						"SMD redfish endpoint deletion yielded unsuccessful HTTP response",
+						"failed to delete redfish endpoints in SMD")
 				}
 			} else {
 				// If --all not passed, pass argument list to deletion logic
@@ -122,6 +128,8 @@ See ochami-smd(1) for more details.`,
 				if err != nil {
 					return cli.ClassifyClientError(err, "failed to delete redfish endpoints in SMD", "failed to delete redfish endpoints in SMD")
 				}
+				// Since smdClient.DeleteRedfishEndpoints does the deletion iteratively, we need to deal with
+				// each error that might have occurred.
 				if err := cli.AggregateItemErrors(errs, "SMD redfish endpoint deletion"); err != nil {
 					return err
 				}
