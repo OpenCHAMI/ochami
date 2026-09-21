@@ -90,7 +90,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off request
-				defaultsSet, reqErr = metadataServiceClient.SetDefaults(cli.Token, args[0], defaults)
+				defaultsSet, reqErr = metadataServiceClient.SetDefaults(cmd.Context(), cli.Token, args[0], defaults)
 			} else {
 				// Use simple API (spec)
 
@@ -107,7 +107,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off request
-				defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cli.Token, args[0], spec)
+				defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cmd.Context(), cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
 				return cli.ClassifyClientError(reqErr, "failed to set cluster defaults", "failed to set cluster defaults")

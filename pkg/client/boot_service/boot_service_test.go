@@ -10,6 +10,7 @@ package boot_service
 // resource-specific *_test.go files.
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -26,7 +27,7 @@ func TestGetHealth(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.GetHealth(format.DataFormatJson); err != nil {
+	if _, err := c.GetHealth(context.Background(), format.DataFormatJson); err != nil {
 		t.Fatalf("GetHealth: %v", err)
 	}
 	if gotMethod != http.MethodGet || gotPath != "/health" {
@@ -42,9 +43,18 @@ func TestListEndpoints(t *testing.T) {
 		call     func(c *BootServiceClient) error
 		wantPath string
 	}{
-		{"bootconfigs", func(c *BootServiceClient) error { _, e := c.ListBootConfigs("", format.DataFormatJson); return e }, "/bootconfigurations"},
-		{"bmcs", func(c *BootServiceClient) error { _, e := c.ListBMCs("", format.DataFormatJson); return e }, "/bmcs"},
-		{"nodes", func(c *BootServiceClient) error { _, e := c.ListNodes("", format.DataFormatJson); return e }, "/nodes"},
+		{"bootconfigs", func(c *BootServiceClient) error {
+			_, e := c.ListBootConfigs(context.Background(), "", format.DataFormatJson)
+			return e
+		}, "/bootconfigurations"},
+		{"bmcs", func(c *BootServiceClient) error {
+			_, e := c.ListBMCs(context.Background(), "", format.DataFormatJson)
+			return e
+		}, "/bmcs"},
+		{"nodes", func(c *BootServiceClient) error {
+			_, e := c.ListNodes(context.Background(), "", format.DataFormatJson)
+			return e
+		}, "/nodes"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -74,9 +84,18 @@ func TestGetEndpoints(t *testing.T) {
 		call     func(c *BootServiceClient) error
 		wantPath string
 	}{
-		{"bootconfig", func(c *BootServiceClient) error { _, e := c.GetBootConfig("", format.DataFormatJson, "uid1"); return e }, "/bootconfigurations/uid1"},
-		{"bmc", func(c *BootServiceClient) error { _, e := c.GetBMC("", format.DataFormatJson, "uid1"); return e }, "/bmcs/uid1"},
-		{"node", func(c *BootServiceClient) error { _, e := c.GetNode("", format.DataFormatJson, "uid1"); return e }, "/nodes/uid1"},
+		{"bootconfig", func(c *BootServiceClient) error {
+			_, e := c.GetBootConfig(context.Background(), "", format.DataFormatJson, "uid1")
+			return e
+		}, "/bootconfigurations/uid1"},
+		{"bmc", func(c *BootServiceClient) error {
+			_, e := c.GetBMC(context.Background(), "", format.DataFormatJson, "uid1")
+			return e
+		}, "/bmcs/uid1"},
+		{"node", func(c *BootServiceClient) error {
+			_, e := c.GetNode(context.Background(), "", format.DataFormatJson, "uid1")
+			return e
+		}, "/nodes/uid1"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

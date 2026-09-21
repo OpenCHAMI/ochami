@@ -5,6 +5,7 @@
 package boot_service
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,9 +31,8 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) (*BootServiceClient, 
 	return c, srv
 }
 
-// TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras verifies that
-// AddNodeSpecs POSTs to /nodes with an envelope built from the name and spec
-// only, without labels.
+// TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras verifies the simple
+// API omits envelope metadata.
 func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -52,11 +52,8 @@ func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 		},
 	}
 
-	_, errs, err := c.AddNodeSpecs("", nodes)
-	if err != nil {
-		t.Fatalf("AddNodeSpecs returned func error: %v", err)
-	}
-	for _, e := range errs {
+	results := c.AddNodeSpecs(context.Background(), "", nodes)
+	for _, e := range results.Errors() {
 		if e != nil {
 			t.Fatalf("AddNodeSpecs per-request error: %v", e)
 		}
@@ -79,8 +76,8 @@ func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	}
 }
 
-// TestAddNodes_EnvelopeIncludesLabels verifies that AddNodes sends a request's
-// labels in the envelope.
+// TestAddNodes_EnvelopeIncludesLabels verifies the advanced API preserves
+// resource labels.
 func TestAddNodes_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -98,9 +95,8 @@ func TestAddNodes_EnvelopeIncludesLabels(t *testing.T) {
 		},
 	}
 
-	_, _, err := c.AddNodes("", nodes)
-	if err != nil {
-		t.Fatalf("AddNodes returned func error: %v", err)
+	if results := c.AddNodes(context.Background(), "", nodes); results.HasErrors() {
+		t.Fatalf("AddNodes returned errors: %v", results.Errors())
 	}
 
 	labels, ok := gotBody["labels"].(map[string]interface{})
@@ -109,9 +105,8 @@ func TestAddNodes_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
-// TestAddNodeSpecs_ReturnsOnlyCreatedResources verifies that AddNodeSpecs
-// returns only the nodes the service created and reports each failed request
-// separately.
+// TestAddNodeSpecs_ReturnsOnlyCreatedResources verifies Values excludes failed
+// simple API requests.
 func TestAddNodeSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -125,16 +120,14 @@ func TestAddNodeSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	})
 	defer srv.Close()
 
-	created, errs, err := c.AddNodeSpecs("", []NodeSpec{
+	results := c.AddNodeSpecs(context.Background(), "", []NodeSpec{
 		{Name: "failed node"},
 		{Name: "created node"},
 	})
-	if err != nil {
-		t.Fatalf("AddNodeSpecs returned func error: %v", err)
+	if len(results.Errors()) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(results.Errors()))
 	}
-	if len(errs) != 1 {
-		t.Fatalf("got %d per-request errors, want 1", len(errs))
-	}
+	created := results.Values()
 	if len(created) != 1 {
 		t.Fatalf("got %d created nodes, want 1", len(created))
 	}
@@ -143,8 +136,8 @@ func TestAddNodeSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
-// TestAddNodes_ReturnsOnlyCreatedResources verifies that AddNodes returns only
-// the nodes the service created and reports each failed request separately.
+// TestAddNodes_ReturnsOnlyCreatedResources verifies Values excludes failed
+// advanced API requests.
 func TestAddNodes_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -158,16 +151,14 @@ func TestAddNodes_ReturnsOnlyCreatedResources(t *testing.T) {
 	})
 	defer srv.Close()
 
-	created, errs, err := c.AddNodes("", []boot_service_client.CreateNodeRequest{
+	results := c.AddNodes(context.Background(), "", []boot_service_client.CreateNodeRequest{
 		{Metadata: fabrica.Metadata{Name: "failed node"}},
 		{Metadata: fabrica.Metadata{Name: "created node"}},
 	})
-	if err != nil {
-		t.Fatalf("AddNodes returned func error: %v", err)
+	if len(results.Errors()) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(results.Errors()))
 	}
-	if len(errs) != 1 {
-		t.Fatalf("got %d per-request errors, want 1", len(errs))
-	}
+	created := results.Values()
 	if len(created) != 1 {
 		t.Fatalf("got %d created nodes, want 1", len(created))
 	}
@@ -176,8 +167,8 @@ func TestAddNodes_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
-// TestSetNodeSpec_SendsSpecToUIDEndpoint verifies that SetNodeSpec PUTs the
-// spec, without labels, to the node's /nodes/<uid> endpoint.
+// TestSetNodeSpec_SendsSpecToUIDEndpoint verifies simple updates target the
+// requested resource UID.
 func TestSetNodeSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}
@@ -192,7 +183,7 @@ func TestSetNodeSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 
 	spec := api.NodeSpec{XName: "x1000c0s0b0n0", NID: 7}
 
-	_, err := c.SetNodeSpec("", "nod-abc123", spec)
+	_, err := c.SetNodeSpec(context.Background(), "", "nod-abc123", spec)
 	if err != nil {
 		t.Fatalf("SetNodeSpec returned error: %v", err)
 	}

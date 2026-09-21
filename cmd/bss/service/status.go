@@ -6,6 +6,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -21,7 +22,7 @@ import (
 // type) lets tests substitute a fake and exercise the command's response
 // handling and error mapping without a live service.
 type bssStatusClient interface {
-	GetStatus(component string) (client.HTTPEnvelope, error)
+	GetStatus(context.Context, string) (client.HTTPEnvelope, error)
 }
 
 // bssStatusClientProvider builds a bssStatusClient from the command context. The
@@ -59,13 +60,13 @@ See ochami-bss(1) for more details.`,
 			// Determine which component to get status for and send request
 			var httpEnv client.HTTPEnvelope
 			if cmd.Flag("all").Changed {
-				httpEnv, err = bssClient.GetStatus("all")
+				httpEnv, err = bssClient.GetStatus(cmd.Context(), "all")
 			} else if cmd.Flag("storage").Changed {
-				httpEnv, err = bssClient.GetStatus("storage")
+				httpEnv, err = bssClient.GetStatus(cmd.Context(), "storage")
 			} else if cmd.Flag("smd").Changed {
-				httpEnv, err = bssClient.GetStatus("smd")
+				httpEnv, err = bssClient.GetStatus(cmd.Context(), "smd")
 			} else {
-				httpEnv, err = bssClient.GetStatus("")
+				httpEnv, err = bssClient.GetStatus(cmd.Context(), "")
 			}
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS status request yielded unsuccessful HTTP response", "failed to get BSS status")

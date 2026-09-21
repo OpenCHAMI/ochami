@@ -38,11 +38,11 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send off request
-			_, errs, err := smdClient.PostGroupMembers(cli.Token, args[0], args[1:]...)
+			results, err := smdClient.PostGroupMembers(cmd.Context(), cli.Token, args[0], args[1:]...)
 			if err != nil {
 				return cli.ClassifyClientError(err, fmt.Sprintf("failed to add group member(s) to group %s in SMD", args[0]), fmt.Sprintf("failed to add group member(s) to group %s in SMD", args[0]))
 			}
-			if err := cli.AggregateItemErrors(errs, "SMD group member addition"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "SMD group member addition"); err != nil {
 				return err
 			}
 

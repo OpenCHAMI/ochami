@@ -57,13 +57,10 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Send off requests
-			nodesDeleted, errs, err := bootServiceClient.DeleteNodes(cli.Token, args)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to delete nodes", "failed to delete nodes")
-			}
+			results := bootServiceClient.DeleteNodes(cmd.Context(), cli.Token, args)
 
-			log.Logger.Debug().Msgf("nodes deleted: %+v", nodesDeleted)
-			if err := cli.AggregateItemErrors(errs, "node deletion"); err != nil {
+			log.Logger.Debug().Msgf("nodes deleted: %+v", results.Values())
+			if err := cli.AggregateItemErrors(results.Errors(), "node deletion"); err != nil {
 				return err
 			}
 

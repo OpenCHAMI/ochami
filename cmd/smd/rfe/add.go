@@ -120,11 +120,8 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send off request
-			_, errs, err := smdClient.PostRedfishEndpoints(rfes, cli.Token)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to add redfish endpoint in SMD", "failed to add redfish endpoint in SMD")
-			}
-			if err := cli.AggregateItemErrors(errs, "SMD redfish endpoint addition"); err != nil {
+			results := smdClient.PostRedfishEndpoints(cmd.Context(), rfes, cli.Token)
+			if err := cli.AggregateItemErrors(results.Errors(), "SMD redfish endpoint addition"); err != nil {
 				return err
 			}
 

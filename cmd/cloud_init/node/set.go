@@ -84,11 +84,11 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Send data
-			_, errs, err := cloudInitClient.PutInstanceInfo(ciInstInfo, cli.Token)
+			results, err := cloudInitClient.PutInstanceInfo(cmd.Context(), ciInstInfo, cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to set instance info", "failed to set instance info")
 			}
-			if err := cli.AggregateItemErrors(errs, "cloud-init node instance info setting"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "cloud-init node instance info setting"); err != nil {
 				return err
 			}
 

@@ -5,11 +5,12 @@
 package bss
 
 // bss_errors_test.go unit-tests the BSSClient wrapper methods' error arms:
-// input rejected before a request is made, and a non-2XX response surfacing
-// (across every wrapper, not just a representative one) as an
-// UnsuccessfulHTTPError.
+// input rejected before a request is made, a non-2XX response surfacing (across
+// every wrapper, not just a representative one) as an UnsuccessfulHTTPError,
+// and caller cancellation reaching the HTTP request.
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"testing"
@@ -26,7 +27,7 @@ func TestGetStatus_UnknownComponent(t *testing.T) {
 	bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) { requestMade = true })
 	defer srv.Close()
 
-	if _, err := bc.GetStatus("bogus"); err == nil {
+	if _, err := bc.GetStatus(context.Background(), "bogus"); err == nil {
 		t.Fatal("expected an error for unknown component, got nil")
 	}
 	if requestMade {
@@ -43,16 +44,28 @@ func TestBSSWrappers_HTTPError(t *testing.T) {
 		name string
 		call func(bc *BSSClient) (client.HTTPEnvelope, error)
 	}{
-		{"PostBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.PostBootParams(bp, "tok") }},
-		{"PutBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.PutBootParams(bp, "tok") }},
-		{"PatchBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.PatchBootParams(bp, "tok") }},
-		{"DeleteBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.DeleteBootParams(bp, "tok") }},
-		{"GetBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetBootParams("", "tok") }},
-		{"GetBootScript", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetBootScript("") }},
-		{"GetDumpstate", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetDumpstate() }},
-		{"GetEndpointHistory", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetEndpointHistory("") }},
-		{"GetHosts", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetHosts("") }},
-		{"GetStatus", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetStatus("all") }},
+		{"PostBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) {
+			return bc.PostBootParams(context.Background(), bp, "tok")
+		}},
+		{"PutBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) {
+			return bc.PutBootParams(context.Background(), bp, "tok")
+		}},
+		{"PatchBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) {
+			return bc.PatchBootParams(context.Background(), bp, "tok")
+		}},
+		{"DeleteBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) {
+			return bc.DeleteBootParams(context.Background(), bp, "tok")
+		}},
+		{"GetBootParams", func(bc *BSSClient) (client.HTTPEnvelope, error) {
+			return bc.GetBootParams(context.Background(), "", "tok")
+		}},
+		{"GetBootScript", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetBootScript(context.Background(), "") }},
+		{"GetDumpstate", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetDumpstate(context.Background()) }},
+		{"GetEndpointHistory", func(bc *BSSClient) (client.HTTPEnvelope, error) {
+			return bc.GetEndpointHistory(context.Background(), "")
+		}},
+		{"GetHosts", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetHosts(context.Background(), "") }},
+		{"GetStatus", func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetStatus(context.Background(), "all") }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -70,5 +83,24 @@ func TestBSSWrappers_HTTPError(t *testing.T) {
 				t.Errorf("%s: error = %v, want Is(UnsuccessfulHTTPError)", tc.name, err)
 			}
 		})
+	}
+}
+
+// TestBSSClient_PropagatesCancellation verifies caller cancellation reaches the HTTP request.
+func TestBSSClient_PropagatesCancellation(t *testing.T) {
+	requestMade := false
+	bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
+		requestMade = true
+	})
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := bc.GetBootParams(ctx, "", "tok")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("GetBootParams() error = %v, want context.Canceled", err)
+	}
+	if requestMade {
+		t.Fatal("request was made after context cancellation")
 	}
 }

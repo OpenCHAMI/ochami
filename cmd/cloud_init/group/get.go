@@ -38,12 +38,12 @@ func getGroupData(cmd *cobra.Command, args []string) (groupSlice []cistore.Group
 	// Get data
 	if len(args) == 0 {
 		// No args passed, get all group data at once
-		henvs, errs, err := cloudInitClient.GetGroups(cli.Token)
-		if err != nil {
-			return nil, cli.ClassifyClientError(err, "failed to get all groups from cloud-init", "failed to get all groups from cloud-init")
+		results := cloudInitClient.GetGroups(cmd.Context(), cli.Token)
+		if len(results) != 1 {
+			return nil, cli.Errorf(cli.CodeGeneric, "cloud-init returned %d results for the all-groups request, want one", len(results))
 		}
-		if errs[0] != nil {
-			return nil, cli.ClassifyClientError(errs[0], "cloud-init group request yielded unsuccessful HTTP response", "failed to get cloud-init groups")
+		if results[0].Err != nil {
+			return nil, cli.ClassifyClientError(results[0].Err, "cloud-init group request yielded unsuccessful HTTP response", "failed to get cloud-init groups")
 		}
 
 		// Group data is formatted as a map keyed on the name,
@@ -52,24 +52,21 @@ func getGroupData(cmd *cobra.Command, args []string) (groupSlice []cistore.Group
 		//
 		// Convert group map into group slice.
 		var groupMap map[string]cistore.GroupData
-		if err := json.Unmarshal(henvs[0].Body, &groupMap); err != nil {
+		if err := json.Unmarshal(results[0].Value.Body, &groupMap); err != nil {
 			return nil, cli.Errorf(cli.CodePayload, "failed to unmarshal all groups: %w", err)
 		}
 		groupSlice = cloud_init.CIGroupDataMapToSlice(groupMap)
 	} else {
 		// One or more arguments (group IDs) provided, get data
 		// for just those groups.
-		henvs, errs, err := cloudInitClient.GetGroups(cli.Token, args...)
-		if err != nil {
-			return nil, cli.ClassifyClientError(err, "failed to get cloud-init groups", "failed to get cloud-init groups")
-		}
-		if err := cli.AggregateItemErrors(errs, "cloud-init group retrieval"); err != nil {
+		results := cloudInitClient.GetGroups(cmd.Context(), cli.Token, args...)
+		if err := cli.AggregateItemErrors(results.Errors(), "cloud-init group retrieval"); err != nil {
 			return nil, err
 		}
 
 		// Collect group data into JSON array
 		var itemErrs []error
-		for _, henv := range henvs {
+		for _, henv := range results.Values() {
 			var ciGroup cistore.GroupData
 			if err := json.Unmarshal(henv.Body, &ciGroup); err != nil {
 				log.Logger.Error().Err(err).Msg("failed to unmarshal HTTP body into group")
