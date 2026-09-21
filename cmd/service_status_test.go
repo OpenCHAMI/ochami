@@ -42,7 +42,7 @@ func TestServiceCommands_VersionAndStatusPaths(t *testing.T) {
 			defer srv.Close()
 
 			args := append(append([]string{}, tc.args...), "--ignore-config", "--uri", srv.URL)
-			res := runOchami(t, args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}

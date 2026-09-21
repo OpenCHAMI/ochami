@@ -23,8 +23,8 @@ func TestMetadataAdd_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "add",
-				"--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "add",
+				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -53,8 +53,8 @@ func TestMetadataDelete_AbortsOnNo(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, "n\n", "metadata", typ, "delete", "some-uid",
-				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithInputAndRuntime(t, "n\n", "--ignore-config", "metadata", typ, "delete", "some-uid",
+				"--uri", srv.URL, "--token", "t")
 			if res.exitCode != cli.CodeDeclined {
 				t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
 			}
@@ -78,8 +78,8 @@ func TestMetadataDelete_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "metadata", typ, "delete", "some-uid",
-				"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
+			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "delete", "some-uid",
+				"--uri", srv.URL, "--token", "t", "--no-confirm")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}

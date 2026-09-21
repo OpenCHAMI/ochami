@@ -24,7 +24,7 @@ func TestSMDComponentGet_AllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "component", "get", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "smd", "component", "get", "--ignore-config", "--uri", srv.URL)
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -39,7 +39,7 @@ func TestSMDComponentGet_AllHTTPError(t *testing.T) {
 func TestSMDComponentGet_NetworkError(t *testing.T) {
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-	res := runOchami(t, "smd", "component", "get", "--ignore-config", "--uri", url)
+	res := runOchamiWithRuntime(t, "smd", "component", "get", "--ignore-config", "--uri", url)
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -58,7 +58,7 @@ func TestSMDComponentAdd_BadPayload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "component", "add",
+	res := runOchamiWithRuntime(t, "smd", "component", "add",
 		"--ignore-config", "--uri", srv.URL,
 		"--token", "faketoken",
 		"-d", "{this is not valid json")
@@ -77,7 +77,7 @@ func TestSMDComponentAdd_BadPayload(t *testing.T) {
 // TestSMDComponentAdd_MissingArgs verifies that invoking add without -d and
 // without the required positional arguments is a usage error (CodeUsage).
 func TestSMDComponentAdd_MissingArgs(t *testing.T) {
-	res := runOchami(t, "smd", "component", "add", "--ignore-config", "--uri", "http://127.0.0.1:0")
+	res := runOchamiWithRuntime(t, "smd", "component", "add", "--ignore-config", "--uri", "http://127.0.0.1:0")
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -97,7 +97,7 @@ func TestSMDComponentDelete_PartialFailure(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "component", "delete",
+	res := runOchamiWithRuntime(t, "smd", "component", "delete",
 		"--ignore-config", "--uri", srv.URL,
 		"--token", "faketoken",
 		"--no-confirm",
@@ -122,7 +122,7 @@ func TestSMDComponentDelete_Abort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
+	res := runOchamiWithInputAndRuntime(t, "n\n",
 		"smd", "component", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
 	if res.exitCode != cli.CodeDeclined {
 		t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))

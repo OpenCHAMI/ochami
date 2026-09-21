@@ -6,6 +6,7 @@
 package config
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -45,8 +46,14 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// We must have a config file in order to write config
-			fileToModify := cli.ConfigFileToModify(cmd)
+			fileToModify := rt.ConfigFileToModify(cmd)
 
 			// Refuse to modify config if user tries to modify cluster config
 			if strings.HasPrefix(args[0], "clusters") {
@@ -54,12 +61,12 @@ See ochami-config(5) for details on the configuration options.`,
 			}
 
 			// Ask to create file if it doesn't exist.
-			if create, err := cli.Ios.AskToCreate(fileToModify); err != nil {
-				if err != cli.FileExistsError {
+			if create, err := rt.AskToCreate(fileToModify); err != nil {
+				if !errors.Is(err, cli.ErrFileExists) {
 					return cli.Errorf(cli.CodeConfig, "error asking to create file: %w", err)
 				}
 			} else if create {
-				if err := cli.CreateIfNotExists(fileToModify); err != nil {
+				if err := rt.CreateIfNotExists(fileToModify); err != nil {
 					return cli.Errorf(cli.CodeConfig, "error creating file: %w", err)
 				}
 			} else {

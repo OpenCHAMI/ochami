@@ -5,7 +5,7 @@
 package cmd
 
 // testtoken_test.go provides a helper for generating a signed JWT with valid
-// time-based claims, for commands that call cli.CheckToken (which parses and
+// time-based claims, for commands that call rt.CheckToken (which parses and
 // validates the token's exp/nbf/iat before making a request).
 
 import (
@@ -19,7 +19,7 @@ import (
 )
 
 // validToken returns a signed JWT whose claims are valid (expires in the
-// future, already valid) so cli.CheckToken accepts it. The signature is not
+// future, already valid) so rt.CheckToken accepts it. The signature is not
 // verified by the CLI, so an ephemeral RSA key suffices.
 func validToken(t *testing.T) string {
 	t.Helper()

@@ -225,7 +225,8 @@ the following codes:
    invalid token).
 |  *5*
 :  _CodePayload_
-:  A payload, (un)marshalling, input, or output formatting error occurred.
+:  A payload, (un)marshalling, input, or output error occurred, including a
+   failure to write the command's output.
 |  *6*
 :  _CodeHTTP_
 :  The contacted service returned an unsuccessful HTTP response.

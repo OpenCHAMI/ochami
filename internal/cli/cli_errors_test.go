@@ -6,8 +6,11 @@
 package cli
 
 import (
+	"bytes"
+	"context"
 	"errors"
-	"os"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -15,26 +18,17 @@ import (
 	"github.com/openchami/ochami/pkg/config"
 )
 
-// TestSetToken_NoTokenNoCluster verifies that SetToken returns a CodeAuth
-// error when neither --token nor --cluster/default-cluster is available to
-// resolve a token from.
-func TestSetToken_NoTokenNoCluster(t *testing.T) {
-	// Save original token/active config and restore after test
-	originalToken := Token
-	originalConfig := ActiveConfig()
-	defer func() {
-		Token = originalToken
-		SetActiveConfig(originalConfig)
-	}()
-	SetActiveConfig(config.Config{})
-
+// TestSetTokenFromEnv_NoCluster verifies that SetTokenFromEnv returns a
+// CodeAuth error when neither --token nor --cluster/default-cluster is
+// available to resolve a token from.
+func TestSetTokenFromEnv_NoCluster(t *testing.T) {
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard)
 	cmd := &cobra.Command{}
-	cmd.Flags().String("token", "", "token flag")
 	cmd.Flags().String("cluster", "", "cluster flag")
 
-	err := SetToken(cmd)
+	err := rt.SetTokenFromEnv(cmd)
 	if err == nil {
-		t.Fatal("SetToken should have returned an error when no token or cluster is available")
+		t.Fatal("SetTokenFromEnv should have returned an error when no token or cluster is available")
 	}
 	if ExitCode(err) != CodeAuth {
 		t.Errorf("ExitCode = %d, want %d (%s)", ExitCode(err), CodeAuth, CodeName(CodeAuth))
@@ -44,11 +38,11 @@ func TestSetToken_NoTokenNoCluster(t *testing.T) {
 // TestHandleToken_UnknownCluster verifies direct callers cannot silently skip
 // token handling for a cluster that does not exist.
 func TestHandleToken_UnknownCluster(t *testing.T) {
-	origCfg := ActiveConfig()
-	t.Cleanup(func() { SetActiveConfig(origCfg) })
-
-	SetActiveConfig(config.Config{DefaultCluster: "missing"})
-	err := HandleToken(tokenTestCmd())
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{DefaultCluster: "missing"}
+	cmd := tokenTestCmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+	err := rt.HandleToken(cmd)
 	if err == nil {
 		t.Fatal("HandleToken(): expected error for unknown cluster, got nil")
 	}
@@ -60,28 +54,19 @@ func TestHandleToken_UnknownCluster(t *testing.T) {
 // TestHandleToken_AuthEnabledMissingToken verifies that an auth-enabled cluster
 // requires a token and errors when none is available.
 func TestHandleToken_AuthEnabledMissingToken(t *testing.T) {
-	origCfg := ActiveConfig()
-	origToken := Token
-	t.Cleanup(func() {
-		SetActiveConfig(origCfg)
-		Token = origToken
-	})
-
-	SetActiveConfig(config.Config{
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{
 		DefaultCluster: "secure",
 		Clusters: []config.Cluster{
 			{Name: "secure", Cluster: config.ClusterConfig{EnableAuth: true}},
 		},
-	})
-	Token = ""
-	// Ensure no stray env var satisfies the token lookup.
-	const secureEnv = "SECURE_ACCESS_TOKEN"
-	if orig, had := os.LookupEnv(secureEnv); had {
-		_ = os.Unsetenv(secureEnv)
-		t.Cleanup(func() { _ = os.Setenv(secureEnv, orig) })
 	}
+	rt.Token = ""
+	rt.WithEnvironment(EnvironmentFunc(func(string) (string, bool) { return "", false }))
+	cmd := tokenTestCmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
 
-	err := HandleToken(tokenTestCmd())
+	err := rt.HandleToken(cmd)
 	if err == nil {
 		t.Fatal("HandleToken(): expected error for missing token, got nil")
 	}
@@ -90,34 +75,23 @@ func TestHandleToken_AuthEnabledMissingToken(t *testing.T) {
 	}
 }
 
-// TestSetToken_MissingEnvVar verifies SetToken errors (CodeAuth) when neither
-// --token nor the cluster env var is set.
-func TestSetToken_MissingEnvVar(t *testing.T) {
-	origToken := Token
-	origCfg := ActiveConfig()
-	t.Cleanup(func() {
-		Token = origToken
-		SetActiveConfig(origCfg)
-	})
+// TestSetTokenFromEnv_MissingEnvVar verifies SetTokenFromEnv errors (CodeAuth) when
+// neither --token nor the cluster env var is set.
+func TestSetTokenFromEnv_MissingEnvVar(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{DefaultCluster: "nope"}
+	rt.Token = ""
+	rt.WithEnvironment(EnvironmentFunc(func(string) (string, bool) { return "", false }))
+	cmd := tokenTestCmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
 
-	SetActiveConfig(config.Config{DefaultCluster: "nope"})
-	Token = ""
-	// Ensure the lookup variable is genuinely absent (t.Setenv can only set,
-	// not unset, so explicitly unset it and restore afterward).
-	const envVar = "NOPE_ACCESS_TOKEN"
-	if orig, had := os.LookupEnv(envVar); had {
-		_ = os.Unsetenv(envVar)
-		t.Cleanup(func() { _ = os.Setenv(envVar, orig) })
-	}
-
-	err := SetToken(tokenTestCmd())
+	err := rt.SetTokenFromEnv(cmd)
 	if err == nil {
 		t.Fatal("SetToken(): expected error, got nil")
 	}
 	if got := ExitCode(err); got != CodeAuth {
 		t.Errorf("exit code = %d, want %d (%s)", got, CodeAuth, CodeName(CodeAuth))
 	}
-	// Sanity: the error is a CodedError, matchable by errors.As.
 	var ce *CodedError
 	if !errors.As(err, &ce) {
 		t.Errorf("error %v is not a *CodedError", err)

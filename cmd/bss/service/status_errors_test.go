@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -16,7 +17,11 @@ import (
 // returned unchanged.
 func TestServiceStatus_ClientConstructionError(t *testing.T) {
 	wantErr := errors.New("boom")
+	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdServiceStatusWithClient(providerFor(nil, wantErr))
+	cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	cmd.SetOut(stdoutBuf)
+	cmd.SetErr(stdoutBuf)
 	cmd.SetArgs(nil)
 
 	err := cmd.Execute()
@@ -29,7 +34,11 @@ func TestServiceStatus_ClientConstructionError(t *testing.T) {
 // the HTTP exit code.
 func TestServiceStatus_HTTPErrorMapping(t *testing.T) {
 	fake := &fakeBSSStatusClient{err: client.UnsuccessfulHTTPError}
+	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))
+	cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	cmd.SetOut(stdoutBuf)
+	cmd.SetErr(stdoutBuf)
 	cmd.SetArgs(nil)
 
 	err := cmd.Execute()
@@ -45,7 +54,11 @@ func TestServiceStatus_HTTPErrorMapping(t *testing.T) {
 // network exit code.
 func TestServiceStatus_NetworkErrorMapping(t *testing.T) {
 	fake := &fakeBSSStatusClient{err: errors.New("connection refused")}
+	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))
+	cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	cmd.SetOut(stdoutBuf)
+	cmd.SetErr(stdoutBuf)
 	cmd.SetArgs(nil)
 
 	err := cmd.Execute()
