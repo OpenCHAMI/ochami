@@ -5,6 +5,7 @@
 package transition
 
 import (
+	"context"
 	"io"
 	"testing"
 
@@ -22,7 +23,7 @@ type scriptedTransitionClient struct {
 	calls     int
 }
 
-func (s *scriptedTransitionClient) GetTransition(transitionID, token string) (client.HTTPEnvelope, error) {
+func (s *scriptedTransitionClient) GetTransition(_ context.Context, transitionID, token string) (client.HTTPEnvelope, error) {
 	i := s.calls
 	if i >= len(s.responses) {
 		i = len(s.responses) - 1

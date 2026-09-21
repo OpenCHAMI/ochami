@@ -95,7 +95,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off request
-				peerSet, reqErr = metadataServiceClient.SetWireGuardPeer(cli.Token, args[0], peer)
+				peerSet, reqErr = metadataServiceClient.SetWireGuardPeer(cmd.Context(), cli.Token, args[0], peer)
 			} else {
 				// Use simple API (spec)
 
@@ -112,7 +112,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off request
-				peerSet, reqErr = metadataServiceClient.SetWireGuardPeerSpec(cli.Token, args[0], spec)
+				peerSet, reqErr = metadataServiceClient.SetWireGuardPeerSpec(cmd.Context(), cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
 				return cli.ClassifyClientError(reqErr, "failed to set WireGuard peer", "failed to set WireGuard peer")

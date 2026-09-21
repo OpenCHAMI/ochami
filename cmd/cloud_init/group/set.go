@@ -80,11 +80,8 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Send data
-			_, errs, err := cloudInitClient.PutGroups(ciGroups, cli.Token)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to set group data", "failed to set group data")
-			}
-			if err := cli.AggregateItemErrors(errs, "cloud-init group data setting"); err != nil {
+			results := cloudInitClient.PutGroups(cmd.Context(), ciGroups, cli.Token)
+			if err := cli.AggregateItemErrors(results.Errors(), "cloud-init group data setting"); err != nil {
 				return err
 			}
 

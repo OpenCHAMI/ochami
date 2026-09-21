@@ -36,15 +36,15 @@ See ochami-bss(1) for more details.`,
 			// Determine which component to get status for and send request
 			var httpEnv client.HTTPEnvelope
 			if cmd.Flag("all").Changed {
-				httpEnv, err = bssClient.GetStatus("all")
+				httpEnv, err = bssClient.GetStatus(cmd.Context(), "all")
 			} else if cmd.Flag("storage").Changed {
-				httpEnv, err = bssClient.GetStatus("storage")
+				httpEnv, err = bssClient.GetStatus(cmd.Context(), "storage")
 			} else if cmd.Flag("smd").Changed {
-				httpEnv, err = bssClient.GetStatus("smd")
+				httpEnv, err = bssClient.GetStatus(cmd.Context(), "smd")
 			} else if cmd.Flag("version").Changed {
-				httpEnv, err = bssClient.GetStatus("version")
+				httpEnv, err = bssClient.GetStatus(cmd.Context(), "version")
 			} else {
-				httpEnv, err = bssClient.GetStatus("")
+				httpEnv, err = bssClient.GetStatus(cmd.Context(), "")
 			}
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS status request yielded unsuccessful HTTP response", "failed to get BSS status")

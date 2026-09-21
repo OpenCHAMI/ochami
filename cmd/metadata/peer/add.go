@@ -13,6 +13,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
@@ -106,9 +107,7 @@ See ochami-metadata(1) for more details.`,
 			// Determine how to read payload (simple versus advanced API)
 			envelope, _ := cmd.Flags().GetBool("envelope")
 
-			var peersCreated []api.WireGuardPeer
-			var reqErrs []error
-			var reqErr error
+			var results client.BatchResult[api.WireGuardPeer]
 			if envelope {
 				// Use advanced API (spec, metadata, annotations)
 
@@ -125,7 +124,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off requests
-				peersCreated, reqErrs, reqErr = metadataServiceClient.AddWireGuardPeers(cli.Token, peers)
+				results = metadataServiceClient.AddWireGuardPeers(cmd.Context(), cli.Token, peers)
 			} else {
 				// Use simple API (spec)
 
@@ -142,22 +141,17 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off requests
-				peersCreated, reqErrs, reqErr = metadataServiceClient.AddWireGuardPeerSpecs(cli.Token, peers)
-			}
-
-			// Handle any non-request error
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to add WireGuard peers", "failed to add WireGuard peers")
+				results = metadataServiceClient.AddWireGuardPeerSpecs(cmd.Context(), cli.Token, peers)
 			}
 
 			// Print names of created items
 			var names []string
-			for _, peer := range peersCreated {
+			for _, peer := range results.Values() {
 				names = append(names, peer.Metadata.Name)
 			}
 			log.Logger.Info().Msgf("WireGuard peers created: %q", names)
 
-			if err := cli.AggregateItemErrors(reqErrs, "WireGuard peer addition"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "WireGuard peer addition"); err != nil {
 				return err
 			}
 

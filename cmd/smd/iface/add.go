@@ -103,11 +103,8 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send off request
-			_, errs, err := smdClient.PostEthernetInterfaces(eis, cli.Token)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to add ethernet interface in SMD", "failed to add ethernet interface in SMD")
-			}
-			if err := cli.AggregateItemErrors(errs, "SMD ethernet interface addition"); err != nil {
+			results := smdClient.PostEthernetInterfaces(cmd.Context(), eis, cli.Token)
+			if err := cli.AggregateItemErrors(results.Errors(), "SMD ethernet interface addition"); err != nil {
 				return err
 			}
 
