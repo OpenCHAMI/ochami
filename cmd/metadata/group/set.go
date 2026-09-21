@@ -11,9 +11,76 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/metadata_service"
+
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 )
+
+// metadataGroupSetOptions holds the flag values for the metadata group set command.
+type metadataGroupSetOptions struct {
+	Envelope bool
+}
+
+// runCoreMetadataGroupSet contains the core logic for the metadata group set command.
+// It takes the parsed options and performs the actual work of setting group details.
+func runCoreMetadataGroupSet(cmd *cobra.Command, opts *metadataGroupSetOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var groupSet *api.Group
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read group data
+		group := metadata_service_client.UpdateGroupRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &group); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &group); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		groupSet, reqErr = metadataServiceClient.SetGroup(cmd.Context(), cli.Token, args[0], group)
+	} else {
+		// Use simple API (spec)
+
+		// Read group data
+		spec := api.GroupSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		groupSet, reqErr = metadataServiceClient.SetGroupSpec(cmd.Context(), cli.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.ClassifyClientError(reqErr, "failed to set group", "failed to set group")
+	}
+
+	// Check that a modified item was returned
+	if groupSet == nil {
+		return cli.Errorf(cli.CodeGeneric, "group set returned no resource")
+	}
+
+	log.Logger.Info().Msgf("Groups set: %+v", []string{groupSet.Metadata.UID})
+
+	return nil
+}
 
 func newCmdMetadataGroupSet() *cobra.Command {
 	// metadataGroupSetCmd represents the "metadata group set" command
@@ -61,64 +128,15 @@ See ochami-metadata(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &metadataGroupSetOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope")
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope")
-
-			var groupSet *api.Group
-			var reqErr error
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read group data
-				group := metadata_service_client.UpdateGroupRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &group); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &group); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				groupSet, reqErr = metadataServiceClient.SetGroup(cmd.Context(), cli.Token, args[0], group)
-			} else {
-				// Use simple API (spec)
-
-				// Read group data
-				spec := api.GroupSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &spec); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				groupSet, reqErr = metadataServiceClient.SetGroupSpec(cmd.Context(), cli.Token, args[0], spec)
-			}
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to set group", "failed to set group")
-			}
-
-			// Check that a modified item was returned
-			if groupSet == nil {
-				return cli.Errorf(cli.CodeGeneric, "group set returned no resource")
-			}
-
-			// Print UIDs of modified items
-			log.Logger.Info().Msgf("Groups set: %+v", []string{groupSet.Metadata.UID})
-
-			return nil
+			return runCoreMetadataGroupSet(cmd, opts, args, metadataServiceClient)
 		},
 	}
 
