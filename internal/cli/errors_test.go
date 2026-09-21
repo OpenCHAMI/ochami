@@ -40,6 +40,45 @@ func TestErrorfCodeAndMessage(t *testing.T) {
 	}
 }
 
+func TestClassifyClientError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{name: "nil", err: nil, want: CodeSuccess},
+		{name: "http", err: fmt.Errorf("request: %w", client.UnsuccessfulHTTPError), want: CodeHTTP},
+		{name: "network", err: errors.New("connection refused"), want: CodeNetwork},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ClassifyClientError(tc.err, "HTTP failed", "network failed")
+			if code := ExitCode(got); code != tc.want {
+				t.Errorf("ExitCode() = %d, want %d", code, tc.want)
+			}
+			if tc.err != nil && !errors.Is(got, tc.err) {
+				t.Errorf("ClassifyClientError() did not preserve %v", tc.err)
+			}
+		})
+	}
+}
+
+func TestAggregateItemErrors(t *testing.T) {
+	if err := AggregateItemErrors([]error{nil, nil}, "resource update"); err != nil {
+		t.Fatalf("AggregateItemErrors() = %v, want nil", err)
+	}
+
+	itemErr := fmt.Errorf("item: %w", client.UnsuccessfulHTTPError)
+	err := AggregateItemErrors([]error{nil, itemErr}, "resource update")
+	if code := ExitCode(err); code != CodeHTTP {
+		t.Errorf("ExitCode() = %d, want %d", code, CodeHTTP)
+	}
+	if err == nil || err.Error() != "resource update completed with errors" {
+		t.Errorf("AggregateItemErrors() = %v, want aggregate message", err)
+	}
+}
+
 // TestCodedErrorNilInnerMessage verifies a CodedError with no wrapped error
 // still produces a message.
 func TestCodedErrorNilInnerMessage(t *testing.T) {
