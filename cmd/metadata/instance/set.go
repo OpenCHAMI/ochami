@@ -87,7 +87,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off request
-				instanceSet, reqErr = metadataServiceClient.SetInstanceInfo(cli.Token, args[0], instance)
+				instanceSet, reqErr = metadataServiceClient.SetInstanceInfo(cmd.Context(), cli.Token, args[0], instance)
 			} else {
 				// Use simple API (spec)
 
@@ -104,7 +104,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off request
-				instanceSet, reqErr = metadataServiceClient.SetInstanceInfoSpec(cli.Token, args[0], spec)
+				instanceSet, reqErr = metadataServiceClient.SetInstanceInfoSpec(cmd.Context(), cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
 				return cli.ClassifyClientError(reqErr, "failed to set instance info", "failed to set instance info")

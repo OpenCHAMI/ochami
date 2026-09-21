@@ -56,15 +56,12 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			defaultsDeleted, errs, err := metadataServiceClient.DeleteDefaults(cli.Token, args)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to delete cluster defaults", "failed to delete cluster defaults")
-			}
+			results := metadataServiceClient.DeleteDefaults(cmd.Context(), cli.Token, args)
 
 			// Print UIDs of deleted items
-			log.Logger.Info().Msgf("Cluster defaults deleted: %+v", defaultsDeleted)
+			log.Logger.Info().Msgf("Cluster defaults deleted: %+v", results.Values())
 
-			if err := cli.AggregateItemErrors(errs, "cluster defaults deletion"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "cluster defaults deletion"); err != nil {
 				return err
 			}
 

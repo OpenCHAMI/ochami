@@ -80,11 +80,8 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Send data
-			_, errs, err := cloudInitClient.PostGroups(ciGroups, cli.Token)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to add groups", "failed to add groups")
-			}
-			if err := cli.AggregateItemErrors(errs, "cloud-init group addition"); err != nil {
+			results := cloudInitClient.PostGroups(cmd.Context(), ciGroups, cli.Token)
+			if err := cli.AggregateItemErrors(results.Errors(), "cloud-init group addition"); err != nil {
 				return err
 			}
 

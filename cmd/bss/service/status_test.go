@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -19,7 +20,7 @@ type fakeBSSStatusClient struct {
 	err          error
 }
 
-func (f *fakeBSSStatusClient) GetStatus(component string) (client.HTTPEnvelope, error) {
+func (f *fakeBSSStatusClient) GetStatus(_ context.Context, component string) (client.HTTPEnvelope, error) {
 	f.gotComponent = component
 	return f.env, f.err
 }

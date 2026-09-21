@@ -13,6 +13,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
@@ -92,9 +93,7 @@ See ochami-metadata(1) for more details.`,
 			// Determine how to read payload (simple versus advanced API)
 			envelope, _ := cmd.Flags().GetBool("envelope")
 
-			var instancesCreated []api.InstanceInfo
-			var reqErrs []error
-			var reqErr error
+			var results client.BatchResult[api.InstanceInfo]
 			if envelope {
 				// Use advanced API (spec, metadata, annotations)
 
@@ -111,7 +110,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off requests
-				instancesCreated, reqErrs, reqErr = metadataServiceClient.AddInstanceInfos(cli.Token, instances)
+				results = metadataServiceClient.AddInstanceInfos(cmd.Context(), cli.Token, instances)
 			} else {
 				// Use simple API (spec)
 
@@ -128,22 +127,17 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off requests
-				instancesCreated, reqErrs, reqErr = metadataServiceClient.AddInstanceInfoSpecs(cli.Token, instances)
-			}
-
-			// Handle any non-request error
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to add instance infos", "failed to add instance infos")
+				results = metadataServiceClient.AddInstanceInfoSpecs(cmd.Context(), cli.Token, instances)
 			}
 
 			// Print names of created items
 			var names []string
-			for _, instance := range instancesCreated {
+			for _, instance := range results.Values() {
 				names = append(names, instance.Metadata.Name)
 			}
 			log.Logger.Info().Msgf("Instance infos created: %q", names)
 
-			if err := cli.AggregateItemErrors(reqErrs, "Instance info addition"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "Instance info addition"); err != nil {
 				return err
 			}
 

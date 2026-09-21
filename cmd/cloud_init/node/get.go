@@ -69,17 +69,17 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get node group data
-			henvs, errs, err := cloudInitClient.GetNodeGroupData(cli.Token, args[0], args[1:]...)
+			results, err := cloudInitClient.GetNodeGroupData(cmd.Context(), cli.Token, args[0], args[1:]...)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get node group data", "failed to get node group data")
 			}
-			if err := cli.AggregateItemErrors(errs, "cloud-init node group data retrieval"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "cloud-init node group data retrieval"); err != nil {
 				return err
 			}
 
 			// Collect node group data into string array
 			var gSlice []string
-			for idx, henv := range henvs {
+			for idx, henv := range results.Values() {
 				// Warn and don't add to list if cloud-config is empty for group
 				if len(henv.Body) == 0 {
 					log.Logger.Warn().Msgf("cloud-config for group %s was empty, not printing for node %s", args[1+idx], args[0])
@@ -138,18 +138,18 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get meta-data
-			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitMetaData, cli.Token, args...)
+			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitMetaData, cli.Token, args...)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get node meta-data", "failed to get node meta-data")
 			}
-			if err := cli.AggregateItemErrors(errs, "cloud-init node meta-data retrieval"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "cloud-init node meta-data retrieval"); err != nil {
 				return err
 			}
 
 			// Collect node data into YAML array
 			var iiSlice []map[string]interface{}
 			var itemErrs []error
-			for _, henv := range henvs {
+			for _, henv := range results.Values() {
 				var ii map[string]interface{}
 				if err := yaml.Unmarshal(henv.Body, &ii); err != nil {
 					log.Logger.Error().Err(err).Msg("failed to unmarshal HTTP body into group")
@@ -209,17 +209,17 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get user-data
-			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitUserData, cli.Token, args...)
+			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitUserData, cli.Token, args...)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get node user-data", "failed to get node user-data")
 			}
-			if err := cli.AggregateItemErrors(errs, "cloud-init node user-data retrieval"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "cloud-init node user-data retrieval"); err != nil {
 				return err
 			}
 
 			// Collect node data into string array
 			var iiSlice []string
-			for _, henv := range henvs {
+			for _, henv := range results.Values() {
 				iiSlice = append(iiSlice, string(henv.Body))
 			}
 
@@ -273,17 +273,17 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get vendor-data
-			henvs, errs, err := cloudInitClient.GetNodeData(cloud_init.CloudInitVendorData, cli.Token, args...)
+			results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitVendorData, cli.Token, args...)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get node vendor-data", "failed to get node vendor-data")
 			}
-			if err := cli.AggregateItemErrors(errs, "cloud-init node vendor-data retrieval"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "cloud-init node vendor-data retrieval"); err != nil {
 				return err
 			}
 
 			// Collect node data into string array
 			var iiSlice []string
-			for _, henv := range henvs {
+			for _, henv := range results.Values() {
 				iiSlice = append(iiSlice, string(henv.Body))
 			}
 

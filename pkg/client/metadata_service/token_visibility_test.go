@@ -6,6 +6,7 @@ package metadata_service
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,9 +19,8 @@ import (
 	"github.com/openchami/ochami/pkg/format"
 )
 
-// TestNewClientPropagatesShowToken verifies that a client built with
-// WithShowToken logs the full token, and that one built without it logs only a
-// truncated prefix.
+// TestNewClientPropagatesShowToken verifies generated-client logging honors
+// token visibility settings.
 func TestNewClientPropagatesShowToken(t *testing.T) {
 	const token = "eyJhbGciOiJIUzI1NiJ9.payload.sig"
 
@@ -65,7 +65,7 @@ func TestNewClientPropagatesShowToken(t *testing.T) {
 				t.Fatalf("failed to create client: %v", err)
 			}
 
-			if _, err := c.ListGroups(token, format.DataFormatJson); err != nil {
+			if _, err := c.ListGroups(context.Background(), token, format.DataFormatJson); err != nil {
 				t.Fatalf("failed to list groups: %v", err)
 			}
 

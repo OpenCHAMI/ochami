@@ -107,13 +107,10 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Perform deletion
-			_, errs, err := smdClient.DeleteGroups(cli.Token, gLabelSlice...)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to delete groups in SMD", "failed to delete groups in SMD")
-			}
+			results := smdClient.DeleteGroups(cmd.Context(), cli.Token, gLabelSlice...)
 			// Since smdClient.DeleteGroups does the deletion iteratively, we need to deal with
 			// each error that might have occurred.
-			if err := cli.AggregateItemErrors(errs, "SMD group deletion"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "SMD group deletion"); err != nil {
 				return err
 			}
 
