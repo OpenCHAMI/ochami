@@ -70,15 +70,13 @@ func NewClient(baseURI string, opts ...client.Option) (*RCSClient, error) {
 }
 
 // headersForToken creates HTTP headers with the given token for authentication.
-func headersForToken(token string) (*client.HTTPHeaders, error) {
+func headersForToken(token string) *client.HTTPHeaders {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return nil, fmt.Errorf("failed to set token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 
-	return headers, nil
+	return headers
 }
 
 // dialWebSocket constructs the websocket URL for the console endpoint and attempts to establish a connection with the appropriate headers.
@@ -143,10 +141,7 @@ func websocketDialError(nodeID string, resp *http.Response, err error) error {
 
 // GetStatus retrieves the health status of the Remote Console Service using the /health endpoint.
 func (c *RCSClient) GetStatus(token string) (*HealthResponse, error) {
-	headers, err := headersForToken(token)
-	if err != nil {
-		return nil, err
-	}
+	headers := headersForToken(token)
 
 	he, err := c.GetData("/health", "", headers)
 	if err != nil {
@@ -162,10 +157,7 @@ func (c *RCSClient) GetStatus(token string) (*HealthResponse, error) {
 
 // ListConsoles retrieves the list of available consoles from the Remote Console Service using the /consoles endpoint.
 func (c *RCSClient) ListConsoles(token string) ([]NodeConsoleInfo, error) {
-	headers, err := headersForToken(token)
-	if err != nil {
-		return nil, err
-	}
+	headers := headersForToken(token)
 
 	he, err := c.GetData("/consoles", "", headers)
 	if err != nil {
@@ -181,10 +173,7 @@ func (c *RCSClient) ListConsoles(token string) ([]NodeConsoleInfo, error) {
 
 // ShowConsole connects to the console for the specified node and streams its output to the provided writer.
 func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool, lines int, token string, output io.Writer) error {
-	headers, err := headersForToken(token)
-	if err != nil {
-		return err
-	}
+	headers := headersForToken(token)
 
 	conn, err := c.dialWebSocket(ctx, nodeID, fmt.Sprintf("mode=tail&follow=%t&lines=%d", follow, lines), headers)
 	if err != nil {
@@ -385,10 +374,7 @@ func waitForConsoleExit(ctx context.Context, conn *websocket.Conn, interrupt cha
 }
 
 func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token string, stdin io.Reader, stdout io.Writer) error {
-	headers, err := headersForToken(token)
-	if err != nil {
-		return err
-	}
+	headers := headersForToken(token)
 
 	conn, err := c.dialWebSocket(ctx, nodeID, "mode=interactive", headers)
 	if err != nil {
