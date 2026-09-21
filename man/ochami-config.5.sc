@@ -75,8 +75,8 @@ These configuration options are global configuration options.
 		- _off_
 
 *timeout:* _duration_
-	The timeout to use for HTTP requests. This is a duration string as accepted
-	by Go's duration parser (e.g. _30s_, _5m_, _1m30s_).
+	The timeout to use for HTTP requests. This is a positive duration string as
+	accepted by Go's duration parser (e.g. _30s_, _5m_, _1m30s_).
 
 	Default: *30s*
 

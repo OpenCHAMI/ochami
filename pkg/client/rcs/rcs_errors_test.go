@@ -27,7 +27,7 @@ func TestListConsoles_HTTPError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.ListConsoles("tok"); err == nil {
+	if _, err := c.ListConsoles(context.Background(), "tok"); err == nil {
 		t.Fatal("expected an error, got nil")
 	}
 }
@@ -115,7 +115,7 @@ func TestGetStatus_HTTPError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.GetStatus("tok"); err == nil {
+	if _, err := c.GetStatus(context.Background(), "tok"); err == nil {
 		t.Error("GetStatus with HTTP error = nil, want error")
 	}
 }
@@ -126,7 +126,7 @@ func TestGetStatus_MalformedBody(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.GetStatus("tok"); err == nil {
+	if _, err := c.GetStatus(context.Background(), "tok"); err == nil {
 		t.Error("GetStatus with malformed body = nil, want error")
 	}
 }
@@ -137,7 +137,7 @@ func TestListConsoles_MalformedBody(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := c.ListConsoles("tok"); err == nil {
+	if _, err := c.ListConsoles(context.Background(), "tok"); err == nil {
 		t.Error("ListConsoles with malformed body = nil, want error")
 	}
 }

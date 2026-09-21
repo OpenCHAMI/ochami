@@ -220,8 +220,8 @@ Optional fields:
 	*v2beta1*. The default is to use the latest stable API version.
 
 *--timeout* _duration_
-	Time out duration for making requests. _duration_ is any time duration
-	string supported by the Go *time* library.
+	Time out duration for making requests. _duration_ is any positive time
+	duration string supported by the Go *time* library.
 
 	The default is *30s* for 30 seconds.
 

@@ -161,6 +161,18 @@ func TestNodeXnameToBMCXname(t *testing.T) {
 			want:    "",
 			wantErr: true,
 		},
+		{
+			name:    "bmc xname is not a node",
+			args:    args{xname: "x1000c0s0b0"},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "node produces invalid bmc topology",
+			args:    args{xname: "x-1c0s0b0n0"},
+			want:    "",
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
