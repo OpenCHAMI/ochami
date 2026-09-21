@@ -11,6 +11,7 @@ package cmd
 // covered in services_errors_test.go.
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -207,5 +208,43 @@ func TestPCSTransitionMonitor_Success(t *testing.T) {
 	}
 	if gotPath != "/transitions/abc-123" {
 		t.Errorf("path = %q, want /transitions/abc-123", gotPath)
+	}
+}
+
+// TestRemainingServicePaths covers the remaining per-service version/status
+// routes not already exercised by their own family test files.
+func TestRemainingServicePaths(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantPath string
+		body     string
+	}{
+		{"bss version", []string{"bss", "service", "version"}, "/service/version", `{"version":"1.0"}`},
+		{"cloud-init version", []string{"cloud-init", "service", "version"}, "/version", `{"version":"1.0"}`},
+		{"metadata status", []string{"metadata", "service", "status"}, "/health", `{}`},
+		{"rcs status", []string{"rcs", "service", "status", "--token", "t"}, "/health", `{"status":"ok"}`},
+		{"deprecated smd status", []string{"smd", "status"}, "/service/ready", `{}`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotPath string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = io.WriteString(w, tc.body)
+			}))
+			defer srv.Close()
+
+			args := append(append([]string{}, tc.args...), "--ignore-config", "--uri", srv.URL)
+			res := runOchami(t, args...)
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if gotPath != tc.wantPath {
+				t.Errorf("path = %q, want %q", gotPath, tc.wantPath)
+			}
+		})
 	}
 }

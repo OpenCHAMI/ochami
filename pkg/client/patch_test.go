@@ -74,3 +74,20 @@ func TestNewKeyValPatchData_RejectsInvalidRemoveIndex(t *testing.T) {
 		t.Fatalf("NewKeyValPatchData accepted invalid remove index")
 	}
 }
+
+// TestPatchMethod_Value verifies PatchMethod's pflag.Value implementation
+// accepts its three known values and rejects anything else.
+func TestPatchMethod_Value(t *testing.T) {
+	var method PatchMethod
+	for _, value := range []string{"rfc6902", "rfc7386", "keyval"} {
+		if err := method.Set(value); err != nil {
+			t.Errorf("Set(%q): %v", value, err)
+		}
+	}
+	if err := method.Set("invalid"); err == nil {
+		t.Error("Set(invalid) returned nil")
+	}
+	if method.Type() != "PatchMethod" {
+		t.Errorf("Type = %q", method.Type())
+	}
+}

@@ -590,3 +590,36 @@ func TestPayloadReader_Helpers(t *testing.T) {
 	}
 	restore()
 }
+
+// TestGetTimeout_ConfigAndFlag verifies GetTimeout falls back to the active
+// config's timeout and honors an explicit --timeout flag override.
+func TestGetTimeout_ConfigAndFlag(t *testing.T) {
+	orig := ActiveConfig()
+	t.Cleanup(func() { SetActiveConfig(orig) })
+	SetActiveConfig(config.Config{Timeout: 9 * time.Second})
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Duration("timeout", 0, "")
+	if got := GetTimeout(cmd); got != 9*time.Second {
+		t.Errorf("GetTimeout config = %v", got)
+	}
+	_ = cmd.Flags().Set("timeout", "2s")
+	if got := GetTimeout(cmd); got != 2*time.Second {
+		t.Errorf("GetTimeout flag = %v", got)
+	}
+}
+
+// TestShellCompletions_ReturnDefaultValues verifies the format/discovery/patch
+// shell-completion functions return a non-empty, default-directive value set.
+func TestShellCompletions_ReturnDefaultValues(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	for name, fn := range map[string]func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective){
+		"format":    CompletionFormatData,
+		"discovery": CompletionDiscoveryVersion,
+		"patch":     CompletionPatchMethod,
+	} {
+		values, directive := fn(cmd, nil, "")
+		if len(values) == 0 || directive != cobra.ShellCompDirectiveDefault {
+			t.Errorf("%s completion = %v, %v", name, values, directive)
+		}
+	}
+}
