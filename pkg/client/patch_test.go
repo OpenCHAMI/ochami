@@ -9,6 +9,32 @@ import (
 	"testing"
 )
 
+// TestPatchMethod_ContentType verifies the media type ContentType returns for
+// each patch method, and that it rejects an unknown method.
+func TestPatchMethod_ContentType(t *testing.T) {
+	tests := []struct {
+		method PatchMethod
+		want   string
+		err    bool
+	}{
+		{method: PatchMethodRFC6902, want: "application/json-patch+json"},
+		{method: PatchMethodRFC7386, want: "application/merge-patch+json"},
+		{method: PatchMethodKeyVal, want: "application/merge-patch+json"},
+		{method: PatchMethod("invalid"), err: true},
+	}
+	for _, tc := range tests {
+		t.Run(string(tc.method), func(t *testing.T) {
+			got, err := tc.method.ContentType()
+			if (err != nil) != tc.err {
+				t.Fatalf("ContentType() error = %v, want error %v", err, tc.err)
+			}
+			if got != tc.want {
+				t.Errorf("ContentType() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestDotPathToJSONPointer verifies that DotPathToJSONPointer converts a dotted
 // key path to a JSON pointer, skipping empty segments and escaping "~" and "/".
 func TestDotPathToJSONPointer(t *testing.T) {

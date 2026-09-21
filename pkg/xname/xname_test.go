@@ -143,7 +143,8 @@ func TestStringToXname(t *testing.T) {
 }
 
 // TestNodeXnameToBMCXname verifies that NodeXnameToBMCXname returns the BMC
-// xname of a node xname and rejects a string that isn't an xname.
+// xname of a node xname and rejects a string that isn't an xname, an xname that
+// isn't a node, and a node whose BMC xname would be invalid.
 func TestNodeXnameToBMCXname(t *testing.T) {
 	type args struct {
 		xname string
@@ -165,6 +166,18 @@ func TestNodeXnameToBMCXname(t *testing.T) {
 		{
 			name:    "invalid xname",
 			args:    args{xname: "not-an-xname"},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "bmc xname is not a node",
+			args:    args{xname: "x1000c0s0b0"},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "node produces invalid bmc topology",
+			args:    args{xname: "x-1c0s0b0n0"},
 			want:    "",
 			wantErr: true,
 		},

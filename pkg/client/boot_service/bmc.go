@@ -35,9 +35,9 @@ func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.C
 	// TODO: Make concurrent
 	for _, bmc := range bmcs {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBMC(ctx, bmc)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add bmc %+v: %w", bmc, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
@@ -61,9 +61,10 @@ func (bsc *BootServiceClient) DeleteBMCs(token string, uids []string) (bmcsDelet
 	// TODO: Make concurrent
 	for _, bmcUid := range uids {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
-		if err := bsc.Client.WithBearerToken(token).DeleteBMC(ctx, bmcUid); err != nil {
+		err := bsc.Client.WithBearerToken(token).DeleteBMC(ctx, bmcUid)
+		cancel()
+		if err != nil {
 			newErr := fmt.Errorf("failed to delete BMC %s: %w", bmcUid, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else {
@@ -127,16 +128,9 @@ func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMet
 		return nil, fmt.Errorf("failed to convert data to JSON: %w", err)
 	}
 
-	var contentType string
-	switch patchFormat {
-	case client.PatchMethodRFC6902:
-		contentType = "application/json-patch+json"
-	case client.PatchMethodRFC7386:
-		contentType = "application/merge-patch+json"
-	case client.PatchMethodKeyVal:
-		contentType = "application/merge-patch+json"
-	default:
-		return nil, fmt.Errorf("unknown patch format: %s", patchFormat)
+	contentType, err := patchFormat.ContentType()
+	if err != nil {
+		return nil, err
 	}
 
 	item, err := bsc.Client.WithBearerToken(token).PatchBMC(ctx, uid, outData, contentType)
@@ -168,9 +162,9 @@ func (bsc *BootServiceClient) AddBMCSpecs(token string, bmcs []BMCSpec) (bmcsAdd
 	// TODO: Make concurrent
 	for _, bmc := range bmcs {
 		ctx, cancel := context.WithTimeout(context.Background(), bsc.Timeout)
-		defer cancel()
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBMCSimple(ctx, bmc.Name, bmc.BMCSpec)
+		cancel()
 		if err != nil {
 			newErr := fmt.Errorf("failed to add bmc %q (%+v): %w", bmc.Name, bmc.BMCSpec, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
