@@ -6,16 +6,14 @@ package rcs
 
 // input_test.go unit-tests the console input-forwarding helpers in isolation
 // using a fake messageWriter (no live websocket). It covers keystroke
-// forwarding, the raw-mode Ctrl+C (ETX) -> SIGINT translation, and the buffered
-// input path. The write-error rejection path is covered in
+// forwarding, the raw-mode Ctrl+C (ETX) interrupt translation, and the
+// buffered input path. The write-error rejection path is covered in
 // input_errors_test.go.
 
 import (
 	"io"
-	"os"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -95,7 +93,7 @@ func TestStreamBufferedConsoleInput(t *testing.T) {
 // byte-by-byte to the writer.
 func TestStreamRawConsoleInput_Forwards(t *testing.T) {
 	fw := &fakeMessageWriter{}
-	interrupt := make(chan os.Signal, 1)
+	interrupt := make(chan struct{}, 1)
 	errChan := make(chan error, 1)
 
 	done := make(chan struct{})
@@ -119,10 +117,10 @@ func TestStreamRawConsoleInput_Forwards(t *testing.T) {
 }
 
 // TestStreamRawConsoleInput_CtrlC verifies that a Ctrl+C (ETX) byte in raw mode
-// is translated into a SIGINT on the interrupt channel and stops forwarding.
+// is translated into a local interrupt and stops forwarding.
 func TestStreamRawConsoleInput_CtrlC(t *testing.T) {
 	fw := &fakeMessageWriter{}
-	interrupt := make(chan os.Signal, 1)
+	interrupt := make(chan struct{}, 1)
 	errChan := make(chan error, 1)
 
 	// "a" then Ctrl+C then "b": only "a" should be forwarded, and an interrupt
@@ -131,10 +129,7 @@ func TestStreamRawConsoleInput_CtrlC(t *testing.T) {
 	go streamRawConsoleInput(strings.NewReader(input), fw, interrupt, errChan)
 
 	select {
-	case sig := <-interrupt:
-		if sig != syscall.SIGINT {
-			t.Errorf("interrupt signal = %v, want SIGINT", sig)
-		}
+	case <-interrupt:
 	case err := <-errChan:
 		t.Fatalf("unexpected error: %v", err)
 	case <-time.After(2 * time.Second):
@@ -151,7 +146,7 @@ func TestStreamRawConsoleInput_CtrlC(t *testing.T) {
 // io.EOF in the same Read call is still forwarded before the stream ends.
 func TestStreamRawConsoleInput_DataWithEOF(t *testing.T) {
 	fw := &fakeMessageWriter{}
-	interrupt := make(chan os.Signal, 1)
+	interrupt := make(chan struct{}, 1)
 	errChan := make(chan error, 1)
 
 	done := make(chan struct{})
