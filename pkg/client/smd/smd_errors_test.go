@@ -13,7 +13,9 @@ package smd
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/openchami/schemas/schemas/csm"
@@ -51,6 +53,12 @@ func TestGetComponentsAll_UnsuccessfulHTTP(t *testing.T) {
 	if !errors.Is(err, client.UnsuccessfulHTTPError) {
 		t.Errorf("error = %v, want it to wrap client.UnsuccessfulHTTPError", err)
 	}
+}
+
+type smdRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f smdRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }
 
 // TestPutComponents_BlankID verifies component updates reject missing identifiers.
@@ -600,5 +608,143 @@ func TestSMDClient_RejectsBlankRequiredFields(t *testing.T) {
 	results = c.PatchGroups(context.Background(), []Group{{}}, "")
 	if len(results) != 1 || results[0].Err == nil {
 		t.Fatalf("blank group results = %v", results)
+	}
+}
+
+func TestSMDWrapperHTTPFailures(t *testing.T) {
+	tests := []struct {
+		name string
+		call func(*SMDClient) error
+	}{
+		{name: "status", call: func(c *SMDClient) error { _, err := c.GetStatus(context.Background(), "all"); return err }},
+		{name: "group members", call: func(c *SMDClient) error {
+			_, err := c.GetGroupMembers(context.Background(), "compute", "tok")
+			return err
+		}},
+		{name: "membership", call: func(c *SMDClient) error {
+			_, err := c.GetGroupMembership(context.Background(), "id=x0", "tok")
+			return err
+		}},
+		{name: "post components", call: func(c *SMDClient) error {
+			_, err := c.PostComponents(context.Background(), ComponentSlice{}, "tok")
+			return err
+		}},
+		{name: "post rfe", call: func(c *SMDClient) error {
+			return c.PostRedfishEndpoints(context.Background(), RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0"}}}, "tok")[0].Err
+		}},
+		{name: "post rfe v2", call: func(c *SMDClient) error {
+			return c.PostRedfishEndpointsV2(context.Background(), RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0"}}}}, "tok")[0].Err
+		}},
+		{name: "post group", call: func(c *SMDClient) error {
+			return c.PostGroups(context.Background(), []Group{{Label: "compute"}}, "tok")[0].Err
+		}},
+		{name: "put component", call: func(c *SMDClient) error {
+			return c.PutComponents(context.Background(), ComponentSlice{Components: []Component{{ID: "x0"}}}, "tok")[0].Err
+		}},
+		{name: "put rfe", call: func(c *SMDClient) error {
+			return c.PutRedfishEndpoints(context.Background(), RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "x0"}}}, "tok")[0].Err
+		}},
+		{name: "put rfe v2", call: func(c *SMDClient) error {
+			return c.PutRedfishEndpointsV2(context.Background(), RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0"}}}}, "tok")[0].Err
+		}},
+		{name: "put group members", call: func(c *SMDClient) error {
+			_, err := c.PutGroupMembers(context.Background(), "tok", "compute", "x0")
+			return err
+		}},
+		{name: "patch component nid", call: func(c *SMDClient) error {
+			_, err := c.PatchComponentsNID(context.Background(), ComponentSlice{Components: []Component{{ID: "x0", NID: 7}}}, "tok")
+			return err
+		}},
+		{name: "patch interface", call: func(c *SMDClient) error {
+			return c.PatchEthernetInterfaces(context.Background(), []EthernetInterface{{ID: "eth0"}}, "tok")[0].Err
+		}},
+		{name: "patch group", call: func(c *SMDClient) error {
+			return c.PatchGroups(context.Background(), []Group{{Label: "compute"}}, "tok")[0].Err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "boom", http.StatusBadGateway)
+			})
+			defer srv.Close()
+			err := tt.call(c)
+			if !errors.Is(err, client.UnsuccessfulHTTPError) {
+				t.Fatalf("call error = %v, want UnsuccessfulHTTPError", err)
+			}
+		})
+	}
+}
+
+func TestPutComponentsCancellationPreservesAlignment(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	requests := 0
+	c, err := NewClient("https://example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Client = &http.Client{Transport: smdRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+		requests++
+		cancel()
+		return &http.Response{
+			Status: "200 OK", StatusCode: http.StatusOK, Header: make(http.Header),
+			Body: io.NopCloser(strings.NewReader(`{}`)), Request: r,
+		}, nil
+	})}
+
+	results := c.PutComponents(ctx, ComponentSlice{Components: []Component{{ID: "x0"}, {ID: "x1"}, {ID: "x2"}}}, "tok")
+	if len(results) != 3 || results[0].Err != nil || !errors.Is(results[1].Err, context.Canceled) || !errors.Is(results[2].Err, context.Canceled) {
+		t.Fatalf("results = %#v, want success followed by aligned cancellation errors", results)
+	}
+	if requests != 1 {
+		t.Fatalf("requests = %d, want 1", requests)
+	}
+}
+
+func TestSMDMalformedPathGuards(t *testing.T) {
+	c, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("unexpected request: %s", r.URL.Path)
+	})
+	defer srv.Close()
+
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "get interface", call: func() error { _, err := c.GetEthernetInterfaceByID(context.Background(), "%zz", "", false); return err }},
+		{name: "get interface IPs", call: func() error { _, err := c.GetEthernetInterfaceByID(context.Background(), "%zz", "", true); return err }},
+		{name: "get group members", call: func() error { _, err := c.GetGroupMembers(context.Background(), "%zz", ""); return err }},
+		{name: "put component", call: func() error {
+			return c.PutComponents(context.Background(), ComponentSlice{Components: []Component{{ID: "%zz"}}}, "")[0].Err
+		}},
+		{name: "put rfe", call: func() error {
+			return c.PutRedfishEndpoints(context.Background(), RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "%zz"}}}, "")[0].Err
+		}},
+		{name: "put rfe v2", call: func() error {
+			return c.PutRedfishEndpointsV2(context.Background(), RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "%zz"}}}}, "")[0].Err
+		}},
+		{name: "patch interface", call: func() error {
+			return c.PatchEthernetInterfaces(context.Background(), []EthernetInterface{{ID: "%zz"}}, "")[0].Err
+		}},
+		{name: "patch group", call: func() error { return c.PatchGroups(context.Background(), []Group{{Label: "%zz"}}, "")[0].Err }},
+		{name: "delete component", call: func() error { return c.DeleteComponents(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete rfe", call: func() error { return c.DeleteRedfishEndpoints(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete interface", call: func() error { return c.DeleteEthernetInterfaces(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete component endpoint", call: func() error { return c.DeleteComponentEndpoints(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete group", call: func() error { return c.DeleteGroups(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete group member", call: func() error {
+			results, err := c.DeleteGroupMembers(context.Background(), "", "%zz", "x0")
+			if err != nil {
+				return err
+			}
+			return results[0].Err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("call returned nil error for malformed path")
+			}
+		})
 	}
 }

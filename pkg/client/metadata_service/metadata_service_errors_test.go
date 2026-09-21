@@ -16,9 +16,11 @@ import (
 	"testing"
 	"time"
 
+	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/rs/zerolog"
 
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -109,5 +111,95 @@ func TestListHelpersErrorArm(t *testing.T) {
 	}
 	if _, err := c.ListWireGuardPeers(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListWireGuardPeers: expected an error")
+	}
+}
+
+func TestMetadataPatchMethodValidation(t *testing.T) {
+	c, srv := errServer(t)
+	defer srv.Close()
+	bad := client.PatchMethod("invalid")
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "group", call: func() error {
+			_, err := c.PatchGroup(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		}},
+		{name: "defaults", call: func() error {
+			_, err := c.PatchDefaults(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		}},
+		{name: "instance info", call: func() error {
+			_, err := c.PatchInstanceInfo(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		}},
+		{name: "wireguard peer", call: func() error {
+			_, err := c.PatchWireGuardPeer(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("patch accepted an invalid patch method")
+			}
+		})
+	}
+}
+
+func TestMetadataWriteHelpersHTTPError(t *testing.T) {
+	c, srv := errServer(t)
+	defer srv.Close()
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "set group", call: func() error {
+			_, err := c.SetGroup(context.Background(), "", "uid", metadata_service_client.UpdateGroupRequest{})
+			return err
+		}},
+		{name: "set defaults", call: func() error {
+			_, err := c.SetDefaults(context.Background(), "", "uid", metadata_service_client.UpdateClusterDefaultsRequest{})
+			return err
+		}},
+		{name: "set instance info", call: func() error {
+			_, err := c.SetInstanceInfo(context.Background(), "", "uid", metadata_service_client.UpdateInstanceInfoRequest{})
+			return err
+		}},
+		{name: "set wireguard peer", call: func() error {
+			_, err := c.SetWireGuardPeer(context.Background(), "", "uid", metadata_service_client.UpdateWireGuardPeerRequest{})
+			return err
+		}},
+		{name: "add group spec", call: func() error { return c.AddGroupSpecs(context.Background(), "", []GroupSpec{{Name: "one"}})[0].Err }},
+		{name: "add defaults spec", call: func() error {
+			return c.AddDefaultsSpecs(context.Background(), "", []ClusterDefaultsSpec{{Name: "one"}})[0].Err
+		}},
+		{name: "add instance info spec", call: func() error {
+			return c.AddInstanceInfoSpecs(context.Background(), "", []InstanceInfoSpec{{Name: "one"}})[0].Err
+		}},
+		{name: "add wireguard peer spec", call: func() error {
+			return c.AddWireGuardPeerSpecs(context.Background(), "", []WireGuardPeerSpec{{Name: "one"}})[0].Err
+		}},
+		{name: "set group spec", call: func() error { _, err := c.SetGroupSpec(context.Background(), "", "uid", api.GroupSpec{}); return err }},
+		{name: "set defaults spec", call: func() error {
+			_, err := c.SetDefaultsSpec(context.Background(), "", "uid", api.ClusterDefaultsSpec{})
+			return err
+		}},
+		{name: "set instance info spec", call: func() error {
+			_, err := c.SetInstanceInfoSpec(context.Background(), "", "uid", api.InstanceInfoSpec{})
+			return err
+		}},
+		{name: "set wireguard peer spec", call: func() error {
+			_, err := c.SetWireGuardPeerSpec(context.Background(), "", "uid", api.WireGuardPeerSpec{})
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("call returned nil error")
+			}
+		})
 	}
 }

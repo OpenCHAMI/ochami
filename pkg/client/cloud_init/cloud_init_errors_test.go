@@ -259,3 +259,71 @@ func TestCloudConfigGetters_PreserveMalformedBodies(t *testing.T) {
 		})
 	}
 }
+
+func TestCloudInitMalformedPathGuards(t *testing.T) {
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("unexpected request: %s", r.URL.Path)
+	})
+	defer srv.Close()
+
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "get group", call: func() error { return cic.GetGroups(context.Background(), "", "%zz")[0].Err }},
+		{name: "get node data", call: func() error {
+			results, err := cic.GetNodeData(context.Background(), CloudInitMetaData, "", "%zz")
+			if err != nil {
+				return err
+			}
+			return results[0].Err
+		}},
+		{name: "get node group data", call: func() error {
+			results, err := cic.GetNodeGroupData(context.Background(), "", "%zz", "compute")
+			if err != nil {
+				return err
+			}
+			return results[0].Err
+		}},
+		{name: "put group", call: func() error {
+			return cic.PutGroups(context.Background(), []cistore.GroupData{{Name: "%zz"}}, "")[0].Err
+		}},
+		{name: "put instance info", call: func() error {
+			results, err := cic.PutInstanceInfo(context.Background(), []cistore.OpenCHAMIInstanceInfo{{ID: "%zz"}}, "")
+			if err != nil {
+				return err
+			}
+			return results[0].Err
+		}},
+		{name: "delete group", call: func() error { return cic.DeleteGroups(context.Background(), "", "%zz")[0].Err }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("call returned nil error for malformed path")
+			}
+		})
+	}
+}
+
+func TestCloudInitOperationGuardsAndCancellation(t *testing.T) {
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	defer srv.Close()
+
+	if results, err := cic.PutInstanceInfo(context.Background(), nil, ""); err == nil || results != nil {
+		t.Fatalf("PutInstanceInfo(empty) = (%v, %v), want control-flow error", results, err)
+	}
+	results, err := cic.PutInstanceInfo(context.Background(), []cistore.OpenCHAMIInstanceInfo{{ID: " "}}, "")
+	if err != nil || len(results) != 1 || results[0].Err == nil {
+		t.Fatalf("PutInstanceInfo(blank) = (%v, %v), want one item error", results, err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	results = cic.GetGroups(ctx, "", "one", "two")
+	if len(results) != 2 || !errors.Is(results[0].Err, context.Canceled) || !errors.Is(results[1].Err, context.Canceled) {
+		t.Fatalf("GetGroups(canceled) = %#v", results)
+	}
+}

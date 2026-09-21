@@ -5,6 +5,8 @@
 package cli
 
 import (
+	"bytes"
+	"context"
 	"strings"
 	"testing"
 
@@ -256,5 +258,64 @@ func TestGetAPIVersion_Success(t *testing.T) {
 				t.Errorf("GetAPIVersion = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestGetBaseURI_ExplicitClusterOverridesDefault verifies that an explicit
+// --cluster flag takes precedence over the configured default cluster.
+func TestGetBaseURI_ExplicitClusterOverridesDefault(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{
+		DefaultCluster: "default",
+		Clusters: []config.ConfigCluster{
+			{Name: "default", Cluster: config.ConfigClusterConfig{BSS: config.ConfigClusterBSS{URI: "https://default.example/bss"}}},
+			{Name: "chosen", Cluster: config.ConfigClusterConfig{BSS: config.ConfigClusterBSS{URI: "https://chosen.example/bss"}}},
+		},
+	}
+
+	cmd := newURICmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+	if err := cmd.Flags().Set("cluster", "chosen"); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := rt.GetBaseURI(cmd, config.ServiceBSS)
+	if err != nil {
+		t.Fatalf("GetBaseURI: %v", err)
+	}
+	if got != "https://chosen.example/bss" {
+		t.Errorf("GetBaseURI = %q, want explicit cluster URI", got)
+	}
+}
+
+// TestGetAPIVersion_PrecedenceAndErrors verifies --cluster and --api-version
+// precedence, and that an explicit --api-version is service-independent.
+func TestGetAPIVersion_PrecedenceAndErrors(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{
+		DefaultCluster: "default",
+		Clusters: []config.ConfigCluster{
+			{Name: "default", Cluster: config.ConfigClusterConfig{BootService: config.ConfigClusterBootService{APIVersion: "v1"}}},
+			{Name: "chosen", Cluster: config.ConfigClusterConfig{BootService: config.ConfigClusterBootService{APIVersion: "v2"}}},
+		},
+	}
+	cmd := newURICmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+	if err := cmd.Flags().Set("cluster", "chosen"); err != nil {
+		t.Fatalf("set cluster flag: %v", err)
+	}
+	got, err := rt.GetAPIVersion(cmd, config.ServiceBoot)
+	if err != nil || got != "v2" {
+		t.Fatalf("GetAPIVersion explicit cluster = %q, %v; want v2", got, err)
+	}
+	if err := cmd.Flags().Set("api-version", "v3"); err != nil {
+		t.Fatalf("set api-version flag: %v", err)
+	}
+	got, err = rt.GetAPIVersion(cmd, config.ServiceBoot)
+	if err != nil || got != "v3" {
+		t.Fatalf("GetAPIVersion flag = %q, %v; want v3", got, err)
+	}
+	if _, err := rt.GetAPIVersion(cmd, config.ServiceBSS); err != nil {
+		t.Fatalf("explicit api-version should be service-independent: %v", err)
 	}
 }

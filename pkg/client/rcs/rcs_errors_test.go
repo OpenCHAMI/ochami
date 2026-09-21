@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/openchami/ochami/pkg/client"
 )
 
 // TestListConsoles_HTTPError verifies a non-2XX response is returned as an error.
@@ -136,5 +138,57 @@ func TestListConsolesMalformedBody(t *testing.T) {
 
 	if _, err := c.ListConsoles(context.Background(), "tok"); err == nil {
 		t.Error("ListConsoles with malformed body = nil, want error")
+	}
+}
+
+func TestRCSMalformedSuccessfulResponses(t *testing.T) {
+	tests := []struct {
+		name string
+		call func(*RCSClient) error
+	}{
+		{name: "health", call: func(c *RCSClient) error { _, err := c.GetStatus(context.Background(), "tok"); return err }},
+		{name: "consoles", call: func(c *RCSClient) error { _, err := c.ListConsoles(context.Background(), "tok"); return err }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte(`{`)) //nolint:errcheck // client observes response
+			})
+			defer srv.Close()
+			if err := tt.call(c); err == nil {
+				t.Fatal("call accepted malformed successful response")
+			}
+		})
+	}
+}
+
+func TestRCSHTTPFailures(t *testing.T) {
+	tests := []struct {
+		name string
+		call func(*RCSClient) error
+	}{
+		{name: "health", call: func(c *RCSClient) error { _, err := c.GetStatus(context.Background(), "tok"); return err }},
+		{name: "consoles", call: func(c *RCSClient) error { _, err := c.ListConsoles(context.Background(), "tok"); return err }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "boom", http.StatusBadGateway)
+			})
+			defer srv.Close()
+			if err := tt.call(c); err == nil {
+				t.Fatal("call returned nil error")
+			}
+		})
+	}
+}
+
+func TestRCSNewClientAndDialRejectMalformedURIs(t *testing.T) {
+	if _, err := NewClient("https://example.com/%zz"); err == nil {
+		t.Fatal("NewClient() accepted malformed URI")
+	}
+	c := &RCSClient{OchamiClient: &client.OchamiClient{}}
+	if _, err := c.dialWebSocket(context.Background(), "x0", "", nil); err == nil {
+		t.Fatal("dialWebSocket() accepted nil base URI")
 	}
 }

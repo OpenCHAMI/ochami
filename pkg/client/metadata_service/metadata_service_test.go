@@ -124,3 +124,56 @@ func TestGetEndpoints(t *testing.T) {
 		})
 	}
 }
+
+func TestReadEndpointsRejectUnsupportedOutputFormat(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		call func(*MetadataServiceClient) error
+	}{
+		{name: "get group", body: `{}`, call: func(c *MetadataServiceClient) error {
+			_, err := c.GetGroup(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list groups", body: `[]`, call: func(c *MetadataServiceClient) error {
+			_, err := c.ListGroups(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get defaults", body: `{}`, call: func(c *MetadataServiceClient) error {
+			_, err := c.GetDefaults(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list defaults", body: `[]`, call: func(c *MetadataServiceClient) error {
+			_, err := c.ListDefaults(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get instance info", body: `{}`, call: func(c *MetadataServiceClient) error {
+			_, err := c.GetInstanceInfo(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list instance infos", body: `[]`, call: func(c *MetadataServiceClient) error {
+			_, err := c.ListInstanceInfos(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get wireguard peer", body: `{}`, call: func(c *MetadataServiceClient) error {
+			_, err := c.GetWireGuardPeer(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list wireguard peers", body: `[]`, call: func(c *MetadataServiceClient) error {
+			_, err := c.ListWireGuardPeers(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.body)) //nolint:errcheck // client observes the response
+			})
+			defer srv.Close()
+			if err := tt.call(c); err == nil {
+				t.Fatal("call returned nil error for unsupported output format")
+			}
+		})
+	}
+}

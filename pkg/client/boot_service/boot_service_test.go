@@ -116,3 +116,48 @@ func TestGetEndpoints(t *testing.T) {
 		})
 	}
 }
+
+func TestReadEndpointsRejectUnsupportedOutputFormat(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		call func(*BootServiceClient) error
+	}{
+		{name: "get BMC", body: `{}`, call: func(c *BootServiceClient) error {
+			_, err := c.GetBMC(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list BMCs", body: `[]`, call: func(c *BootServiceClient) error {
+			_, err := c.ListBMCs(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get node", body: `{}`, call: func(c *BootServiceClient) error {
+			_, err := c.GetNode(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list nodes", body: `[]`, call: func(c *BootServiceClient) error {
+			_, err := c.ListNodes(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get boot config", body: `{}`, call: func(c *BootServiceClient) error {
+			_, err := c.GetBootConfig(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list boot configs", body: `[]`, call: func(c *BootServiceClient) error {
+			_, err := c.ListBootConfigs(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.body)) //nolint:errcheck // client observes the response
+			})
+			defer srv.Close()
+			if err := tt.call(c); err == nil {
+				t.Fatal("call returned nil error for unsupported output format")
+			}
+		})
+	}
+}

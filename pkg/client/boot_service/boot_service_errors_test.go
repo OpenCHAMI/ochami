@@ -16,9 +16,11 @@ import (
 	"testing"
 	"time"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/rs/zerolog"
 
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -89,5 +91,68 @@ func TestBootGetListHelpersErrorArm(t *testing.T) {
 	}
 	if _, err := c.ListBootConfigs(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListBootConfigs: expected an error")
+	}
+}
+
+func TestBootPatchMethodValidation(t *testing.T) {
+	c, srv := errClient(t)
+	defer srv.Close()
+	bad := client.PatchMethod("invalid")
+	for name, call := range map[string]func() error{
+		"BMC": func() error { _, err := c.PatchBMC(context.Background(), "", bad, "uid", map[string]any{}); return err },
+		"node": func() error {
+			_, err := c.PatchNode(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		},
+		"boot config": func() error {
+			_, err := c.PatchBootConfig(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := call(); err == nil {
+				t.Fatal("patch accepted an invalid patch method")
+			}
+		})
+	}
+}
+
+func TestBootWriteHelpersHTTPError(t *testing.T) {
+	c, srv := errClient(t)
+	defer srv.Close()
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "set BMC", call: func() error {
+			_, err := c.SetBMC(context.Background(), "", "uid", boot_service_client.UpdateBMCRequest{})
+			return err
+		}},
+		{name: "set node", call: func() error {
+			_, err := c.SetNode(context.Background(), "", "uid", boot_service_client.UpdateNodeRequest{})
+			return err
+		}},
+		{name: "set boot config", call: func() error {
+			_, err := c.SetBootConfig(context.Background(), "", "uid", boot_service_client.UpdateBootConfigurationRequest{})
+			return err
+		}},
+		{name: "add BMC spec", call: func() error { return c.AddBMCSpecs(context.Background(), "", []BMCSpec{{Name: "one"}})[0].Err }},
+		{name: "add node spec", call: func() error { return c.AddNodeSpecs(context.Background(), "", []NodeSpec{{Name: "one"}})[0].Err }},
+		{name: "add boot config spec", call: func() error {
+			return c.AddBootConfigSpecs(context.Background(), "", []BootConfigSpec{{Name: "one"}})[0].Err
+		}},
+		{name: "set BMC spec", call: func() error { _, err := c.SetBMCSpec(context.Background(), "", "uid", api.BMCSpec{}); return err }},
+		{name: "set node spec", call: func() error { _, err := c.SetNodeSpec(context.Background(), "", "uid", api.NodeSpec{}); return err }},
+		{name: "set boot config spec", call: func() error {
+			_, err := c.SetBootConfigSpec(context.Background(), "", "uid", api.BootConfigurationSpec{})
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("call returned nil error")
+			}
+		})
 	}
 }

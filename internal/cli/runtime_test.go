@@ -6,6 +6,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -17,7 +18,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/config"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -190,5 +194,75 @@ func TestUseCACert(t *testing.T) {
 	rt.CACertPath = bad
 	if err := rt.UseCACert(oc); err == nil || ExitCode(err) != CodePayload {
 		t.Errorf("UseCACert with malformed PEM = %v (exit %d), want CodePayload", err, ExitCode(err))
+	}
+}
+
+// TestBooleanFlagsUseTheirValue verifies that an explicit "false" boolean flag
+// value is honored rather than treated the same as "unset", across
+// InitConfig's --ignore-config and HandleToken's --no-token.
+func TestBooleanFlagsUseTheirValue(t *testing.T) {
+	t.Run("ignore-config false", func(t *testing.T) {
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+		rt.ConfigFile = t.TempDir() + "/missing.yaml"
+		cmd := &cobra.Command{Use: "test"}
+		cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+		cmd.Flags().Bool("ignore-config", false, "")
+		if err := cmd.Flags().Set("ignore-config", "false"); err != nil {
+			t.Fatalf("set ignore-config flag: %v", err)
+		}
+		if err := rt.InitConfig(cmd, false); err == nil {
+			t.Fatal("InitConfig unexpectedly ignored a false --ignore-config flag")
+		}
+	})
+
+	t.Run("no-token false", func(t *testing.T) {
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+		rt.Config = config.Config{
+			DefaultCluster: "auth-cluster",
+			Clusters:       []config.ConfigCluster{{Name: "auth-cluster", Cluster: config.ConfigClusterConfig{EnableAuth: true}}},
+		}
+		rt.Token = ""
+		cmd := &cobra.Command{Use: "test"}
+		cmd.Flags().String("cluster", "", "")
+		cmd.Flags().Bool("no-token", false, "")
+		cmd.Flags().String("token", "", "")
+		cmd.Flags().Bool("show-token", false, "")
+		cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+		if err := cmd.Flags().Set("no-token", "false"); err != nil {
+			t.Fatalf("set no-token flag: %v", err)
+		}
+		if err := rt.HandleToken(cmd); err == nil || ExitCode(err) != CodeAuth {
+			t.Fatalf("HandleToken error = %v, want CodeAuth", err)
+		}
+	})
+}
+
+// TestGetTimeout_AndCompletions verifies GetTimeout's config/flag precedence
+// and that the shell-completion functions return non-empty suggestions.
+func TestGetTimeout_AndCompletions(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{Timeout: 9 * time.Second}
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Duration("timeout", 0, "")
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+	if got := rt.GetTimeout(cmd); got != 9*time.Second {
+		t.Errorf("GetTimeout config = %v", got)
+	}
+	if err := cmd.Flags().Set("timeout", "2s"); err != nil {
+		t.Fatalf("set timeout flag: %v", err)
+	}
+	if got := rt.GetTimeout(cmd); got != 2*time.Second {
+		t.Errorf("GetTimeout flag = %v", got)
+	}
+
+	for name, fn := range map[string]func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective){
+		"format":    CompletionFormatData,
+		"discovery": CompletionDiscoveryVersion,
+		"patch":     CompletionPatchMethod,
+	} {
+		values, directive := fn(cmd, nil, "")
+		if len(values) == 0 || directive != cobra.ShellCompDirectiveDefault {
+			t.Errorf("%s completion = %v, %v", name, values, directive)
+		}
 	}
 }

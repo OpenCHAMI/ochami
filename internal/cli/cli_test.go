@@ -20,9 +20,25 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/spf13/cobra"
 
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/config"
 )
 
+type zeroWriter struct{}
+
+func (zeroWriter) Write([]byte) (int, error) { return 0, nil }
+
+type oversizedWriter struct{}
+
+func (oversizedWriter) Write(p []byte) (int, error) { return len(p) + 1, nil }
+
+type errorWriter struct{ err error }
+
+func (w errorWriter) Write([]byte) (int, error) { return 0, w.err }
+
+type errorReader struct{ err error }
+
+func (r errorReader) Read([]byte) (int, error) { return 0, r.err }
 func TestIOStream_LoopYesNo(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -75,6 +91,34 @@ func TestIOStream_LoopYesNo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIOStreamErrors(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("stream failure")
+	t.Run("prompt writer", func(t *testing.T) {
+		ios := NewIOStreams(strings.NewReader("y\n"), io.Discard, errorWriter{sentinel})
+		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
+		}
+	})
+	t.Run("input reader", func(t *testing.T) {
+		ios := NewIOStreams(errorReader{sentinel}, io.Discard, io.Discard)
+		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
+		}
+	})
+	t.Run("zero write", func(t *testing.T) {
+		if err := WriteOutput(zeroWriter{}, []byte("data")); !errors.Is(err, io.ErrShortWrite) {
+			t.Fatalf("WriteOutput() error = %v, want io.ErrShortWrite", err)
+		}
+	})
+	t.Run("oversized write", func(t *testing.T) {
+		if err := WriteOutput(oversizedWriter{}, []byte("data")); !errors.Is(err, io.ErrShortWrite) {
+			t.Fatalf("WriteOutput() error = %v, want io.ErrShortWrite", err)
+		}
+	})
 }
 
 // Helper function to generate a test JWT token
@@ -480,4 +524,21 @@ func TestPrintUsageHandleError(t *testing.T) {
 func TestLogHelpHint(t *testing.T) {
 	cmd := &cobra.Command{Use: "demo"}
 	LogHelpHint(cmd)
+}
+
+// TestPatchMethodValue verifies client.PatchMethod's pflag.Value implementation
+// (Set/Type) accepts the documented values and rejects everything else.
+func TestPatchMethodValue(t *testing.T) {
+	var method client.PatchMethod
+	for _, value := range []string{"rfc6902", "rfc7386", "keyval"} {
+		if err := method.Set(value); err != nil {
+			t.Errorf("Set(%q): %v", value, err)
+		}
+	}
+	if err := method.Set("invalid"); err == nil {
+		t.Error("Set(invalid) returned nil")
+	}
+	if method.Type() != "PatchMethod" {
+		t.Errorf("Type = %q", method.Type())
+	}
 }

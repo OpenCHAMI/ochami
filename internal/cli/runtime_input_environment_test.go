@@ -6,6 +6,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -174,6 +175,33 @@ func TestTokenHelpersAllowStandaloneCommands(t *testing.T) {
 	}
 }
 
+// TestInitConfigLoadsMergedDefaults verifies InitConfig reads real process
+// environment variables (HOME, XDG_CONFIG_HOME) to resolve and load the
+// merged system+user configuration when explicitly opted in via
+// WithEnvironment, since NewTestRuntime is hermetic by default.
+func TestInitConfigLoadsMergedDefaults(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{}).WithEnvironment(EnvironmentFunc(os.LookupEnv))
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("ignore-config", false, "")
+
+	if err := rt.InitConfig(cmd, false); err != nil {
+		t.Fatalf("InitConfig() error = %v", err)
+	}
+	if rt.Config.Log.Level == "" {
+		t.Error("InitConfig() did not load global defaults")
+	}
+	if rt.Koanf == nil {
+		t.Fatal("InitConfig() did not retain the effective koanf")
+	}
+	if rt.UserConfigFile == "" {
+		t.Error("InitConfig() did not resolve the user config path")
+	}
+}
+
 // TestInitConfigIgnoreConfigResolvesUserConfigFile verifies that --ignore-config
 // still resolves rt.UserConfigFile (without reading it), so commands that
 // report or target the user config path (e.g. "config show --user") get a
@@ -226,4 +254,48 @@ func TestConfigLoadOptsTracesOnlyWhenVerbose(t *testing.T) {
 			t.Errorf("configLoadOpts() = %v, want nil when not verbose", opts)
 		}
 	})
+}
+
+// TestPayloadReaderHelpers covers HandlePayloadStdin and
+// HandlePayloadStdinSliceWithRuntime, including their invalid-payload arms.
+func TestPayloadReaderHelpers(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+
+	var one map[string]interface{}
+	rt.Ios = NewIOStreams(strings.NewReader(`{"name":"node"}`), &bytes.Buffer{}, &bytes.Buffer{})
+	cmd1 := &cobra.Command{}
+	cmd1.SetContext(ContextWithRuntime(context.Background(), rt))
+	if err := rt.HandlePayloadStdin(cmd1, &one); err != nil {
+		t.Fatalf("HandlePayloadStdin: %v", err)
+	}
+	if one["name"] != "node" {
+		t.Errorf("payload = %#v", one)
+	}
+
+	var many []map[string]interface{}
+	rt.Ios = NewIOStreams(strings.NewReader(`{"name":"node"}`), &bytes.Buffer{}, &bytes.Buffer{})
+	cmd2 := &cobra.Command{}
+	cmd2.SetContext(ContextWithRuntime(context.Background(), rt))
+	if err := HandlePayloadStdinSliceWithRuntime(rt, cmd2, &many); err != nil {
+		t.Fatalf("HandlePayloadStdinSlice: %v", err)
+	}
+	if len(many) != 1 {
+		t.Errorf("slice length = %d, want 1", len(many))
+	}
+
+	// Test invalid payload
+	rt.Ios = NewIOStreams(strings.NewReader(`{`), &bytes.Buffer{}, &bytes.Buffer{})
+	cmd3 := &cobra.Command{}
+	cmd3.SetContext(ContextWithRuntime(context.Background(), rt))
+	if err := rt.HandlePayloadStdin(cmd3, &one); err == nil || ExitCode(err) != CodePayload {
+		t.Fatalf("invalid payload error = %v, want CodePayload", err)
+	}
+
+	// Test invalid slice payload
+	rt.Ios = NewIOStreams(strings.NewReader(`{`), &bytes.Buffer{}, &bytes.Buffer{})
+	cmd4 := &cobra.Command{}
+	cmd4.SetContext(ContextWithRuntime(context.Background(), rt))
+	if err := HandlePayloadStdinSliceWithRuntime(rt, cmd4, &many); err == nil || ExitCode(err) != CodePayload {
+		t.Fatalf("invalid slice payload error = %v, want CodePayload", err)
+	}
 }
