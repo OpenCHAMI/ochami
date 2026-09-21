@@ -25,35 +25,43 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Get info about a BMC
   ochami boot bmc get bmc-773d99bf`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			uid := args[0]
 
 			// Make request
-			outBytes, err := bootServiceClient.GetBMC(cmd.Context(), cli.Token, cli.FormatOutput, uid)
+			outBytes, err := bootServiceClient.GetBMC(cmd.Context(), rt.Token, rt.FormatOutput, uid)
 			if err != nil {
 				return cli.ClassifyClientError(err, fmt.Sprintf("failed to get BMC info for %s", uid), fmt.Sprintf("failed to get BMC info for %s", uid))
 			}
 
 			// Print output
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	bootBmcGetCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(bootBmcGetCmd)
 	bootBmcGetCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return bootBmcGetCmd

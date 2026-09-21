@@ -104,7 +104,7 @@ func TestGetClient_NoBaseURI(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an error without a base URI, got nil")
 			}
@@ -167,7 +167,7 @@ clusters:
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append([]string{"--config", cfg}, args...)
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an auth error, got nil")
 			}
@@ -210,7 +210,7 @@ func TestServiceCommands_NetworkError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(tc.args, "--ignore-config", "--uri", url, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a network error, got nil")
 			}
@@ -251,7 +251,7 @@ func TestServiceCommands_HTTPError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an HTTP error, got nil")
 			}
@@ -300,7 +300,7 @@ func TestCommands_RejectInvalidCACert(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"--cacert", "/no/such/ca.pem")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an error for invalid --cacert, got nil")
 			}
@@ -336,7 +336,7 @@ func TestCommands_MalformedPayload(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t", "-d", "not json")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a payload error, got nil")
 			}
@@ -348,7 +348,8 @@ func TestCommands_MalformedPayload(t *testing.T) {
 }
 
 // TestCommands_DataWithExtraArgs verifies that each listed delete command
-// accepts -d together with extra positional arguments and succeeds.
+// accepts -d together with extra positional arguments, succeeds, and logs a
+// warning that the extra arguments are ignored.
 func TestCommands_DataWithExtraArgs(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -373,9 +374,12 @@ func TestCommands_DataWithExtraArgs(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "t", "-d", tc.data, "extra-arg")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if !strings.Contains(res.stdout, "ignoring extra arguments") {
+				t.Errorf("output = %q, want a warning that the extra arguments are ignored", res.stdout)
 			}
 		})
 	}
@@ -410,7 +414,7 @@ func TestWriteCommands_NetworkError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", url, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a network error, got nil")
 			}
@@ -453,7 +457,7 @@ func TestMetadataBootWrite_NetworkError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", url, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a network error, got nil")
 			}
@@ -482,7 +486,7 @@ func TestBatchDelete_MixedFailures(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "--ignore-config", "smd", "component", "delete", "--no-confirm",
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "delete", "--no-confirm",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0", "x0c0s1b0n0", "x0c0s2b0n0")
 	if res.exitCode != cli.CodeMixed {
 		t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeMixed, cli.CodeName(cli.CodeMixed))
@@ -504,7 +508,7 @@ func TestCommands_RejectInvalidArguments(t *testing.T) {
 	for _, args := range cases {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.exitCode != cli.CodeUsage {
 				t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
 			}

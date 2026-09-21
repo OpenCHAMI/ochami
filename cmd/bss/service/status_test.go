@@ -5,11 +5,14 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 
+	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
 )
 
@@ -31,6 +34,13 @@ func providerFor(c bssStatusClient, err error) bssStatusClientProvider {
 	return func(*cobra.Command) (bssStatusClient, error) { return c, err }
 }
 
+// createTestRuntime creates a test runtime with isolated I/O streams.
+func createTestRuntime() (*cli.Runtime, *bytes.Buffer) {
+	var stdoutBuf bytes.Buffer
+	rt := cli.NewTestRuntime(strings.NewReader(""), &stdoutBuf, &stdoutBuf)
+	return rt, &stdoutBuf
+}
+
 // TestServiceStatus_ComponentSelection verifies each component flag selects the
 // expected status endpoint.
 func TestServiceStatus_ComponentSelection(t *testing.T) {
@@ -46,8 +56,13 @@ func TestServiceStatus_ComponentSelection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create test runtime and inject into command context
+			rt, stdoutBuf := createTestRuntime()
 			fake := &fakeBSSStatusClient{env: client.HTTPEnvelope{Body: []byte(`{"ok":true}`)}}
 			cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))
+			cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+			cmd.SetOut(stdoutBuf)
+			cmd.SetErr(stdoutBuf)
 			cmd.SetArgs(nil)
 			if tt.flag != "" {
 				if err := cmd.Flags().Set(tt.flag, "true"); err != nil {

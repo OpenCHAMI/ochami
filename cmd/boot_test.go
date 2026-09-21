@@ -42,6 +42,7 @@ var bootListCases = func() []bootListCase {
 // TestBootList_Success verifies that each "boot <type> list" command exits with
 // CodeSuccess when the service returns an empty list.
 func TestBootList_Success(t *testing.T) {
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`[]`))
@@ -51,7 +52,7 @@ func TestBootList_Success(t *testing.T) {
 	for _, tc := range bootListCases {
 		t.Run(tc.name, func(t *testing.T) {
 			args := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "faketoken")
-			res := runOchami(t, args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -65,13 +66,14 @@ func TestBootList_Success(t *testing.T) {
 // TestBootServiceStatus verifies "boot service status" exits successfully when
 // the health endpoint responds OK.
 func TestBootServiceStatus(t *testing.T) {
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "boot", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "--ignore-config", "boot", "service", "status", "--uri", srv.URL)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -83,6 +85,7 @@ func TestBootServiceStatus(t *testing.T) {
 // TestBootGet_Success verifies "<type> get <uid>" exits successfully for each
 // boot-service resource type.
 func TestBootGet_Success(t *testing.T) {
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{}`))
@@ -91,7 +94,7 @@ func TestBootGet_Success(t *testing.T) {
 
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
-			res := runOchami(t, "boot", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -105,6 +108,7 @@ func TestBootGet_Success(t *testing.T) {
 // TestBootDelete_NoConfirm verifies "<type> delete --no-confirm <uid>" exits
 // successfully for each boot-service resource type.
 func TestBootDelete_NoConfirm(t *testing.T) {
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{}`))
@@ -113,8 +117,8 @@ func TestBootDelete_NoConfirm(t *testing.T) {
 
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
-			res := runOchami(t, "boot", typ, "delete", "--no-confirm", "some-uid",
-				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "delete", "--no-confirm", "some-uid",
+				"--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -151,7 +155,7 @@ func TestBootList_Formats(t *testing.T) {
 				}))
 				defer srv.Close()
 
-				res := runOchami(t, "boot", typ, "list", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+				res := runOchamiWithRuntime(t, "boot", typ, "list", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
 				if res.err != nil {
 					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 				}
@@ -172,7 +176,7 @@ func TestBootGet_Formats(t *testing.T) {
 				}))
 				defer srv.Close()
 
-				res := runOchami(t, "boot", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+				res := runOchamiWithRuntime(t, "boot", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
 				if res.err != nil {
 					t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 				}
@@ -194,7 +198,7 @@ func TestBootAdd_Envelope(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "add", "-e",
+			res := runOchamiWithRuntime(t, "boot", typ, "add", "-e",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootEnvelopePayload(typ))
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -215,7 +219,7 @@ func TestBootAdd_Stdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, bootAddPayload(typ),
+			res := runOchamiWithInputAndRuntime(t, bootAddPayload(typ),
 				"boot", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -235,7 +239,7 @@ func TestBootSet_Envelope(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "set", "some-uid", "-e",
+			res := runOchamiWithRuntime(t, "boot", typ, "set", "some-uid", "-e",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootEnvelopePayload(typ))
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -259,7 +263,7 @@ func TestBootDelete_ConfirmYes(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, "y\n", "boot", typ, "delete", "some-uid",
+			res := runOchamiWithInputAndRuntime(t, "y\n", "boot", typ, "delete", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -285,7 +289,7 @@ func TestBootSet_Stdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, bootAddPayload(typ),
+			res := runOchamiWithInputAndRuntime(t, bootAddPayload(typ),
 				"boot", typ, "set", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -305,7 +309,7 @@ func TestBootPatch_Stdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, bootAddPayload(typ),
+			res := runOchamiWithInputAndRuntime(t, bootAddPayload(typ),
 				"boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -326,7 +330,7 @@ func TestBootAdd_EnvelopeStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, bootEnvelopePayload(typ),
+			res := runOchamiWithInputAndRuntime(t, bootEnvelopePayload(typ),
 				"boot", typ, "add", "-e", "--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -346,7 +350,7 @@ func TestBootSet_EnvelopeStdin(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, bootEnvelopePayload(typ),
+			res := runOchamiWithInputAndRuntime(t, bootEnvelopePayload(typ),
 				"boot", typ, "set", "some-uid", "-e", "--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -366,7 +370,7 @@ func TestBootPatch_Keyval(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"--set", "description=new", "--unset", "obsolete")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -385,7 +389,7 @@ func TestBootPatch_RFC6902(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"--patch-method", "rfc6902", "-d", `[{"op":"replace","path":"/description","value":"new"}]`)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -405,7 +409,7 @@ func TestBootPatch_StdinData(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, `{"description":"new"}`,
+			res := runOchamiWithInputAndRuntime(t, `{"description":"new"}`,
 				"boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)

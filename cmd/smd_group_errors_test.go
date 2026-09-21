@@ -20,7 +20,7 @@ func TestSMDGroupGet_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "group", "get", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -34,7 +34,7 @@ func TestSMDGroupGet_HTTPError(t *testing.T) {
 func TestSMDGroupGet_NetworkError(t *testing.T) {
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-	res := runOchami(t, "smd", "group", "get", "--ignore-config", "--uri", url, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "group", "get", "--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -50,7 +50,7 @@ func TestSMDGroupAdd_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t", "compute")
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -62,7 +62,7 @@ func TestSMDGroupAdd_HTTPError(t *testing.T) {
 // TestSMDGroupUpdate_MissingFields verifies "update <label>" with no
 // description/tag is a usage error.
 func TestSMDGroupUpdate_MissingFields(t *testing.T) {
-	res := runOchami(t, "smd", "group", "update", "--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", "http://127.0.0.1:1", "--token", "t",
 		"compute")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -79,7 +79,7 @@ func TestSMDGroupUpdate_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "update", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", srv.URL, "--token", "t",
 		"--description", "updated", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -97,7 +97,7 @@ func TestSMDGroupDelete_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -115,7 +115,7 @@ func TestSMDGroupMembership_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "membership", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "group", "membership", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -131,7 +131,7 @@ func TestSMDGroupAdd_BadData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t",
 		"-d", `not json`)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -146,7 +146,7 @@ func TestSMDGroupAdd_BadData(t *testing.T) {
 func TestSMDGroupAdd_NetworkError(t *testing.T) {
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", url, "--token", "t", "compute")
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", url, "--token", "t", "compute")
 	if res.err == nil {
 		t.Fatal("expected a network error, got nil")
 	}

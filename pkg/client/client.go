@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	oio "github.com/openchami/ochami/internal/io"
-	"github.com/openchami/ochami/internal/log"
+	"github.com/rs/zerolog"
+
 	"github.com/openchami/ochami/internal/version"
 	"github.com/openchami/ochami/pkg/format"
 )
@@ -44,6 +44,10 @@ type OchamiClient struct {
 	// logs for requests made by this client. It defaults to false, meaning
 	// tokens are truncated (see RedactToken).
 	ShowToken bool
+	// Logger records request and response diagnostics for this client. It
+	// defaults to a no-op logger so library callers do not inherit process-global
+	// logging state.
+	Logger zerolog.Logger
 
 	// insecure records whether TLS certificate verification should be
 	// skipped. It is set by the WithInsecure option and consumed when the
@@ -68,6 +72,13 @@ func WithInsecure(insecure bool) Option {
 func WithShowToken(show bool) Option {
 	return func(oc *OchamiClient) {
 		oc.ShowToken = show
+	}
+}
+
+// WithLogger configures the logger used for requests made by this client.
+func WithLogger(logger zerolog.Logger) Option {
+	return func(oc *OchamiClient) {
+		oc.Logger = logger
 	}
 }
 
@@ -112,6 +123,7 @@ func NewOchamiClient(serviceName, baseURI string, opts ...Option) (*OchamiClient
 	oc := &OchamiClient{
 		BaseURI:     u,
 		ServiceName: serviceName,
+		Logger:      zerolog.Nop(),
 	}
 	for _, opt := range opts {
 		opt(oc)
@@ -161,11 +173,11 @@ func (oc *OchamiClient) GetData(ctx context.Context, endpoint, query string, hea
 	if err != nil {
 		return he, fmt.Errorf("error making GET request to %s: %w", oc.ServiceName, err)
 	}
-	he, err = NewHTTPEnvelopeFromResponse(res)
+	he, err = newHTTPEnvelopeFromResponse(res, oc.Logger)
 	if err != nil {
 		return he, fmt.Errorf("could not create HTTP envelope from GET response: %w", err)
 	}
-	return he, he.CheckResponse()
+	return he, oc.checkResponse(he)
 }
 
 // PostData is a wrapper around MakeOchamiRequest that sends a POST request to
@@ -183,11 +195,11 @@ func (oc *OchamiClient) PostData(ctx context.Context, endpoint, query string, he
 	if err != nil {
 		return he, fmt.Errorf("error making POST request to %s, %w", oc.ServiceName, err)
 	}
-	he, err = NewHTTPEnvelopeFromResponse(res)
+	he, err = newHTTPEnvelopeFromResponse(res, oc.Logger)
 	if err != nil {
 		return he, fmt.Errorf("could not create HTTP envelope from POST response: %w", err)
 	}
-	return he, he.CheckResponse()
+	return he, oc.checkResponse(he)
 }
 
 // PutData is a wrapper around MakeOchamiRequest that sends a PUT request to
@@ -205,11 +217,11 @@ func (oc *OchamiClient) PutData(ctx context.Context, endpoint, query string, hea
 	if err != nil {
 		return he, fmt.Errorf("error making PUT request to %s, %w", oc.ServiceName, err)
 	}
-	he, err = NewHTTPEnvelopeFromResponse(res)
+	he, err = newHTTPEnvelopeFromResponse(res, oc.Logger)
 	if err != nil {
 		return he, fmt.Errorf("could not create HTTP envelope from PUT response: %w", err)
 	}
-	return he, he.CheckResponse()
+	return he, oc.checkResponse(he)
 }
 
 // PatchData is a wrapper around MakeOchamiRequest that sends a PATCH request to
@@ -227,11 +239,11 @@ func (oc *OchamiClient) PatchData(ctx context.Context, endpoint, query string, h
 	if err != nil {
 		return he, fmt.Errorf("error making PATCH request to %s, %w", oc.ServiceName, err)
 	}
-	he, err = NewHTTPEnvelopeFromResponse(res)
+	he, err = newHTTPEnvelopeFromResponse(res, oc.Logger)
 	if err != nil {
 		return he, fmt.Errorf("could not create HTTP envelope from PATCH response: %w", err)
 	}
-	return he, he.CheckResponse()
+	return he, oc.checkResponse(he)
 }
 
 // DeleteData is a wrapper around MakeOchamiRequest that sends a DELETE request
@@ -249,11 +261,19 @@ func (oc *OchamiClient) DeleteData(ctx context.Context, endpoint, query string, 
 	if err != nil {
 		return he, fmt.Errorf("error making DELETE request to %s, %w", oc.ServiceName, err)
 	}
-	he, err = NewHTTPEnvelopeFromResponse(res)
+	he, err = newHTTPEnvelopeFromResponse(res, oc.Logger)
 	if err != nil {
 		return he, fmt.Errorf("could not create HTTP envelope from DELETE response: %w", err)
 	}
-	return he, he.CheckResponse()
+	return he, oc.checkResponse(he)
+}
+
+func (oc *OchamiClient) checkResponse(he HTTPEnvelope) error {
+	err := he.CheckResponse()
+	if err == nil {
+		oc.Logger.Info().Msgf("Response status: %s %s", he.Proto, he.Status)
+	}
+	return err
 }
 
 // MakeOchamiRequest is a wrapper around MakeRequest that calls GetURI to form
@@ -276,7 +296,7 @@ func (oc *OchamiClient) MakeOchamiRequest(ctx context.Context, method, endpoint,
 // and body, and uses the passed HTTP method.
 func (oc *OchamiClient) MakeRequest(ctx context.Context, method, uri string, headers *HTTPHeaders, body HTTPBody) (*http.Response, error) {
 	// Create request using function args
-	log.Logger.Debug().Msgf("%s: %s", method, uri)
+	oc.Logger.Debug().Msgf("%s: %s", method, uri)
 	req, err := http.NewRequestWithContext(ctx, method, uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new HTTP request: %w", err)
@@ -297,22 +317,22 @@ func (oc *OchamiClient) MakeRequest(ctx context.Context, method, uri string, hea
 
 	// Debug info for request
 	if len(req.Header) > 0 {
-		log.Logger.Debug().Msg("Request headers:")
+		oc.Logger.Debug().Msg("Request headers:")
 		for k, v := range req.Header {
 			if isAuthorizationHeader(k) {
-				log.Logger.Debug().Msgf("  %s: %s", k, redactAuthHeaderValues(v, oc.ShowToken))
+				oc.Logger.Debug().Msgf("  %s: %s", k, redactAuthHeaderValues(v, oc.ShowToken))
 			} else {
-				log.Logger.Debug().Msgf("  %s: %s", k, v)
+				oc.Logger.Debug().Msgf("  %s: %s", k, v)
 			}
 		}
 	} else {
-		log.Logger.Debug().Msg("No headers in request")
+		oc.Logger.Debug().Msg("No headers in request")
 	}
 	if len(body) > 0 {
-		log.Logger.Debug().Msg("Request body:")
-		log.Logger.Debug().Msgf("%s", string(body))
+		oc.Logger.Debug().Msg("Request body:")
+		oc.Logger.Debug().Msgf("%s", string(body))
 	} else {
-		log.Logger.Debug().Msg("No body in request")
+		oc.Logger.Debug().Msg("No body in request")
 	}
 
 	// Execute HTTP request
@@ -323,17 +343,17 @@ func (oc *OchamiClient) MakeRequest(ctx context.Context, method, uri string, hea
 
 	// Debug info for response
 	if res != nil {
-		log.Logger.Debug().Msg("Response status: " + res.Status)
+		oc.Logger.Debug().Msg("Response status: " + res.Status)
 		if len(res.Header) > 0 {
-			log.Logger.Debug().Msg("Response headers:")
+			oc.Logger.Debug().Msg("Response headers:")
 			for k, v := range res.Header {
-				log.Logger.Debug().Msgf("  %s: %s", k, v)
+				oc.Logger.Debug().Msgf("  %s: %s", k, v)
 			}
 		} else {
-			log.Logger.Debug().Msg("No headers in response")
+			oc.Logger.Debug().Msg("No headers in response")
 		}
 	} else {
-		log.Logger.Debug().Msg("Response was nil")
+		oc.Logger.Debug().Msg("Response was nil")
 	}
 
 	return res, err
@@ -417,25 +437,24 @@ func FileToHTTPBody(path string, inFormat format.DataFormat) (HTTPBody, error) {
 // FileToHTTPBody supports), such as YAML. If a marshalling/unmarshalling error
 // occurs or either path or format are empty, an error is returned.
 func ReadPayloadFile(path string, inFormat format.DataFormat, v any) error {
-	log.Logger.Debug().Msgf("payload file: %s", path)
-	log.Logger.Debug().Msgf("payload file format: %s", inFormat)
+	return ReadPayloadFileWithReader(path, os.Stdin, inFormat, v)
+}
 
-	var data []byte
-	var err error
+// ReadPayloadFileWithReader is like ReadPayloadFile, except stdin is used when
+// path is "-". Callers with invocation-owned input should use this function
+// instead of temporarily replacing os.Stdin.
+func ReadPayloadFileWithReader(path string, stdin io.Reader, inFormat format.DataFormat, v any) error {
 	if path == "-" {
-		log.Logger.Debug().Msg("payload file was -, reading from stdin")
-		data, err = oio.ReadStdin()
-		if err != nil {
-			return fmt.Errorf("unable to read from stdin: %w", err)
+		if stdin == nil {
+			return fmt.Errorf("stdin reader is nil")
 		}
-	} else {
-		data, err = os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("unable to read data from file: %w", err)
-		}
+		return ReadPayloadReader(stdin, inFormat, v)
 	}
-	log.Logger.Debug().Msgf("bytes read: %q", data)
 
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("unable to read data from file: %w", err)
+	}
 	err = format.UnmarshalData(data, v, inFormat)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal %s bytes into value: %w", inFormat, err)
@@ -449,25 +468,23 @@ func ReadPayloadFile(path string, inFormat format.DataFormat, v any) error {
 // of a generic type. If the data is not a sequence but is a single element, v
 // will be a slice with only that item as its member.
 func ReadPayloadFileSlice[T any](path string, inFormat format.DataFormat, v *[]T) error {
-	log.Logger.Debug().Msgf("payload file: %s", path)
-	log.Logger.Debug().Msgf("payload file format: %s", inFormat)
+	return ReadPayloadFileSliceWithReader(path, os.Stdin, inFormat, v)
+}
 
-	var data []byte
-	var err error
+// ReadPayloadFileSliceWithReader is like ReadPayloadFileSlice, except stdin is
+// used when path is "-".
+func ReadPayloadFileSliceWithReader[T any](path string, stdin io.Reader, inFormat format.DataFormat, v *[]T) error {
 	if path == "-" {
-		log.Logger.Debug().Msg("payload file was -, reading from stdin")
-		data, err = oio.ReadStdin()
-		if err != nil {
-			return fmt.Errorf("unable to read from stdin: %w", err)
+		if stdin == nil {
+			return fmt.Errorf("stdin reader is nil")
 		}
-	} else {
-		data, err = os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("unable to read data from file: %w", err)
-		}
+		return ReadPayloadReaderSlice[T](stdin, inFormat, v)
 	}
-	log.Logger.Debug().Msgf("bytes read: %q", data)
 
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("unable to read data from file: %w", err)
+	}
 	err = format.UnmarshalDataSlice[T](data, v, inFormat)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal %s bytes into slice: %w", inFormat, err)
@@ -480,16 +497,20 @@ func ReadPayloadFileSlice[T any](path string, inFormat format.DataFormat, v *[]T
 // "@", it is treated as a file path and calls ReadPayloadFile to read the
 // contents. If the file path is "-", the data is read from standard input.
 func ReadPayload(data string, format format.DataFormat, v any) error {
+	return ReadPayloadWithReader(data, os.Stdin, format, v)
+}
+
+// ReadPayloadWithReader is like ReadPayload, except stdin is used for an @-
+// payload. Other payload sources do not read from stdin.
+func ReadPayloadWithReader(data string, stdin io.Reader, format format.DataFormat, v any) error {
 	if strings.HasPrefix(data, "@") {
 		// Passed data is actually a file path, return data within file.
-		return ReadPayloadFile(strings.TrimPrefix(data, "@"), format, v)
+		return ReadPayloadFileWithReader(strings.TrimPrefix(data, "@"), stdin, format, v)
 	}
 	body, err := BytesToHTTPBody([]byte(data), format)
 	if err != nil {
 		return fmt.Errorf("unable to create HTTP body from string: %w", err)
 	}
-	log.Logger.Debug().Msgf("body bytes: %q", body)
-
 	err = json.Unmarshal(body, v)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal bytes into value: %w", err)
@@ -502,16 +523,20 @@ func ReadPayload(data string, format format.DataFormat, v any) error {
 // slice. data is assumed to be structured data (e.g. JSON, YAML). If the data
 // is a single element, the slice will container only that element.
 func ReadPayloadSlice[T any](data string, inFormat format.DataFormat, v *[]T) error {
+	return ReadPayloadSliceWithReader(data, os.Stdin, inFormat, v)
+}
+
+// ReadPayloadSliceWithReader is like ReadPayloadSlice, except stdin is used for
+// an @- payload. Other payload sources do not read from stdin.
+func ReadPayloadSliceWithReader[T any](data string, stdin io.Reader, inFormat format.DataFormat, v *[]T) error {
 	if strings.HasPrefix(data, "@") {
 		// Passed data is actually a file path, return data within file.
-		return ReadPayloadFileSlice[T](strings.TrimPrefix(data, "@"), inFormat, v)
+		return ReadPayloadFileSliceWithReader[T](strings.TrimPrefix(data, "@"), stdin, inFormat, v)
 	}
 	body, err := BytesToHTTPBody([]byte(data), inFormat)
 	if err != nil {
 		return fmt.Errorf("unable to create HTTP body from string: %w", err)
 	}
-	log.Logger.Debug().Msgf("body bytes: %q", body)
-
 	err = format.UnmarshalDataSlice[T](body, v, inFormat)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal bytes into slice: %w", err)
@@ -527,8 +552,6 @@ func ReadPayloadData(data string, format format.DataFormat, v any) error {
 	if err != nil {
 		return fmt.Errorf("unable to create HTTP body from string: %w", err)
 	}
-	log.Logger.Debug().Msgf("body bytes: %q", body)
-
 	err = json.Unmarshal(body, v)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal bytes into value: %w", err)
@@ -543,8 +566,6 @@ func ReadPayloadDataSlice[T any](data string, inFormat format.DataFormat, v *[]T
 	if err != nil {
 		return fmt.Errorf("unable to create HTTP body from string: %w", err)
 	}
-	log.Logger.Debug().Msgf("body bytes: %q", body)
-
 	err = format.UnmarshalDataSlice[T](body, v, inFormat)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal bytes into slice: %w", err)
@@ -559,13 +580,10 @@ func ReadPayloadReader(r io.Reader, format format.DataFormat, v any) error {
 	if err != nil {
 		return fmt.Errorf("unable to read from stdin: %w", err)
 	}
-	log.Logger.Debug().Msgf("bytes read: %q", data)
 	body, err := BytesToHTTPBody(data, format)
 	if err != nil {
 		return fmt.Errorf("unable to create HTTP body from bytes: %w", err)
 	}
-	log.Logger.Debug().Msgf("body bytes: %q", body)
-
 	err = json.Unmarshal(body, v)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal bytes into value: %w", err)
@@ -585,13 +603,10 @@ func ReadPayloadReaderSlice[T any](r io.Reader, inFormat format.DataFormat, v *[
 	if err != nil {
 		return fmt.Errorf("unable to read from stdin: %w", err)
 	}
-	log.Logger.Debug().Msgf("bytes read: %q", data)
 	body, err := BytesToHTTPBody(data, inFormat)
 	if err != nil {
 		return fmt.Errorf("unable to create HTTP body from bytes: %w", err)
 	}
-	log.Logger.Debug().Msgf("body bytes: %q", body)
-
 	err = format.UnmarshalDataSlice[T](body, v, inFormat)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal bytes into slice: %w", err)

@@ -15,7 +15,7 @@ import (
 // TestPCSStatusList_InvalidPowerFilter verifies that an invalid --power-filter
 // value is a usage error, reported before any request is sent.
 func TestPCSStatusList_InvalidPowerFilter(t *testing.T) {
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", "http://127.0.0.1:0",
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", "http://127.0.0.1:0",
 		"--token", "t", "--power-filter", "bogus")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -33,7 +33,7 @@ func TestPCSStatusList_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -50,7 +50,7 @@ func TestPCSServiceStatus_UnknownState(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -67,7 +67,7 @@ func TestPCSServiceStatus_ReadinessHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -88,7 +88,7 @@ func TestPCSServiceStatus_HealthHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--all",
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--all",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -106,7 +106,7 @@ func TestPCSStatusShow_Empty(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "show", "--ignore-config", "--uri", srv.URL, "x3000c0s15b0")
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "status", "show", "--uri", srv.URL, "x3000c0s15b0")
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

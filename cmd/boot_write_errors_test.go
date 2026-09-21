@@ -22,7 +22,7 @@ func TestBootAdd_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "add",
+			res := runOchamiWithRuntime(t, "boot", typ, "add",
 				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 				"-d", bootAddPayload(typ))
 			if res.err == nil {

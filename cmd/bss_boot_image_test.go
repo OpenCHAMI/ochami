@@ -29,7 +29,7 @@ func TestBSSBootImageSet_ByXnameAndNid(t *testing.T) {
 
 			args := append([]string{"--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t"},
 				append(sel, "https://example.com/new-image")...)
-			res := runOchami(t, args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}

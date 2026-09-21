@@ -11,7 +11,6 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 
@@ -25,9 +24,9 @@ type metadataInstanceAddOptions struct {
 
 // runCoreMetadataInstanceAdd contains the core logic for the metadata instance add command.
 // It takes the parsed options and performs the actual work of adding instances.
-func runCoreMetadataInstanceAdd(cmd *cobra.Command, opts *metadataInstanceAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+func runCoreMetadataInstanceAdd(cmd *cobra.Command, opts *metadataInstanceAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -39,42 +38,42 @@ func runCoreMetadataInstanceAdd(cmd *cobra.Command, opts *metadataInstanceAddOpt
 		// Read instance data
 		instances := []metadata_service_client.CreateInstanceInfoRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances); err != nil {
+			if err := cli.HandlePayloadSlice[metadata_service_client.CreateInstanceInfoRequest](rt, cmd, &instances); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances); err != nil {
+			if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateInstanceInfoRequest](rt, cmd, &instances); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = metadataServiceClient.AddInstanceInfos(cmd.Context(), cli.Token, instances)
+		results = metadataServiceClient.AddInstanceInfos(cmd.Context(), rt.Token, instances)
 	} else {
 		// Use simple API (spec)
 
 		// Read instance data
 		instances := []metadata_service.InstanceInfoSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[metadata_service.InstanceInfoSpec](cmd, &instances); err != nil {
+			if err := cli.HandlePayloadSlice[metadata_service.InstanceInfoSpec](rt, cmd, &instances); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[metadata_service.InstanceInfoSpec](cmd, &instances); err != nil {
+			if err := cli.HandlePayloadStdinSlice[metadata_service.InstanceInfoSpec](rt, cmd, &instances); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = metadataServiceClient.AddInstanceInfoSpecs(cmd.Context(), cli.Token, instances)
+		results = metadataServiceClient.AddInstanceInfoSpecs(cmd.Context(), rt.Token, instances)
 	}
 
 	var names []string
 	for _, instance := range results.Values() {
 		names = append(names, instance.Metadata.Name)
 	}
-	log.Logger.Info().Msgf("Instance infos created: %q", names)
-	if err := cli.AggregateItemErrors(results.Errors(), "Instance info addition"); err != nil {
+	rt.Logger.Info().Msgf("Instance infos created: %q", names)
+	if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "Instance info addition"); err != nil {
 		return err
 	}
 
@@ -143,8 +142,14 @@ See ochami-metadata(1) for more details.`,
   echo '<json_data>' | ochami metadata instance add -d @-
   echo '<yaml_data>' | ochami metadata instance add -d @- -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -157,14 +162,14 @@ See ochami-metadata(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope")
 			}
 
-			return runCoreMetadataInstanceAdd(cmd, opts, metadataServiceClient)
+			return runCoreMetadataInstanceAdd(cmd, opts, metadataServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	metadataInstanceAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	metadataInstanceAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(metadataInstanceAddCmd)
 	metadataInstanceAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return metadataInstanceAddCmd
