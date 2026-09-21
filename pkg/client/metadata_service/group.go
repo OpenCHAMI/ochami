@@ -120,7 +120,7 @@ func (msc *MetadataServiceClient) ListGroups(token string, outFormat format.Data
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the Group identified by uid. It returns the modified Group
 // resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.Group, error) {
+func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.Group, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
