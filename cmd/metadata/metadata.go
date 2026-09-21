@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/pkg/config"
 
 	// Subcommands
 	defaults_cmd "github.com/openchami/ochami/cmd/metadata/defaults"
@@ -40,7 +40,7 @@ See ochami-metadata(1) for more details.`,
 
 	// Create flags
 	metadataCmd.PersistentFlags().String("api-version", "", "version of service API to use in request")
-	metadataCmd.PersistentFlags().Duration("timeout", config.GetDefaultTimeout(), "timeout duration when making requests")
+	metadataCmd.PersistentFlags().Duration("timeout", config.DefaultTimeout(), "timeout duration when making requests")
 	metadataCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of boot service")
 
 	// Add subcommands

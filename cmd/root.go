@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/internal/version"
 
@@ -66,13 +65,13 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 			// Note that this doesn't cover the case where the variable is checked without the corresponding
 			// flag being defined.
 			inputFormatFlag := cmd.Flag("format-input")
-			if config.GlobalConfig.DefaultInputFormat != "" && inputFormatFlag != nil && !inputFormatFlag.Changed {
-				cli.FormatInput = config.GlobalConfig.DefaultInputFormat
+			if cli.ActiveConfig().DefaultInputFormat != "" && inputFormatFlag != nil && !inputFormatFlag.Changed {
+				cli.FormatInput = cli.ActiveConfig().DefaultInputFormat
 			}
 
 			outputFormatFlag := cmd.Flag("format-output")
-			if config.GlobalConfig.DefaultOutputFormat != "" && outputFormatFlag != nil && !outputFormatFlag.Changed {
-				cli.FormatOutput = config.GlobalConfig.DefaultOutputFormat
+			if cli.ActiveConfig().DefaultOutputFormat != "" && outputFormatFlag != nil && !outputFormatFlag.Changed {
+				cli.FormatOutput = cli.ActiveConfig().DefaultOutputFormat
 			}
 
 			return nil
