@@ -47,6 +47,8 @@ See ochami-cloud-init(1) for more details.`,
 }
 
 func newCmdNodeGetGroup() *cobra.Command {
+	headerWhen := cloud_init_lib.CIFlagHeaderWhen(cloud_init_lib.CIFlagHeaderMultiple)
+
 	// nodeGetGroupCmd represents the "cloud-init node get group" command
 	var nodeGetGroupCmd = &cobra.Command{
 		Use:   "group <node_id> <group_name>...",
@@ -91,32 +93,22 @@ See ochami-cloud-init(1) for more details.`,
 				return cli.Errorf(cli.CodeHTTP, "cloud-init node group data retrieval completed with errors")
 			}
 
-			// Collect node group data into string array
-			var gSlice []string
+			// Collect node group data for rendering.
+			var items []cloud_init_lib.RenderItem
 			for idx, henv := range results.Values() {
 				// Warn and don't add to list if cloud-config is empty for group
 				if len(henv.Body) == 0 {
 					log.Logger.Warn().Msgf("cloud-config for group %s was empty, not printing for node %s", args[1+idx], args[0])
 					continue
 				}
-				gSlice = append(gSlice, string(henv.Body))
+				items = append(items, cloud_init_lib.RenderItem{
+					Labels: fmt.Sprintf("node=%s group=%s", args[0], args[1+idx]),
+					Body:   string(henv.Body),
+				})
 			}
 
-			// Print each datum
-			for idx, g := range gSlice {
-				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Fprintln(cli.Ios.Out(), g)
-				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
-					fmt.Fprintln(cli.Ios.Out(), g)
-				} else {
-					if len(gSlice) == 1 {
-						fmt.Fprintln(cli.Ios.Out(), g)
-					} else {
-						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s group=%s\n", idx+1, len(gSlice), args[0], args[1+idx])
-						fmt.Fprintln(cli.Ios.Out(), g)
-					}
-				}
+			if err := cloud_init_lib.Render(cli.Ios.Out(), headerWhen, items); err != nil {
+				return cli.Errorf(cli.CodeGeneric, "failed to write cloud-init node group data: %w", err)
 			}
 
 			return nil
@@ -124,7 +116,7 @@ See ochami-cloud-init(1) for more details.`,
 	}
 
 	// Create flags
-	nodeGetGroupCmd.Flags().Var(&cloud_init_lib.CIHeaderWhen, "headers", "when to print headers above cloud-configs (always,multiple,never")
+	nodeGetGroupCmd.Flags().Var(&headerWhen, "headers", "when to print headers above cloud-configs (always,multiple,never")
 	nodeGetGroupCmd.RegisterFlagCompletionFunc("headers", cloud_init_lib.CompletionHeaderWhen)
 
 	return nodeGetGroupCmd
@@ -215,6 +207,8 @@ See ochami-cloud-init(1) for more details.`,
 }
 
 func newCmdNodeGetUserdata() *cobra.Command {
+	headerWhen := cloud_init_lib.CIFlagHeaderWhen(cloud_init_lib.CIFlagHeaderMultiple)
+
 	// nodeGetUserdataCmd represents the "cloud-init node get user-data" command
 	var nodeGetUserdataCmd = &cobra.Command{
 		Use:   "user-data <node_id>...",
@@ -257,27 +251,17 @@ See ochami-cloud-init(1) for more details.`,
 				return cli.Errorf(cli.CodeHTTP, "cloud-init node user-data retrieval completed with errors")
 			}
 
-			// Collect node data into string array
-			var iiSlice []string
-			for _, henv := range results.Values() {
-				iiSlice = append(iiSlice, string(henv.Body))
+			// Collect node data for rendering.
+			items := make([]cloud_init_lib.RenderItem, 0, len(results))
+			for idx, henv := range results.Values() {
+				items = append(items, cloud_init_lib.RenderItem{
+					Labels: fmt.Sprintf("node=%s", args[idx]),
+					Body:   string(henv.Body),
+				})
 			}
 
-			// Print each datum
-			for idx, ii := range iiSlice {
-				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Fprintln(cli.Ios.Out(), ii)
-				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-					fmt.Fprintln(cli.Ios.Out(), ii)
-				} else {
-					if len(iiSlice) == 1 {
-						fmt.Fprintln(cli.Ios.Out(), ii)
-					} else {
-						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-						fmt.Fprintln(cli.Ios.Out(), ii)
-					}
-				}
+			if err := cloud_init_lib.Render(cli.Ios.Out(), headerWhen, items); err != nil {
+				return cli.Errorf(cli.CodeGeneric, "failed to write cloud-init node user-data: %w", err)
 			}
 
 			return nil
@@ -285,13 +269,15 @@ See ochami-cloud-init(1) for more details.`,
 	}
 
 	// Create flags
-	nodeGetUserdataCmd.Flags().Var(&cloud_init_lib.CIHeaderWhen, "headers", "when to print headers above cloud-configs (always,multiple,never")
+	nodeGetUserdataCmd.Flags().Var(&headerWhen, "headers", "when to print headers above cloud-configs (always,multiple,never")
 	nodeGetUserdataCmd.RegisterFlagCompletionFunc("headers", cloud_init_lib.CompletionHeaderWhen)
 
 	return nodeGetUserdataCmd
 }
 
 func newCmdNodeGetVendordata() *cobra.Command {
+	headerWhen := cloud_init_lib.CIFlagHeaderWhen(cloud_init_lib.CIFlagHeaderMultiple)
+
 	// nodeGetVendordataCmd represents the "cloud-init node get vendor-data" command
 	var nodeGetVendordataCmd = &cobra.Command{
 		Use:   "vendor-data <node_id>...",
@@ -334,27 +320,17 @@ See ochami-cloud-init(1) for more details.`,
 				return cli.Errorf(cli.CodeHTTP, "cloud-init node vendor-data retrieval completed with errors")
 			}
 
-			// Collect node data into string array
-			var iiSlice []string
-			for _, henv := range results.Values() {
-				iiSlice = append(iiSlice, string(henv.Body))
+			// Collect node data for rendering.
+			items := make([]cloud_init_lib.RenderItem, 0, len(results))
+			for idx, henv := range results.Values() {
+				items = append(items, cloud_init_lib.RenderItem{
+					Labels: fmt.Sprintf("node=%s", args[idx]),
+					Body:   string(henv.Body),
+				})
 			}
 
-			// Print each datum
-			for idx, ii := range iiSlice {
-				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Fprintln(cli.Ios.Out(), ii)
-				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-					fmt.Fprintln(cli.Ios.Out(), ii)
-				} else {
-					if len(iiSlice) == 1 {
-						fmt.Fprintln(cli.Ios.Out(), ii)
-					} else {
-						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) node=%s\n", idx+1, len(iiSlice), args[idx])
-						fmt.Fprintln(cli.Ios.Out(), ii)
-					}
-				}
+			if err := cloud_init_lib.Render(cli.Ios.Out(), headerWhen, items); err != nil {
+				return cli.Errorf(cli.CodeGeneric, "failed to write cloud-init node vendor-data: %w", err)
 			}
 
 			return nil
@@ -362,7 +338,7 @@ See ochami-cloud-init(1) for more details.`,
 	}
 
 	// Create flags
-	nodeGetVendordataCmd.Flags().Var(&cloud_init_lib.CIHeaderWhen, "headers", "when to print headers above cloud-configs (always,multiple,never")
+	nodeGetVendordataCmd.Flags().Var(&headerWhen, "headers", "when to print headers above cloud-configs (always,multiple,never")
 	nodeGetVendordataCmd.RegisterFlagCompletionFunc("headers", cloud_init_lib.CompletionHeaderWhen)
 
 	return nodeGetVendordataCmd

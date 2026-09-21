@@ -123,6 +123,8 @@ See ochami-cloud-init(1) for more details.`,
 }
 
 func newCmdGroupGetConfig() *cobra.Command {
+	headerWhen := cloud_init_lib.CIFlagHeaderWhen(cloud_init_lib.CIFlagHeaderMultiple)
+
 	// groupGetConfigCmd represents the "cloud-init group get config" command
 	var groupGetConfigCmd = &cobra.Command{
 		Use:   "config [<group_name>...]",
@@ -176,21 +178,16 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Print cloud-init config(s)
-			for cidx, cfg := range configSlice {
-				if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderNever {
-					fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
-				} else if cloud_init_lib.CIHeaderWhen == cloud_init_lib.CIFlagHeaderAlways {
-					fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
-					fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
-					fmt.Fprintln(cli.Ios.Out())
-				} else {
-					if len(configSlice) == 1 {
-						fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
-					} else {
-						fmt.Fprintf(cli.Ios.Out(), "--- (%d/%d) group=%s\n", cidx+1, len(configSlice), cfg.Name)
-						fmt.Fprintln(cli.Ios.Out(), string(configSlice[cidx].Content))
-					}
-				}
+			items := make([]cloud_init_lib.RenderItem, 0, len(configSlice))
+			for _, cfg := range configSlice {
+				items = append(items, cloud_init_lib.RenderItem{
+					Labels:                     fmt.Sprintf("group=%s", cfg.Name),
+					Body:                       string(cfg.Content),
+					BlankLineAfterAlwaysHeader: true,
+				})
+			}
+			if err := cloud_init_lib.Render(cli.Ios.Out(), headerWhen, items); err != nil {
+				return cli.Errorf(cli.CodeGeneric, "failed to write cloud-init group config: %w", err)
 			}
 
 			return nil
@@ -198,7 +195,7 @@ See ochami-cloud-init(1) for more details.`,
 	}
 
 	// Create flags
-	groupGetConfigCmd.Flags().Var(&cloud_init_lib.CIHeaderWhen, "headers", "when to print headers above cloud-configs (always,multiple,never")
+	groupGetConfigCmd.Flags().Var(&headerWhen, "headers", "when to print headers above cloud-configs (always,multiple,never")
 	groupGetConfigCmd.RegisterFlagCompletionFunc("headers", cloud_init_lib.CompletionHeaderWhen)
 
 	return groupGetConfigCmd
