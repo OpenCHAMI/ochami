@@ -34,15 +34,3 @@ func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*rcs.RCSClient, 
 
 	return rcsClient, nil
 }
-
-// GetClient sets up the remote-console client with the base URI and certificates
-// (if necessary) and returns it. This function uses the runtime from context.
-// Since cmd/root.go always injects a runtime into context, this will always succeed.
-func GetClient(cmd *cobra.Command) (*rcs.RCSClient, error) {
-	// Get runtime from context (always available since cmd/root.go injects it)
-	rt, err := cli.RuntimeFromCommand(cmd)
-	if err != nil {
-		return nil, err
-	}
-	return GetClientWithRuntime(cmd, rt)
-}

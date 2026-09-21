@@ -36,15 +36,3 @@ func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*smd.SMDClient, 
 
 	return smdClient, nil
 }
-
-// GetClient sets up the SMD client with the SMD base URI and certificates
-// (if necessary) and returns it. This function uses the runtime from context.
-// Since cmd/root.go always injects a runtime into context, this will always succeed.
-func GetClient(cmd *cobra.Command) (*smd.SMDClient, error) {
-	// Get runtime from context (always available since cmd/root.go injects it)
-	rt, err := cli.RuntimeFromCommand(cmd)
-	if err != nil {
-		return nil, err
-	}
-	return GetClientWithRuntime(cmd, rt)
-}
