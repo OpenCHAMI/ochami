@@ -90,6 +90,25 @@ func TestWebsocketDial_Error(t *testing.T) {
 	}
 }
 
+// TestDialWebSocket_MalformedURI verifies dialWebSocket returns an error
+// instead of dereferencing a nil *url.URL when the constructed console URI
+// fails to parse (e.g. a raw control character in the query string, which
+// url.URL.String() writes verbatim into RawQuery without escaping).
+func TestDialWebSocket_MalformedURI(t *testing.T) {
+	c, err := NewClient("http://example.com")
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	_, err = c.dialWebSocket(context.Background(), "n0", "mode=tail\nfollow=true", nil)
+	if err == nil {
+		t.Fatal("dialWebSocket with malformed query = nil error, want error")
+	}
+	if !strings.Contains(err.Error(), "failed to parse console URI") {
+		t.Errorf("dialWebSocket error = %v, want it to mention URI parsing", err)
+	}
+}
+
 func TestGetStatus_HTTPError(t *testing.T) {
 	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)

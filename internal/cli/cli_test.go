@@ -857,6 +857,13 @@ func TestPrintUsageHandleError(t *testing.T) {
 	if err := PrintUsage(cmd, nil); err != nil {
 		t.Errorf("PrintUsage = %v, want nil", err)
 	}
+
+	wantErr := errors.New("usage output failed")
+	cmd.SetUsageFunc(func(*cobra.Command) error { return wantErr })
+	err := PrintUsageHandleError(cmd)
+	if err == nil || ExitCode(err) != CodeGeneric || !errors.Is(err, wantErr) {
+		t.Errorf("PrintUsageHandleError failure = %v, want wrapped %s error", err, CodeName(CodeGeneric))
+	}
 }
 
 // TestLogHelpHint verifies the "see '<cmd> --help'" hint is logged.

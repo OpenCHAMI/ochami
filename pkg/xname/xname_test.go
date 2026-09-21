@@ -48,6 +48,11 @@ func TestXNameComponentsToString(t *testing.T) {
 			},
 			want: "x1000c0s0b0",
 		},
+		{
+			name: "unknown component type",
+			args: args{x: csm.XNameComponents{Type: "cabinet"}},
+			want: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -149,6 +154,12 @@ func TestNodeXnameToBMCXname(t *testing.T) {
 			},
 			want:    "x1000c0s0b0",
 			wantErr: false,
+		},
+		{
+			name:    "invalid xname",
+			args:    args{xname: "not-an-xname"},
+			want:    "",
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

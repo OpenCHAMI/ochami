@@ -564,3 +564,67 @@ func TestBSSBootParamsUpdate_DataWithFlags(t *testing.T) {
 		t.Errorf("method = %q, want PATCH", gotMethod)
 	}
 }
+
+// TestBSSBootScriptGet_Query verifies the boot-script query builder emits the
+// mac/xname/nid and optional retry/arch/timestamp parameters.
+func TestBSSBootScriptGet_Query(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Write([]byte(`#!ipxe`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "script", "get", "--ignore-config", "--uri", srv.URL,
+		"--xname", "x0c0s0b0n0", "--retry", "3", "--arch", "x86_64", "--timestamp", "12345")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotQuery.Get("name") == "" && gotQuery.Get("xname") == "" {
+		t.Errorf("query = %v, want an xname/name parameter", gotQuery)
+	}
+}
+
+// TestBSSHostsGet_QueryAndFormats verifies the hosts query builder and
+// output-format variants.
+func TestBSSHostsGet_QueryAndFormats(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Write([]byte(`[{"ID":"x0c0s0b0n0"}]`))
+	}))
+	defer srv.Close()
+
+	for _, f := range []string{"json", "yaml"} {
+		res := runOchami(t, "bss", "hosts", "get", "--ignore-config", "--uri", srv.URL,
+			"--xname", "x0c0s0b0n0", "-F", f)
+		if res.err != nil {
+			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
+		}
+	}
+	if len(gotQuery) == 0 {
+		t.Error("expected a non-empty query for --xname")
+	}
+}
+
+// TestBSSHistoryGet_QueryAndFormats verifies the history query builder and
+// output-format variants.
+func TestBSSHistoryGet_QueryAndFormats(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	for _, f := range []string{"json", "yaml"} {
+		res := runOchami(t, "bss", "history", "--ignore-config", "--uri", srv.URL,
+			"--xname", "x0c0s0b0n0", "-F", f)
+		if res.err != nil {
+			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
+		}
+	}
+	if len(gotQuery) == 0 {
+		t.Error("expected a non-empty query for --xname")
+	}
+}

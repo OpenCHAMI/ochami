@@ -9,6 +9,7 @@ package config
 
 import (
 	"os"
+	"os/user"
 	"path/filepath"
 	"testing"
 )
@@ -72,8 +73,19 @@ func TestUserConfigPath_HomeUnset(t *testing.T) {
 		}
 	}()
 
-	// With HOME unset, UserConfigPath falls back to user.Current(). On most
-	// systems this succeeds; either outcome (a path or an error) exercises the
-	// fallback branch.
-	_, _ = UserConfigPath()
+	u, userErr := user.Current()
+	got, err := UserConfigPath()
+	if userErr != nil {
+		// Without a resolvable current user there is nothing to fall back to.
+		if err == nil {
+			t.Fatalf("UserConfigPath() = %q, want an error when user.Current() fails", got)
+		}
+		return
+	}
+	if err != nil {
+		t.Fatalf("UserConfigPath() error = %v", err)
+	}
+	if want := filepath.Join(u.HomeDir, ".config", "ochami", "config.yaml"); got != want {
+		t.Errorf("UserConfigPath() = %q, want %q", got, want)
+	}
 }
