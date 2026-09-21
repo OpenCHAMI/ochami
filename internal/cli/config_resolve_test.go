@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -40,18 +41,12 @@ func newConfigEditCmd() (grandparent, leaf *cobra.Command) {
 }
 
 func TestConfigFileToModify(t *testing.T) {
-	origConfigFile := ConfigFile
-	origUserConfigFile := UserConfigFile
-	t.Cleanup(func() {
-		ConfigFile = origConfigFile
-		UserConfigFile = origUserConfigFile
-	})
-
 	t.Run("explicit --config wins", func(t *testing.T) {
 		_, leaf := newConfigEditCmd()
-		ConfigFile = "/explicit/path.yaml"
-		UserConfigFile = "/user/path.yaml"
-		if got := ConfigFileToModify(leaf); got != "/explicit/path.yaml" {
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+		rt.ConfigFile = "/explicit/path.yaml"
+		rt.UserConfigFile = "/user/path.yaml"
+		if got := rt.ConfigFileToModify(leaf); got != "/explicit/path.yaml" {
 			t.Errorf("ConfigFileToModify() = %q, want explicit --config path", got)
 		}
 	})
@@ -61,38 +56,29 @@ func TestConfigFileToModify(t *testing.T) {
 		if err := grandparent.PersistentFlags().Set("system", "true"); err != nil {
 			t.Fatalf("set --system: %v", err)
 		}
-		ConfigFile = ""
-		UserConfigFile = "/user/path.yaml"
-		if got := ConfigFileToModify(leaf); got != config.SystemConfigFile {
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+		rt.UserConfigFile = "/user/path.yaml"
+		if got := rt.ConfigFileToModify(leaf); got != config.SystemConfigFile {
 			t.Errorf("ConfigFileToModify() = %q, want %q", got, config.SystemConfigFile)
 		}
 	})
 
 	t.Run("falls back to user config file", func(t *testing.T) {
 		_, leaf := newConfigEditCmd()
-		ConfigFile = ""
-		UserConfigFile = "/user/path.yaml"
-		if got := ConfigFileToModify(leaf); got != "/user/path.yaml" {
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+		rt.UserConfigFile = "/user/path.yaml"
+		if got := rt.ConfigFileToModify(leaf); got != "/user/path.yaml" {
 			t.Errorf("ConfigFileToModify() = %q, want user config file", got)
 		}
 	})
 }
 
-// TestResolveShowKoanf covers the --user, --config, and default
-// (ActiveKoanf()) branches with real temp files. The --system branch reads
-// the fixed, unoverridable config.SystemConfigFile path, so it isn't
-// exercised here; configfile.ReadConfigWithDefaults (which every branch
-// delegates to) has its own direct coverage in internal/configfile.
+// TestResolveShowKoanf covers the --user, --config, and default (rt.Koanf)
+// branches with real temp files. The --system branch reads the fixed,
+// unoverridable config.SystemConfigFile path, so it isn't exercised here;
+// configfile.ReadConfigWithDefaults (which every branch delegates to) has its
+// own direct coverage in internal/configfile.
 func TestResolveShowKoanf(t *testing.T) {
-	origUserConfigFile := UserConfigFile
-	origConfig := ActiveConfig()
-	origKoanf := activeKoanf
-	t.Cleanup(func() {
-		UserConfigFile = origUserConfigFile
-		SetActiveConfig(origConfig)
-		activeKoanf = origKoanf
-	})
-
 	writeConfig := func(t *testing.T, content string) string {
 		t.Helper()
 		path := filepath.Join(t.TempDir(), "config.yaml")
@@ -102,14 +88,15 @@ func TestResolveShowKoanf(t *testing.T) {
 		return path
 	}
 
-	t.Run("--user reads UserConfigFile", func(t *testing.T) {
+	t.Run("--user reads rt.UserConfigFile", func(t *testing.T) {
 		grandparent, leaf := newConfigEditCmd()
 		if err := grandparent.PersistentFlags().Set("user", "true"); err != nil {
 			t.Fatalf("set --user: %v", err)
 		}
-		UserConfigFile = writeConfig(t, "timeout: 45s\n")
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+		rt.UserConfigFile = writeConfig(t, "timeout: 45s\n")
 
-		ko, err := ResolveShowKoanf(leaf)
+		ko, err := rt.ResolveShowKoanf(leaf)
 		if err != nil {
 			t.Fatalf("ResolveShowKoanf() error = %v", err)
 		}
@@ -124,8 +111,9 @@ func TestResolveShowKoanf(t *testing.T) {
 		if err := grandparent.PersistentFlags().Set("config", path); err != nil {
 			t.Fatalf("set --config: %v", err)
 		}
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
 
-		ko, err := ResolveShowKoanf(leaf)
+		ko, err := rt.ResolveShowKoanf(leaf)
 		if err != nil {
 			t.Fatalf("ResolveShowKoanf() error = %v", err)
 		}
@@ -134,17 +122,18 @@ func TestResolveShowKoanf(t *testing.T) {
 		}
 	})
 
-	t.Run("no source flag returns ActiveKoanf", func(t *testing.T) {
+	t.Run("no source flag returns rt.Koanf", func(t *testing.T) {
 		_, leaf := newConfigEditCmd()
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
 		want := koanf.New(".")
-		activeKoanf = want
+		rt.Koanf = want
 
-		got, err := ResolveShowKoanf(leaf)
+		got, err := rt.ResolveShowKoanf(leaf)
 		if err != nil {
 			t.Fatalf("ResolveShowKoanf() error = %v", err)
 		}
 		if got != want {
-			t.Errorf("ResolveShowKoanf() = %p, want ActiveKoanf() %p", got, want)
+			t.Errorf("ResolveShowKoanf() = %p, want rt.Koanf %p", got, want)
 		}
 	})
 }

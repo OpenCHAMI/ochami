@@ -6,8 +6,6 @@
 package service
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -26,8 +24,14 @@ func newCmdServiceVersion() *cobra.Command {
 
 See ochami-cloud-init(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -38,19 +42,21 @@ See ochami-cloud-init(1) for more details.`,
 
 			}
 
-			outBytes, err := client.FormatBody(henv.Body, cli.FormatOutput)
+			outBytes, err := client.FormatBody(henv.Body, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	serviceVersionCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(serviceVersionCmd)
 	serviceVersionCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return serviceVersionCmd

@@ -6,8 +6,6 @@
 package service
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -26,9 +24,20 @@ func newCmdServiceVersion() *cobra.Command {
 
 See ochami-bss(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
 			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
+			if err != nil {
+				return err
+			}
+
+			// Handle token for this command
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -36,15 +45,16 @@ See ochami-bss(1) for more details.`,
 			httpEnv, err := bssClient.GetStatus(cmd.Context(), "version")
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS version request yielded unsuccessful HTTP response", "failed to get BSS version")
-
 			}
 
 			// Print output
-			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},

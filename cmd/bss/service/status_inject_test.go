@@ -5,8 +5,10 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -33,6 +35,13 @@ func providerFor(c bssStatusClient, err error) bssStatusClientProvider {
 	return func(*cobra.Command) (bssStatusClient, error) { return c, err }
 }
 
+// createTestRuntime creates a test runtime with isolated I/O streams
+func createTestRuntime() (*cli.Runtime, *bytes.Buffer) {
+	var stdoutBuf bytes.Buffer
+	rt := cli.NewTestRuntime(strings.NewReader(""), &stdoutBuf, &stdoutBuf)
+	return rt, &stdoutBuf
+}
+
 // TestServiceStatus_ComponentSelection verifies each component flag selects the expected status endpoint.
 func TestServiceStatus_ComponentSelection(t *testing.T) {
 	tests := []struct {
@@ -47,8 +56,13 @@ func TestServiceStatus_ComponentSelection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create test runtime and inject into command context
+			rt, stdoutBuf := createTestRuntime()
 			fake := &fakeBSSStatusClient{env: client.HTTPEnvelope{Body: []byte(`{"ok":true}`)}}
 			cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))
+			cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+			cmd.SetOut(stdoutBuf)
+			cmd.SetErr(stdoutBuf)
 			cmd.SetArgs(nil)
 			if tt.flag != "" {
 				if err := cmd.Flags().Set(tt.flag, "true"); err != nil {
@@ -69,7 +83,11 @@ func TestServiceStatus_ComponentSelection(t *testing.T) {
 // TestServiceStatus_ClientConstructionError verifies client setup failures are returned unchanged.
 func TestServiceStatus_ClientConstructionError(t *testing.T) {
 	wantErr := errors.New("boom")
+	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdServiceStatusWithClient(providerFor(nil, wantErr))
+	cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	cmd.SetOut(stdoutBuf)
+	cmd.SetErr(stdoutBuf)
 	cmd.SetArgs(nil)
 
 	err := cmd.Execute()
@@ -81,7 +99,11 @@ func TestServiceStatus_ClientConstructionError(t *testing.T) {
 // TestServiceStatus_HTTPErrorMapping verifies service response failures map to the HTTP exit code.
 func TestServiceStatus_HTTPErrorMapping(t *testing.T) {
 	fake := &fakeBSSStatusClient{err: client.UnsuccessfulHTTPError}
+	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))
+	cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	cmd.SetOut(stdoutBuf)
+	cmd.SetErr(stdoutBuf)
 	cmd.SetArgs(nil)
 
 	err := cmd.Execute()
@@ -96,7 +118,11 @@ func TestServiceStatus_HTTPErrorMapping(t *testing.T) {
 // TestServiceStatus_NetworkErrorMapping verifies transport failures map to the network exit code.
 func TestServiceStatus_NetworkErrorMapping(t *testing.T) {
 	fake := &fakeBSSStatusClient{err: errors.New("connection refused")}
+	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))
+	cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	cmd.SetOut(stdoutBuf)
+	cmd.SetErr(stdoutBuf)
 	cmd.SetArgs(nil)
 
 	err := cmd.Execute()

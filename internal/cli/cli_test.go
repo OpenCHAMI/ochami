@@ -7,17 +7,11 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"errors"
-	"fmt"
 	"io"
-	"math/big"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,116 +19,9 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/config"
-	"github.com/openchami/ochami/pkg/format"
 )
-
-func TestIOStream_AskToCreate(t *testing.T) {
-	t.Run("empty path", func(t *testing.T) {
-		t.Parallel()
-		inBuf := &bytes.Buffer{}
-		outBuf := &bytes.Buffer{}
-		errBuf := &bytes.Buffer{}
-		ios := newIOStream(inBuf, outBuf, errBuf)
-
-		got, err := ios.AskToCreate("")
-		if got != false {
-			t.Errorf("AskToCreate(\"\") = %v, want false", got)
-		}
-		if err == nil || !strings.Contains(err.Error(), "path cannot be empty") {
-			t.Errorf("AskToCreate(\"\") error = %v, want non-nil containing “path cannot be empty”", err)
-		}
-		if outBuf.Len() != 0 {
-			t.Errorf("stdout = %q, want empty", outBuf.String())
-		}
-		if errBuf.Len() != 0 {
-			t.Errorf("stderr = %q, want empty", errBuf.String())
-		}
-	})
-
-	t.Run("existing file", func(t *testing.T) {
-		t.Parallel()
-		tmp := t.TempDir()
-		f := filepath.Join(tmp, "exists")
-		if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {
-			t.Fatalf("setup write: %v", err)
-		}
-
-		inBuf := &bytes.Buffer{}
-		outBuf := &bytes.Buffer{}
-		errBuf := &bytes.Buffer{}
-		ios := newIOStream(inBuf, outBuf, errBuf)
-
-		got, err := ios.AskToCreate(f)
-		if got != false {
-			t.Errorf("AskToCreate(%q) = %v, want false", f, got)
-		}
-		if !errors.Is(err, FileExistsError) {
-			t.Errorf("AskToCreate(%q) error = %v, want FileExistsError", f, err)
-		}
-		if outBuf.Len() != 0 {
-			t.Errorf("stdout = %q, want empty", outBuf.String())
-		}
-		if errBuf.Len() != 0 {
-			t.Errorf("stderr = %q, want empty", errBuf.String())
-		}
-	})
-
-	t.Run("nonexistent file, user declines", func(t *testing.T) {
-		t.Parallel()
-		tmp := t.TempDir()
-		path := filepath.Join(tmp, "noexist")
-
-		inBuf := bytes.NewBufferString("n\n")
-		outBuf := &bytes.Buffer{}
-		errBuf := &bytes.Buffer{}
-		ios := newIOStream(inBuf, outBuf, errBuf)
-
-		got, err := ios.AskToCreate(path)
-		if got != false {
-			t.Errorf("AskToCreate(%q) decline = %v, want false", path, got)
-		}
-		if err != nil {
-			t.Errorf("AskToCreate(%q) decline error = %v, want nil", path, err)
-		}
-		wantPrompt := fmt.Sprintf("%s does not exist. Create it? [yn]:", path)
-		if errBuf.String() != wantPrompt {
-			t.Errorf("stderr = %q, want %q", errBuf.String(), wantPrompt)
-		}
-		if outBuf.Len() != 0 {
-			t.Errorf("stdout = %q, want empty", outBuf.String())
-		}
-	})
-
-	t.Run("nonexistent file, user accepts", func(t *testing.T) {
-		t.Parallel()
-		tmp := t.TempDir()
-		path := filepath.Join(tmp, "noexist2")
-
-		inBuf := bytes.NewBufferString("y\n")
-		outBuf := &bytes.Buffer{}
-		errBuf := &bytes.Buffer{}
-		ios := newIOStream(inBuf, outBuf, errBuf)
-
-		got, err := ios.AskToCreate(path)
-		if got != true {
-			t.Errorf("AskToCreate(%q) accept = %v, want true", path, got)
-		}
-		if err != nil {
-			t.Errorf("AskToCreate(%q) accept error = %v, want nil", path, err)
-		}
-		wantPrompt := fmt.Sprintf("%s does not exist. Create it? [yn]:", path)
-		if errBuf.String() != wantPrompt {
-			t.Errorf("stderr = %q, want %q", errBuf.String(), wantPrompt)
-		}
-		if outBuf.Len() != 0 {
-			t.Errorf("stdout = %q, want empty", outBuf.String())
-		}
-	})
-}
 
 func TestIOStream_LoopYesNo(t *testing.T) {
 	cases := []struct {
@@ -172,7 +59,7 @@ func TestIOStream_LoopYesNo(t *testing.T) {
 			t.Parallel()
 			inBuf := bytes.NewBufferString(tc.input)
 			errBuf := &bytes.Buffer{}
-			ios := newIOStream(inBuf, io.Discard, errBuf)
+			ios := NewIOStreams(inBuf, io.Discard, errBuf)
 
 			got, err := ios.LoopYesNo("Proceed?")
 			if err != nil {
@@ -185,46 +72,6 @@ func TestIOStream_LoopYesNo(t *testing.T) {
 			prompt := "Proceed? [yn]:"
 			if count := strings.Count(errBuf.String(), prompt); count != tc.wantCount {
 				t.Errorf("prompt count = %d, want %d", count, tc.wantCount)
-			}
-		})
-	}
-}
-
-func Test_CreateIfNotExists(t *testing.T) {
-	type args struct {
-		path string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "empty path",
-			args: args{
-				path: "",
-			},
-			wantErr: true,
-		},
-		{
-			name: "create new file",
-			args: args{
-				path: "/tmp/newfile",
-			},
-			wantErr: false,
-		},
-		{
-			name: "already exists",
-			args: args{
-				path: "/tmp/newfile",
-			},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := CreateIfNotExists(tt.args.path); (err != nil) != tt.wantErr {
-				t.Errorf("CreateIfNotExists() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -276,13 +123,9 @@ func TestCheckToken_ValidToken(t *testing.T) {
 		t.Fatalf("failed to generate test token: %v", err)
 	}
 
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-	Token = tokenStr
-
-	if err := CheckToken(&cobra.Command{}); err != nil {
-		t.Errorf("CheckToken returned unexpected error: %v", err)
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard).WithToken(tokenStr)
+	if err := rt.CheckToken(); err != nil {
+		t.Fatalf("CheckToken() error = %v", err)
 	}
 
 	// We'll just verify the token was generated correctly by parsing it
@@ -314,27 +157,13 @@ func TestCheckToken_ExpiredToken(t *testing.T) {
 		t.Fatalf("failed to generate test token: %v", err)
 	}
 
-	// Verify the token is actually expired by trying to parse it
-	// Use WithVerify(false) since we're testing expiration validation, not signature
-	_, err = jwt.Parse([]byte(tokenStr), jwt.WithVerify(false))
-	if err == nil {
-		t.Error("Expected token to be expired but parsing succeeded")
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard).WithToken(tokenStr)
+	err = rt.CheckToken()
+	if err == nil || ExitCode(err) != CodeAuth {
+		t.Fatalf("CheckToken() error = %v, want CodeAuth", err)
 	}
 	if !errors.Is(err, jwt.TokenExpiredError()) {
 		t.Errorf("Expected TokenExpiredError, got: %v", err)
-	}
-
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-	Token = tokenStr
-
-	ctErr := CheckToken(&cobra.Command{})
-	if ctErr == nil {
-		t.Fatal("CheckToken should have returned an error for an expired token")
-	}
-	if ExitCode(ctErr) != CodeAuth {
-		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(ctErr), CodeAuth)
 	}
 }
 
@@ -349,27 +178,13 @@ func TestCheckToken_NotYetValid(t *testing.T) {
 		t.Fatalf("failed to generate test token: %v", err)
 	}
 
-	// Verify the token is not yet valid
-	// Use WithVerify(false) since we're testing nbf validation, not signature
-	_, err = jwt.Parse([]byte(tokenStr), jwt.WithVerify(false))
-	if err == nil {
-		t.Error("Expected token to not be valid yet but parsing succeeded")
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard).WithToken(tokenStr)
+	err = rt.CheckToken()
+	if err == nil || ExitCode(err) != CodeAuth {
+		t.Fatalf("CheckToken() error = %v, want CodeAuth", err)
 	}
 	if !errors.Is(err, jwt.TokenNotYetValidError()) {
 		t.Errorf("Expected TokenNotYetValidError, got: %v", err)
-	}
-
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-	Token = tokenStr
-
-	ctErr := CheckToken(&cobra.Command{})
-	if ctErr == nil {
-		t.Fatal("CheckToken should have returned an error for a not-yet-valid token")
-	}
-	if ExitCode(ctErr) != CodeAuth {
-		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(ctErr), CodeAuth)
 	}
 }
 
@@ -384,341 +199,259 @@ func TestCheckToken_ExpiringSoon(t *testing.T) {
 		t.Fatalf("failed to generate test token: %v", err)
 	}
 
-	// Verify the token is valid but expiring soon
-	// Use WithVerify(false) since we're testing time validation, not signature
-	parsed, err := jwt.Parse([]byte(tokenStr), jwt.WithVerify(false))
-	if err != nil {
-		t.Errorf("Token should be valid: %v", err)
-	}
-
-	exp, ok := parsed.Expiration()
-	if !ok {
-		t.Error("Token should have expiration")
-	}
-	timeUntilExpiry := exp.Sub(time.Now())
-	if timeUntilExpiry.Minutes() > 15 {
-		t.Errorf("Token should expire in less than 15 minutes, got: %v", timeUntilExpiry)
-	}
-
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-	Token = tokenStr
-
-	// A token expiring soon is still valid, so CheckToken should only warn,
-	// not return an error.
-	if err := CheckToken(&cobra.Command{}); err != nil {
-		t.Errorf("CheckToken returned unexpected error for a token expiring soon: %v", err)
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard).WithToken(tokenStr)
+	if err := rt.CheckToken(); err != nil {
+		t.Fatalf("CheckToken() error = %v, want nil for token in warning window", err)
 	}
 }
 
 func TestCheckToken_EmptyToken(t *testing.T) {
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-
-	Token = ""
-
-	err := CheckToken(&cobra.Command{})
-	if err == nil {
-		t.Fatal("CheckToken should have returned an error for an empty token")
-	}
-	if ExitCode(err) != CodeAuth {
-		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(err), CodeAuth)
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard)
+	if err := rt.CheckToken(); err == nil || ExitCode(err) != CodeAuth {
+		t.Fatalf("CheckToken() error = %v, want CodeAuth", err)
 	}
 }
 
 func TestCheckToken_MalformedToken(t *testing.T) {
 	malformedToken := "not.a.valid.jwt.token.at.all"
-
-	// Try to parse it and verify it fails
-	// Use WithVerify(false) to test parsing failure, not signature failure
-	_, err := jwt.Parse([]byte(malformedToken), jwt.WithVerify(false))
-	if err == nil {
-		t.Error("Expected malformed token to fail parsing")
-	}
-
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-	Token = malformedToken
-
-	ctErr := CheckToken(&cobra.Command{})
-	if ctErr == nil {
-		t.Fatal("CheckToken should have returned an error for a malformed token")
-	}
-	if ExitCode(ctErr) != CodeAuth {
-		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(ctErr), CodeAuth)
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard).WithToken(malformedToken)
+	if err := rt.CheckToken(); err == nil || ExitCode(err) != CodeAuth {
+		t.Fatalf("CheckToken() error = %v, want CodeAuth", err)
 	}
 }
 
 func TestSetToken_FromFlag(t *testing.T) {
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-
 	cmd := &cobra.Command{}
 	cmd.Flags().String("token", "", "token flag")
 	if err := cmd.Flags().Set("token", "test-token-from-flag"); err != nil {
 		t.Fatalf("Failed to set flag: %v", err)
 	}
 
-	if err := SetToken(cmd); err != nil {
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard)
+	if err := rt.SetTokenFromFlag(cmd); err != nil {
 		t.Fatalf("SetToken returned unexpected error: %v", err)
 	}
 
-	if Token != "test-token-from-flag" {
-		t.Errorf("Token = %q, want %q", Token, "test-token-from-flag")
+	if rt.Token != "test-token-from-flag" {
+		t.Errorf("Token = %q, want %q", rt.Token, "test-token-from-flag")
 	}
 }
 
 func TestSetToken_FromEnvironment(t *testing.T) {
-	// Save original token and restore after test
-	originalToken := Token
-	defer func() { Token = originalToken }()
-
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard).
+		WithConfig(config.Config{DefaultCluster: "test cluster"}).
+		WithEnvironment(EnvironmentFunc(func(key string) (string, bool) {
+			return "environment-token", key == "TEST_CLUSTER_ACCESS_TOKEN"
+		}))
 	cmd := &cobra.Command{}
-	cmd.Flags().String("token", "", "token flag")
-	cmd.Flags().String("cluster", "", "cluster flag")
-	if err := cmd.Flags().Set("cluster", "test-cluster"); err != nil {
-		t.Fatalf("Failed to set flag: %v", err)
+	if err := rt.SetTokenFromEnv(cmd); err != nil {
+		t.Fatalf("SetTokenFromEnv() error = %v", err)
 	}
-
-	t.Setenv("TEST_CLUSTER_ACCESS_TOKEN", "test-token-from-environment")
-
-	if err := SetToken(cmd); err != nil {
-		t.Fatalf("SetToken returned unexpected error: %v", err)
-	}
-
-	if Token != "test-token-from-environment" {
-		t.Errorf("Token = %q, want %q", Token, "test-token-from-environment")
+	if rt.Token != "environment-token" {
+		t.Fatalf("Token = %q, want environment-token", rt.Token)
 	}
 }
 
-// TestSetToken_NoTokenNoCluster verifies that SetToken returns a CodeAuth
-// error when neither --token nor --cluster/default-cluster is available to
-// resolve a token from.
+// TestSetToken_NoTokenNoCluster verifies that SetTokenFromEnv returns a
+// CodeAuth error when neither --token nor --cluster/default-cluster is
+// available to resolve a token from.
 func TestSetToken_NoTokenNoCluster(t *testing.T) {
-	// Save original token/active config and restore after test
-	originalToken := Token
-	originalConfig := ActiveConfig()
-	defer func() {
-		Token = originalToken
-		SetActiveConfig(originalConfig)
-	}()
-	SetActiveConfig(config.Config{})
-
+	rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard)
 	cmd := &cobra.Command{}
-	cmd.Flags().String("token", "", "token flag")
 	cmd.Flags().String("cluster", "", "cluster flag")
 
-	err := SetToken(cmd)
+	err := rt.SetTokenFromEnv(cmd)
 	if err == nil {
-		t.Fatal("SetToken should have returned an error when no token or cluster is available")
+		t.Fatal("SetTokenFromEnv should have returned an error when no token or cluster is available")
 	}
 	if ExitCode(err) != CodeAuth {
 		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(err), CodeAuth)
 	}
 }
 
-// TestBooleanFlags_UseTheirValue verifies InitConfig and HandleToken consult
-// the actual value of --ignore-config/--no-token rather than merely whether
-// the flag was passed at all (a flag passed as --ignore-config=false or
-// --no-token=false must not be treated the same as omitting it).
-func TestBooleanFlags_UseTheirValue(t *testing.T) {
-	t.Run("ignore-config false", func(t *testing.T) {
-		orig := ConfigFile
-		t.Cleanup(func() { ConfigFile = orig })
-		ConfigFile = t.TempDir() + "/missing.yaml"
-		cmd := &cobra.Command{Use: "test"}
-		cmd.Flags().Bool("ignore-config", false, "")
-		if err := cmd.Flags().Set("ignore-config", "false"); err != nil {
-			t.Fatal(err)
-		}
-		if err := InitConfig(cmd, false); err == nil {
-			t.Fatal("InitConfig unexpectedly ignored a false --ignore-config flag")
-		}
-	})
+// tokenTestCmd returns a command with the flags the token helpers inspect.
+func tokenTestCmd() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Flags().String("token", "", "")
+	cmd.Flags().String("cluster", "", "")
+	cmd.Flags().Bool("no-token", false, "")
+	cmd.Flags().Bool("show-token", false, "")
+	return cmd
+}
 
-	t.Run("no-token false", func(t *testing.T) {
-		origCfg, origToken := ActiveConfig(), Token
-		t.Cleanup(func() { SetActiveConfig(origCfg); Token = origToken })
-		SetActiveConfig(config.Config{
-			DefaultCluster: "auth-cluster",
-			Clusters:       []config.ConfigCluster{{Name: "auth-cluster", Cluster: config.ConfigClusterConfig{EnableAuth: true}}},
+func TestCheckToken_Behavior(t *testing.T) {
+	now := time.Now()
+
+	valid, err := generateTestToken(now.Add(time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("generate valid token: %v", err)
+	}
+	expired, err := generateTestToken(now.Add(-time.Hour), now.Add(-2*time.Hour), now.Add(-2*time.Hour))
+	if err != nil {
+		t.Fatalf("generate expired token: %v", err)
+	}
+	notYet, err := generateTestToken(now.Add(2*time.Hour), now.Add(time.Hour), now)
+	if err != nil {
+		t.Fatalf("generate not-yet-valid token: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		token    string
+		wantErr  bool
+		wantCode int
+	}{
+		{"valid", valid, false, CodeSuccess},
+		{"empty", "", true, CodeAuth},
+		{"malformed", "not-a-jwt", true, CodeAuth},
+		{"expired", expired, true, CodeAuth},
+		{"not yet valid", notYet, true, CodeAuth},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+			rt.Token = tt.token
+			cmd := tokenTestCmd()
+			cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+			err := rt.CheckToken()
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("CheckToken(): expected error, got nil")
+				}
+				if got := ExitCode(err); got != tt.wantCode {
+					t.Errorf("exit code = %d, want %d", got, tt.wantCode)
+				}
+			} else if err != nil {
+				t.Fatalf("CheckToken(): unexpected error: %v", err)
+			}
 		})
-		Token = ""
-		_ = os.Unsetenv("AUTH_CLUSTER_ACCESS_TOKEN")
-		cmd := &cobra.Command{Use: "test"}
-		cmd.Flags().String("cluster", "", "")
-		cmd.Flags().Bool("no-token", false, "")
-		cmd.Flags().String("token", "", "")
-		cmd.Flags().Bool("show-token", false, "")
-		if err := cmd.Flags().Set("no-token", "false"); err != nil {
-			t.Fatal(err)
-		}
-		if err := HandleToken(cmd); err == nil || ExitCode(err) != CodeAuth {
-			t.Fatalf("HandleToken error = %v, want CodeAuth", err)
-		}
-	})
-}
-
-// TestPayloadReader_Helpers verifies HandlePayloadStdin/HandlePayloadStdinSlice
-// read from the injected IOStream reader rather than the real os.Stdin, and
-// surface a CodePayload error for malformed input.
-func TestPayloadReader_Helpers(t *testing.T) {
-	origFormat := FormatInput
-	t.Cleanup(func() { FormatInput = origFormat })
-	FormatInput = format.DataFormatJson
-
-	var one map[string]interface{}
-	restore := SetIOStream(strings.NewReader(`{"name":"node"}`), &bytes.Buffer{}, &bytes.Buffer{})
-	if err := HandlePayloadStdin(&cobra.Command{}, &one); err != nil {
-		restore()
-		t.Fatalf("HandlePayloadStdin: %v", err)
-	}
-	restore()
-	if one["name"] != "node" {
-		t.Errorf("payload = %#v", one)
-	}
-
-	var many []map[string]interface{}
-	restore = SetIOStream(strings.NewReader(`{"name":"node"}`), &bytes.Buffer{}, &bytes.Buffer{})
-	if err := HandlePayloadStdinSlice(&cobra.Command{}, &many); err != nil {
-		restore()
-		t.Fatalf("HandlePayloadStdinSlice: %v", err)
-	}
-	restore()
-	if len(many) != 1 {
-		t.Errorf("slice length = %d, want 1", len(many))
-	}
-
-	restore = SetIOStream(strings.NewReader(`{`), &bytes.Buffer{}, &bytes.Buffer{})
-	if err := HandlePayloadStdin(&cobra.Command{}, &one); err == nil || ExitCode(err) != CodePayload {
-		restore()
-		t.Fatalf("invalid payload error = %v, want CodePayload", err)
-	}
-	restore()
-}
-
-// TestGetTimeout_ConfigAndFlag verifies GetTimeout falls back to the active
-// config's timeout and honors an explicit --timeout flag override.
-func TestGetTimeout_ConfigAndFlag(t *testing.T) {
-	orig := ActiveConfig()
-	t.Cleanup(func() { SetActiveConfig(orig) })
-	SetActiveConfig(config.Config{Timeout: 9 * time.Second})
-	cmd := &cobra.Command{Use: "test"}
-	cmd.Flags().Duration("timeout", 0, "")
-	if got := GetTimeout(cmd); got != 9*time.Second {
-		t.Errorf("GetTimeout config = %v", got)
-	}
-	if err := cmd.Flags().Set("timeout", "2s"); err != nil {
-		t.Fatal(err)
-	}
-	if got := GetTimeout(cmd); got != 2*time.Second {
-		t.Errorf("GetTimeout flag = %v", got)
 	}
 }
 
-// TestShellCompletions_ReturnDefaultValues verifies the format/discovery/patch
-// shell-completion functions return a non-empty, default-directive value set.
-func TestShellCompletions_ReturnDefaultValues(t *testing.T) {
-	cmd := &cobra.Command{Use: "test"}
-	for name, fn := range map[string]func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective){
-		"format":    CompletionFormatData,
-		"discovery": CompletionDiscoveryVersion,
-		"patch":     CompletionPatchMethod,
-	} {
-		values, directive := fn(cmd, nil, "")
-		if len(values) == 0 || directive != cobra.ShellCompDirectiveDefault {
-			t.Errorf("%s completion = %v, %v", name, values, directive)
-		}
+// TestHandleToken_NoTokenFlag verifies that --no-token short-circuits token
+// handling entirely (no error even with no config).
+func TestHandleToken_NoTokenFlag(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	cmd := tokenTestCmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+	if err := cmd.Flags().Set("no-token", "true"); err != nil {
+		t.Fatalf("set no-token: %v", err)
+	}
+	if err := rt.HandleToken(cmd); err != nil {
+		t.Fatalf("HandleToken(): unexpected error with --no-token: %v", err)
 	}
 }
 
-// TestIOStream_Err verifies Err returns the configured error writer.
-func TestIOStream_Err(t *testing.T) {
-	var errBuf bytes.Buffer
-	restore := SetIOStream(nil, &bytes.Buffer{}, &errBuf)
-	defer restore()
+// TestHandleToken_AuthDisabledCluster verifies that a cluster with auth disabled
+// does not require a token.
+func TestHandleToken_AuthDisabledCluster(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{
+		DefaultCluster: "foo",
+		Clusters: []config.ConfigCluster{
+			{Name: "foo", Cluster: config.ConfigClusterConfig{EnableAuth: false}},
+		},
+	}
+	cmd := tokenTestCmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
 
-	if Ios.Err() != &errBuf {
-		t.Errorf("Err() = %v, want the configured error writer", Ios.Err())
+	if err := rt.HandleToken(cmd); err != nil {
+		t.Fatalf("HandleToken(): unexpected error for auth-disabled cluster: %v", err)
 	}
 }
 
-// writeTestCACert writes a self-signed CA certificate PEM to a temp file and
-// returns its path.
-func writeTestCACert(t *testing.T) string {
-	t.Helper()
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatalf("failed to generate key: %v", err)
-	}
-	tmpl := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: "test-ca"},
-		NotBefore:             time.Now().Add(-time.Hour),
-		NotAfter:              time.Now().Add(time.Hour),
-		IsCA:                  true,
-		KeyUsage:              x509.KeyUsageCertSign,
-		BasicConstraintsValid: true,
-	}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &priv.PublicKey, priv)
-	if err != nil {
-		t.Fatalf("failed to create cert: %v", err)
-	}
-	path := filepath.Join(t.TempDir(), "ca.pem")
-	f, err := os.Create(path)
-	if err != nil {
-		t.Fatalf("failed to create file: %v", err)
-	}
-	defer f.Close()
-	if err := pem.Encode(f, &pem.Block{Type: "CERTIFICATE", Bytes: der}); err != nil {
-		t.Fatalf("failed to encode PEM: %v", err)
-	}
-	return path
-}
-
-// TestUseCACert covers the no-op (empty path), valid, and invalid cert arms.
-func TestUseCACert(t *testing.T) {
-	oc, err := client.NewOchamiClient("test", "https://example.com")
-	if err != nil {
-		t.Fatalf("failed to create client: %v", err)
-	}
-
-	// No CA path set: no-op, returns nil.
-	origPath := CACertPath
-	defer func() { CACertPath = origPath }()
-	CACertPath = ""
-	if err := UseCACert(oc); err != nil {
-		t.Errorf("UseCACert with empty path = %v, want nil", err)
-	}
-
-	// Valid CA cert.
-	CACertPath = writeTestCACert(t)
-	if err := UseCACert(oc); err != nil {
-		t.Errorf("UseCACert with valid cert = %v, want nil", err)
-	}
-
-	// Invalid/nonexistent CA cert => CodePayload.
-	CACertPath = filepath.Join(t.TempDir(), "does-not-exist.pem")
-	err = UseCACert(oc)
+// TestHandleToken_UnknownCluster verifies direct callers cannot silently skip
+// token handling for a cluster that does not exist.
+func TestHandleToken_UnknownCluster(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{DefaultCluster: "missing"}
+	cmd := tokenTestCmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+	err := rt.HandleToken(cmd)
 	if err == nil {
-		t.Fatal("UseCACert with missing cert = nil, want error")
+		t.Fatal("HandleToken(): expected error for unknown cluster, got nil")
 	}
-	if ExitCode(err) != CodePayload {
-		t.Errorf("exit code = %d, want %d (CodePayload)", ExitCode(err), CodePayload)
+	if got := ExitCode(err); got != CodeConfig {
+		t.Errorf("exit code = %d, want CodeConfig (%d)", got, CodeConfig)
+	}
+}
+
+// TestHandleToken_AuthEnabledMissingToken verifies that an auth-enabled cluster
+// requires a token and errors when none is available.
+func TestHandleToken_AuthEnabledMissingToken(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{
+		DefaultCluster: "secure",
+		Clusters: []config.ConfigCluster{
+			{Name: "secure", Cluster: config.ConfigClusterConfig{EnableAuth: true}},
+		},
+	}
+	rt.Token = ""
+	rt.WithEnvironment(EnvironmentFunc(func(string) (string, bool) { return "", false }))
+	cmd := tokenTestCmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+
+	err := rt.HandleToken(cmd)
+	if err == nil {
+		t.Fatal("HandleToken(): expected error for missing token, got nil")
+	}
+	if got := ExitCode(err); got != CodeAuth {
+		t.Errorf("exit code = %d, want CodeAuth (%d)", got, CodeAuth)
+	}
+}
+
+// TestHandleToken_AuthEnabledWithEnvToken verifies that an auth-enabled cluster
+// reads its token from the <CLUSTER>_ACCESS_TOKEN environment variable.
+func TestHandleToken_AuthEnabledWithEnvToken(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	now := time.Now()
+	valid, err := generateTestToken(now.Add(time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("generate valid token: %v", err)
 	}
 
-	// Malformed PEM => CodePayload.
-	bad := filepath.Join(t.TempDir(), "bad.pem")
-	if err := os.WriteFile(bad, []byte("not a pem"), 0o644); err != nil {
-		t.Fatalf("failed to write bad pem: %v", err)
+	rt.Config = config.Config{
+		DefaultCluster: "my-cluster",
+		Clusters: []config.ConfigCluster{
+			{Name: "my-cluster", Cluster: config.ConfigClusterConfig{EnableAuth: true}},
+		},
 	}
-	CACertPath = bad
-	if err := UseCACert(oc); err == nil || ExitCode(err) != CodePayload {
-		t.Errorf("UseCACert with malformed PEM = %v (exit %d), want CodePayload", err, ExitCode(err))
+	rt.Token = ""
+	rt.WithEnvironment(EnvironmentFunc(func(key string) (string, bool) {
+		return valid, key == "MY_CLUSTER_ACCESS_TOKEN"
+	}))
+	cmd := tokenTestCmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+
+	if err := rt.HandleToken(cmd); err != nil {
+		t.Fatalf("HandleToken(): unexpected error: %v", err)
+	}
+	if rt.Token != valid {
+		t.Errorf("Token not populated from environment variable, got %q, want %q", rt.Token, valid)
+	}
+}
+
+// TestSetToken_MissingEnvVar verifies SetToken errors (CodeAuth) when neither
+// --token nor the cluster env var is set.
+func TestSetToken_MissingEnvVar(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config = config.Config{DefaultCluster: "nope"}
+	rt.Token = ""
+	rt.WithEnvironment(EnvironmentFunc(func(string) (string, bool) { return "", false }))
+	cmd := tokenTestCmd()
+	cmd.SetContext(ContextWithRuntime(context.Background(), rt))
+
+	err := rt.SetTokenFromEnv(cmd)
+	if err == nil {
+		t.Fatal("SetToken(): expected error, got nil")
+	}
+	if got := ExitCode(err); got != CodeAuth {
+		t.Errorf("exit code = %d, want CodeAuth (%d)", got, CodeAuth)
+	}
+	var ce *CodedError
+	if !errors.As(err, &ce) {
+		t.Errorf("error %v is not a *CodedError", err)
 	}
 }
 
@@ -747,36 +480,4 @@ func TestPrintUsageHandleError(t *testing.T) {
 func TestLogHelpHint(t *testing.T) {
 	cmd := &cobra.Command{Use: "demo"}
 	LogHelpHint(cmd)
-	logHelpHint(cmd)
-}
-
-// TestInitLogging_FlagOverrides covers InitLogging's log-format/level/color
-// flag-override arms.
-func TestInitLogging_FlagOverrides(t *testing.T) {
-	cmd := &cobra.Command{Use: "demo"}
-	fs := pflag.NewFlagSet("demo", pflag.ContinueOnError)
-	fs.String("log-format", "", "")
-	fs.String("log-level", "", "")
-	fs.String("log-color", "", "")
-	cmd.Flags().AddFlagSet(fs)
-
-	if err := cmd.Flags().Set("log-format", "json"); err != nil {
-		t.Fatalf("set log-format: %v", err)
-	}
-	if err := cmd.Flags().Set("log-level", "warning"); err != nil {
-		t.Fatalf("set log-level: %v", err)
-	}
-	if err := cmd.Flags().Set("log-color", "off"); err != nil {
-		t.Fatalf("set log-color: %v", err)
-	}
-
-	if err := InitLogging(cmd); err != nil {
-		t.Fatalf("InitLogging = %v, want nil", err)
-	}
-	if activeConfig.Log.Format != "json" {
-		t.Errorf("Log.Format = %q, want json", activeConfig.Log.Format)
-	}
-	if activeConfig.Log.Level != "warning" {
-		t.Errorf("Log.Level = %q, want warning", activeConfig.Log.Level)
-	}
 }

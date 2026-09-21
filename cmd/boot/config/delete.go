@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
@@ -22,39 +21,39 @@ type bootConfigDeleteOptions struct {
 }
 
 // runCoreBootConfigDelete contains the core logic for the boot config delete command.
-// It takes the parsed options and performs the actual work of deleting boot configs.
-func runCoreBootConfigDelete(cmd *cobra.Command, opts *bootConfigDeleteOptions, args []string, bootServiceClient *boot_service.BootServiceClient) error {
+// It takes the parsed options and performs the actual work of deleting boot configurations.
+func runCoreBootConfigDelete(cmd *cobra.Command, opts *bootConfigDeleteOptions, args []string, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
-		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "failed to fetch user input: %w", err)
 		} else if !respDelete {
-			log.Logger.Info().Msg("user aborted boot config deletion")
+			rt.Logger.Info().Msg("user aborted boot config deletion")
 			return nil
 		} else {
-			log.Logger.Debug().Msg("user answered affirmatively to delete boot config(s)")
+			rt.Logger.Debug().Msg("user answered affirmatively to delete boot config(s)")
 		}
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Send off requests
-	results := bootServiceClient.DeleteBootConfigs(cmd.Context(), cli.Token, args)
+	results := bootServiceClient.DeleteBootConfigs(cmd.Context(), rt.Token, args)
 
 	// Deal with per-request errors
 	var errorsOccurred = false
 	for _, e := range results.Errors() {
 		if e != nil {
-			log.Logger.Error().Err(e).Msg("failed to delete boot config")
+			rt.Logger.Error().Err(e).Msg("failed to delete boot config")
 			errorsOccurred = true
 		}
 	}
-	log.Logger.Debug().Msgf("boot configs deleted: %+v", results.Values())
+	rt.Logger.Debug().Msgf("boot configs deleted: %+v", results.Values())
 	if errorsOccurred {
 		return cli.Errorf(cli.CodeHTTP, "boot config deletion completed with errors")
 	}
@@ -80,8 +79,14 @@ See ochami-boot(1) for more details.`,
   # Don't confirm deletion
   ochami boot config delete --no-confirm boo-ebf2a27a`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -94,7 +99,7 @@ See ochami-boot(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreBootConfigDelete(cmd, opts, args, bootServiceClient)
+			return runCoreBootConfigDelete(cmd, opts, args, bootServiceClient, rt)
 		},
 	}
 

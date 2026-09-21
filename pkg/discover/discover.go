@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/openchami/schemas/schemas"
+	"github.com/rs/zerolog"
 
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/smd"
 	"github.com/openchami/ochami/pkg/xname"
 )
@@ -25,7 +25,29 @@ import (
 // [Magellan](https://github.com/OpenCHAMI/magellan) would do), except the
 // information is sourced from a file instead of dynamically reaching out to
 // BMCs.
-func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd.RedfishEndpointSliceV2, []smd.EthernetInterface, error) {
+// Option configures discovery helpers without coupling them to CLI runtime
+// state.
+type Option func(*options)
+
+type options struct {
+	logger zerolog.Logger
+}
+
+// WithLogger associates discovery diagnostics with the caller's invocation.
+func WithLogger(logger zerolog.Logger) Option {
+	return func(opts *options) { opts.logger = logger }
+}
+
+func discoveryOptions(opts ...Option) options {
+	settings := options{logger: zerolog.Nop()}
+	for _, opt := range opts {
+		opt(&settings)
+	}
+	return settings
+}
+
+func DiscoveryInfoV2(baseURI string, di DiscoveryItems, opts ...Option) (smd.ComponentSlice, smd.RedfishEndpointSliceV2, []smd.EthernetInterface, error) {
+	logger := discoveryOptions(opts...).logger
 	var (
 		comps  smd.ComponentSlice
 		rfes   smd.RedfishEndpointSliceV2
@@ -50,7 +72,7 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd
 	)
 
 	for _, bmc := range di.BMCs {
-		log.Logger.Debug().Msgf("generating redfish endpoint structure for bmc %s", bmc)
+		logger.Debug().Msgf("generating redfish endpoint structure for bmc %s", bmc)
 
 		// Create SMD RedfishEndpoint for BMC
 		var rfe *smd.RedfishEndpointV2
@@ -76,7 +98,7 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd
 			bmcsInOrder = append(bmcsInOrder, rfe)
 
 			// Create fake Redfish "Manager" for BMC
-			log.Logger.Debug().Msgf("BMC %s: generating fake BMC Manager", rfe.ID)
+			logger.Debug().Msgf("BMC %s: generating fake BMC Manager", rfe.ID)
 			base.Path = "/redfish/v1/Managers/" + rfe.ID
 			m := smd.Manager{
 				System: smd.System{
@@ -88,7 +110,7 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd
 
 			// Create unique identifier for manager
 			if mngerUUID, err := uuid.NewRandom(); err != nil {
-				log.Logger.Warn().Err(err).Msgf("BMC %s: could not generate UUID for fake BMC Manager, it will be zero", rfe.ID)
+				logger.Warn().Err(err).Msgf("BMC %s: could not generate UUID for fake BMC Manager, it will be zero", rfe.ID)
 			} else {
 				m.UUID = mngerUUID.String()
 				rfe.UID = mngerUUID // Redfish UUID will be fake Manager's UUID
@@ -102,14 +124,14 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd
 				IP:          rfe.IPAddress,
 			}
 			m.EthernetInterfaces = append(m.EthernetInterfaces, ifaceBMC)
-			log.Logger.Debug().Msgf("BMC %s: generated manager: %v", rfe.ID, m)
+			logger.Debug().Msgf("BMC %s: generated manager: %v", rfe.ID, m)
 			rfe.Managers = append(rfe.Managers, m)
 		}
 	}
 
 	for _, node := range di.Nodes {
 		// Create SMD component for node
-		log.Logger.Debug().Msgf("generating component structure for node with xname %s", node.Xname)
+		logger.Debug().Msgf("generating component structure for node with xname %s", node.Xname)
 		if _, ok := compMap[node.Xname]; !ok {
 			comp := smd.Component{
 				ID:      node.Xname,
@@ -118,14 +140,14 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd
 				State:   "On",
 				Enabled: true,
 			}
-			log.Logger.Debug().Msgf("adding component %v", comp)
+			logger.Debug().Msgf("adding component %v", comp)
 			compMap[node.Xname] = "present"
 			comps.Components = append(comps.Components, comp)
 		} else {
-			log.Logger.Warn().Msgf("component with xname %s already exists (duplicate?), not adding", node.Xname)
+			logger.Warn().Msgf("component with xname %s already exists (duplicate?), not adding", node.Xname)
 		}
 
-		log.Logger.Debug().Msgf("matching node %s to BMC", node.Xname)
+		logger.Debug().Msgf("matching node %s to BMC", node.Xname)
 
 		// Attempt to match node with BMC
 		bmcSpec, err := node.ResolveBMC()
@@ -135,20 +157,20 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd
 			// 1. node did not define a BMC name/xname to match to, or
 			// 2. an error occurred deriving the BMC xname from the node's xname
 			//
-			log.Logger.Error().Err(err).Msgf("failed to resolve BMC for node %s", node.Xname)
+			logger.Error().Err(err).Msgf("failed to resolve BMC for node %s", node.Xname)
 			continue
 		}
 		rfe, bmcFound := bmcs[bmcSpec]
 		if !bmcFound {
 			// BMC spec not defined
-			log.Logger.Error().Msgf("no such bmc %q defined for node %s", bmcSpec, node.Xname)
+			logger.Error().Msgf("no such bmc %q defined for node %s", bmcSpec, node.Xname)
 			continue
 		}
 
 		// Create fake BMC "System" for node if it doesn't already exist and add to
 		// found BMC's Systems list.
 		if _, ok := systemMap[node.Xname]; !ok {
-			log.Logger.Debug().Msgf("node %s: generating fake BMC System", node.Xname)
+			logger.Debug().Msgf("node %s: generating fake BMC System", node.Xname)
 			base.Path = "/redfish/v1/Systems/" + node.Xname
 
 			s := smd.System{
@@ -158,7 +180,7 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd
 
 			// Create unique identifier for system
 			if sysUUID, err := uuid.NewRandom(); err != nil {
-				log.Logger.Warn().Err(err).Msgf("node %s: could not generate UUID for fake BMC System, it will be zero", node.Xname)
+				logger.Warn().Err(err).Msgf("node %s: could not generate UUID for fake BMC System, it will be zero", node.Xname)
 			} else {
 				s.UUID = sysUUID.String()
 			}
@@ -198,10 +220,10 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd
 			}
 
 			systemMap[node.Xname] = "present"
-			log.Logger.Debug().Msgf("node %s: generated system: %v", node.Xname, s)
+			logger.Debug().Msgf("node %s: generated system: %v", node.Xname, s)
 			rfe.Systems = append(rfe.Systems, s)
 		} else {
-			log.Logger.Debug().Msgf("node %s: fake BMC System already exists, skipping creation", node.Xname)
+			logger.Debug().Msgf("node %s: fake BMC System already exists, skipping creation", node.Xname)
 		}
 	}
 	for _, rfe := range bmcsInOrder {
@@ -221,7 +243,8 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems) (smd.ComponentSlice, smd
 //
 // This function is DEPRECATED and will be removed in a future version. It is
 // here for compatibility.
-func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated) (smd.ComponentSlice, smd.RedfishEndpointSliceV2, []smd.EthernetInterface, error) {
+func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated, opts ...Option) (smd.ComponentSlice, smd.RedfishEndpointSliceV2, []smd.EthernetInterface, error) {
+	logger := discoveryOptions(opts...).logger
 	var (
 		comps  smd.ComponentSlice
 		rfes   smd.RedfishEndpointSliceV2
@@ -240,7 +263,7 @@ func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated) (smd.Compo
 		bmcsInOrder []*smd.RedfishEndpointV2                  // Contains the same objects as the bmcs map. This maintains the order that the objects were created
 	)
 	for _, node := range nl.Nodes {
-		log.Logger.Debug().Msgf("generating component structure for node with xname %s", node.Xname)
+		logger.Debug().Msgf("generating component structure for node with xname %s", node.Xname)
 		if _, ok := compMap[node.Xname]; !ok {
 			comp := smd.Component{
 				ID:      node.Xname,
@@ -249,19 +272,19 @@ func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated) (smd.Compo
 				State:   "On",
 				Enabled: true,
 			}
-			log.Logger.Debug().Msgf("adding component %v", comp)
+			logger.Debug().Msgf("adding component %v", comp)
 			compMap[node.Xname] = "present"
 			comps.Components = append(comps.Components, comp)
 		} else {
-			log.Logger.Warn().Msgf("component with xname %s already exists (duplicate?), not adding", node.Xname)
+			logger.Warn().Msgf("component with xname %s already exists (duplicate?), not adding", node.Xname)
 		}
 
-		log.Logger.Debug().Msgf("generating redfish structure for node with xname %s", node.Xname)
+		logger.Debug().Msgf("generating redfish structure for node with xname %s", node.Xname)
 
 		// Differentiate node Xname from BMC Xname
 		bmcXname, err := xname.NodeXnameToBMCXname(node.Xname)
 		if err != nil {
-			log.Logger.Warn().Err(err).Msgf("node %s: falling back to node xname as BMC xname", node.Xname)
+			logger.Warn().Err(err).Msgf("node %s: falling back to node xname as BMC xname", node.Xname)
 			bmcXname = node.Xname
 		}
 
@@ -284,7 +307,7 @@ func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated) (smd.Compo
 
 		// Create fake BMC "System" for node if it doesn't already exist
 		if _, ok := systemMap[node.Xname]; !ok {
-			log.Logger.Debug().Msgf("node %s: generating fake BMC System", node.Xname)
+			logger.Debug().Msgf("node %s: generating fake BMC System", node.Xname)
 			base.Path = "/redfish/v1/Systems/" + node.Xname
 
 			s := smd.System{
@@ -294,7 +317,7 @@ func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated) (smd.Compo
 
 			// Create unique identifier for system
 			if sysUUID, err := uuid.NewRandom(); err != nil {
-				log.Logger.Warn().Err(err).Msgf("node %s: could not generate UUID for fake BMC System, it will be zero", node.Xname)
+				logger.Warn().Err(err).Msgf("node %s: could not generate UUID for fake BMC System, it will be zero", node.Xname)
 			} else {
 				s.UUID = sysUUID.String()
 			}
@@ -334,16 +357,16 @@ func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated) (smd.Compo
 			}
 
 			systemMap[node.Xname] = "present"
-			log.Logger.Debug().Msgf("node %s: generated system: %v", node.Xname, s)
+			logger.Debug().Msgf("node %s: generated system: %v", node.Xname, s)
 			rfe.Systems = append(rfe.Systems, s)
 		} else {
-			log.Logger.Debug().Msgf("node %s: fake BMC System already exists, skipping creation", node.Xname)
+			logger.Debug().Msgf("node %s: fake BMC System already exists, skipping creation", node.Xname)
 		}
 
 		// Create fake BMC "Manager" for node if it doesn't already exist
 		// BMC interface
 		if _, ok := managerMap[bmcXname]; !ok {
-			log.Logger.Debug().Msgf("BMC %s: generating fake BMC Manager", bmcXname)
+			logger.Debug().Msgf("BMC %s: generating fake BMC Manager", bmcXname)
 			base.Path = "/redfish/v1/Managers/" + bmcXname
 
 			m := smd.Manager{
@@ -356,7 +379,7 @@ func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated) (smd.Compo
 
 			// Create unique identifier for manager
 			if mngerUUID, err := uuid.NewRandom(); err != nil {
-				log.Logger.Warn().Err(err).Msgf("BMC %s: could not generate UUID for fake BMC Manager, it will be zero", bmcXname)
+				logger.Warn().Err(err).Msgf("BMC %s: could not generate UUID for fake BMC Manager, it will be zero", bmcXname)
 			} else {
 				m.UUID = mngerUUID.String()
 				rfe.UID = mngerUUID // Redfish UUID will be fake Manager's UUID
@@ -371,10 +394,10 @@ func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated) (smd.Compo
 			}
 			m.EthernetInterfaces = append(m.EthernetInterfaces, ifaceBMC)
 			managerMap[bmcXname] = "present"
-			log.Logger.Debug().Msgf("BMC %s: generated manager: %v", bmcXname, m)
+			logger.Debug().Msgf("BMC %s: generated manager: %v", bmcXname, m)
 			rfe.Managers = append(rfe.Managers, m)
 		} else {
-			log.Logger.Debug().Msgf("BMC %s: fake BMC Manager already exists, skipping creation", bmcXname)
+			logger.Debug().Msgf("BMC %s: fake BMC Manager already exists, skipping creation", bmcXname)
 		}
 	}
 	for _, rfe := range bmcsInOrder {

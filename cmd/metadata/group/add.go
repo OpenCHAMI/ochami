@@ -11,7 +11,6 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 
@@ -25,11 +24,12 @@ type metadataGroupAddOptions struct {
 	Envelope bool
 }
 
-// runCoreMetadataGroupAdd contains the core logic for the metadata group add command.
+// runCoreMetadataGroupAddWithRuntime contains the core logic for the metadata group add command.
 // It takes the parsed options and performs the actual work of adding groups.
-func runCoreMetadataGroupAdd(cmd *cobra.Command, opts *metadataGroupAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+// Runtime-aware version.
+func runCoreMetadataGroupAddWithRuntime(cmd *cobra.Command, opts *metadataGroupAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -41,41 +41,41 @@ func runCoreMetadataGroupAdd(cmd *cobra.Command, opts *metadataGroupAddOptions, 
 		// Read group data
 		groups := []metadata_service_client.CreateGroupRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[metadata_service_client.CreateGroupRequest](cmd, &groups); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service_client.CreateGroupRequest](rt, cmd, &groups); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateGroupRequest](cmd, &groups); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service_client.CreateGroupRequest](rt, cmd, &groups); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = metadataServiceClient.AddGroups(cmd.Context(), cli.Token, groups)
+		results = metadataServiceClient.AddGroups(cmd.Context(), rt.Token, groups)
 	} else {
 		// Use simple API (spec)
 
 		// Read group data
 		groups := []metadata_service.GroupSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[metadata_service.GroupSpec](cmd, &groups); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[metadata_service.GroupSpec](rt, cmd, &groups); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[metadata_service.GroupSpec](cmd, &groups); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[metadata_service.GroupSpec](rt, cmd, &groups); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = metadataServiceClient.AddGroupSpecs(cmd.Context(), cli.Token, groups)
+		results = metadataServiceClient.AddGroupSpecs(cmd.Context(), rt.Token, groups)
 	}
 
 	// Deal with per-request errors
 	var reqErrorsOccurred = false
 	for _, err := range results.Errors() {
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to add group")
+			rt.Logger.Error().Err(err).Msg("failed to add group")
 			reqErrorsOccurred = true
 		}
 	}
@@ -83,7 +83,7 @@ func runCoreMetadataGroupAdd(cmd *cobra.Command, opts *metadataGroupAddOptions, 
 	for _, group := range results.Values() {
 		names = append(names, group.Metadata.Name)
 	}
-	log.Logger.Debug().Msgf("groups created: %q", names)
+	rt.Logger.Debug().Msgf("groups created: %q", names)
 	if reqErrorsOccurred {
 		return cli.Errorf(cli.CodeHTTP, "group addition completed with errors")
 	}
@@ -139,6 +139,7 @@ See ochami-metadata(1) for more details.`,
    - name: nfs-client-group
      template: |
        #cloud-config
+       package_update: true
        packages:
          - nfs-common
    - name: nfs-server-group
@@ -172,8 +173,14 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | ochami metadata group add -f yaml -d @-
   echo '<yaml_data>' | ochami metadata group add -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -186,14 +193,14 @@ See ochami-metadata(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreMetadataGroupAdd(cmd, opts, metadataServiceClient)
+			return runCoreMetadataGroupAddWithRuntime(cmd, opts, metadataServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	metadataGroupAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	metadataGroupAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(metadataGroupAddCmd)
 	metadataGroupAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return metadataGroupAddCmd

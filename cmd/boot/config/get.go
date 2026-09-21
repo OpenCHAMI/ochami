@@ -5,8 +5,6 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -25,35 +23,43 @@ See ochami-boot(1) for more details.`,
 		Example: `  # Get boot configuration for node
   ochami boot config get boo-ebf2a27a`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			uid := args[0]
 
 			// Make request
-			outBytes, err := bootServiceClient.GetBootConfig(cmd.Context(), cli.Token, cli.FormatOutput, uid)
+			outBytes, err := bootServiceClient.GetBootConfig(cmd.Context(), rt.Token, rt.FormatOutput, uid)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get boot configuration for %s: %w", uid, err)
 			}
 
 			// Print output
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	bootConfigGetCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(bootConfigGetCmd)
 	bootConfigGetCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return bootConfigGetCmd

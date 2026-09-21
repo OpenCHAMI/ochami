@@ -15,7 +15,10 @@ import (
 // TestVersion verifies "ochami version" exits successfully and prints the
 // version metadata fields to stdout.
 func TestVersion(t *testing.T) {
-	res := runOchami(t, "version", "--ignore-config")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "version", "--ignore-config")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}

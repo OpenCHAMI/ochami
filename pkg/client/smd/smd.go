@@ -15,7 +15,6 @@ import (
 	"github.com/openchami/schemas/schemas"
 	"github.com/openchami/schemas/schemas/csm"
 
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 )
 
@@ -309,7 +308,7 @@ func (sc *SMDClient) GetComponentEndpoints(ctx context.Context, token string, xn
 	return executeBatch(ctx, xnames, func(ctx context.Context, xname string) (client.HTTPEnvelope, error) {
 		henv, err := sc.GetData(ctx, SMDRelpathComponentEndpoints+"/"+xname, "", headers)
 		if err != nil {
-			log.Logger.Debug().Err(err).Msg("failed to get component endpoint")
+			sc.Logger.Debug().Err(err).Msg("failed to get component endpoint")
 			return henv, fmt.Errorf("GetComponentEndpoints(): failed to GET component endpoint from SMD: %w", err)
 		}
 		return henv, nil
@@ -738,7 +737,7 @@ func (sc *SMDClient) PatchEthernetInterfaces(ctx context.Context, eis []Ethernet
 	return executeBatch(ctx, eis, func(ctx context.Context, ei EthernetInterface) (client.HTTPEnvelope, error) {
 		if ei.ID == "" {
 			if ei.MACAddress != "" {
-				log.Logger.Warn().Msgf("PatchEthernetInterfaces(): ID for ethernet interface is blank, attempting to adapt from MAC address (%s)", ei.MACAddress)
+				sc.Logger.Warn().Msgf("PatchEthernetInterfaces(): ID for ethernet interface is blank, attempting to adapt from MAC address (%s)", ei.MACAddress)
 				newID := strings.ToLower(ei.MACAddress)
 				newID = strings.ReplaceAll(newID, ":", "")
 				newID = strings.ReplaceAll(newID, "-", "")

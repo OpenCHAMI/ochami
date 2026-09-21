@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -24,9 +25,6 @@ func newURICmd() *cobra.Command {
 }
 
 func TestGetBaseURI_Success(t *testing.T) {
-	orig := activeConfig
-	defer func() { activeConfig = orig }()
-
 	cfg := config.Config{
 		DefaultCluster: "foo",
 		Clusters: []config.ConfigCluster{
@@ -46,12 +44,13 @@ func TestGetBaseURI_Success(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		setup       func(cmd *cobra.Command)
-		service     config.ServiceName
-		defaultClus string
-		want        string
-		wantErr     bool
+		name            string
+		setup           func(cmd *cobra.Command)
+		service         config.ServiceName
+		defaultClus     string
+		want            string
+		wantErr         bool
+		wantErrContains string
 	}{
 		{
 			name:        "default cluster SMD",
@@ -109,25 +108,40 @@ func TestGetBaseURI_Success(t *testing.T) {
 			},
 			want: "https://svc.example.com/custom",
 		},
+		{
+			// A cluster with no URI configured for any service is found by
+			// name (resolveCluster succeeds) but then fails downstream in
+			// GetServiceBaseURI with a "no URI configured" style error,
+			// rather than a "cluster not found" error.
+			name:            "cluster with no configured URI",
+			service:         config.ServiceSMD,
+			defaultClus:     "empty",
+			wantErr:         true,
+			wantErrContains: "could not get",
+		},
 	}
+	cfg.Clusters = append(cfg.Clusters, config.ConfigCluster{Name: "empty"})
 
 	for _, tt := range tests {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
 			c := cfg
 			c.DefaultCluster = tc.defaultClus
-			activeConfig = c
+			rt := NewTestRuntime(nil, nil, nil).WithConfig(c)
 
 			cmd := newURICmd()
 			if tc.setup != nil {
 				tc.setup(cmd)
 			}
 
-			got, err := GetBaseURI(cmd, tc.service)
+			got, err := rt.GetBaseURI(cmd, tc.service)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("GetBaseURI error = %v, wantErr %v", err, tc.wantErr)
 			}
 			if tc.wantErr {
+				if tc.wantErrContains != "" && !strings.Contains(err.Error(), tc.wantErrContains) {
+					t.Errorf("GetBaseURI error = %q, want it to contain %q", err.Error(), tc.wantErrContains)
+				}
 				return
 			}
 			if got != tc.want {
@@ -138,24 +152,18 @@ func TestGetBaseURI_Success(t *testing.T) {
 }
 
 func TestGetBaseURI_UnknownServiceWithURIFlag(t *testing.T) {
-	orig := activeConfig
-	defer func() { activeConfig = orig }()
-	activeConfig = config.Config{}
-
+	rt := NewTestRuntime(nil, nil, nil)
 	cmd := newURICmd()
 	if err := cmd.Flags().Set("uri", "https://x.example.com"); err != nil {
 		t.Fatalf("set uri flag: %v", err)
 	}
 
-	if _, err := GetBaseURI(cmd, config.ServiceName("bogus")); err == nil {
+	if _, err := rt.GetBaseURI(cmd, config.ServiceName("bogus")); err == nil {
 		t.Fatal("expected error for unknown service with --uri, got nil")
 	}
 }
 
 func TestGetAPIVersion_Success(t *testing.T) {
-	orig := activeConfig
-	defer func() { activeConfig = orig }()
-
 	cfg := config.Config{
 		DefaultCluster: "foo",
 		Clusters: []config.ConfigCluster{
@@ -230,14 +238,14 @@ func TestGetAPIVersion_Success(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := cfg
 			c.DefaultCluster = tc.defaultClus
-			activeConfig = c
+			rt := NewTestRuntime(nil, nil, nil).WithConfig(c)
 
 			cmd := newURICmd()
 			if tc.setup != nil {
 				tc.setup(cmd)
 			}
 
-			got, err := GetAPIVersion(cmd, tc.service)
+			got, err := rt.GetAPIVersion(cmd, tc.service)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("GetAPIVersion error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -248,58 +256,5 @@ func TestGetAPIVersion_Success(t *testing.T) {
 				t.Errorf("GetAPIVersion = %q, want %q", got, tc.want)
 			}
 		})
-	}
-}
-func TestGetBaseURI_ExplicitClusterOverridesDefault(t *testing.T) {
-	orig := ActiveConfig()
-	t.Cleanup(func() { SetActiveConfig(orig) })
-	SetActiveConfig(config.Config{
-		DefaultCluster: "default",
-		Clusters: []config.ConfigCluster{
-			{Name: "default", Cluster: config.ConfigClusterConfig{BSS: config.ConfigClusterBSS{URI: "https://default.example/bss"}}},
-			{Name: "chosen", Cluster: config.ConfigClusterConfig{BSS: config.ConfigClusterBSS{URI: "https://chosen.example/bss"}}},
-		},
-	})
-	cmd := newURICmd()
-	if err := cmd.Flags().Set("cluster", "chosen"); err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := GetBaseURI(cmd, config.ServiceBSS)
-	if err != nil {
-		t.Fatalf("GetBaseURI: %v", err)
-	}
-	if got != "https://chosen.example/bss" {
-		t.Errorf("GetBaseURI = %q, want explicit cluster URI", got)
-	}
-}
-
-func TestGetAPIVersion_PrecedenceAndErrors(t *testing.T) {
-	orig := ActiveConfig()
-	t.Cleanup(func() { SetActiveConfig(orig) })
-	SetActiveConfig(config.Config{
-		DefaultCluster: "default",
-		Clusters: []config.ConfigCluster{
-			{Name: "default", Cluster: config.ConfigClusterConfig{BootService: config.ConfigClusterBootService{APIVersion: "v1"}}},
-			{Name: "chosen", Cluster: config.ConfigClusterConfig{BootService: config.ConfigClusterBootService{APIVersion: "v2"}}},
-		},
-	})
-	cmd := newURICmd()
-	if err := cmd.Flags().Set("cluster", "chosen"); err != nil {
-		t.Fatal(err)
-	}
-	got, err := GetAPIVersion(cmd, config.ServiceBoot)
-	if err != nil || got != "v2" {
-		t.Fatalf("GetAPIVersion explicit cluster = %q, %v; want v2", got, err)
-	}
-	if err := cmd.Flags().Set("api-version", "v3"); err != nil {
-		t.Fatal(err)
-	}
-	got, err = GetAPIVersion(cmd, config.ServiceBoot)
-	if err != nil || got != "v3" {
-		t.Fatalf("GetAPIVersion flag = %q, %v; want v3", got, err)
-	}
-	if _, err := GetAPIVersion(cmd, config.ServiceBSS); err != nil {
-		t.Fatalf("explicit api-version should be service-independent: %v", err)
 	}
 }

@@ -25,7 +25,7 @@ func TestDiscoverStatic_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload,
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload,
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

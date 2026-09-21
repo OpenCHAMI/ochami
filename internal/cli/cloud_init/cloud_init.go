@@ -14,6 +14,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/cloud_init"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 type CIFlagHeaderWhen string
@@ -106,26 +107,37 @@ func CompletionHeaderWhen(cmd *cobra.Command, args []string, toComplete string) 
 	return helpSlice, cobra.ShellCompDirectiveDefault
 }
 
-// GetClient sets up the cloud-init client with the cloud-init base URI
-// and certificates (if necessary) and returns it. This function is used by
-// each subcommand.
-func GetClient(cmd *cobra.Command) (*cloud_init.CloudInitClient, error) {
+// GetClientWithRuntime sets up the cloud-init client with the cloud-init base URI
+// and certificates (if necessary) and returns it. This function uses the provided runtime for configuration.
+func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*cloud_init.CloudInitClient, error) {
 	// Without a base URI, we cannot do anything
-	cloudInitbaseURI, err := cli.GetBaseURICloudInit(cmd)
+	cloudInitbaseURI, err := rt.GetBaseURI(cmd, config.ServiceCloudInit)
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for cloud-init: %w", err)
 	}
 
 	// Create client to make request to cloud-init
-	cloudInitClient, err := cloud_init.NewClient(cloudInitbaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
+	cloudInitClient, err := cloud_init.NewClient(cloudInitbaseURI, client.WithInsecure(rt.Insecure), client.WithShowToken(rt.ShowToken(cmd)), client.WithLogger(rt.Logger))
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeGeneric, "error creating new cloud-init client: %w", err)
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	if err := cli.UseCACert(cloudInitClient.OchamiClient); err != nil {
+	if err := rt.UseCACert(cloudInitClient.OchamiClient); err != nil {
 		return nil, err
 	}
 
 	return cloudInitClient, nil
+}
+
+// GetClient sets up the cloud-init client with the cloud-init base URI
+// and certificates (if necessary) and returns it. This function uses the runtime from context.
+// Since cmd/root.go always injects a runtime into context, this will always succeed.
+func GetClient(cmd *cobra.Command) (*cloud_init.CloudInitClient, error) {
+	// Get runtime from context (always available since cmd/root.go injects it)
+	rt, err := cli.RuntimeFromCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return GetClientWithRuntime(cmd, rt)
 }

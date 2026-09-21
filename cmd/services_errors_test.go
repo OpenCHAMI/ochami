@@ -19,13 +19,15 @@ import (
 
 // TestPCSStatusShow_Empty verifies that an empty status array resolves to
 // CodeGeneric (the "no status found" case).
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestPCSStatusShow_Empty(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"status":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "show", "--ignore-config", "--uri", srv.URL, "x3000c0s15b0")
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "status", "show", "--uri", srv.URL, "x3000c0s15b0")
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -37,6 +39,8 @@ func TestPCSStatusShow_Empty(t *testing.T) {
 
 // TestPCSTransitionStart_InvalidOp verifies that an invalid operation argument
 // is a usage error and no request is made.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestPCSTransitionStart_InvalidOp(t *testing.T) {
 	requestMade := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -44,8 +48,8 @@ func TestPCSTransitionStart_InvalidOp(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "start",
-		"--ignore-config", "--uri", srv.URL, "--xname", "x0c0s0b0n0",
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "start",
+		"--uri", srv.URL, "--xname", "x0c0s0b0n0",
 		"bogus-operation")
 
 	if res.err == nil {
@@ -62,12 +66,14 @@ func TestPCSTransitionStart_InvalidOp(t *testing.T) {
 // TestCloudInitServiceStatus_NotRunning verifies that when the service is
 // unreachable, "cloud-init service status" reports not running and resolves to
 // a non-zero exit code.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestCloudInitServiceStatus_NotRunning(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
 	srv.Close() // connection refused
 
-	res := runOchami(t, "cloud-init", "service", "status", "--ignore-config", "--uri", url)
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "service", "status", "--uri", url)
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -84,13 +90,15 @@ func TestCloudInitServiceStatus_NotRunning(t *testing.T) {
 // from the metadata service resolves to a non-success exit code. The metadata
 // client wraps an upstream library, so we assert exit-code behavior rather than
 // the exact request path.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestMetadataGroupList_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "metadata", "group", "list", "--ignore-config", "--uri", srv.URL, "--token", "faketoken")
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "group", "list", "--uri", srv.URL, "--token", "faketoken")
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

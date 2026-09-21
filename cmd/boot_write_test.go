@@ -41,7 +41,7 @@ func TestBootAdd_Success(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "add",
+			res := runOchamiWithRuntime(t, "boot", typ, "add",
 				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 				"-d", bootAddPayload(typ))
 			if res.err != nil {
@@ -62,7 +62,7 @@ func TestBootAdd_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "add",
+			res := runOchamiWithRuntime(t, "boot", typ, "add",
 				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 				"-d", bootAddPayload(typ))
 			if res.err == nil {
@@ -84,7 +84,7 @@ func TestBootSet_Success(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "set", "some-uid",
+			res := runOchamiWithRuntime(t, "boot", typ, "set", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 				"-d", bootAddPayload(typ))
 			if res.err != nil {
@@ -106,7 +106,7 @@ func TestBootPatch_Success(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "patch", "some-uid",
+			res := runOchamiWithRuntime(t, "boot", typ, "patch", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
 				"-d", bootAddPayload(typ))
 			if res.err != nil {

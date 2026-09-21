@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
@@ -23,38 +22,38 @@ type bootBmcDeleteOptions struct {
 
 // runCoreBootBmcDelete contains the core logic for the boot bmc delete command.
 // It takes the parsed options and performs the actual work of deleting BMCs.
-func runCoreBootBmcDelete(cmd *cobra.Command, opts *bootBmcDeleteOptions, args []string, bootServiceClient *boot_service.BootServiceClient) error {
+func runCoreBootBmcDelete(cmd *cobra.Command, opts *bootBmcDeleteOptions, args []string, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
-		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 		} else if !respDelete {
-			log.Logger.Info().Msg("user aborted BMC deletion")
+			rt.Logger.Info().Msg("user aborted BMC deletion")
 			return nil
 		} else {
-			log.Logger.Debug().Msg("user answered affirmatively to delete BMC(s)")
+			rt.Logger.Debug().Msg("user answered affirmatively to delete BMC(s)")
 		}
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Send off requests
-	results := bootServiceClient.DeleteBMCs(cmd.Context(), cli.Token, args)
+	results := bootServiceClient.DeleteBMCs(cmd.Context(), rt.Token, args)
 
 	// Deal with per-request errors
 	var errorsOccurred = false
 	for _, err := range results.Errors() {
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to delete BMC")
+			rt.Logger.Error().Err(err).Msg("failed to delete BMC")
 			errorsOccurred = true
 		}
 	}
-	log.Logger.Debug().Msgf("BMCs deleted: %+v", results.Values())
+	rt.Logger.Debug().Msgf("BMCs deleted: %+v", results.Values())
 	if errorsOccurred {
 		return cli.Errorf(cli.CodeHTTP, "BMC deletion completed with errors")
 	}
@@ -80,8 +79,14 @@ See ochami-boot(1) for more details.`,
   # Don't confirm deletion
   ochami boot bmc delete --no-confirm bmc-773d99bf`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -94,7 +99,7 @@ See ochami-boot(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreBootBmcDelete(cmd, opts, args, bootServiceClient)
+			return runCoreBootBmcDelete(cmd, opts, args, bootServiceClient, rt)
 		},
 	}
 

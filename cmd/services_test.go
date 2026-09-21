@@ -23,7 +23,10 @@ import (
 // --- PCS ---
 
 // TestPCSTransitionList_Success verifies "pcs transition list" issues GET /transitions.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestPCSTransitionList_Success(t *testing.T) {
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -32,7 +35,7 @@ func TestPCSTransitionList_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "list", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "list", "--uri", srv.URL)
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -44,7 +47,10 @@ func TestPCSTransitionList_Success(t *testing.T) {
 
 // TestPCSStatusShow_Success verifies "pcs status show <xname>" issues GET /power-status
 // and prints the first status entry.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestPCSStatusShow_Success(t *testing.T) {
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -52,7 +58,7 @@ func TestPCSStatusShow_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "show", "--ignore-config", "--uri", srv.URL, "x3000c0s15b0")
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "status", "show", "--uri", srv.URL, "x3000c0s15b0")
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -69,6 +75,8 @@ func TestPCSStatusShow_Success(t *testing.T) {
 
 // TestCloudInitDefaultsGet verifies "cloud-init defaults get" issues GET
 // /admin/cluster-defaults.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestCloudInitDefaultsGet(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +85,7 @@ func TestCloudInitDefaultsGet(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "defaults", "get", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "defaults", "get", "--uri", srv.URL)
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -89,6 +97,8 @@ func TestCloudInitDefaultsGet(t *testing.T) {
 
 // TestCloudInitServiceStatus_Running verifies that "cloud-init service status"
 // exits successfully when the /version endpoint responds OK.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestCloudInitServiceStatus_Running(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +107,7 @@ func TestCloudInitServiceStatus_Running(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "service", "status", "--uri", srv.URL)
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -114,6 +124,8 @@ func TestCloudInitServiceStatus_Running(t *testing.T) {
 
 // TestMetadataGroupList_Success verifies that "metadata group list" exits
 // successfully when the service returns a valid list response.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestMetadataGroupList_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -121,7 +133,7 @@ func TestMetadataGroupList_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "metadata", "group", "list", "--ignore-config", "--uri", srv.URL, "--token", "faketoken")
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "group", "list", "--uri", srv.URL, "--token", "faketoken")
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -133,6 +145,8 @@ func TestMetadataGroupList_Success(t *testing.T) {
 
 // TestPCSTransitionShow_Success verifies "pcs transition show <id>" issues GET
 // /transitions/<id>.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestPCSTransitionShow_Success(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +155,7 @@ func TestPCSTransitionShow_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "show", "--ignore-config", "--uri", srv.URL, "abc-123")
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "show", "--uri", srv.URL, "abc-123")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -152,6 +166,8 @@ func TestPCSTransitionShow_Success(t *testing.T) {
 
 // TestPCSTransitionAbort_Success verifies "pcs transition abort <id>" issues DELETE
 // /transitions/<id>.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestPCSTransitionAbort_Success(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -160,7 +176,7 @@ func TestPCSTransitionAbort_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "abort", "--ignore-config", "--uri", srv.URL, "abc-123")
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "abort", "--uri", srv.URL, "abc-123")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -171,6 +187,8 @@ func TestPCSTransitionAbort_Success(t *testing.T) {
 
 // TestPCSTransitionStart_Success verifies "pcs transition start <op> --xname ..." issues
 // POST /transitions.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestPCSTransitionStart_Success(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +198,7 @@ func TestPCSTransitionStart_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "start", "--ignore-config", "--uri", srv.URL,
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "start", "--uri", srv.URL,
 		"--xname", "x0c0s0b0n0", "on")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -192,6 +210,8 @@ func TestPCSTransitionStart_Success(t *testing.T) {
 
 // TestPCSTransitionMonitor_Success verifies "pcs transition monitor <id>" polls
 // /transitions/<id> and exits when the transition reports "completed".
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestPCSTransitionMonitor_Success(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -202,7 +222,7 @@ func TestPCSTransitionMonitor_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "transition", "monitor", "--ignore-config", "--uri", srv.URL, "abc-123")
+	res := runOchamiWithRuntime(t, "--ignore-config", "pcs", "transition", "monitor", "--uri", srv.URL, "abc-123")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -238,7 +258,7 @@ func TestRemainingServicePaths(t *testing.T) {
 			defer srv.Close()
 
 			args := append(append([]string{}, tc.args...), "--ignore-config", "--uri", srv.URL)
-			res := runOchami(t, args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}

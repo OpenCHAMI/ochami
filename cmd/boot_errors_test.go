@@ -18,6 +18,9 @@ import (
 // TestBootList_HTTPError verifies that an unsuccessful HTTP response from the
 // boot service resolves to a non-success exit code for the "list" subcommands.
 func TestBootList_HTTPError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -26,7 +29,7 @@ func TestBootList_HTTPError(t *testing.T) {
 	for _, tc := range bootListCases {
 		t.Run(tc.name, func(t *testing.T) {
 			args := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "faketoken")
-			res := runOchami(t, args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -40,6 +43,9 @@ func TestBootList_HTTPError(t *testing.T) {
 // TestBootGet_HTTPError verifies that an unsuccessful HTTP response from a
 // "<type> get" resolves to a non-success exit code for each resource type.
 func TestBootGet_HTTPError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -47,7 +53,7 @@ func TestBootGet_HTTPError(t *testing.T) {
 
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
-			res := runOchami(t, "boot", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -61,7 +67,10 @@ func TestBootGet_HTTPError(t *testing.T) {
 // TestBootConfigDelete_NoArgs verifies that "boot config delete" with no UID
 // arguments is a usage error (MinimumNArgs(1)).
 func TestBootConfigDelete_NoArgs(t *testing.T) {
-	res := runOchami(t, "boot", "config", "delete", "--ignore-config", "--uri", "http://127.0.0.1:0", "--no-confirm")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "boot", "config", "delete", "--uri", "http://127.0.0.1:0", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}

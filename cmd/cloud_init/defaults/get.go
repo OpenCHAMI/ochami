@@ -6,8 +6,6 @@
 package defaults
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -29,37 +27,45 @@ func newCmdDefaultsGet() *cobra.Command {
 See ochami-cloud-init(1) for more details.`,
 		Example: `  ochami cloud-init defaults get`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Get data
-			henv, err := cloudInitClient.GetDefaults(cmd.Context(), cli.Token)
+			henv, err := cloudInitClient.GetDefaults(cmd.Context(), rt.Token)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to get defaults: %w", err)
 			}
 
 			// Print in desired format
-			outBytes, err := client.FormatBody(henv.Body, cli.FormatOutput)
+			outBytes, err := client.FormatBody(henv.Body, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	defaultsGetCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output")
 
+	cli.AddFormatOutputFlag(defaultsGetCmd)
 	defaultsGetCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return defaultsGetCmd

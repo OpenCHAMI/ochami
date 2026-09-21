@@ -41,6 +41,9 @@ const discoveryPayload = `{
 // issuing POST requests for the discovered structures, and exits successfully
 // when the server accepts them.
 func TestDiscoverStatic_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	sawPost := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
@@ -52,7 +55,7 @@ func TestDiscoverStatic_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload,
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload,
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -65,13 +68,16 @@ func TestDiscoverStatic_Success(t *testing.T) {
 // TestDiscoverStatic_Overwrite verifies the --overwrite path, which PUTs/PATCHes
 // existing structures instead of only POSTing.
 func TestDiscoverStatic_Overwrite(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload, "--overwrite",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)

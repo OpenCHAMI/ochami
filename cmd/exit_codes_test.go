@@ -100,7 +100,7 @@ func TestGetClient_NoBaseURI(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an error without a base URI, got nil")
 			}
@@ -165,7 +165,7 @@ clusters:
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append([]string{"--config", cfg}, args...)
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an auth error, got nil")
 			}
@@ -196,7 +196,7 @@ func TestUseCACert_Invalid(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"--cacert", "/no/such/ca.pem")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an error for invalid --cacert, got nil")
 			}
@@ -247,7 +247,7 @@ func TestServiceCommands_NetworkError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(tc.args, "--ignore-config", "--uri", url, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a network error, got nil")
 			}
@@ -288,7 +288,7 @@ func TestServiceCommands_HTTPError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an HTTP error, got nil")
 			}
@@ -335,7 +335,7 @@ func TestGetClient_UseCACertInvalid(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"--cacert", "/no/such/ca.pem")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an error for invalid --cacert, got nil")
 			}
@@ -372,7 +372,7 @@ func TestMalformedPayloadAcrossCommands(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t", "-d", "not json")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a payload error, got nil")
 			}
@@ -410,7 +410,7 @@ func TestDataWithExtraArgsAcrossCommands(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "t", "-d", tc.data, "extra-arg")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -448,7 +448,7 @@ func TestWriteCommands_NetworkError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", url, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a network error, got nil")
 			}
@@ -492,7 +492,7 @@ func TestMetadataBootWrite_NetworkError(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			full := append(args, "--ignore-config", "--uri", url, "--token", "t")
-			res := runOchami(t, full...)
+			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected a network error, got nil")
 			}

@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/smd"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -66,27 +65,33 @@ See ochami-smd(1) for more details.`,
 				}
 			} else {
 				if len(args) > 0 {
-					log.Logger.Warn().Msgf("raw data passed, ignoring extra arguments: %v", args)
+					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring extra arguments: %v", args)
 				}
 			}
 
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			var compSlice smd.ComponentSlice
 			if cmd.Flag("data").Changed {
-				if err := cli.HandlePayload(cmd, &compSlice); err != nil {
+				if err := rt.HandlePayload(cmd, &compSlice); err != nil {
 					return err
 				}
 			} else {
@@ -99,7 +104,7 @@ See ochami-smd(1) for more details.`,
 				}
 				comp.Enabled, err = cmd.Flags().GetBool("enabled")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to retrieve flag 'enabled', defaulting to true")
+					rt.Logger.Error().Err(err).Msg("failed to retrieve flag 'enabled', defaulting to true")
 					comp.Enabled = true
 				}
 
@@ -107,10 +112,9 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send off request
-			_, err = smdClient.PostComponents(cmd.Context(), compSlice, cli.Token)
+			_, err = smdClient.PostComponents(cmd.Context(), compSlice, rt.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "SMD component request yielded unsuccessful HTTP response", "failed to add component(s) to SMD")
-
 			}
 
 			return nil
@@ -123,8 +127,8 @@ See ochami-smd(1) for more details.`,
 	componentAddCmd.Flags().String("role", "Compute", "role of new component")
 	componentAddCmd.Flags().String("arch", "X86", "CPU architecture of new component")
 	componentAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	componentAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(componentAddCmd)
 	componentAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	componentAddCmd.MarkFlagsMutuallyExclusive("state", "data")

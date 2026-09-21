@@ -10,20 +10,19 @@ package cmd
 // request shape and the resolved process exit code (via cli.ExitCode) that the
 // command's returned error maps to. Config file reading is disabled with
 // --ignore-config so tests never touch a user's real configuration.
+//
+// All test helpers now use runtime-based execution for better test isolation
+// and to enable parallel test execution.
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"io"
 	"net/http"
-	"net/http/httptest"
-	"os"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/pkg/format"
 )
 
 func writeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
@@ -35,157 +34,140 @@ func writeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
 
 // cmdResult captures everything a command-level test needs to assert on after
 // running the CLI: the error returned from Execute, the exit code that error
-// resolves to, and whatever the command wrote to os.Stdout. Interactive
-// prompt/error text written via cli.Ios is captured into the same stdout
-// field (see runOchamiWithStdin's cli.SetIOStream call) rather than a
-// separate stream, so an assertion against stdout may also match text a real
-// terminal would show on stderr.
+// resolves to, and whatever the command wrote to the combined stdout/stderr buffer.
 type cmdResult struct {
 	err      error
 	exitCode int
 	stdout   string
 }
 
-// stdoutMu serializes tests that capture os.Stdout. Because commands print
-// directly to os.Stdout (via fmt.Print), and Go runs tests within a package
-// sequentially by default but subtests/parallel tests could interleave, we
-// guard the global swap with a mutex. This also makes runOchamiWithStdin safe
-// to call from a t.Parallel() test today (calls simply serialize through the
-// lock, including the cli.Token reset below) — though none of the tests in
-// this package currently do, since parallelizing them for real requires the
-// per-invocation cli.Runtime from stack/coverage/14-runtime-core-and-command-migration.
-var stdoutMu sync.Mutex
-
-// runOchami executes the ochami root command with the provided arguments and
-// an empty interactive input stream, capturing anything written to
-// os.Stdout during execution. It returns a cmdResult with the command error,
-// the exit code cli.ExitCode maps that error to, and the captured stdout.
+// runOchamiWithRuntime executes the ochami root command with an isolated Runtime,
+// enabling test isolation and parallel test execution. Each test gets its own Runtime
+// instance with isolated I/O streams, eliminating the need for global state manipulation.
 //
 // Callers should generally include "--ignore-config" so the command does not
 // read or create real config files, and "--uri <server.URL>" (on commands that
 // accept it) to target an httptest.Server.
-func runOchami(t *testing.T, args ...string) cmdResult {
+func runOchamiWithRuntime(t *testing.T, args ...string) cmdResult {
 	t.Helper()
-	return runOchamiWithStdin(t, strings.NewReader(""), args...)
+	return runOchamiWithRuntimeEnv(t, nil, args...)
 }
 
-// runOchamiWithStdin is runOchami with an explicit interactive input stream,
-// for commands that prompt (e.g. delete confirmations). Passing stdin as a
-// parameter, rather than through shared package state, keeps concurrent
-// invocations from being able to observe or clobber each other's input.
-func runOchamiWithStdin(t *testing.T, stdin io.Reader, args ...string) cmdResult {
+// runOchamiWithRuntimeEnv is like runOchamiWithRuntime, but installs env as
+// the runtime's Environment when non-nil. NewTestRuntime's environment is
+// hermetic by default, so tests that rely on real process environment
+// variables (e.g. via t.Setenv) must opt in explicitly through this helper.
+func runOchamiWithRuntimeEnv(t *testing.T, env cli.Environment, args ...string) cmdResult {
 	t.Helper()
 
-	stdoutMu.Lock()
-	defer stdoutMu.Unlock()
+	// Create isolated runtime for this test with custom I/O streams
+	// Use a single buffer for both stdout and stderr to capture all command output.
+	// This is important for tests that check for interactive prompts (written to stderr
+	// via rt.Ios.LoopYesNo) in the stdout.
+	var combinedBuf bytes.Buffer
+	stdinReader := strings.NewReader("")
 
-	// Redirect os.Stdout to a pipe so we can capture command output.
-	origStdout := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("failed to create pipe: %v", err)
+	// Create runtime with both stdout and stderr pointing to the same buffer
+	rt := cli.NewTestRuntime(stdinReader, &combinedBuf, &combinedBuf)
+	if env != nil {
+		rt = rt.WithEnvironment(env)
 	}
-	os.Stdout = w
 
-	// Drain the pipe in a goroutine so a command writing more than the pipe
-	// buffer does not deadlock.
-	outCh := make(chan string, 1)
-	go func() {
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, r); err != nil {
-			t.Errorf("copy command output: %v", err)
-		}
-		outCh <- buf.String()
-	}()
-
-	// Reset globals bound to flags via pflag.Value (cli.FormatInput/FormatOutput,
-	// via Flags().VarP) between runs. Unlike cli.Token/CACertPath/Insecure/
-	// ConfigFile (bound with StringVarP/BoolVar, which reset the underlying
-	// variable to its default on every NewRootCmd() call as part of flag
-	// registration), VarP only wraps the existing Value without resetting it,
-	// so a prior test's "--format-output yaml" would otherwise persist and
-	// silently affect every later test in this package that omits the flag.
-	cli.Token = ""
-	cli.FormatInput = format.DataFormatJson
-	cli.FormatOutput = format.DataFormatJson
-
-	// Known limitation: some commands bind other pflag.Value-typed flags the
-	// same VarP way to a var scoped to their own subpackage rather than to
-	// internal/cli (e.g. cmd/pcs/status's powerFilter/mgmtFilter), which is
-	// unexported and so cannot be reset from here. No test in this package
-	// currently exercises one of those flags with a non-default value, so
-	// this is dormant, not observed; a general fix needs the per-invocation
-	// cli.Runtime from stack/coverage/14-runtime-core-and-command-migration,
-	// same as the os.Stdout swap below.
-
-	// Redirect the interactive I/O stream to the same capture pipe so output
-	// written via cli.Ios.Out() (e.g. "rcs console show") and any interactive
-	// prompt text are captured in the returned stdout.
-	restoreIos := cli.SetIOStream(stdin, w, w)
-	defer restoreIos()
-
+	// Create root command with runtime in context
 	rootCmd := NewRootCmd()
+	rootCmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
 	rootCmd.SetArgs(args)
-	// Capture Cobra output as well as command output. This lets tests verify
-	// metacommand usage while preserving a single output assertion surface.
-	rootCmd.SetOut(w)
-	rootCmd.SetErr(w)
+	// Set both Cobra's output streams to the same buffer for consistency
+	rootCmd.SetOut(&combinedBuf)
+	rootCmd.SetErr(&combinedBuf)
 
+	// Execute command - runtime is automatically used via context
 	runErr := rootCmd.Execute()
-
-	// Restore os.Stdout and collect captured output.
-	_ = w.Close()
-	os.Stdout = origStdout
-	captured := <-outCh
-	_ = r.Close()
 
 	return cmdResult{
 		err:      runErr,
 		exitCode: cli.ExitCode(runErr),
-		stdout:   captured,
+		stdout:   combinedBuf.String(),
 	}
 }
 
-// TestRunOchami_ResetsFormatFlagsBetweenCalls verifies that a --format-output
-// passed to one runOchami call does not leak into a later call that omits it.
-// cli.FormatOutput/cli.FormatInput are bound via Flags().VarP, which — unlike
-// cli.Token/CACertPath/Insecure/ConfigFile's StringVarP/BoolVar — only wraps
-// the existing pflag.Value without resetting it on registration, so the
-// underlying package variable would otherwise keep whatever a previous call
-// last set it to.
-//
-// root.go's PersistentPreRunE independently reapplies the configured default
-// format when the invoked command's own --format-output flag wasn't changed,
-// but only for commands that register that flag at all (it looks the flag up
-// on the command and no-ops if not found). "bss service version" reads
-// cli.FormatOutput to format its response but does not expose the flag
-// itself, so it depends entirely on the harness resetting the global; it's
-// used here as the command that would observe a leak if the reset were
-// removed (as "smd component get" also has the flag, that reset would mask
-// the bug this test is meant to catch).
-func TestRunOchami_ResetsFormatFlagsBetweenCalls(t *testing.T) {
-	setupSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
-	}))
-	defer setupSrv.Close()
+// runOchamiWithInputAndRuntime executes the ochami root command with an isolated
+// Runtime and custom stdin input, enabling test isolation and parallel test execution.
+func runOchamiWithInputAndRuntime(t *testing.T, input string, args ...string) cmdResult {
+	t.Helper()
 
-	setupRes := runOchami(t, "smd", "component", "get", "--ignore-config", "--uri", setupSrv.URL, "--format-output", "yaml")
-	if setupRes.err != nil {
-		t.Fatalf("setup: unexpected error: %v (exit %d)", setupRes.err, setupRes.exitCode)
+	// Create isolated runtime for this test with custom I/O streams
+	// Use a single buffer for both stdout and stderr to capture all command output.
+	// This is important for tests that check for interactive prompts (written to stderr
+	// via rt.Ios.LoopYesNo) in the stdout.
+	var combinedBuf bytes.Buffer
+	stdinReader := strings.NewReader(input)
+
+	// Create runtime with both stdout and stderr pointing to the same buffer
+	rt := cli.NewTestRuntime(stdinReader, &combinedBuf, &combinedBuf)
+
+	// Create root command with runtime in context
+	rootCmd := NewRootCmd()
+	rootCmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	rootCmd.SetArgs(args)
+	// Set both Cobra's output streams to the same buffer for consistency
+	rootCmd.SetOut(&combinedBuf)
+	rootCmd.SetErr(&combinedBuf)
+
+	// Execute command
+	runErr := rootCmd.Execute()
+
+	return cmdResult{
+		err:      runErr,
+		exitCode: cli.ExitCode(runErr),
+		stdout:   combinedBuf.String(),
 	}
+}
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"version":"1.0.0"}`)) //nolint:errcheck // test response writes are observed by the client
-	}))
-	defer srv.Close()
+// TestRunOchamiWithRuntime_Basic verifies that the runtime-based test helper
+// works correctly for basic command execution.
+func TestRunOchamiWithRuntime_Basic(t *testing.T) {
+	t.Parallel()
 
-	res := runOchami(t, "bss", "service", "version", "--ignore-config", "--uri", srv.URL)
+	// Test version command which should work without any special setup
+	res := runOchamiWithRuntime(t, "--ignore-config", "version")
+
+	// Version command should succeed
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
-	if !strings.Contains(res.stdout, `"version":"1.0.0"`) {
-		t.Errorf("stdout = %q, want plain JSON (a leaked --format-output yaml from the setup call would render this as YAML instead)", res.stdout)
+
+	// Should have some output
+	if res.stdout == "" {
+		t.Error("expected version output, got empty string")
+	}
+
+	// Output should contain version information
+	if !strings.Contains(res.stdout, "Version:") {
+		t.Errorf("expected output to contain 'Version:', got: %s", res.stdout)
+	}
+}
+
+// TestRunOchamiWithInputAndRuntime_Basic verifies that the runtime-based test
+// helper with input works correctly.
+func TestRunOchamiWithInputAndRuntime_Basic(t *testing.T) {
+	t.Parallel()
+
+	// Test version command with custom input (should be ignored by version)
+	res := runOchamiWithInputAndRuntime(t, "some input", "--ignore-config", "version")
+
+	// Version command should succeed
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+
+	// Should have some output
+	if res.stdout == "" {
+		t.Error("expected version output, got empty string")
+	}
+
+	// Output should contain version information
+	if !strings.Contains(res.stdout, "Version:") {
+		t.Errorf("expected output to contain 'Version:', got: %s", res.stdout)
 	}
 }

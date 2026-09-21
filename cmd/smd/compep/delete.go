@@ -11,7 +11,6 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/smd"
 )
 
@@ -23,31 +22,32 @@ type compepDeleteOptions struct {
 	NoConfirm bool
 }
 
-// runCoreCompepDelete contains the core logic for the smd compep delete command.
+// runCoreCompepDeleteWithRuntime contains the core logic for the smd compep delete command.
 // It takes the parsed options and performs the actual work of deleting component endpoints.
-func runCoreCompepDelete(cmd *cobra.Command, opts *compepDeleteOptions, args []string, smdClient *smd.SMDClient) error {
+// Runtime-aware version.
+func runCoreCompepDeleteWithRuntime(cmd *cobra.Command, opts *compepDeleteOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
-		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 		var respDelete bool
 		var err error
 		if opts.All {
-			respDelete, err = cli.Ios.LoopYesNo("Really delete ALL COMPONENT ENDPOINTS?")
+			respDelete, err = rt.Ios.LoopYesNo("Really delete ALL COMPONENT ENDPOINTS?")
 		} else {
-			respDelete, err = cli.Ios.LoopYesNo("Really delete?")
+			respDelete, err = rt.Ios.LoopYesNo("Really delete?")
 		}
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 		} else if !respDelete {
-			log.Logger.Info().Msg("User aborted component endpoint deletion")
+			rt.Logger.Info().Msg("User aborted component endpoint deletion")
 			return nil
 		} else {
-			log.Logger.Debug().Msg("User answered affirmatively to delete component endpoints")
+			rt.Logger.Debug().Msg("User answered affirmatively to delete component endpoints")
 		}
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -56,7 +56,7 @@ func runCoreCompepDelete(cmd *cobra.Command, opts *compepDeleteOptions, args []s
 	var xnameSlice []string
 	if cmd.Flag("data").Changed {
 		// Use payload file if passed
-		if err := cli.HandlePayload(cmd, &ceSlice); err != nil {
+		if err := rt.HandlePayload(cmd, &ceSlice); err != nil {
 			return err
 		}
 		for _, ce := range ceSlice {
@@ -73,7 +73,7 @@ func runCoreCompepDelete(cmd *cobra.Command, opts *compepDeleteOptions, args []s
 	// Perform deletion
 	if opts.All {
 		// If --all passed, we don't care about any passed arguments
-		_, err := smdClient.DeleteComponentEndpointsAll(cmd.Context(), cli.Token)
+		_, err := smdClient.DeleteComponentEndpointsAll(cmd.Context(), rt.Token)
 		if err != nil {
 			return cli.ClassifyClientError(err,
 				"SMD component endpoint deletion yielded unsuccessful HTTP response",
@@ -81,10 +81,10 @@ func runCoreCompepDelete(cmd *cobra.Command, opts *compepDeleteOptions, args []s
 		}
 	} else {
 		// If --all not passed, pass argument list to deletion logic
-		results := smdClient.DeleteComponentEndpoints(cmd.Context(), cli.Token, xnameSlice...)
-		// Since smdClient.DeleteComponentEndpoints does the deletion iteratively, we need to
-		// deal with each error that might have occurred.
-		if err := cli.AggregateItemErrors(results.Errors(), "SMD component endpoint deletion"); err != nil {
+		results := smdClient.DeleteComponentEndpoints(cmd.Context(), rt.Token, xnameSlice...)
+		// Since smdClient.DeleteComponentEndpoints does the deletion iteratively, we need to deal with
+		// each error that might have occurred.
+		if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "SMD component endpoint deletion"); err != nil {
 			return err
 		}
 	}
@@ -133,15 +133,21 @@ See ochami-smd(1) for more details.`,
 				}
 			} else {
 				if len(args) > 0 {
-					log.Logger.Warn().Msgf("raw data or --all passed, ignoring extra arguments: %v", args)
+					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data or --all passed, ignoring extra arguments: %v", args)
 				}
 			}
 
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -157,16 +163,16 @@ See ochami-smd(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreCompepDelete(cmd, opts, args, smdClient)
+			return runCoreCompepDeleteWithRuntime(cmd, opts, args, smdClient, rt)
 		},
 	}
 
 	// Create flags
 	compepDeleteCmd.Flags().BoolP("all", "a", false, "delete all redfish endpoints in SMD")
 	compepDeleteCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	compepDeleteCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	compepDeleteCmd.Flags().Bool("no-confirm", false, "do not ask before attempting deletion")
 
+	cli.AddFormatInputFlag(compepDeleteCmd)
 	compepDeleteCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return compepDeleteCmd

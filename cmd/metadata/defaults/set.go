@@ -11,7 +11,6 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
@@ -26,9 +25,9 @@ type metadataDefaultsSetOptions struct {
 
 // runCoreMetadataDefaultsSet contains the core logic for the metadata defaults set command.
 // It takes the parsed options and performs the actual work of setting cluster defaults.
-func runCoreMetadataDefaultsSet(cmd *cobra.Command, opts *metadataDefaultsSetOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+func runCoreMetadataDefaultsSet(cmd *cobra.Command, opts *metadataDefaultsSetOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -41,34 +40,34 @@ func runCoreMetadataDefaultsSet(cmd *cobra.Command, opts *metadataDefaultsSetOpt
 		// Read cluster defaults data
 		defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayload(cmd, &defaults); err != nil {
+			if err := rt.HandlePayload(cmd, &defaults); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdin(cmd, &defaults); err != nil {
+			if err := rt.HandlePayloadStdin(cmd, &defaults); err != nil {
 				return err
 			}
 		}
 
 		// Send off request
-		defaultsSet, reqErr = metadataServiceClient.SetDefaults(cmd.Context(), cli.Token, args[0], defaults)
+		defaultsSet, reqErr = metadataServiceClient.SetDefaults(cmd.Context(), rt.Token, args[0], defaults)
 	} else {
 		// Use simple API (spec)
 
 		// Read cluster defaults data
 		spec := api.ClusterDefaultsSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayload(cmd, &spec); err != nil {
+			if err := rt.HandlePayload(cmd, &spec); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+			if err := rt.HandlePayloadStdin(cmd, &spec); err != nil {
 				return err
 			}
 		}
 
 		// Send off request
-		defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cmd.Context(), cli.Token, args[0], spec)
+		defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cmd.Context(), rt.Token, args[0], spec)
 	}
 	if reqErr != nil {
 		return cli.ClassifyClientError(reqErr, "failed to set cluster defaults", "failed to set cluster defaults")
@@ -80,7 +79,7 @@ func runCoreMetadataDefaultsSet(cmd *cobra.Command, opts *metadataDefaultsSetOpt
 		return cli.Errorf(cli.CodeGeneric, "cluster defaults set returned no resource")
 	}
 
-	log.Logger.Debug().Msgf("cluster defaults set: %+v", defaultsSet)
+	rt.Logger.Debug().Msgf("cluster defaults set: %+v", defaultsSet)
 
 	return nil
 }
@@ -128,8 +127,14 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | ochami metadata defaults set clusterdefaults-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata defaults set clusterdefaults-d614b918 -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -142,14 +147,14 @@ See ochami-metadata(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreMetadataDefaultsSet(cmd, opts, args, metadataServiceClient)
+			return runCoreMetadataDefaultsSet(cmd, opts, args, metadataServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	metadataDefaultsSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	metadataDefaultsSetCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(metadataDefaultsSetCmd)
 	metadataDefaultsSetCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return metadataDefaultsSetCmd

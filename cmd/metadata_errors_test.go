@@ -18,6 +18,8 @@ import (
 
 // TestMetadataList_HTTPError verifies that an unsuccessful HTTP response resolves
 // to a non-success exit code for each metadata resource type's "list".
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestMetadataList_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -26,7 +28,7 @@ func TestMetadataList_HTTPError(t *testing.T) {
 
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
-			res := runOchami(t, "metadata", typ, "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "metadata", typ, "list", "--uri", srv.URL, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -39,6 +41,8 @@ func TestMetadataList_HTTPError(t *testing.T) {
 
 // TestMetadataGet_HTTPError verifies that an unsuccessful HTTP response from a
 // "<type> get" resolves to a non-success exit code for each resource type.
+// TODO: Enable t.Parallel() once race conditions are resolved
+// t.Parallel()
 func TestMetadataGet_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -47,7 +51,7 @@ func TestMetadataGet_HTTPError(t *testing.T) {
 
 	for _, typ := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(typ, func(t *testing.T) {
-			res := runOchami(t, "metadata", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "metadata", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}

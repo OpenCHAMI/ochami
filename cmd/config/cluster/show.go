@@ -6,8 +6,6 @@
 package cluster
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -28,12 +26,6 @@ See ochami-config(5) for details on the configuration options.`,
 		Example: `  ochami config cluster show
   ochami config cluster show foobar
   ochami config cluster show foobar cluster.uri`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// It doesn't make sense to show the config of a config file
-			// that doesn't exist, so err if the specified config file
-			// doesn't exist.
-			return cli.InitConfigAndLogging(cmd, false)
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// To mark both persistent and regular flags mutually exclusive,
 			// this function must be run before the command is executed. It
@@ -44,9 +36,15 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Get the config from the relevant file depending on the flag,
 			// or the merged config if none.
-			ko, err := cli.ResolveShowKoanf(cmd)
+			ko, err := rt.ResolveShowKoanf(cmd)
 			if err != nil {
 				return err
 			}
@@ -88,7 +86,9 @@ See ochami-config(5) for details on the configuration options.`,
 				}
 			}
 			if val != "" {
-				fmt.Fprint(cli.Ios.Out(), val)
+				if err := cli.WriteString(rt.Ios.Out(), val); err != nil {
+					return err
+				}
 			}
 
 			return nil

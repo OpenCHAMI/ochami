@@ -15,7 +15,6 @@ import (
 	kargs "github.com/synackd/go-kargs"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 
@@ -38,14 +37,20 @@ See ochami-bss(1) for more details.`,
 		Example: `  # Set nodes to boot live image
   ochami bss boot image set --mac 00:de:ad:be:ef:00,de:ca:fc:0f:fe:ee live:https://172.16.0.254/image.squashfs`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -79,7 +84,7 @@ See ochami-bss(1) for more details.`,
 				}
 			}
 			qstr := values.Encode()
-			httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, cli.Token)
+			httpEnv, err := bssClient.GetBootParams(cmd.Context(), qstr, rt.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
 
@@ -114,7 +119,7 @@ See ochami-bss(1) for more details.`,
 				}
 				for _, h := range s {
 					if _, hFound := hostsFound[h]; !hFound {
-						log.Logger.Warn().Msgf("host %s not found, not updating", h)
+						rt.Logger.Warn().Msgf("host %s not found, not updating", h)
 					}
 				}
 			}
@@ -125,7 +130,7 @@ See ochami-bss(1) for more details.`,
 				}
 				for _, n := range s {
 					if _, nFound := nidsFound[n]; !nFound {
-						log.Logger.Warn().Msgf("node ID %d not found, not updating", n)
+						rt.Logger.Warn().Msgf("node ID %d not found, not updating", n)
 					}
 				}
 			}
@@ -136,7 +141,7 @@ See ochami-bss(1) for more details.`,
 				}
 				for _, m := range s {
 					if _, mFound := macsFound[m]; !mFound {
-						log.Logger.Warn().Msgf("mac %s not found, not updating", m)
+						rt.Logger.Warn().Msgf("mac %s not found, not updating", m)
 					}
 				}
 			}
@@ -146,19 +151,19 @@ See ochami-bss(1) for more details.`,
 				// Edit parameters for nodes
 				k := kargs.NewKargs([]byte(bp.Params))
 				if err := k.SetKarg("root", args[0]); err != nil {
-					log.Logger.Error().Err(err).Msg("failed to set 'root' kernel argument")
+					rt.Logger.Error().Err(err).Msg("failed to set 'root' kernel argument")
 					errorsOccurred = true
 					continue
 				}
 				bps[bpIdx].Params = k.String()
 
 				// Send modified params back to BSS
-				_, err = bssClient.PutBootParams(cmd.Context(), bps[bpIdx], cli.Token)
+				_, err = bssClient.PutBootParams(cmd.Context(), bps[bpIdx], rt.Token)
 				if err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("BSS boot parameter PUT request yielded unsuccessful HTTP response")
+						rt.Logger.Error().Err(err).Msg("BSS boot parameter PUT request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to set boot parameters in BSS")
+						rt.Logger.Error().Err(err).Msg("failed to set boot parameters in BSS")
 					}
 					errorsOccurred = true
 				}

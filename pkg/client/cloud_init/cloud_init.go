@@ -15,7 +15,6 @@ import (
 
 	"github.com/openchami/cloud-init/pkg/cistore"
 
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 )
 
@@ -145,7 +144,7 @@ func (cic *CloudInitClient) GetGroups(ctx context.Context, token string, ids ...
 		}
 		henv, err := cic.GetData(ctx, finalEP, "", headers)
 		if err != nil {
-			log.Logger.Debug().Err(err).Msg("failed to get group")
+			cic.Logger.Debug().Err(err).Msg("failed to get group")
 			return henv, fmt.Errorf("GetGroups(): failed to GET group from cloud-init: %w", err)
 		}
 		return henv, nil
@@ -172,7 +171,7 @@ func (cic *CloudInitClient) GetNodeData(ctx context.Context, dataType CIDataType
 		}
 		henv, err := cic.GetData(ctx, finalEP, "", headers)
 		if err != nil {
-			log.Logger.Debug().Err(err).Msg("failed to get node data")
+			cic.Logger.Debug().Err(err).Msg("failed to get node data")
 			return henv, fmt.Errorf("GetNodeData(): failed to GET node data from cloud-init: %w", err)
 		}
 		return henv, nil
@@ -202,7 +201,7 @@ func (cic *CloudInitClient) GetNodeGroupData(ctx context.Context, token, id stri
 		}
 		henv, err := cic.GetData(ctx, finalEP, "", headers)
 		if err != nil {
-			log.Logger.Debug().Err(err).Msg("failed to get node group data")
+			cic.Logger.Debug().Err(err).Msg("failed to get node group data")
 			return henv, fmt.Errorf("GetNodeGroupData(): failed to GET node group data from cloud-init: %w", err)
 		}
 		return henv, nil

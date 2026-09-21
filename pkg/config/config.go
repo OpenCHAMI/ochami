@@ -346,10 +346,21 @@ func DefaultTimeout() time.Duration {
 // honors $XDG_CONFIG_HOME when set, otherwise uses $HOME/.config and finally
 // falls back to the current user's home directory.
 func UserConfigPath() (string, error) {
-	if configHome := os.Getenv("XDG_CONFIG_HOME"); configHome != "" {
+	return UserConfigPathWithEnv(os.LookupEnv)
+}
+
+// UserConfigPathWithEnv returns the per-user configuration path using lookupEnv
+// for environment access. It is useful to callers that own an invocation-local
+// environment. If neither XDG_CONFIG_HOME nor HOME is set to a non-empty value,
+// it falls back to the current user's home directory.
+func UserConfigPathWithEnv(lookupEnv func(string) (string, bool)) (string, error) {
+	if lookupEnv == nil {
+		lookupEnv = os.LookupEnv
+	}
+	if configHome, ok := lookupEnv("XDG_CONFIG_HOME"); ok && configHome != "" {
 		return filepath.Join(configHome, "ochami", "config.yaml"), nil
 	}
-	if home := os.Getenv("HOME"); home != "" {
+	if home, ok := lookupEnv("HOME"); ok && home != "" {
 		return filepath.Join(home, ".config", "ochami", "config.yaml"), nil
 	}
 	u, err := user.Current()

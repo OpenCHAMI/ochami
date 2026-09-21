@@ -15,6 +15,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/rs/zerolog"
+
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/pkg/client"
@@ -114,7 +116,7 @@ func TestBuildGroupList(t *testing.T) {
 	for _, tt := range tests {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
-			got := buildGroupList(tc.nodes)
+			got := buildGroupList(zerolog.Nop(), tc.nodes)
 			if len(got) != len(tc.wantMembers) {
 				t.Fatalf("group count = %d, want %d (%v)", len(got), len(tc.wantMembers), got)
 			}
@@ -182,7 +184,7 @@ func TestDiscoverStaticDeprecatedFormat(t *testing.T) {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
 			cmd := &cobra.Command{}
-			got := discoverStaticDeprecatedFormat(cmd, tc.data)
+			got := discoverStaticDeprecatedFormat(cmd, zerolog.Nop(), tc.data)
 			if got != tc.want {
 				t.Errorf("discoverStaticDeprecatedFormat = %v, want %v", got, tc.want)
 			}

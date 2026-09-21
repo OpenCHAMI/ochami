@@ -10,7 +10,6 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/configfile"
-	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdClusterDelete() *cobra.Command {
@@ -23,12 +22,6 @@ func newCmdClusterDelete() *cobra.Command {
 
 See ochami-config(1) for details on the config commands.
 See ochami-config(5) for details on configuration options.`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// It doesn't make sense to delete a cluster from a
-			// non-existent config file, so err if the config file doesn't
-			// exist.
-			return cli.InitConfigAndLogging(cmd, false)
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// To mark both persistent and regular flags mutually exclusive,
 			// this function must be run before the command is executed. It
@@ -39,15 +32,20 @@ See ochami-config(5) for details on configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// We must have a config file in order to write cluster info
-			fileToModify := cli.ConfigFileToModify(cmd)
+			fileToModify := rt.ConfigFileToModify(cmd)
 			clusterName := args[0]
 
 			if err := configfile.DeleteCluster(fileToModify, clusterName); err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to delete cluster %s from config file %s: %w", clusterName, fileToModify, err)
 			}
 
-			log.Logger.Info().Msgf("deleted cluster %s from config file %s", clusterName, fileToModify)
+			rt.Logger.Info().Msgf("deleted cluster %s from config file %s", clusterName, fileToModify)
 
 			return nil
 		},

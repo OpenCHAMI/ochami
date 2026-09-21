@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/elliotchance/pie/v2"
@@ -96,8 +95,14 @@ See ochami-pcs(1) for more details.`,
 		Example: `  # Get status of PCS
   ochami pcs service status`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			pcsClient, err := pcs_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			pcsClient, err := pcs_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -114,7 +119,6 @@ See ochami-pcs(1) for more details.`,
 				healthHttpEnv, err := pcsClient.GetHealth(cmd.Context())
 				if err != nil {
 					return cli.ClassifyClientError(err, "PCS status (health) request yielded unsuccessful HTTP response", "failed to get PCS status (health)")
-
 				}
 
 				// Unmarshall the health
@@ -158,11 +162,13 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Print output
-			outBytes, err := format.MarshalData(output, cli.FormatOutput)
+			outBytes, err := format.MarshalData(output, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprintln(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteString(rt.Ios.Out(), string(outBytes)+"\n"); err != nil {
+				return err
+			}
 
 			return nil
 		},
@@ -183,7 +189,7 @@ See ochami-pcs(1) for more details.`,
 		serviceStatusCmd.MarkFlagsMutuallyExclusive("all", flags[i])
 	}
 
-	serviceStatusCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
+	cli.AddFormatOutputFlag(serviceStatusCmd)
 	serviceStatusCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return serviceStatusCmd

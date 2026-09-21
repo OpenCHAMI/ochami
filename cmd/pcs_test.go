@@ -26,7 +26,7 @@ func TestPCSStatusList_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -48,7 +48,7 @@ func TestPCSStatusList_WithFilters(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"--xname", "x0c0s0b0n0", "--power-filter", "on", "--mgmt-filter", "available")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -61,7 +61,7 @@ func TestPCSStatusList_WithFilters(t *testing.T) {
 // TestPCSStatusList_InvalidPowerFilter verifies an invalid --power-filter value
 // is a usage error handled before any request.
 func TestPCSStatusList_InvalidPowerFilter(t *testing.T) {
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", "http://127.0.0.1:0",
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", "http://127.0.0.1:0",
 		"--token", "t", "--power-filter", "bogus")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -79,7 +79,7 @@ func TestPCSStatusList_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -98,7 +98,7 @@ func TestPCSServiceStatus_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -126,7 +126,7 @@ func TestPCSServiceStatus_Health(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--all",
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--all",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -148,7 +148,7 @@ func TestPCSServiceStatus_LivenessFallback(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -162,7 +162,7 @@ func TestPCSServiceStatus_UnknownState(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -179,7 +179,7 @@ func TestPCSServiceStatus_ReadinessHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -200,7 +200,7 @@ func TestPCSServiceStatus_HealthHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "pcs", "service", "status", "--all",
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--all",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

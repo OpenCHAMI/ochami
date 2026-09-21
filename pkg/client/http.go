@@ -11,7 +11,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/openchami/ochami/internal/log"
+	"github.com/rs/zerolog"
+
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -82,6 +83,10 @@ func (h *HTTPHeaders) SetContentType(ct string) error {
 // response body after reading it so it should not already have been closed
 // before calling this function.
 func NewHTTPEnvelopeFromResponse(res *http.Response) (HTTPEnvelope, error) {
+	return newHTTPEnvelopeFromResponse(res, zerolog.Nop())
+}
+
+func newHTTPEnvelopeFromResponse(res *http.Response, logger zerolog.Logger) (HTTPEnvelope, error) {
 	var henv HTTPEnvelope
 	if res != nil {
 		henv = HTTPEnvelope{
@@ -106,10 +111,10 @@ func NewHTTPEnvelopeFromResponse(res *http.Response) (HTTPEnvelope, error) {
 		}
 		henv.Body = body
 		if len(body) > 0 {
-			log.Logger.Debug().Msg("Response body:")
-			log.Logger.Debug().Msgf("%s", string(body))
+			logger.Debug().Msg("Response body:")
+			logger.Debug().Msgf("%s", string(body))
 		} else {
-			log.Logger.Debug().Msg("No body in response")
+			logger.Debug().Msg("No body in response")
 		}
 
 		return henv, nil
@@ -133,7 +138,6 @@ func FormatBody(body HTTPBody, outFormat format.DataFormat) ([]byte, error) {
 func (he HTTPEnvelope) CheckResponse() error {
 	statusOK := he.StatusCode >= 200 && he.StatusCode < 300
 	if statusOK {
-		log.Logger.Info().Msgf("Response status: %s %s", he.Proto, he.Status)
 		return nil
 	} else {
 		if len(he.Body) > 0 {

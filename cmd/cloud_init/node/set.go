@@ -13,7 +13,6 @@ import (
 	"github.com/openchami/cloud-init/pkg/cistore"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
@@ -62,14 +61,20 @@ See ochami-cloud-init(1) for more details.`,
   echo '<yaml_data>' | ochami cloud-init group set -f yaml
   echo '<yaml_data>' | ochami cloud-init group set -d @- -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -78,17 +83,17 @@ See ochami-cloud-init(1) for more details.`,
 
 			// Read payload from file or stdin.
 			if cmd.Flag("data").Changed {
-				if err := cli.HandlePayload(cmd, &ciInstInfo); err != nil {
+				if err := rt.HandlePayload(cmd, &ciInstInfo); err != nil {
 					return err
 				}
 			} else {
-				if err := cli.HandlePayloadStdin(cmd, &ciInstInfo); err != nil {
+				if err := rt.HandlePayloadStdin(cmd, &ciInstInfo); err != nil {
 					return err
 				}
 			}
 
 			// Send data
-			results, err := cloudInitClient.PutInstanceInfo(cmd.Context(), ciInstInfo, cli.Token)
+			results, err := cloudInitClient.PutInstanceInfo(cmd.Context(), ciInstInfo, rt.Token)
 			if err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to set instance info: %w", err)
 			}
@@ -98,9 +103,9 @@ See ochami-cloud-init(1) for more details.`,
 			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("cloud-init node instance info request yielded unsuccessful HTTP response")
+						rt.Logger.Error().Err(e).Msg("cloud-init node instance info request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(e).Msg("failed to set node instance info in cloud-init")
+						rt.Logger.Error().Err(e).Msg("failed to set node instance info in cloud-init")
 					}
 					errorsOccurred = true
 				}
@@ -114,9 +119,9 @@ See ochami-cloud-init(1) for more details.`,
 	}
 
 	// Create flags
-	nodeSetCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	nodeSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 
+	cli.AddFormatInputFlag(nodeSetCmd)
 	nodeSetCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return nodeSetCmd

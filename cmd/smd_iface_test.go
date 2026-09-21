@@ -46,8 +46,10 @@ func TestSMDIfaceGet_Filters(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append([]string{"smd", "iface", "get", "--ignore-config", "--uri", srv.URL, "--token", "t"}, tc.args...)
-			res := runOchami(t, args...)
+			args := append([]string{"smd", "--ignore-config", "iface", "get", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			// TODO: Enable t.Parallel() once race conditions are resolved
+			// t.Parallel()
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -66,7 +68,9 @@ func TestSMDIfaceGet_Formats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+		// TODO: Enable t.Parallel() once race conditions are resolved
+		// t.Parallel()
+		res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL, "--token", "t", "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
 		}
@@ -86,7 +90,9 @@ func TestSMDIfaceGet_ByID(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", srv.URL,
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL,
 		"--token", validToken(t), "--id", "decafc0ffeee")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -106,7 +112,9 @@ func TestSMDIfaceGet_ByIDWithByIP(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", srv.URL,
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL,
 		"--token", validToken(t), "--id", "decafc0ffeee", "--by-ip")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -119,7 +127,9 @@ func TestSMDIfaceGet_ByIDWithByIP(t *testing.T) {
 // TestSMDIfaceGet_ByIPWithoutID verifies "--by-ip" without "--id" is a usage
 // error.
 func TestSMDIfaceGet_ByIPWithoutID(t *testing.T) {
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", "http://127.0.0.1:1",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--by-ip")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -137,7 +147,9 @@ func TestSMDIfaceGet_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -153,7 +165,9 @@ func TestSMDIfaceGet_NetworkError(t *testing.T) {
 	url := srv.URL
 	srv.Close()
 
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", url, "--token", "t")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -171,7 +185,9 @@ func TestSMDIfaceAdd_ByFlags(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b55n0", "de:ca:fc:0f:fe:ee", "NMN,172.16.0.55")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -190,7 +206,9 @@ func TestSMDIfaceAdd_ByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"ComponentID":"x0c0s0b0n0","MACAddress":"de:ad:be:ef:00:00"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -203,7 +221,9 @@ func TestSMDIfaceAdd_ByData(t *testing.T) {
 // TestSMDIfaceAdd_InvalidIP verifies an invalid IP in the net,ip pair is a usage
 // error.
 func TestSMDIfaceAdd_InvalidIP(t *testing.T) {
-	res := runOchami(t, "smd", "iface", "add", "--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t",
 		"x3000c1s7b55n0", "de:ca:fc:0f:fe:ee", "NMN,not-an-ip")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -221,7 +241,9 @@ func TestSMDIfaceAdd_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b55n0", "de:ca:fc:0f:fe:ee", "NMN,172.16.0.55")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -243,7 +265,9 @@ func TestSMDIfaceDelete_ByIDs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "decafc0ffeee", "de:ad:be:ee:ee:ef")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -265,8 +289,10 @@ func TestSMDIfaceDelete_AllConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "--all")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithInputAndRuntime(t, "y\n",
+		"smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t", "--all")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -289,8 +315,10 @@ func TestSMDIfaceDelete_Abort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "decafc0ffeee")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithInputAndRuntime(t, "n\n",
+		"smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t", "decafc0ffeee")
 	if res.err != nil {
 		t.Fatalf("unexpected error on abort: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -310,7 +338,9 @@ func TestSMDIfaceDelete_ByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `[{"ID":"decafc0ffeee"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -323,7 +353,9 @@ func TestSMDIfaceDelete_ByData(t *testing.T) {
 // TestSMDIfaceDelete_NoSelector verifies delete with neither -d, --all, nor args
 // is a usage error.
 func TestSMDIfaceDelete_NoSelector(t *testing.T) {
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", "http://127.0.0.1:1",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -341,7 +373,9 @@ func TestSMDIfaceDelete_AllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "--all")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -359,7 +393,9 @@ func TestSMDIfaceDelete_ByIDsHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "decafc0ffeee")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

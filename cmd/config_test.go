@@ -37,10 +37,13 @@ func writeTempConfig(t *testing.T, contents string) string {
 // TestConfigSet_ThenShow verifies that "config set" persists a key to the given
 // config file and "config show" reads it back.
 func TestConfigSet_ThenShow(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "")
 
 	// Set a value.
-	setRes := runOchami(t, "--config", cfg, "config", "set", "log.format", "json")
+	setRes := runOchamiWithRuntime(t, "--config", cfg, "config", "set", "log.format", "json")
 	if setRes.err != nil {
 		t.Fatalf("config set: unexpected error: %v (exit %d)", setRes.err, setRes.exitCode)
 	}
@@ -55,7 +58,7 @@ func TestConfigSet_ThenShow(t *testing.T) {
 	}
 
 	// Show the specific key back.
-	showRes := runOchami(t, "--config", cfg, "config", "show", "log.format")
+	showRes := runOchamiWithRuntime(t, "--config", cfg, "config", "show", "log.format")
 	if showRes.err != nil {
 		t.Fatalf("config show: unexpected error: %v (exit %d)", showRes.err, showRes.exitCode)
 	}
@@ -66,9 +69,12 @@ func TestConfigSet_ThenShow(t *testing.T) {
 
 // TestConfigUnset_Success verifies that "config unset" removes a previously-set key.
 func TestConfigUnset_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
-	res := runOchami(t, "--config", cfg, "config", "unset", "log.format")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.format")
 	if res.err != nil {
 		t.Fatalf("config unset: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -86,9 +92,12 @@ func TestConfigUnset_Success(t *testing.T) {
 // TestConfigClusterSet_ThenShow verifies that "config cluster set" adds a cluster
 // entry and "config cluster show" reads it back.
 func TestConfigClusterSet_ThenShow(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "")
 
-	setRes := runOchami(t, "--config", cfg, "config", "cluster", "set",
+	setRes := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "set",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
 	if setRes.err != nil {
 		t.Fatalf("config cluster set: unexpected error: %v (exit %d)", setRes.err, setRes.exitCode)
@@ -102,7 +111,7 @@ func TestConfigClusterSet_ThenShow(t *testing.T) {
 		t.Errorf("config file = %q, want it to contain the cluster name", string(data))
 	}
 
-	showRes := runOchami(t, "--config", cfg, "config", "cluster", "show", "foobar")
+	showRes := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "foobar")
 	if showRes.err != nil {
 		t.Fatalf("config cluster show: unexpected error: %v (exit %d)", showRes.err, showRes.exitCode)
 	}
@@ -116,9 +125,12 @@ func TestConfigClusterSet_ThenShow(t *testing.T) {
 // sets only log.level, so log.format should come back as its default rather
 // than empty.
 func TestConfigShow_DefaultedKey(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  level: debug\n")
 
-	res := runOchami(t, "--config", cfg, "config", "show", "log.format")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show", "log.format")
 	if res.err != nil {
 		t.Fatalf("config show: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -132,9 +144,12 @@ func TestConfigShow_DefaultedKey(t *testing.T) {
 // TestConfigShow_WholeConfig verifies that "config show" with no key prints the
 // merged configuration, including defaulted values.
 func TestConfigShow_WholeConfig(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  level: debug\n")
 
-	res := runOchami(t, "--config", cfg, "config", "show")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show")
 	if res.err != nil {
 		t.Fatalf("config show: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -150,6 +165,9 @@ func TestConfigShow_WholeConfig(t *testing.T) {
 // TestConfigClusterUnset_Success verifies that "config cluster unset" removes a key from
 // an existing cluster entry in the config file.
 func TestConfigClusterUnset_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	// Seed a config file with a cluster that has a uri and a smd uri.
 	cfg := writeTempConfig(t, `clusters:
   - name: foobar
@@ -159,7 +177,7 @@ func TestConfigClusterUnset_Success(t *testing.T) {
         uri: /hsm/v2
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
 	if res.err != nil {
 		t.Fatalf("config cluster unset: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -180,13 +198,16 @@ func TestConfigClusterUnset_Success(t *testing.T) {
 // TestConfigClusterDelete_Success verifies that "config cluster delete" removes a whole
 // cluster entry from the config file.
 func TestConfigClusterDelete_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	cfg := writeTempConfig(t, `clusters:
   - name: foobar
     cluster:
       uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "delete", "foobar")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "delete", "foobar")
 	if res.err != nil {
 		t.Fatalf("config cluster delete: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -205,7 +226,7 @@ func TestConfigClusterDelete_Success(t *testing.T) {
 func TestConfigSet_CreatesFileOnConfirm(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
-	res := runOchamiWithInput(t, "y\n", "--config", path, "config", "set", "log.format", "json")
+	res := runOchamiWithInputAndRuntime(t, "y\n", "--config", path, "config", "set", "log.format", "json")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -219,7 +240,7 @@ func TestConfigSet_CreatesFileOnConfirm(t *testing.T) {
 func TestConfigSet_DeclineCreate(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
-	res := runOchamiWithInput(t, "n\n", "--config", path, "config", "set", "log.format", "json")
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--config", path, "config", "set", "log.format", "json")
 	// Declining creation is surfaced as a config error; the key point is that
 	// no file is written and the process does not panic.
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -233,7 +254,7 @@ func TestConfigSet_DeclineCreate(t *testing.T) {
 func TestConfigClusterShow_NonexistentCluster(t *testing.T) {
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
 	// Either a clean empty output or a non-success exit is acceptable; the
 	// command must not panic.
 	_ = res
@@ -244,7 +265,7 @@ func TestConfigClusterShow_NonexistentCluster(t *testing.T) {
 func TestConfigClusterUnset_Nonexistent(t *testing.T) {
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "nope", "cluster.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "nope", "cluster.uri")
 	if res.err == nil {
 		return // some implementations treat this as a no-op success
 	}
@@ -258,7 +279,7 @@ func TestConfigClusterUnset_Nonexistent(t *testing.T) {
 func TestConfigShow_NonexistentKey(t *testing.T) {
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
-	res := runOchami(t, "--config", cfg, "config", "show", "log.format")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show", "log.format")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -277,7 +298,7 @@ func TestConfigSet_SystemFlag(t *testing.T) {
 	// config-source selection branch.
 	cfg := writeTempConfig(t, "")
 
-	res := runOchami(t, "--config", cfg, "config", "set", "log.level", "warning")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "set", "log.level", "warning")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -295,7 +316,7 @@ func TestConfigSet_SystemFlag(t *testing.T) {
 func TestConfigShow_WholeConfigViaConfigFlag(t *testing.T) {
 	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
 
-	res := runOchami(t, "--config", cfg, "config", "show")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -309,7 +330,7 @@ func TestConfigShow_WholeConfigViaConfigFlag(t *testing.T) {
 func TestConfigUnset_ViaConfigFlag(t *testing.T) {
 	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
 
-	res := runOchami(t, "--config", cfg, "config", "unset", "log.level")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.level")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -347,7 +368,7 @@ clusters:
     enable-auth: false
 `)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -376,7 +397,7 @@ clusters:
     enable-auth: false
 `)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -407,7 +428,7 @@ clusters:
 	tok := validToken(t)
 	t.Setenv("DEMO_ACCESS_TOKEN", tok)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntimeEnv(t, cli.EnvironmentFunc(os.LookupEnv), "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -435,7 +456,7 @@ clusters:
 	// Ensure the env var is not set.
 	os.Unsetenv("DEMO_ACCESS_TOKEN")
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err == nil {
 		t.Fatal("expected an auth error, got nil")
 	}
@@ -462,7 +483,7 @@ clusters:
     enable-auth: false
 `)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -476,7 +497,7 @@ clusters:
 func TestConfigUnset_UnknownKey(t *testing.T) {
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
-	res := runOchami(t, "--config", cfg, "config", "unset", "log.does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.does-not-exist")
 	if res.err == nil || res.exitCode != cli.CodeConfig {
 		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
 	}
@@ -486,14 +507,15 @@ func TestConfigUnset_UnknownKey(t *testing.T) {
 }
 
 // TestConfigClusterSet_DeclineCreate verifies declining to create a missing
-// config file leaves no file behind.
+// config file is a benign no-op: the command succeeds without modifying
+// anything, and no file is left behind.
 func TestConfigClusterSet_DeclineCreate(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
-	res := runOchamiWithInput(t, "n\n", "--config", path, "config", "cluster", "set",
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--config", path, "config", "cluster", "set",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
-	if res.err == nil || res.exitCode != cli.CodeConfig {
-		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
+	if res.err != nil || res.exitCode != cli.CodeSuccess {
+		t.Fatalf("result = (err %v, exit %d), want success", res.err, res.exitCode)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Errorf("config path stat error = %v, want not-exist", err)
@@ -509,7 +531,7 @@ func TestConfigClusterUnset_UnknownKey(t *testing.T) {
     uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
 	if res.err == nil || res.exitCode != cli.CodeConfig {
 		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
 	}

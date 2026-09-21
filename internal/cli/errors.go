@@ -8,9 +8,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/config"
 )
@@ -111,11 +111,11 @@ func ClassifyClientError(err error, httpMsg, netMsg string) error {
 // failure when one or more iterations failed. Iterative client operations use
 // their top-level error for transport failures, so item errors represent HTTP
 // responses from individual requests.
-func AggregateItemErrors(errs []error, msg string) error {
+func AggregateItemErrors(logger zerolog.Logger, errs []error, msg string) error {
 	errorsOccurred := false
 	for _, err := range errs {
 		if err != nil {
-			log.Logger.Error().Err(err).Msg(msg)
+			logger.Error().Err(err).Msg(msg)
 			errorsOccurred = true
 		}
 	}

@@ -6,7 +6,6 @@ package console
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -26,32 +25,41 @@ See ochami-rcs(1) for more details.`,
 		Example: `  # List available consoles
   ochami rcs console list`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
-			}
-
-			rcsClient, err := rcs.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
 			if err != nil {
 				return err
 			}
-			consoles, err := rcsClient.ListConsoles(cmd.Context(), cli.Token)
+
+			// Handle token for this command
+			if err := rt.HandleToken(cmd); err != nil {
+				return err
+			}
+
+			rcsClient, err := rcs.GetClientWithRuntime(cmd, rt)
+			if err != nil {
+				return err
+			}
+			consoles, err := rcsClient.ListConsoles(cmd.Context(), rt.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
 					return cli.Errorf(cli.CodeHTTP, "failed to list consoles: %w", err)
 				}
 				return cli.Errorf(cli.CodeNetwork, "failed to list consoles: %w", err)
 			}
-			outBytes, err := format.MarshalData(consoles, cli.FormatOutput)
+			outBytes, err := format.MarshalData(consoles, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprintln(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteString(rt.Ios.Out(), string(outBytes)+"\n"); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
-	listCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
+	cli.AddFormatOutputFlag(listCmd)
 	listCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return listCmd

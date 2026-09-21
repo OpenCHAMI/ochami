@@ -11,7 +11,6 @@ import (
 	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
@@ -26,9 +25,9 @@ type bootConfigSetOptions struct {
 
 // runCoreBootConfigSet contains the core logic for the boot config set command.
 // It takes the parsed options and performs the actual work of setting boot configuration details.
-func runCoreBootConfigSet(cmd *cobra.Command, opts *bootConfigSetOptions, args []string, bootServiceClient *boot_service.BootServiceClient) error {
+func runCoreBootConfigSet(cmd *cobra.Command, opts *bootConfigSetOptions, args []string, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -41,40 +40,40 @@ func runCoreBootConfigSet(cmd *cobra.Command, opts *bootConfigSetOptions, args [
 		// Read boot configuration data
 		bcs := boot_service_client.UpdateBootConfigurationRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayload(cmd, &bcs); err != nil {
+			if err := rt.HandlePayload(cmd, &bcs); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdin(cmd, &bcs); err != nil {
+			if err := rt.HandlePayloadStdin(cmd, &bcs); err != nil {
 				return err
 			}
 		}
 
 		// Send off request
-		cfgSet, reqErr = bootServiceClient.SetBootConfig(cmd.Context(), cli.Token, args[0], bcs)
+		cfgSet, reqErr = bootServiceClient.SetBootConfig(cmd.Context(), rt.Token, args[0], bcs)
 	} else {
 		// Use simple API (spec)
 
 		// Read boot configuration data
 		spec := api.BootConfigurationSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayload(cmd, &spec); err != nil {
+			if err := rt.HandlePayload(cmd, &spec); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+			if err := rt.HandlePayloadStdin(cmd, &spec); err != nil {
 				return err
 			}
 		}
 
 		// Send off request
-		cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cmd.Context(), cli.Token, args[0], spec)
+		cfgSet, reqErr = bootServiceClient.SetBootConfigSpec(cmd.Context(), rt.Token, args[0], spec)
 	}
 	if reqErr != nil {
 		return cli.Errorf(cli.CodeNetwork, "failed to set boot configuration: %w", reqErr)
 	}
 
-	log.Logger.Debug().Msgf("boot config set: %+v", cfgSet)
+	rt.Logger.Debug().Msgf("boot config set: %+v", cfgSet)
 
 	return nil
 }
@@ -137,8 +136,14 @@ See ochami-boot(1) for more details.`,
   echo '<yaml_data>' | ochami boot config set -d @- -f yaml boo-914afad2
   echo '<yaml_data>' | ochami boot config set -f yaml boo-914afad2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -151,14 +156,14 @@ See ochami-boot(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreBootConfigSet(cmd, opts, args, bootServiceClient)
+			return runCoreBootConfigSet(cmd, opts, args, bootServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	bootConfigSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootConfigSetCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(bootConfigSetCmd)
 	bootConfigSetCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return bootConfigSetCmd

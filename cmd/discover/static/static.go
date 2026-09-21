@@ -11,12 +11,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
+	"github.com/openchami/ochami/pkg/config"
 	"github.com/openchami/ochami/pkg/discover"
 )
 
@@ -36,7 +37,7 @@ type nodeCommon struct {
 // "group" field with the "groups" slice, deduplicating members. This is a pure
 // function extracted from the static discovery command to make the
 // group-assembly logic independently testable.
-func buildGroupList(nodesCommon []nodeCommon) []smd.Group {
+func buildGroupList(logger zerolog.Logger, nodesCommon []nodeCommon) []smd.Group {
 	groupsToAdd := make(map[string]smd.Group)
 	addToGroup := func(label, xname string) {
 		if g, ok := groupsToAdd[label]; !ok {
@@ -56,9 +57,9 @@ func buildGroupList(nodesCommon []nodeCommon) []smd.Group {
 		// deduplication, this is trivial.
 		if node.Group != "" {
 			if len(strings.Trim(node.Name, " \t")) == 0 {
-				log.Logger.Warn().Msgf("node %s contains 'group', which is deprecated; use 'groups' instead", node.Xname)
+				logger.Warn().Msgf("node %s contains 'group', which is deprecated; use 'groups' instead", node.Xname)
 			} else {
-				log.Logger.Warn().Msgf("node %s (%s) contains 'group', which is deprecated; use 'groups' instead", node.Xname, node.Name)
+				logger.Warn().Msgf("node %s (%s) contains 'group', which is deprecated; use 'groups' instead", node.Xname, node.Name)
 			}
 			addToGroup(node.Group, node.Xname)
 		}
@@ -137,30 +138,36 @@ nodes:
 
 See ochami-discover(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Without a base URI, we cannot do anything
-			smdBaseURI, err := cli.GetBaseURISMD(cmd)
+			smdBaseURI, err := rt.GetBaseURI(cmd, config.ServiceSMD)
 			if err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to get base URI for SMD: %w", err)
 			}
 
 			// This endpoint requires authentication, so a token is needed
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Create client to make request to SMD
-			smdClient, err := smd.NewClient(smdBaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
+			smdClient, err := smd.NewClient(smdBaseURI, client.WithInsecure(rt.Insecure), client.WithShowToken(rt.ShowToken(cmd)), client.WithLogger(rt.Logger))
 			if err != nil {
 				return cli.Errorf(cli.CodeGeneric, "error creating new SMD client: %w", err)
 			}
 
 			// Check if a CA certificate was passed and load it into client if valid
-			if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+			if err := rt.UseCACert(smdClient.OchamiClient); err != nil {
 				return err
 			}
 
 			if cmd.Flag("overwrite").Changed {
-				log.Logger.Warn().Msg("--overwrite passed; overwriting any existing data")
+				rt.Logger.Warn().Msg("--overwrite passed; overwriting any existing data")
 			}
 
 			// Declare structures to send to SMD here so either discovery
@@ -182,18 +189,18 @@ See ochami-discover(1) for more details.`,
 			// discovery method to use.
 			discoveryData := make(map[string]([]map[string]any))
 			if cmd.Flag("data").Changed {
-				if err := cli.HandlePayload(cmd, &discoveryData); err != nil {
+				if err := rt.HandlePayload(cmd, &discoveryData); err != nil {
 					return err
 				}
 			} else {
-				if err := cli.HandlePayloadStdin(cmd, &discoveryData); err != nil {
+				if err := rt.HandlePayloadStdin(cmd, &discoveryData); err != nil {
 					return err
 				}
 			}
-			useDeprecatedFormat := discoverStaticDeprecatedFormat(cmd, discoveryData)
+			useDeprecatedFormat := discoverStaticDeprecatedFormat(cmd, rt.Logger, discoveryData)
 			var rawData []byte
 			if useDeprecatedFormat {
-				log.Logger.Warn().Msg("using deprecated discovery format which will be removed in a future version")
+				rt.Logger.Warn().Msg("using deprecated discovery format which will be removed in a future version")
 
 				// Convert discovery data to struct
 				rawData, err := json.Marshal(discoveryData)
@@ -206,8 +213,8 @@ See ochami-discover(1) for more details.`,
 					return cli.Errorf(cli.CodePayload, "unable to unmarshal discovery data from json: %w", err)
 				}
 
-				log.Logger.Debug().Msgf("read %d nodes", len(nodes.Nodes))
-				log.Logger.Debug().Msgf("nodes: %s", nodes)
+				rt.Logger.Debug().Msgf("read %d nodes", len(nodes.Nodes))
+				rt.Logger.Debug().Msgf("nodes: %s", nodes)
 
 				// Add nodes to node list in common format
 				for _, n := range nodes.Nodes {
@@ -221,12 +228,12 @@ See ochami-discover(1) for more details.`,
 				}
 
 				// Put together payload for different endpoints
-				log.Logger.Debug().Msg("generating redfish structures to send to SMD")
-				comps, rfes, ifaces, err = discover.DiscoveryInfoV2Deprecated(smdBaseURI, nodes)
+				rt.Logger.Debug().Msg("generating redfish structures to send to SMD")
+				comps, rfes, ifaces, err = discover.DiscoveryInfoV2Deprecated(smdBaseURI, nodes, discover.WithLogger(rt.Logger))
 				if err != nil {
 					return cli.Errorf(cli.CodePayload, "failed to construct structures to send to SMD: %w", err)
 				}
-				log.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
+				rt.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
 			} else {
 				// Convert discovery data to struct
 				rawData, err = json.Marshal(discoveryData)
@@ -239,10 +246,10 @@ See ochami-discover(1) for more details.`,
 					return cli.Errorf(cli.CodePayload, "unable to unmarshal discovery items from json: %w", err)
 				}
 
-				log.Logger.Debug().Msgf("read %d bmcs", len(items.BMCs))
-				log.Logger.Debug().Msgf("bmcs: %s", items.BMCs)
-				log.Logger.Debug().Msgf("read %d nodes", len(items.Nodes))
-				log.Logger.Debug().Msgf("nodes: %s", items.Nodes)
+				rt.Logger.Debug().Msgf("read %d bmcs", len(items.BMCs))
+				rt.Logger.Debug().Msgf("bmcs: %s", items.BMCs)
+				rt.Logger.Debug().Msgf("read %d nodes", len(items.Nodes))
+				rt.Logger.Debug().Msgf("nodes: %s", items.Nodes)
 
 				// Add nodes to node list in common format
 				for _, n := range items.Nodes {
@@ -255,13 +262,13 @@ See ochami-discover(1) for more details.`,
 				}
 
 				// Put together payload for different endpoints
-				log.Logger.Debug().Msg("generating redfish structures to send to SMD")
+				rt.Logger.Debug().Msg("generating redfish structures to send to SMD")
 				var err error
-				comps, rfes, ifaces, err = discover.DiscoveryInfoV2(smdBaseURI, items)
+				comps, rfes, ifaces, err = discover.DiscoveryInfoV2(smdBaseURI, items, discover.WithLogger(rt.Logger))
 				if err != nil {
 					return cli.Errorf(cli.CodePayload, "failed to construct structures to send to SMD: %w", err)
 				}
-				log.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
+				rt.Logger.Debug().Msgf("generated redfish structures: %v", rfes.RedfishEndpoints)
 			}
 
 			// Send Component requests
@@ -272,7 +279,7 @@ See ochami-discover(1) for more details.`,
 			compErrorsOccurred := false
 			if cmd.Flag("overwrite").Changed {
 				// Send a PUT if --overwrite specified to overwrite any existing components
-				results := smdClient.PutComponents(cmd.Context(), comps, cli.Token)
+				results := smdClient.PutComponents(cmd.Context(), comps, rt.Token)
 				for _, err := range results.Errors() {
 					if err != nil {
 						var errMsg string
@@ -281,7 +288,7 @@ See ochami-discover(1) for more details.`,
 						} else {
 							errMsg = "failed to add/overwrite component in SMD"
 						}
-						log.Logger.Error().Err(err).Msg(errMsg)
+						rt.Logger.Error().Err(err).Msg(errMsg)
 						compErrorsOccurred = true
 					}
 				}
@@ -289,13 +296,13 @@ See ochami-discover(1) for more details.`,
 				// The SMD Components API does not modify the NID for
 				// PUTs. Thus, we explicitly do it with a PATCH to a
 				// specific endpoint that does it.
-				if _, err := smdClient.PatchComponentsNID(cmd.Context(), comps, cli.Token); err != nil {
-					log.Logger.Error().Err(err).Msg("failed to update NIDs for components in SMD")
+				if _, err := smdClient.PatchComponentsNID(cmd.Context(), comps, rt.Token); err != nil {
+					rt.Logger.Error().Err(err).Msg("failed to update NIDs for components in SMD")
 					compErrorsOccurred = true
 				}
 			} else {
 				// Otherwise send a normal POST
-				_, err = smdClient.PostComponents(cmd.Context(), comps, cli.Token)
+				_, err = smdClient.PostComponents(cmd.Context(), comps, rt.Token)
 				if err != nil {
 					var errMsg string
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
@@ -303,7 +310,7 @@ See ochami-discover(1) for more details.`,
 					} else {
 						errMsg = "failed to add components to SMD"
 					}
-					log.Logger.Error().Err(err).Msg(errMsg)
+					rt.Logger.Error().Err(err).Msg(errMsg)
 					compErrorsOccurred = true
 				}
 			}
@@ -321,26 +328,26 @@ See ochami-discover(1) for more details.`,
 				// then, if 409 is returned, try to PUT.
 				rfeErrs = upsertOnConflict(rfes.RedfishEndpoints,
 					func(rfe smd.RedfishEndpointV2) client.Result[client.HTTPEnvelope] {
-						results := smdClient.PostRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token)
+						results := smdClient.PostRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, rt.Token)
 						if len(results) != 1 {
 							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("posting redfish endpoint returned %d results, want one", len(results))}
 						}
 						return results[0]
 					},
 					func(rfe smd.RedfishEndpointV2) client.Result[client.HTTPEnvelope] {
-						results := smdClient.PutRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, cli.Token)
+						results := smdClient.PutRedfishEndpointsV2(cmd.Context(), smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{rfe}}, rt.Token)
 						if len(results) != 1 {
 							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("updating redfish endpoint returned %d results, want one", len(results))}
 						}
 						return results[0]
 					})
 				for _, err := range rfeErrs {
-					log.Logger.Error().Err(err).Msg("failed to add or update redfish endpoint in SMD")
+					rt.Logger.Error().Err(err).Msg("failed to add or update redfish endpoint in SMD")
 					rfeErrorsOccurred = true
 				}
 			} else {
 				// --overwrite was not passed, perform regular POST.
-				rfeErrs = smdClient.PostRedfishEndpointsV2(cmd.Context(), rfes, cli.Token).Errors()
+				rfeErrs = smdClient.PostRedfishEndpointsV2(cmd.Context(), rfes, rt.Token).Errors()
 				for _, err := range rfeErrs {
 					if err != nil {
 						var errMsg string
@@ -353,7 +360,7 @@ See ochami-discover(1) for more details.`,
 								errMsg = "failed to add redfish endpoint to SMD"
 							}
 						}
-						log.Logger.Error().Err(err).Msg(errMsg)
+						rt.Logger.Error().Err(err).Msg(errMsg)
 						rfeErrorsOccurred = true
 					}
 				}
@@ -370,26 +377,26 @@ See ochami-discover(1) for more details.`,
 				if cmd.Flag("overwrite").Changed {
 					ifaceErrs = upsertOnConflict(ifaces,
 						func(iface smd.EthernetInterface) client.Result[client.HTTPEnvelope] {
-							results := smdClient.PostEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, cli.Token)
+							results := smdClient.PostEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, rt.Token)
 							if len(results) != 1 {
 								return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("posting ethernet interface returned %d results, want one", len(results))}
 							}
 							return results[0]
 						},
 						func(iface smd.EthernetInterface) client.Result[client.HTTPEnvelope] {
-							results := smdClient.PatchEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, cli.Token)
+							results := smdClient.PatchEthernetInterfaces(cmd.Context(), []smd.EthernetInterface{iface}, rt.Token)
 							if len(results) != 1 {
 								return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("updating ethernet interface returned %d results, want one", len(results))}
 							}
 							return results[0]
 						})
 					for _, err := range ifaceErrs {
-						log.Logger.Error().Err(err).Msg("failed to add or update ethernet interface in SMD")
+						rt.Logger.Error().Err(err).Msg("failed to add or update ethernet interface in SMD")
 						ifaceErrorsOccurred = true
 					}
 				} else {
 					// --overwrite was not passed, perform regular POST.
-					ifaceErrs = smdClient.PostEthernetInterfaces(cmd.Context(), ifaces, cli.Token).Errors()
+					ifaceErrs = smdClient.PostEthernetInterfaces(cmd.Context(), ifaces, rt.Token).Errors()
 					for _, err := range ifaceErrs {
 						if err != nil {
 							var errMsg string
@@ -398,7 +405,7 @@ See ochami-discover(1) for more details.`,
 							} else {
 								errMsg = "failed to add ethernet interface to SMD"
 							}
-							log.Logger.Error().Err(err).Msg(errMsg)
+							rt.Logger.Error().Err(err).Msg(errMsg)
 							ifaceErrorsOccurred = true
 						}
 					}
@@ -407,7 +414,7 @@ See ochami-discover(1) for more details.`,
 
 			// Put together list of groups to add and which components to
 			// add to those groups.
-			groupList := buildGroupList(nodesCommon)
+			groupList := buildGroupList(rt.Logger, nodesCommon)
 
 			// Add groups and components to those groups
 			var (
@@ -417,25 +424,25 @@ See ochami-discover(1) for more details.`,
 			if cmd.Flag("overwrite").Changed {
 				groupErrs = upsertOnConflict(groupList,
 					func(group smd.Group) client.Result[client.HTTPEnvelope] {
-						results := smdClient.PostGroups(cmd.Context(), []smd.Group{group}, cli.Token)
+						results := smdClient.PostGroups(cmd.Context(), []smd.Group{group}, rt.Token)
 						if len(results) != 1 {
 							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("posting group returned %d results, want one", len(results))}
 						}
 						return results[0]
 					},
 					func(group smd.Group) client.Result[client.HTTPEnvelope] {
-						results := smdClient.PatchGroups(cmd.Context(), []smd.Group{group}, cli.Token)
+						results := smdClient.PatchGroups(cmd.Context(), []smd.Group{group}, rt.Token)
 						if len(results) != 1 {
 							return client.Result[client.HTTPEnvelope]{Err: fmt.Errorf("updating group returned %d results, want one", len(results))}
 						}
 						return results[0]
 					})
 				for _, err := range groupErrs {
-					log.Logger.Error().Err(err).Msg("failed to add or update group in SMD")
+					rt.Logger.Error().Err(err).Msg("failed to add or update group in SMD")
 					groupErrorsOccurred = true
 				}
 			} else {
-				groupErrs = smdClient.PostGroups(cmd.Context(), groupList, cli.Token).Errors()
+				groupErrs = smdClient.PostGroups(cmd.Context(), groupList, rt.Token).Errors()
 				for _, err := range groupErrs {
 					if err != nil {
 						var errMsg string
@@ -444,7 +451,7 @@ See ochami-discover(1) for more details.`,
 						} else {
 							errMsg = "failed to add groups to SMD"
 						}
-						log.Logger.Error().Err(err).Msg(errMsg)
+						rt.Logger.Error().Err(err).Msg(errMsg)
 						groupErrorsOccurred = true
 					}
 				}
@@ -452,16 +459,16 @@ See ochami-discover(1) for more details.`,
 
 			// Notify user if any request errors occurred
 			if compErrorsOccurred {
-				log.Logger.Warn().Msg("component requests completed with errors")
+				rt.Logger.Warn().Msg("component requests completed with errors")
 			}
 			if rfeErrorsOccurred {
-				log.Logger.Warn().Msg("redfish endpoint requests completed with errors")
+				rt.Logger.Warn().Msg("redfish endpoint requests completed with errors")
 			}
 			if ifaceErrorsOccurred {
-				log.Logger.Warn().Msg("ethernet interface requests completed with errors")
+				rt.Logger.Warn().Msg("ethernet interface requests completed with errors")
 			}
 			if groupErrorsOccurred {
-				log.Logger.Warn().Msg("group requests completed with errors")
+				rt.Logger.Warn().Msg("group requests completed with errors")
 			}
 			if compErrorsOccurred || rfeErrorsOccurred || ifaceErrorsOccurred || groupErrorsOccurred {
 				return cli.Errorf(cli.CodeHTTP, "static discovery completed with errors")
@@ -474,25 +481,25 @@ See ochami-discover(1) for more details.`,
 	// Create flags
 	staticCmd.Flags().Var(&discoveryVersion, "discovery-version", "set version for discovery method to use")
 	staticCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	staticCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	staticCmd.Flags().Bool("overwrite", false, "overwrite any existing information instead of failing")
 	staticCmd.Flags().String("uri", "", "absolute base URI or relative base path of SMD")
 
+	cli.AddFormatInputFlag(staticCmd)
 	staticCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	staticCmd.RegisterFlagCompletionFunc("discovery-version", cli.CompletionDiscoveryVersion)
 
 	return staticCmd
 }
 
-func discoverStaticDeprecatedFormat(cmd *cobra.Command, discoveryData map[string]([]map[string]any)) bool {
+func discoverStaticDeprecatedFormat(cmd *cobra.Command, logger zerolog.Logger, discoveryData map[string]([]map[string]any)) bool {
 	deprecatedFormat := false
 	for _, node := range discoveryData["nodes"] {
 		if _, bmcIpFound := node["bmc_ip"]; bmcIpFound {
-			log.Logger.Warn().Msg("deprecated nodes key bmc_ip found, using old discovery format")
+			logger.Warn().Msg("deprecated nodes key bmc_ip found, using old discovery format")
 			deprecatedFormat = true
 			break
 		} else if _, bmcMacFound := node["bmc_mac"]; bmcMacFound {
-			log.Logger.Warn().Msg("deprecated nodes key bmc_mac found, using old discovery format")
+			logger.Warn().Msg("deprecated nodes key bmc_mac found, using old discovery format")
 			deprecatedFormat = true
 			break
 		}

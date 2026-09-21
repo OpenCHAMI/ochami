@@ -13,34 +13,72 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
 	"golang.org/x/term"
-
-	"github.com/openchami/ochami/internal/version"
 )
 
-var (
-	// Logger is the global logger used throughout the CLI. It defaults to a
-	// plain writer to os.Stderr at the CLI's own default level (warning)
-	// rather than zerolog's zero-value Logger, whose nil writer silently
-	// discards every message regardless of level. That matters because Init
-	// (below) can itself fail before it replaces this value, and callers
-	// reporting that failure via Logger must not have their error message
-	// swallowed. Init always replaces this with a fully configured logger
-	// (built from the resolved --log-level/--log-format/--log-color) once it
-	// succeeds.
-	Logger = zerolog.New(os.Stderr).Level(zerolog.WarnLevel).With().Timestamp().Logger()
+// Logger is the deprecated process-global compatibility logger. New command
+// execution must use the logger owned by cli.Runtime instead, which defaults
+// to a real writer rather than a no-op one so a failure before the runtime's
+// own logging init completes is never silently swallowed (see
+// cli.newBaseRuntime and cli.LoggerFromCommand).
+var Logger = NewConcurrentLogger(zerolog.Nop())
 
-	// A BasicLogger that is turned off until turned on by the
-	// --verbose flag.
-	EarlyLogger = NewBasicLogger(os.Stderr, false, version.ProgName)
-)
+// ConcurrentLogger provides race-safe replacement and access to the process
+// logger. Each log event uses an immutable snapshot, so separate CLI
+// invocations may initialize logging concurrently without racing with active
+// commands.
+type ConcurrentLogger struct {
+	logger atomic.Pointer[zerolog.Logger]
+}
 
-// Init() initializes the global logging object so it can be used for logging by
-// any package that imports this internal log package.
-func Init(ll, lf, lc string) error {
+// NewConcurrentLogger creates a logger initialized with logger.
+func NewConcurrentLogger(logger zerolog.Logger) *ConcurrentLogger {
+	cl := &ConcurrentLogger{}
+	cl.Set(logger)
+	return cl
+}
+
+// Set atomically replaces the logger used for future events.
+func (cl *ConcurrentLogger) Set(logger zerolog.Logger) {
+	cl.logger.Store(&logger)
+}
+
+// Get returns an immutable snapshot of the current logger.
+func (cl *ConcurrentLogger) Get() zerolog.Logger {
+	return *cl.logger.Load()
+}
+
+func (cl *ConcurrentLogger) Debug() *zerolog.Event {
+	logger := cl.Get()
+	return logger.Debug()
+}
+
+func (cl *ConcurrentLogger) Info() *zerolog.Event {
+	logger := cl.Get()
+	return logger.Info()
+}
+
+func (cl *ConcurrentLogger) Warn() *zerolog.Event {
+	logger := cl.Get()
+	return logger.Warn()
+}
+
+func (cl *ConcurrentLogger) Error() *zerolog.Event {
+	logger := cl.Get()
+	return logger.Error()
+}
+
+// New constructs a logger that writes to writer. The returned logger is an
+// independent value and can safely be owned by a single CLI invocation.
+func New(writer io.Writer, ll, lf, lc string) (zerolog.Logger, error) {
+	if writer == nil {
+		writer = io.Discard
+	}
+
 	var loggerLevel zerolog.Level
 	switch ll {
 	case "error":
@@ -52,38 +90,48 @@ func Init(ll, lf, lc string) error {
 	case "debug":
 		loggerLevel = zerolog.DebugLevel
 	default:
-		return fmt.Errorf("unknown log level: %s", ll)
+		return zerolog.Logger{}, fmt.Errorf("unknown log level: %s", ll)
 	}
 
-	cw := zerolog.ConsoleWriter{Out: os.Stderr}
+	cw := zerolog.ConsoleWriter{Out: writer}
 
 	switch lc {
 	case "", "auto":
-		cw.NoColor = !term.IsTerminal(int(os.Stderr.Fd()))
+		file, ok := writer.(*os.File)
+		cw.NoColor = !ok || !term.IsTerminal(int(file.Fd()))
 	case "on":
 		cw.NoColor = false
 	case "off":
 		cw.NoColor = true
 	default:
-		return fmt.Errorf("invalid log-color: %s", lc)
+		return zerolog.Logger{}, fmt.Errorf("invalid log-color: %s", lc)
 	}
 
 	switch lf {
 	case "rfc3339":
 		cw.TimeFormat = time.RFC3339
 		cw.FormatCaller = getFormatCaller(cw.NoColor)
-		Logger = zerolog.New(cw).Level(loggerLevel).With().Timestamp().Caller().Logger()
+		return zerolog.New(cw).Level(loggerLevel).With().Timestamp().Caller().Logger(), nil
 	case "basic":
 		cw.FormatTimestamp = func(i interface{}) string { return "" }
 		cw.FormatLevel = func(i interface{}) string { return strings.ToUpper(fmt.Sprintf("%-6s|", i)) }
 		cw.FormatCaller = getFormatCaller(cw.NoColor)
-		Logger = zerolog.New(cw).Level(loggerLevel).With().Caller().Logger()
+		return zerolog.New(cw).Level(loggerLevel).With().Caller().Logger(), nil
 	case "json":
-		Logger = zerolog.New(cw).Level(loggerLevel).With().Timestamp().Logger()
+		return zerolog.New(cw).Level(loggerLevel).With().Timestamp().Logger(), nil
 	default:
-		return fmt.Errorf("unknown log format: %s", lf)
+		return zerolog.Logger{}, fmt.Errorf("unknown log format: %s", lf)
 	}
+}
 
+// Init initializes the deprecated process-global compatibility logger.
+// Deprecated: construct an invocation-owned logger with New instead.
+func Init(ll, lf, lc string) error {
+	logger, err := New(os.Stderr, ll, lf, lc)
+	if err != nil {
+		return err
+	}
+	Logger.Set(logger)
 	return nil
 }
 

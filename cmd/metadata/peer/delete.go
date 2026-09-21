@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
@@ -23,40 +22,40 @@ type metadataPeerDeleteOptions struct {
 
 // runCoreMetadataPeerDelete contains the core logic for the metadata peer delete command.
 // It takes the parsed options and performs the actual work of deleting WireGuard peers.
-func runCoreMetadataPeerDelete(cmd *cobra.Command, opts *metadataPeerDeleteOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+func runCoreMetadataPeerDelete(cmd *cobra.Command, opts *metadataPeerDeleteOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
-		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 		} else if !respDelete {
-			log.Logger.Info().Msg("user aborted WireGuard peer deletion")
+			rt.Logger.Info().Msg("user aborted WireGuard peer deletion")
 			return nil
 		} else {
-			log.Logger.Debug().Msg("user answered affirmatively to delete WireGuard peers")
+			rt.Logger.Debug().Msg("user answered affirmatively to delete WireGuard peers")
 		}
 	}
 
 	// Send off requests
-	results := metadataServiceClient.DeleteWireGuardPeers(cmd.Context(), cli.Token, args)
+	results := metadataServiceClient.DeleteWireGuardPeers(cmd.Context(), rt.Token, args)
 
 	// Deal with per-request errors
 	var errorsOccurred = false
 	for _, err := range results.Errors() {
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to delete WireGuard peer")
+			rt.Logger.Error().Err(err).Msg("failed to delete WireGuard peer")
 			errorsOccurred = true
 		}
 	}
 
 	// Print UIDs of deleted items
-	log.Logger.Info().Msgf("WireGuard peers deleted: %+v", results.Values())
+	rt.Logger.Info().Msgf("WireGuard peers deleted: %+v", results.Values())
 
 	// Warn if any request errors occurred
 	if errorsOccurred {
@@ -84,8 +83,14 @@ See ochami-metadata(1) for more details.`,
   # Don't confirm deletion
   ochami metadata peer delete --no-confirm wireguardpeer-d614b918`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -98,7 +103,7 @@ See ochami-metadata(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreMetadataPeerDelete(cmd, opts, args, metadataServiceClient)
+			return runCoreMetadataPeerDelete(cmd, opts, args, metadataServiceClient, rt)
 		},
 	}
 

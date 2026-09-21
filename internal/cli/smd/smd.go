@@ -11,27 +11,40 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
+	"github.com/openchami/ochami/pkg/config"
 )
 
-// GetClient sets up the SMD client with the SMD base URI and certificates
-// (if necessary) and returns it. This function is used by each subcommand.
-func GetClient(cmd *cobra.Command) (*smd.SMDClient, error) {
+// GetClientWithRuntime sets up the SMD client with the SMD base URI and certificates
+// (if necessary) and returns it. This function uses the provided runtime for configuration.
+func GetClientWithRuntime(cmd *cobra.Command, rt *cli.Runtime) (*smd.SMDClient, error) {
 	// Without a base URI, we cannot do anything
-	smdBaseURI, err := cli.GetBaseURISMD(cmd)
+	smdBaseURI, err := rt.GetBaseURI(cmd, config.ServiceSMD)
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for SMD: %w", err)
 	}
 
 	// Create client to make request to SMD
-	smdClient, err := smd.NewClient(smdBaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
+	smdClient, err := smd.NewClient(smdBaseURI, client.WithInsecure(rt.Insecure), client.WithShowToken(rt.ShowToken(cmd)), client.WithLogger(rt.Logger))
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeGeneric, "error creating new SMD client: %w", err)
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+	if err := rt.UseCACert(smdClient.OchamiClient); err != nil {
 		return nil, err
 	}
 
 	return smdClient, nil
+}
+
+// GetClient sets up the SMD client with the SMD base URI and certificates
+// (if necessary) and returns it. This function uses the runtime from context.
+// Since cmd/root.go always injects a runtime into context, this will always succeed.
+func GetClient(cmd *cobra.Command) (*smd.SMDClient, error) {
+	// Get runtime from context (always available since cmd/root.go injects it)
+	rt, err := cli.RuntimeFromCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return GetClientWithRuntime(cmd, rt)
 }

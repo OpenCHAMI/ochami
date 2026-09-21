@@ -6,7 +6,6 @@
 package iface
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/spf13/cobra"
@@ -33,24 +32,24 @@ type ifaceGetOptions struct {
 	NewerThan string
 }
 
-// runCoreIfaceGet contains the core logic for the smd iface get command.
+// runCoreIfaceGetWithRuntime contains the core logic for the smd iface get command.
 // It takes the parsed options and performs the actual work of getting ethernet interfaces.
-func runCoreIfaceGet(cmd *cobra.Command, opts *ifaceGetOptions, smdClient *smd.SMDClient) error {
+// Runtime-aware version.
+func runCoreIfaceGetWithRuntime(cmd *cobra.Command, opts *ifaceGetOptions, smdClient *smd.SMDClient, rt *cli.Runtime) error {
 	// Deal with --id
 	if opts.ID != "" {
 		// This endpoint requires authentication, so a token is needed
-		if err := cli.SetToken(cmd); err != nil {
-			return err
-		}
-		if err := cli.CheckToken(cmd); err != nil {
+		if err := rt.HandleToken(cmd); err != nil {
 			return err
 		}
 
-		httpEnv, err := smdClient.GetEthernetInterfaceByID(cmd.Context(), opts.ID, cli.Token, opts.ByIP)
+		httpEnv, err := smdClient.GetEthernetInterfaceByID(cmd.Context(), opts.ID, rt.Token, opts.ByIP)
 		if err != nil {
 			return cli.ClassifyClientError(err, "SMD ethernet interface request by ID yielded unsuccessful HTTP response", "failed to request ethernet interfaces by ID from SMD")
 		}
-		fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
+		if err := cli.WriteString(rt.Ios.Out(), string(httpEnv.Body)+"\n"); err != nil {
+			return err
+		}
 		return nil
 	} else if opts.ByIP {
 		return cli.Errorf(cli.CodeUsage, "--by-ip can only be used with --id")
@@ -91,11 +90,13 @@ func runCoreIfaceGet(cmd *cobra.Command, opts *ifaceGetOptions, smdClient *smd.S
 	}
 
 	// Print output
-	outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+	outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
 	if err != nil {
 		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 	}
-	fmt.Fprint(cli.Ios.Out(), string(outBytes))
+	if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -113,8 +114,14 @@ ethernet interfaces returned.
 
 See ochami-smd(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -151,7 +158,7 @@ See ochami-smd(1) for more details.`,
 				opts.NewerThan, _ = cmd.Flags().GetString("newer-than") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreIfaceGet(cmd, opts, smdClient)
+			return runCoreIfaceGetWithRuntime(cmd, opts, smdClient, rt)
 		},
 	}
 
@@ -165,8 +172,8 @@ See ochami-smd(1) for more details.`,
 	ifaceGetCmd.Flags().StringSlice("type", []string{}, "filter ethernet interfaces by type")
 	ifaceGetCmd.Flags().String("older-than", "", "filter ethernet interfaces by update time older than specified time (RFC3339-formatted)")
 	ifaceGetCmd.Flags().String("newer-than", "", "filter ethernet interfaces by update time older than specified time (RFC3339-formatted)")
-	ifaceGetCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(ifaceGetCmd)
 	ifaceGetCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 	ifaceGetCmd.MarkFlagsMutuallyExclusive("id", "mac")
 	ifaceGetCmd.MarkFlagsMutuallyExclusive("id", "ip")

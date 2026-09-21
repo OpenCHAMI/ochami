@@ -9,7 +9,6 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 )
 
@@ -61,21 +60,27 @@ See ochami-metadata(1) for more details.`,
   echo '<yaml_data>' | ochami metadata group patch group-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata group patch group-d614b918 -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			var patchData interface{}
 			if cmd.Flag("set").Changed || cmd.Flag("unset").Changed || cmd.Flag("add").Changed || cmd.Flag("remove").Changed {
 				if cmd.Flag("patch-method").Changed && formatPatch != client.PatchMethodKeyVal {
-					log.Logger.Warn().Msg("overriding --patch-method since --set/--unset/--add/--remove was passed")
+					rt.Logger.Warn().Msg("overriding --patch-method since --set/--unset/--add/--remove was passed")
 				}
 
 				newPatchMethod, pd, err := client.NewKeyValPatchData(setList, unsetList, addList, removeList)
@@ -86,17 +91,17 @@ See ochami-metadata(1) for more details.`,
 				patchData = pd
 			} else {
 				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &patchData); err != nil {
+					if err := rt.HandlePayload(cmd, &patchData); err != nil {
 						return err
 					}
 				} else {
-					if err := cli.HandlePayloadStdin(cmd, &patchData); err != nil {
+					if err := rt.HandlePayloadStdin(cmd, &patchData); err != nil {
 						return err
 					}
 				}
 			}
 
-			groupPatched, err := metadataServiceClient.PatchGroup(cmd.Context(), cli.Token, formatPatch, args[0], patchData)
+			groupPatched, err := metadataServiceClient.PatchGroup(cmd.Context(), rt.Token, formatPatch, args[0], patchData)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to patch group", "failed to patch group")
 
@@ -108,7 +113,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Print UIDs of modified items
-			log.Logger.Info().Msgf("Groups patched: %+v", []string{groupPatched.Metadata.UID})
+			rt.Logger.Info().Msgf("Groups patched: %+v", []string{groupPatched.Metadata.UID})
 
 			return nil
 		},
@@ -120,14 +125,13 @@ See ochami-metadata(1) for more details.`,
 	metadataGroupPatchCmd.Flags().StringArrayVar(&addList, "add", nil, "add value to array field (field=value)")
 	metadataGroupPatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field (field=value)")
 	metadataGroupPatchCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	metadataGroupPatchCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data for JSON patch formats (json,json-pretty,yaml)")
 	metadataGroupPatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7386,keyval)")
 
 	for _, flag := range []string{"set", "unset", "add", "remove"} {
-		metadataGroupPatchCmd.MarkFlagsMutuallyExclusive("format-input", flag)
 		metadataGroupPatchCmd.MarkFlagsMutuallyExclusive("data", flag)
 	}
 
+	cli.AddFormatInputFlag(metadataGroupPatchCmd)
 	metadataGroupPatchCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	metadataGroupPatchCmd.RegisterFlagCompletionFunc("patch-method", cli.CompletionPatchMethod)
 

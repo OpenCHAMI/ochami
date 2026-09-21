@@ -26,7 +26,11 @@ func TestSMDCompepGet_AllFormats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		res := runOchami(t, "smd", "compep", "get", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+		// TODO: Enable t.Parallel() once race conditions are resolved
+		// t.Parallel()
+		// TODO: Enable t.Parallel() once race conditions are resolved
+		// t.Parallel()
+		res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t", "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
 		}
@@ -44,7 +48,9 @@ func TestSMDCompepGet_ByXnames(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "compep", "get", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b56n0", "x3000c1s7b56n1")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -62,7 +68,9 @@ func TestSMDCompepGet_AllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "compep", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -79,7 +87,9 @@ func TestSMDCompepGet_ByXnameHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "compep", "get", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b56n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -95,7 +105,9 @@ func TestSMDCompepGet_NetworkError(t *testing.T) {
 	url := srv.URL
 	srv.Close()
 
-	res := runOchami(t, "smd", "compep", "get", "--ignore-config", "--uri", url, "--token", "t")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -116,7 +128,9 @@ func TestSMDCompepDelete_ByXnames(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "compep", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "x3000c1s7b56n0", "x3000c1s7b56n1")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -137,7 +151,9 @@ func TestSMDCompepDelete_ByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "compep", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `[{"ID":"x3000c1s7b56n0"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -159,8 +175,10 @@ func TestSMDCompepDelete_AllConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "compep", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "--all")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithInputAndRuntime(t, "y\n",
+		"smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t", "--all")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -183,8 +201,10 @@ func TestSMDCompepDelete_Abort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"smd", "compep", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithInputAndRuntime(t, "n\n",
+		"smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
 	if res.err != nil {
 		t.Fatalf("unexpected error on abort: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -196,7 +216,9 @@ func TestSMDCompepDelete_Abort(t *testing.T) {
 // TestSMDCompepDelete_NoSelector verifies delete with neither -d, --all, nor args
 // is a usage error.
 func TestSMDCompepDelete_NoSelector(t *testing.T) {
-	res := runOchami(t, "smd", "compep", "delete", "--ignore-config", "--uri", "http://127.0.0.1:1",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -214,7 +236,9 @@ func TestSMDCompepDelete_AllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "compep", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "--all")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

@@ -20,18 +20,13 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// runOchamiWithInput runs the CLI with a scripted interactive stdin. The prompt
-// text the command writes is captured in the returned cmdResult's stdout (the
-// harness routes cli.Ios output into the same capture buffer).
-func runOchamiWithInput(t *testing.T, input string, args ...string) cmdResult {
-	t.Helper()
-	return runOchamiWithStdin(t, strings.NewReader(input), args...)
-}
-
 // TestDeleteConfirm_Yes verifies that answering "y" to the confirmation prompt
 // causes the delete to proceed (a DELETE request is issued) and the command
 // exits successfully.
 func TestDeleteConfirm_Yes(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -41,8 +36,8 @@ func TestDeleteConfirm_Yes(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "compute")
+	res := runOchamiWithInputAndRuntime(t, "y\n", "--ignore-config",
+		"smd", "group", "delete", "--uri", srv.URL, "--token", "t", "compute")
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -58,6 +53,9 @@ func TestDeleteConfirm_Yes(t *testing.T) {
 // TestDeleteConfirm_No verifies that answering "n" aborts the delete: no request
 // is issued and the command exits 0 (user-abort is not an error).
 func TestDeleteConfirm_No(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -67,8 +65,8 @@ func TestDeleteConfirm_No(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "compute")
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--ignore-config",
+		"smd", "group", "delete", "--uri", srv.URL, "--token", "t", "compute")
 
 	if res.err != nil {
 		t.Fatalf("unexpected error on abort: %v (exit %d)", res.err, res.exitCode)
@@ -87,6 +85,9 @@ func TestDeleteConfirm_No(t *testing.T) {
 // TestDeleteConfirm_YesComponent covers the same confirm-then-delete flow for a
 // second command family (smd component) to exercise its prompt branch.
 func TestDeleteConfirm_YesComponent(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -96,8 +97,8 @@ func TestDeleteConfirm_YesComponent(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "y\n",
-		"smd", "component", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
+	res := runOchamiWithInputAndRuntime(t, "y\n", "--ignore-config",
+		"smd", "component", "delete", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
 
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -110,6 +111,9 @@ func TestDeleteConfirm_YesComponent(t *testing.T) {
 // TestDeleteConfirm_NoBSS covers the abort branch for a bss delete command,
 // confirming the pattern holds across services.
 func TestDeleteConfirm_NoBSS(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -119,8 +123,8 @@ func TestDeleteConfirm_NoBSS(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"bss", "boot", "params", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--ignore-config",
+		"bss", "boot", "params", "delete", "--uri", srv.URL, "--token", "t",
 		"--mac", "de:ad:be:ef:00:00", "--kernel", "https://example.com/vmlinuz")
 
 	if res.err != nil {

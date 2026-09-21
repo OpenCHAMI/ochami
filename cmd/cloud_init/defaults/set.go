@@ -55,14 +55,20 @@ See ochami-cloud-init(1) for more details.`,
   echo '<yaml_data>' | ochami cloud-init defaults set -f yaml
   echo '<yaml_data>' | ochami cloud-init defaults set -d @- -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
@@ -71,17 +77,17 @@ See ochami-cloud-init(1) for more details.`,
 
 			// Read payload from file or stdin.
 			if cmd.Flag("data").Changed {
-				if err := cli.HandlePayload(cmd, &ciDflts); err != nil {
+				if err := rt.HandlePayload(cmd, &ciDflts); err != nil {
 					return err
 				}
 			} else {
-				if err := cli.HandlePayloadStdin(cmd, &ciDflts); err != nil {
+				if err := rt.HandlePayloadStdin(cmd, &ciDflts); err != nil {
 					return err
 				}
 			}
 
 			// Send data
-			if _, err := cloudInitClient.PostDefaults(cmd.Context(), ciDflts, cli.Token); err != nil {
+			if _, err := cloudInitClient.PostDefaults(cmd.Context(), ciDflts, rt.Token); err != nil {
 				return cli.Errorf(cli.CodeNetwork, "failed to set defaults: %w", err)
 			}
 
@@ -90,9 +96,9 @@ See ochami-cloud-init(1) for more details.`,
 	}
 
 	// Create flags
-	defaultsSetCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	defaultsSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 
+	cli.AddFormatInputFlag(defaultsSetCmd)
 	defaultsSetCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return defaultsSetCmd

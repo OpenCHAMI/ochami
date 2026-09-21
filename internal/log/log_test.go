@@ -7,8 +7,13 @@ package log
 
 import (
 	"bytes"
+	"io"
 	"reflect"
+	"strings"
+	"sync"
 	"testing"
+
+	"github.com/rs/zerolog"
 )
 
 func TestInit_Table(t *testing.T) {
@@ -427,5 +432,61 @@ func TestInit_AllCombos(t *testing.T) {
 	}
 	if err := Init("info", "json", "bogus"); err == nil {
 		t.Error("Init(bogus color) = nil, want error")
+	}
+}
+
+func TestConcurrentLoggerReplacement(t *testing.T) {
+	t.Parallel()
+
+	logger := NewConcurrentLogger(zerolog.Nop())
+	var wg sync.WaitGroup
+	for range 10 {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			logger.Set(zerolog.Nop())
+		}()
+		go func() {
+			defer wg.Done()
+			logger.Debug().Msg("concurrent log event")
+		}()
+	}
+	wg.Wait()
+}
+
+func TestNewUsesProvidedWriter(t *testing.T) {
+	t.Parallel()
+
+	var output bytes.Buffer
+	logger, err := New(&output, "debug", "basic", "off")
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	logger.Debug().Msg("writer-owned message")
+
+	if got := output.String(); !strings.Contains(got, "writer-owned message") {
+		t.Fatalf("logger output = %q, want provided writer to receive message", got)
+	}
+}
+
+func TestNewValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		level  string
+		format string
+		color  string
+	}{
+		{name: "level", level: "invalid", format: "basic", color: "off"},
+		{name: "format", level: "info", format: "invalid", color: "off"},
+		{name: "color", level: "info", format: "basic", color: "invalid"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := New(io.Discard, tt.level, tt.format, tt.color); err == nil {
+				t.Fatal("New() error = nil, want validation error")
+			}
+		})
 	}
 }

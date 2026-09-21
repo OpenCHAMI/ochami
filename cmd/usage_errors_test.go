@@ -17,7 +17,10 @@ import (
 
 // TestUsageError_UnknownFlag verifies that an unknown flag is a usage error.
 func TestUsageError_UnknownFlag(t *testing.T) {
-	res := runOchami(t, "smd", "component", "get", "--ignore-config", "--definitely-not-a-flag")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--definitely-not-a-flag")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -29,7 +32,10 @@ func TestUsageError_UnknownFlag(t *testing.T) {
 // TestUsageError_BadFlagValue verifies that an invalid value for a typed flag
 // (here, a non-integer for the int32 --nid) is a usage error.
 func TestUsageError_BadFlagValue(t *testing.T) {
-	res := runOchami(t, "smd", "component", "get", "--ignore-config", "--nid", "not-a-number")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--nid", "not-a-number")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -41,7 +47,10 @@ func TestUsageError_BadFlagValue(t *testing.T) {
 // TestUsageError_TooManyArgs verifies that violating a command's Args validator
 // (cobra.NoArgs on "smd component get") is a usage error.
 func TestUsageError_TooManyArgs(t *testing.T) {
-	res := runOchami(t, "smd", "component", "get", "--ignore-config", "unexpected-arg")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "unexpected-arg")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -54,7 +63,10 @@ func TestUsageError_TooManyArgs(t *testing.T) {
 // cobra.ExactArgs (here, "smd group member get" requires exactly 1) is a usage
 // error.
 func TestUsageError_ExactArgs(t *testing.T) {
-	res := runOchami(t, "smd", "group", "member", "get", "--ignore-config")
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "group", "member", "get")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}

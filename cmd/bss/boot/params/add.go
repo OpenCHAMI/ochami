@@ -39,11 +39,12 @@ func (opts *bootParamsAddOptions) toBootParams() bssTypes.BootParams {
 	}
 }
 
-// runCoreBootParamsAdd contains the core logic for the bss boot params add command.
+// runCoreBootParamsAddWithRuntime contains the core logic for the bss boot params add command.
 // It takes the parsed options and performs the actual work of adding boot parameters.
-func runCoreBootParamsAdd(cmd *cobra.Command, opts *bootParamsAddOptions, bssClient *bss.BSSClient) error {
+// Runtime-aware version.
+func runCoreBootParamsAddWithRuntime(cmd *cobra.Command, opts *bootParamsAddOptions, bssClient *bss.BSSClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -52,7 +53,7 @@ func runCoreBootParamsAdd(cmd *cobra.Command, opts *bootParamsAddOptions, bssCli
 
 	// Read payload from file first, allowing overwrites from flags
 	if cmd.Flag("data").Changed {
-		if err := cli.HandlePayload(cmd, &bp); err != nil {
+		if err := rt.HandlePayload(cmd, &bp); err != nil {
 			return err
 		}
 	}
@@ -65,7 +66,7 @@ func runCoreBootParamsAdd(cmd *cobra.Command, opts *bootParamsAddOptions, bssCli
 	}
 
 	// Send 'em off
-	_, err := bssClient.PostBootParams(cmd.Context(), bp, cli.Token)
+	_, err := bssClient.PostBootParams(cmd.Context(), bp, rt.Token)
 	if err != nil {
 		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to add boot parameters to BSS")
 	}
@@ -111,8 +112,14 @@ See ochami-bss(1) for more details.`,
   echo '<yaml_data>' | ochami bss boot params add -d @- -f yaml`,
 		PreRunE: validateBootParamsSetFlags,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			bssClient, err := bss_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -140,7 +147,7 @@ See ochami-bss(1) for more details.`,
 				opts.Params, _ = cmd.Flags().GetString("params") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreBootParamsAdd(cmd, opts, bssClient)
+			return runCoreBootParamsAddWithRuntime(cmd, opts, bssClient, rt)
 		},
 	}
 
@@ -152,8 +159,8 @@ See ochami-bss(1) for more details.`,
 	bootParamsAddCmd.Flags().StringSliceP("mac", "m", []string{}, "one or more MAC addresses whose boot parameters to add")
 	bootParamsAddCmd.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to add")
 	bootParamsAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootParamsAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(bootParamsAddCmd)
 	bootParamsAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return bootParamsAddCmd

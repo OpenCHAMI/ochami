@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
 
@@ -57,28 +56,34 @@ See ochami-smd(1) for more details.`,
 				}
 			} else {
 				if len(args) > 0 {
-					log.Logger.Warn().Msgf("raw data passed, ignoring extra arguments: %v", args)
+					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring extra arguments: %v", args)
 				}
 			}
 
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			var eis []smd.EthernetInterface
 			if cmd.Flag("data").Changed {
 				// Use payload file if passed
-				if err := cli.HandlePayload(cmd, &eis); err != nil {
+				if err := rt.HandlePayload(cmd, &eis); err != nil {
 					return err
 				}
 			} else {
@@ -105,16 +110,16 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send off request
-			results := smdClient.PostEthernetInterfaces(cmd.Context(), eis, cli.Token)
+			results := smdClient.PostEthernetInterfaces(cmd.Context(), eis, rt.Token)
 			// Since smdClient.PostEthernetInterfaces does the addition iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
 			for _, e := range results.Errors() {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("SMD ethernet interface request yielded unsuccessful HTTP response")
+						rt.Logger.Error().Err(e).Msg("SMD ethernet interface request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(e).Msg("failed to add ethernet interfaces to SMD")
+						rt.Logger.Error().Err(e).Msg("failed to add ethernet interfaces to SMD")
 					}
 					errorsOccurred = true
 				}
@@ -130,8 +135,8 @@ See ochami-smd(1) for more details.`,
 	// Create flags
 	ifaceAddCmd.Flags().StringP("description", "D", "Undescribed Ethernet Interface", "description of interface")
 	ifaceAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	ifaceAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(ifaceAddCmd)
 	ifaceAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	ifaceAddCmd.MarkFlagsMutuallyExclusive("description", "data")
 

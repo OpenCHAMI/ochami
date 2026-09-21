@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/rs/zerolog"
+
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/pkg/client"
@@ -65,12 +67,12 @@ func TestClassifyClientError(t *testing.T) {
 }
 
 func TestAggregateItemErrors(t *testing.T) {
-	if err := AggregateItemErrors([]error{nil, nil}, "resource update"); err != nil {
+	if err := AggregateItemErrors(zerolog.Nop(), []error{nil, nil}, "resource update"); err != nil {
 		t.Fatalf("AggregateItemErrors() = %v, want nil", err)
 	}
 
 	itemErr := fmt.Errorf("item: %w", client.UnsuccessfulHTTPError)
-	err := AggregateItemErrors([]error{nil, itemErr}, "resource update")
+	err := AggregateItemErrors(zerolog.Nop(), []error{nil, itemErr}, "resource update")
 	if code := ExitCode(err); code != CodeHTTP {
 		t.Errorf("ExitCode() = %d, want %d", code, CodeHTTP)
 	}

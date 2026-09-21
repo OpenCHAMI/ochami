@@ -34,12 +34,6 @@ See ochami-config(5) for details on the configuration options.`,
   ochami config unset --user log.format
   ochami config unset --system log.format
   ochami --config ./test.yaml config unset log.format`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// It doesn't make sense to unset from a config file that
-			// doesn't exist, so err if the specified config file doesn't
-			// exist.
-			return cli.InitConfigAndLogging(cmd, false)
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// To mark both persistent and regular flags mutually exclusive,
 			// this function must be run before the command is executed. It
@@ -50,8 +44,13 @@ See ochami-config(5) for details on the configuration options.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// We must have a config file in order to write config
-			fileToModify := cli.ConfigFileToModify(cmd)
+			fileToModify := rt.ConfigFileToModify(cmd)
 
 			// Refuse to modify config if user tries to modify cluster config
 			if strings.HasPrefix(args[0], "clusters") {

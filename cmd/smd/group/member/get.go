@@ -6,8 +6,6 @@
 package member
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -28,38 +26,45 @@ func newCmdGroupMemberGet() *cobra.Command {
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member get compute`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
 
 			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
+			if err := rt.HandleToken(cmd); err != nil {
 				return err
 			}
 
 			// Send request
-			httpEnv, err := smdClient.GetGroupMembers(cmd.Context(), args[0], cli.Token)
+			httpEnv, err := smdClient.GetGroupMembers(cmd.Context(), args[0], rt.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "SMD group member request yielded unsuccessful HTTP response", "failed to request group members from SMD")
-
 			}
 
 			// Print output
-			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
 	// Create flags
-	groupMemberGetCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(groupMemberGetCmd)
 	groupMemberGetCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return groupMemberGetCmd

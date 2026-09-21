@@ -21,6 +21,9 @@ import (
 // TestRCSConsoleList_Success verifies "rcs console list" issues GET /consoles and prints
 // the returned console list.
 func TestRCSConsoleList_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -28,7 +31,7 @@ func TestRCSConsoleList_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "rcs", "console", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "rcs", "console", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -44,6 +47,9 @@ func TestRCSConsoleList_Success(t *testing.T) {
 // websocket at /consoles/<node>, streams server output to stdout, and returns
 // nil on a normal websocket close.
 func TestRCSConsoleShow_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotPath string
 	upgrader := websocket.Upgrader{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +70,7 @@ func TestRCSConsoleShow_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "rcs", "console", "show", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "rcs", "console", "show", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"x0c0s1b0n0")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -97,7 +103,7 @@ func TestRCSConsole_Connect(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "", "rcs", "console", "connect", "x0c0s1b0n0",
+	res := runOchamiWithInputAndRuntime(t, "", "rcs", "console", "connect", "x0c0s1b0n0",
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)

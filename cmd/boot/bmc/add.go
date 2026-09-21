@@ -12,7 +12,6 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
@@ -26,9 +25,9 @@ type bootBmcAddOptions struct {
 
 // runCoreBootBmcAdd contains the core logic for the boot bmc add command.
 // It takes the parsed options and performs the actual work of adding BMCs.
-func runCoreBootBmcAdd(cmd *cobra.Command, opts *bootBmcAddOptions, bootServiceClient *boot_service.BootServiceClient) error {
+func runCoreBootBmcAdd(cmd *cobra.Command, opts *bootBmcAddOptions, bootServiceClient *boot_service.BootServiceClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -40,41 +39,41 @@ func runCoreBootBmcAdd(cmd *cobra.Command, opts *bootBmcAddOptions, bootServiceC
 		// Read node data
 		bmcs := []boot_service_client.CreateBMCRequest{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[boot_service_client.CreateBMCRequest](rt, cmd, &bmcs); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[boot_service_client.CreateBMCRequest](rt, cmd, &bmcs); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = bootServiceClient.AddBMCs(cmd.Context(), cli.Token, bmcs)
+		results = bootServiceClient.AddBMCs(cmd.Context(), rt.Token, bmcs)
 	} else {
 		// Use simple API (spec)
 
 		// Read node data
 		bmcs := []boot_service.BMCSpec{}
 		if cmd.Flag("data").Changed {
-			if err := cli.HandlePayloadSlice[boot_service.BMCSpec](cmd, &bmcs); err != nil {
+			if err := cli.HandlePayloadSliceWithRuntime[boot_service.BMCSpec](rt, cmd, &bmcs); err != nil {
 				return err
 			}
 		} else {
-			if err := cli.HandlePayloadStdinSlice[boot_service.BMCSpec](cmd, &bmcs); err != nil {
+			if err := cli.HandlePayloadStdinSliceWithRuntime[boot_service.BMCSpec](rt, cmd, &bmcs); err != nil {
 				return err
 			}
 		}
 
 		// Send off requests
-		results = bootServiceClient.AddBMCSpecs(cmd.Context(), cli.Token, bmcs)
+		results = bootServiceClient.AddBMCSpecs(cmd.Context(), rt.Token, bmcs)
 	}
 
 	// Deal with per-request errors
 	var reqErrorsOccurred = false
 	for _, err := range results.Errors() {
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("failed to add BMC")
+			rt.Logger.Error().Err(err).Msg("failed to add BMC")
 			reqErrorsOccurred = true
 		}
 	}
@@ -82,7 +81,7 @@ func runCoreBootBmcAdd(cmd *cobra.Command, opts *bootBmcAddOptions, bootServiceC
 	for _, bmc := range results.Values() {
 		names = append(names, bmc.Metadata.Name)
 	}
-	log.Logger.Debug().Msgf("BMCs created: %q", names)
+	rt.Logger.Debug().Msgf("BMCs created: %q", names)
 	if reqErrorsOccurred {
 		return cli.Errorf(cli.CodeHTTP, "BMC addition completed with errors")
 	}
@@ -161,8 +160,14 @@ See ochami-boot(1) for more details.`,
   echo '<yaml_data>' | ochami boot bmc add -d @- -f yaml
   echo '<yaml_data>' | ochami boot bmc add -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Create client to use for requests
-			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClientWithRuntime(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -175,14 +180,14 @@ See ochami-boot(1) for more details.`,
 				opts.Envelope, _ = cmd.Flags().GetBool("envelope") //nolint:errcheck // Flag registered with matching type, error impossible
 			}
 
-			return runCoreBootBmcAdd(cmd, opts, bootServiceClient)
+			return runCoreBootBmcAdd(cmd, opts, bootServiceClient, rt)
 		},
 	}
 
 	// Create flags
 	bootBmcAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootBmcAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(bootBmcAddCmd)
 	bootBmcAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return bootBmcAddCmd

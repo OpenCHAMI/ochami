@@ -34,7 +34,7 @@ func TestMetacommandPaths_PrintUsage(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			args := append(append([]string{}, path...), "--ignore-config")
-			res := runOchami(t, args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v", res.err)
 			}

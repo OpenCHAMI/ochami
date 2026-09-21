@@ -18,7 +18,10 @@ import (
 // TestBSSBootParamsAdd_MissingSelectors verifies that add without -d and without
 // any of --xname/--nid/--mac is a usage error.
 func TestBSSBootParamsAdd_MissingSelectors(t *testing.T) {
-	res := runOchami(t, "bss", "boot", "params", "add",
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "add",
 		"--ignore-config", "--uri", "http://127.0.0.1:0", "--token", "faketoken",
 		"--kernel", "https://example.com/vmlinuz")
 
@@ -33,12 +36,15 @@ func TestBSSBootParamsAdd_MissingSelectors(t *testing.T) {
 // TestBSSServiceStatus_HTTPError verifies an unsuccessful HTTP response from the
 // status endpoint resolves to CodeHTTP.
 func TestBSSServiceStatus_HTTPError(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "bss", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "bss", "service", "status", "--ignore-config", "--uri", srv.URL)
 
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

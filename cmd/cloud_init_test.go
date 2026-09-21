@@ -22,6 +22,9 @@ import (
 // TestCloudInitGroupGet_Success verifies "cloud-init group get raw" issues GET
 // /admin/groups.
 func TestCloudInitGroupGet_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -29,7 +32,7 @@ func TestCloudInitGroupGet_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "get", "raw", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "get", "raw", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -41,6 +44,9 @@ func TestCloudInitGroupGet_Success(t *testing.T) {
 // TestCloudInitGroupAdd_Success verifies "cloud-init group add -d <payload>" issues
 // POST /admin/groups.
 func TestCloudInitGroupAdd_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -48,7 +54,7 @@ func TestCloudInitGroupAdd_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "add", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"name":"compute"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -61,6 +67,9 @@ func TestCloudInitGroupAdd_Success(t *testing.T) {
 // TestCloudInitGroupSet_Success verifies "cloud-init group set -d <payload>" issues
 // PUT /admin/groups/<name>.
 func TestCloudInitGroupSet_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -68,7 +77,7 @@ func TestCloudInitGroupSet_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "set", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"name":"compute"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -81,6 +90,9 @@ func TestCloudInitGroupSet_Success(t *testing.T) {
 // TestCloudInitGroupDelete_NoConfirm verifies "cloud-init group delete
 // --no-confirm <name>" issues DELETE under /admin/groups.
 func TestCloudInitGroupDelete_NoConfirm(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -88,7 +100,7 @@ func TestCloudInitGroupDelete_NoConfirm(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "compute")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -101,6 +113,9 @@ func TestCloudInitGroupDelete_NoConfirm(t *testing.T) {
 // TestCloudInitNodeSet_Success verifies "cloud-init node set -d <payload>" issues a PUT
 // under /admin/instance-info.
 func TestCloudInitNodeSet_Success(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -108,7 +123,7 @@ func TestCloudInitNodeSet_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "node", "set", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"id":"x0c0s0b0n0"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -121,6 +136,9 @@ func TestCloudInitNodeSet_Success(t *testing.T) {
 // TestCloudInitDefaultsSet verifies "cloud-init defaults set -d <payload>"
 // issues POST /admin/cluster-defaults.
 func TestCloudInitDefaultsSet(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -128,7 +146,7 @@ func TestCloudInitDefaultsSet(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "defaults", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "defaults", "set", "--uri", srv.URL, "--token", "t",
 		"-d", `{"cluster-name":"demo"}`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -143,13 +161,16 @@ func TestCloudInitDefaultsSet(t *testing.T) {
 // server returns an empty body for the group config fetch, so the command logs
 // a warning and returns without error.
 func TestCloudInitGroupRender_EmptyConfig(t *testing.T) {
+	// TODO: Enable t.Parallel() once race conditions are resolved
+	// t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Empty body for the group-config fetch => nothing to render.
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "render", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "render", "--uri", srv.URL, "--token", "t",
 		"compute", "x0c0s0b0n0")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -167,7 +188,7 @@ func TestCloudInitGroupGet_RemainingPaths(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "cloud-init", "group", "get", subcommand,
+			res := runOchamiWithRuntime(t, "cloud-init", "group", "get", subcommand,
 				"--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -184,7 +205,7 @@ func TestCloudInitServiceStatus_API(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "status", "--api", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "status", "--api", "--ignore-config", "--uri", srv.URL)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -198,7 +219,7 @@ func TestCloudInitServiceVersion_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "version", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "version", "--ignore-config", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -215,7 +236,7 @@ func TestCloudInitServiceStatus_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "status", "--ignore-config", "--uri", srv.URL)
 	// Some status commands treat non-2xx-with-body as an error; accept either a
 	// clean success or a mapped HTTP/network code, but never a panic.
 	if res.err != nil && res.exitCode == cli.CodeSuccess {
@@ -232,7 +253,7 @@ func TestCloudInitServiceStatus_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "status", "--ignore-config", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -252,7 +273,7 @@ func TestCloudInitServiceStatus_QuietHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "status", "--quiet", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "status", "--quiet", "--ignore-config", "--uri", srv.URL)
 	if res.exitCode != cli.CodeHTTP {
 		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
 	}
@@ -266,7 +287,7 @@ func TestCloudInitServiceStatus_APIError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "service", "status", "--api", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "cloud-init", "service", "status", "--api", "--ignore-config", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
