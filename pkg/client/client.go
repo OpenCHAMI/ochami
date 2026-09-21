@@ -565,10 +565,9 @@ func ReadPayloadDataSlice[T any](data string, inFormat format.DataFormat, v *[]T
 	return err
 }
 
-// ReadPayloadStdin is like ReadPayloadData except it reads the data from
-// standard input instead of from a positional argument.
-func ReadPayloadStdin(format format.DataFormat, v any) error {
-	data, err := oio.ReadStdin()
+// ReadPayloadReader is like ReadPayloadData except it reads data from r.
+func ReadPayloadReader(r io.Reader, format format.DataFormat, v any) error {
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return fmt.Errorf("unable to read from stdin: %w", err)
 	}
@@ -587,10 +586,14 @@ func ReadPayloadStdin(format format.DataFormat, v any) error {
 	return err
 }
 
-// ReadPayloadStdinSlice is like ReadPayloadStdin except that v is a typed
-// slice.
-func ReadPayloadStdinSlice[T any](inFormat format.DataFormat, v *[]T) error {
-	data, err := oio.ReadStdin()
+// ReadPayloadStdin is like ReadPayloadReader except it reads data from os.Stdin.
+func ReadPayloadStdin(format format.DataFormat, v any) error {
+	return ReadPayloadReader(os.Stdin, format, v)
+}
+
+// ReadPayloadReaderSlice is like ReadPayloadReader except v is a typed slice.
+func ReadPayloadReaderSlice[T any](r io.Reader, inFormat format.DataFormat, v *[]T) error {
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return fmt.Errorf("unable to read from stdin: %w", err)
 	}
@@ -607,6 +610,12 @@ func ReadPayloadStdinSlice[T any](inFormat format.DataFormat, v *[]T) error {
 	}
 
 	return err
+}
+
+// ReadPayloadStdinSlice is like ReadPayloadReaderSlice except it reads data
+// from os.Stdin.
+func ReadPayloadStdinSlice[T any](inFormat format.DataFormat, v *[]T) error {
+	return ReadPayloadReaderSlice(os.Stdin, inFormat, v)
 }
 
 // CanonicalizeInterface takes an arbitrary map of data (e.g. returned from
