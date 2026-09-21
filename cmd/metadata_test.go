@@ -12,8 +12,10 @@ package cmd
 // covered in metadata_errors_test.go.
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -65,6 +67,37 @@ func TestMetadataGet_Success(t *testing.T) {
 			}
 			if res.exitCode != cli.CodeSuccess {
 				t.Errorf("exit code = %d, want %d (CodeSuccess)", res.exitCode, cli.CodeSuccess)
+			}
+		})
+	}
+}
+
+// TestMetadataPatch_PathsAndArrayOperations verifies that --add/--set/--unset/
+// --remove on "metadata <resource> patch" produce an RFC 6902 JSON Patch
+// request instead of being silently dropped.
+func TestMetadataPatch_PathsAndArrayOperations(t *testing.T) {
+	for _, resource := range []string{"defaults", "group", "instance", "peer"} {
+		t.Run(resource, func(t *testing.T) {
+			var gotContentType, gotBody string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotContentType = r.Header.Get("Content-Type")
+				body, _ := io.ReadAll(r.Body)
+				gotBody = string(body)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = io.WriteString(w, `{"metadata":{"uid":"some-uid","name":"thing"},"spec":{}}`)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "metadata", resource, "patch", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "--add", "items=value")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if gotContentType != "application/json-patch+json" {
+				t.Errorf("Content-Type = %q, want application/json-patch+json", gotContentType)
+			}
+			if !strings.Contains(gotBody, `"op":"add"`) || !strings.Contains(gotBody, `"path":"/items/-"`) {
+				t.Errorf("body = %q, want RFC 6902 add operation", gotBody)
 			}
 		})
 	}
