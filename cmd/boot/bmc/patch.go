@@ -107,7 +107,7 @@ See ochami-boot(1) for more details.`,
 
 			bmcPatched, err := bootServiceClient.PatchBMC(cli.Token, patchMethod, args[0], patchData)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to patch BMC: %w", err)
+				return cli.ClassifyClientError(err, "failed to patch BMC", "failed to patch BMC")
 			}
 
 			log.Logger.Debug().Msgf("BMC patched: %+v", bmcPatched)

@@ -7,7 +7,6 @@ package compep
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -45,10 +44,7 @@ See ochami-smd(1) for more details.`,
 				// Get all ComponentEndpoints if no args passed
 				httpEnv, err = smdClient.GetComponentEndpointsAll(cli.Token)
 				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						return cli.Errorf(cli.CodeHTTP, "SMD component endpoint request yielded unsuccessful HTTP response: %w", err)
-					}
-					return cli.Errorf(cli.CodeNetwork, "failed to request component endpoints from SMD: %w", err)
+					return cli.ClassifyClientError(err, "SMD component endpoint request yielded unsuccessful HTTP response", "failed to request component endpoints from SMD")
 				}
 
 				// Print output
@@ -60,21 +56,11 @@ See ochami-smd(1) for more details.`,
 			} else {
 				httpEnvs, errs, err := smdClient.GetComponentEndpoints(cli.Token, args...)
 				if err != nil {
-					return cli.Errorf(cli.CodeNetwork, "failed to get component endpoints from SMD: %w", err)
+					return cli.ClassifyClientError(err, "failed to get component endpoints from SMD", "failed to get component endpoints from SMD")
 				}
 				// Since smdClient.GetComponentEndpoints does the fetching iteratively, we need to
 				// deal with each error that might have occurred.
-				var errorsOccurred = false
-				for _, e := range errs {
-					if e != nil {
-						if errors.Is(e, client.UnsuccessfulHTTPError) {
-							log.Logger.Error().Err(e).Msg("SMD component endpoint request yielded unsuccessful HTTP response")
-						} else {
-							log.Logger.Error().Err(e).Msg("failed to get component endpoint")
-						}
-						errorsOccurred = true
-					}
-				}
+				aggErr := cli.AggregateItemErrors(errs, "SMD component endpoint request")
 
 				// Put selected ComponentEndpoints into array and marshal
 				type compEp struct {
@@ -94,8 +80,8 @@ See ochami-smd(1) for more details.`,
 				}
 
 				// Warn the user if any errors occurred during fetch iterations
-				if errorsOccurred {
-					return cli.Errorf(cli.CodeHTTP, "SMD component endpoint request completed with errors")
+				if aggErr != nil {
+					return aggErr
 				}
 
 				ces := compEp{ComponentEndpoints: ceArr}

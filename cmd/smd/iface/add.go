@@ -6,7 +6,6 @@
 package iface
 
 import (
-	"errors"
 	"net"
 	"strings"
 
@@ -14,7 +13,6 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -107,23 +105,10 @@ See ochami-smd(1) for more details.`,
 			// Send off request
 			_, errs, err := smdClient.PostEthernetInterfaces(eis, cli.Token)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add ethernet interface in SMD: %w", err)
+				return cli.ClassifyClientError(err, "failed to add ethernet interface in SMD", "failed to add ethernet interface in SMD")
 			}
-			// Since smdClient.PostEthernetInterfaces does the addition iteratively, we need to deal with
-			// each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("SMD ethernet interface request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to add ethernet interfaces to SMD")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "SMD ethernet interface addition completed with errors")
+			if err := cli.AggregateItemErrors(errs, "SMD ethernet interface addition"); err != nil {
+				return err
 			}
 
 			return nil

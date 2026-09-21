@@ -390,7 +390,7 @@ func (sc *SMDClient) GetGroups(query, token string) (client.HTTPEnvelope, error)
 // the authorization bearer.
 func (sc *SMDClient) GetGroupMembers(group, token string) (client.HTTPEnvelope, error) {
 	if group == "" {
-		return client.HTTPEnvelope{}, fmt.Errorf("GetGroupMembers(): group label cannot be empty")
+		return client.HTTPEnvelope{}, fmt.Errorf("GetGroupMembers(): %w: group label cannot be empty", client.InvalidArgumentError)
 	}
 	finalEP, err := url.JoinPath(SMDRelpathGroups, group, "members")
 	if err != nil {
@@ -619,10 +619,10 @@ func (sc *SMDClient) PostGroupMembers(token, group string, members ...string) ([
 		errors  []error
 	)
 	if group == "" {
-		return henvs, errors, fmt.Errorf("PostGroupMembers(): no group label specified to add members to")
+		return henvs, errors, fmt.Errorf("PostGroupMembers(): %w: no group label specified to add members to", client.InvalidArgumentError)
 	}
 	if len(members) == 0 {
-		return henvs, errors, fmt.Errorf("PostGroupMembers(): no new members specified to add to group")
+		return henvs, errors, fmt.Errorf("PostGroupMembers(): %w: no new members specified to add to group", client.InvalidArgumentError)
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
@@ -683,7 +683,7 @@ func (sc *SMDClient) PutComponents(compSlice ComponentSlice, token string) ([]cl
 	}
 	for _, comp := range compSlice.Components {
 		if comp.ID == "" {
-			newErr := fmt.Errorf("PutComponents(): unable to update component with blank ID")
+			newErr := fmt.Errorf("PutComponents(): %w: unable to update component with blank ID", client.InvalidArgumentError)
 			henvs = append(henvs, client.HTTPEnvelope{})
 			errors = append(errors, newErr)
 			continue
@@ -736,7 +736,7 @@ func (sc *SMDClient) PutRedfishEndpoints(rfes RedfishEndpointSlice, token string
 		var body client.HTTPBody
 		var err error
 		if rfe.ID == "" {
-			newErr := fmt.Errorf("PutRedfishEndpoints(): unable to update redfish endpoint with blank ID")
+			newErr := fmt.Errorf("PutRedfishEndpoints(): %w: unable to update redfish endpoint with blank ID", client.InvalidArgumentError)
 			henvs = append(henvs, client.HTTPEnvelope{})
 			errors = append(errors, newErr)
 			continue
@@ -785,7 +785,7 @@ func (sc *SMDClient) PutRedfishEndpointsV2(rfes RedfishEndpointSliceV2, token st
 		var body client.HTTPBody
 		var err error
 		if rfe.ID == "" {
-			newErr := fmt.Errorf("PutRedfishEndpointsV2(): unable to update redfish endpoint with blank ID")
+			newErr := fmt.Errorf("PutRedfishEndpointsV2(): %w: unable to update redfish endpoint with blank ID", client.InvalidArgumentError)
 			henvs = append(henvs, client.HTTPEnvelope{})
 			errors = append(errors, newErr)
 			continue
@@ -830,10 +830,10 @@ func (sc *SMDClient) PutGroupMembers(token, group string, members ...string) (cl
 
 	// Check that group and member list are non-empty
 	if group == "" {
-		return henv, fmt.Errorf("PutGroupMembers(): no group label specified to set members of")
+		return henv, fmt.Errorf("PutGroupMembers(): %w: no group label specified to set members of", client.InvalidArgumentError)
 	}
 	if len(members) == 0 {
-		return henv, fmt.Errorf("PutGroupMembers(): no members specified")
+		return henv, fmt.Errorf("PutGroupMembers(): %w: no members specified", client.InvalidArgumentError)
 	}
 
 	// Add token to headers
@@ -939,7 +939,7 @@ func (sc *SMDClient) PatchEthernetInterfaces(eis []EthernetInterface, token stri
 				newID = strings.ReplaceAll(newID, "_", "")
 				ei.ID = newID
 			} else {
-				newErr := fmt.Errorf("PatchEthernetInterfaces(): unable to patch ethernet interface with both blank ID and blank MAC address")
+				newErr := fmt.Errorf("PatchEthernetInterfaces(): %w: unable to patch ethernet interface with both blank ID and blank MAC address", client.InvalidArgumentError)
 				henvs = append(henvs, client.HTTPEnvelope{})
 				errors = append(errors, newErr)
 				continue
@@ -991,7 +991,7 @@ func (sc *SMDClient) PatchGroups(groups []Group, token string) ([]client.HTTPEnv
 	}
 	for _, group := range groups {
 		if group.Label == "" {
-			newErr := fmt.Errorf("PatchGroups(): no group label specified to update")
+			newErr := fmt.Errorf("PatchGroups(): %w: no group label specified to update", client.InvalidArgumentError)
 			henvs = append(henvs, client.HTTPEnvelope{})
 			errors = append(errors, newErr)
 			continue

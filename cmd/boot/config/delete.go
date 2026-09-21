@@ -62,20 +62,12 @@ See ochami-boot(1) for more details.`,
 			// Send off requests
 			bcfgsDeleted, errs, err := bootServiceClient.DeleteBootConfigs(cli.Token, args)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to delete boot configs: %w", err)
+				return cli.ClassifyClientError(err, "failed to delete boot configs", "failed to delete boot configs")
 			}
 
-			// Deal with per-request errors
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					log.Logger.Error().Err(e).Msg("failed to delete boot config")
-					errorsOccurred = true
-				}
-			}
 			log.Logger.Debug().Msgf("boot configs deleted: %+v", bcfgsDeleted)
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "boot config deletion completed with errors")
+			if err := cli.AggregateItemErrors(errs, "boot config deletion"); err != nil {
+				return err
 			}
 
 			return nil

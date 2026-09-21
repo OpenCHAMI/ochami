@@ -114,7 +114,7 @@ See ochami-boot(1) for more details.`,
 				bmcSet, reqErr = bootServiceClient.SetBMCSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to set bmc: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to set bmc", "failed to set bmc")
 			}
 
 			log.Logger.Debug().Msgf("bmc set: %+v", bmcSet)

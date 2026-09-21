@@ -37,7 +37,7 @@ See ochami-boot(1) for more details.`,
 			// Make request
 			outBytes, err := bootServiceClient.ListBMCs(cli.Token, cli.FormatOutput)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to list BMCs: %w", err)
+				return cli.ClassifyClientError(err, "failed to list BMCs", "failed to list BMCs")
 			}
 
 			// Print output

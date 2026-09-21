@@ -5,11 +5,13 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
+	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/config"
 )
@@ -45,6 +47,14 @@ const (
 	// example, "Really delete?" or an offer to create a missing config file),
 	// so the command made no changes.
 	CodeDeclined = 8
+	// CodeMixed indicates that a command operating on several items (e.g.
+	// adding or deleting multiple resources in one invocation) had failures
+	// that do not share a single code (e.g. some items got an unsuccessful
+	// HTTP response while others hit a network error). When every failed
+	// item shares one cause, the command returns that cause's code instead,
+	// so scripts can act on it directly; CodeMixed means the output must be
+	// inspected to see which items failed and why.
+	CodeMixed = 9
 )
 
 // CodeName returns the identifier of the exit code constant whose value is
@@ -72,6 +82,8 @@ func CodeName(code int) string {
 		return "CodeNetwork"
 	case CodeDeclined:
 		return "CodeDeclined"
+	case CodeMixed:
+		return "CodeMixed"
 	default:
 		return fmt.Sprintf("Code(%d)", code)
 	}
@@ -107,6 +119,98 @@ func (ce *CodedError) Code() int {
 // errors.Is/errors.As.
 func Errorf(code int, format string, args ...any) error {
 	return &CodedError{code: code, err: fmt.Errorf(format, args...)}
+}
+
+// clientErrorCode resolves the exit code for an error returned by a service
+// client: an argument the client rejected before sending a request
+// (client.InvalidArgumentError) is CodeUsage, an unsuccessful HTTP response
+// is CodeHTTP, a response body that could not be decoded is CodePayload, and
+// anything else (connection failures, timeouts, cancellation) is
+// CodeNetwork.
+func clientErrorCode(err error) int {
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	switch {
+	case errors.Is(err, client.InvalidArgumentError):
+		return CodeUsage
+	case errors.Is(err, client.UnsuccessfulHTTPError):
+		return CodeHTTP
+	case errors.As(err, &syntaxErr), errors.As(err, &typeErr):
+		return CodePayload
+	default:
+		return CodeNetwork
+	}
+}
+
+// ClassifyClientError wraps a service client error with the exit code it
+// resolves to (see clientErrorCode), preserving the original error for
+// inspection. httpMsg prefixes unsuccessful HTTP responses; netMsg prefixes
+// every other failure.
+func ClassifyClientError(err error, httpMsg, netMsg string) error {
+	if err == nil {
+		return nil
+	}
+	code := clientErrorCode(err)
+	if code == CodeHTTP {
+		return Errorf(code, "%s: %w", httpMsg, err)
+	}
+	return Errorf(code, "%s: %w", netMsg, err)
+}
+
+// itemErrors reports the failures of a multi-item operation. Its message is
+// a summary (each failure is logged individually), and it unwraps to every
+// item error so errors.Is/errors.As can inspect them.
+type itemErrors struct {
+	msg  string
+	errs []error
+}
+
+func (e *itemErrors) Error() string   { return e.msg + " completed with errors" }
+func (e *itemErrors) Unwrap() []error { return e.errs }
+
+// AggregateItemErrors logs each non-nil error from a multi-item operation
+// (one error per item, nil for items that succeeded) and returns
+// CombineItemErrors(errs, msg).
+func AggregateItemErrors(errs []error, msg string) error {
+	for _, err := range errs {
+		if err != nil {
+			log.Logger.Error().Err(err).Msgf("%s failed", msg)
+		}
+	}
+	return CombineItemErrors(errs, msg)
+}
+
+// CombineItemErrors returns nil if errs has no non-nil errors. Otherwise it
+// returns a summary error coded with the code every failure shares, or with
+// CodeMixed if they differ. Each item's code is its own CodedError code if it
+// carries one, or the service client code (see clientErrorCode) if not. Use it
+// directly when a command logs item failures itself.
+func CombineItemErrors(errs []error, msg string) error {
+	var failed []error
+	code := CodeSuccess
+	for _, err := range errs {
+		if err == nil {
+			continue
+		}
+		failed = append(failed, err)
+
+		itemCode := clientErrorCode(err)
+		var ce *CodedError
+		if errors.As(err, &ce) {
+			itemCode = ce.code
+		}
+		switch code {
+		case CodeSuccess:
+			code = itemCode
+		case itemCode:
+		default:
+			code = CodeMixed
+		}
+	}
+	if len(failed) == 0 {
+		return nil
+	}
+	return &CodedError{code: code, err: &itemErrors{msg: msg, errs: failed}}
 }
 
 // EnsureCode wraps an existing error with an explicit exit code without altering

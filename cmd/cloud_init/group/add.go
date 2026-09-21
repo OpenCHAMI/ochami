@@ -6,15 +6,11 @@
 package group
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/cloud-init/pkg/cistore"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 
 	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
@@ -86,23 +82,10 @@ See ochami-cloud-init(1) for more details.`,
 			// Send data
 			_, errs, err := cloudInitClient.PostGroups(ciGroups, cli.Token)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add groups: %w", err)
+				return cli.ClassifyClientError(err, "failed to add groups", "failed to add groups")
 			}
-			// Since the requests are done iteratively, we need to deal with
-			// each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("cloud-init group request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to add new group to cloud-init")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "cloud-init group addition completed with errors")
+			if err := cli.AggregateItemErrors(errs, "cloud-init group addition"); err != nil {
+				return err
 			}
 
 			return nil

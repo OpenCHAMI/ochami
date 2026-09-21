@@ -45,7 +45,7 @@ See ochami-cloud-init(1) for more details.`,
 					if !cmd.Flag("quiet").Changed {
 						fmt.Println("cloud-init is not running")
 					}
-					return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init status: %w", err)
+					return cli.ClassifyClientError(err, "failed to get cloud-init status", "failed to get cloud-init status")
 				}
 				if !cmd.Flag("quiet").Changed {
 					fmt.Println("cloud-init is running")
@@ -54,7 +54,7 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			var respArr []client.HTTPEnvelope
-			errOccurred := false
+			var itemErrs []error
 			if cmd.Flag("api").Changed {
 				if henv, err := cloudInitClient.GetAPI(); err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
@@ -62,7 +62,7 @@ See ochami-cloud-init(1) for more details.`,
 					} else {
 						log.Logger.Error().Err(err).Msg("failed to get cloud-init API spec")
 					}
-					errOccurred = true
+					itemErrs = append(itemErrs, err)
 				} else {
 					respArr = append(respArr, henv)
 				}
@@ -76,8 +76,8 @@ See ochami-cloud-init(1) for more details.`,
 				fmt.Print(string(outBytes))
 			}
 
-			if errOccurred {
-				return cli.Errorf(cli.CodeHTTP, "one or more requests to cloud-init failed")
+			if err := cli.CombineItemErrors(itemErrs, "cloud-init status request"); err != nil {
+				return err
 			}
 
 			return nil
