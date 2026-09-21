@@ -145,8 +145,8 @@ func TestBuildGroupList(t *testing.T) {
 	}
 }
 
-// TestDiscoverStaticDeprecatedFormat verifies legacy discovery input remains supported.
-func TestDiscoverStaticDeprecatedFormat(t *testing.T) {
+// TestDeprecatedFormatDetection verifies legacy discovery input remains supported.
+func TestDeprecatedFormatDetection(t *testing.T) {
 	tests := []struct {
 		name string
 		data map[string][]map[string]any

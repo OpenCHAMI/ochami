@@ -13,6 +13,7 @@ package cmd
 
 import (
 	"encoding/base64"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -530,6 +531,63 @@ func TestCloudInitGroupGet_RemainingSubcommands(t *testing.T) {
 				"--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+func TestCloudInitGroupConfigEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		group    string
+		wantCode int
+	}{
+		{name: "empty content", group: `{"name":"compute","file":{"content":"","encoding":"plain"}}`, wantCode: cli.CodeSuccess},
+		{name: "invalid base64", group: `{"name":"compute","file":{"content":"%%%","encoding":"base64"}}`, wantCode: cli.CodePayload},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = io.WriteString(w, tc.group) //nolint:errcheck // response writes are observed by the client
+			}))
+			defer srv.Close()
+			res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "get", "config",
+				"compute", "--uri", srv.URL, "--token", "t")
+			if res.exitCode != tc.wantCode || (tc.wantCode == cli.CodeSuccess && res.err != nil) || (tc.wantCode != cli.CodeSuccess && res.err == nil) {
+				t.Fatalf("result = (err %v, exit %d), want exit %d", res.err, res.exitCode, tc.wantCode)
+			}
+		})
+	}
+}
+
+func TestCloudInitGroupRender_PayloadErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		template string
+		metadata string
+	}{
+		{name: "malformed metadata", template: `{{ ds.meta_data.hostname }}`, metadata: `: invalid`},
+		{name: "malformed template", template: `{% if`, metadata: `hostname: node01`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasSuffix(r.URL.Path, "compute.yaml") {
+					_, _ = io.WriteString(w, tc.template) //nolint:errcheck // response writes are observed by the client
+					return
+				}
+				_, _ = io.WriteString(w, tc.metadata) //nolint:errcheck // response writes are observed by the client
+			}))
+			defer srv.Close()
+			res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "render", "compute", "node01",
+				"--uri", srv.URL, "--token", "t")
+			if res.err == nil || res.exitCode != cli.CodePayload {
+				t.Fatalf("result = (err %v, exit %d), want CodePayload", res.err, res.exitCode)
 			}
 		})
 	}

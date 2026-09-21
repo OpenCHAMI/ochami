@@ -341,3 +341,123 @@ func TestCloudInitServiceVersion_Success(t *testing.T) {
 		t.Errorf("path = %q, want /version", gotPath)
 	}
 }
+
+// TestCloudInitDefaultsGet verifies "cloud-init defaults get" issues GET
+// /admin/cluster-defaults.
+func TestCloudInitDefaultsGet(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"cluster-name":"demo"}`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "defaults", "get", "--uri", srv.URL)
+
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/admin/cluster-defaults" {
+		t.Errorf("path = %q, want /admin/cluster-defaults", gotPath)
+	}
+}
+
+// TestCloudInitServiceStatus_Running verifies that "cloud-init service status"
+// exits successfully when the /version endpoint responds OK.
+func TestCloudInitServiceStatus_Running(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"version":"1.0.0"}`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "service", "status", "--uri", srv.URL)
+
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/version" {
+		t.Errorf("path = %q, want /version", gotPath)
+	}
+	if !strings.Contains(res.stdout, "cloud-init is running") {
+		t.Errorf("stdout = %q, want it to report running", res.stdout)
+	}
+}
+
+// TestCloudInitServiceStatus_NotRunning verifies that when the service is
+// unreachable, "cloud-init service status" reports not running and resolves to
+// a non-zero exit code.
+func TestCloudInitServiceStatus_NotRunning(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	url := srv.URL
+	srv.Close() // connection refused
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "service", "status", "--uri", url)
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeNetwork {
+		t.Errorf("exit code = %d, want %d (CodeNetwork)", res.exitCode, cli.CodeNetwork)
+	}
+	if !strings.Contains(res.stdout, "cloud-init is not running") {
+		t.Errorf("stdout = %q, want it to report not running", res.stdout)
+	}
+}
+func TestCloudInitMalformedSuccessResponses(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		body string
+		args []string
+	}{
+		{name: "all groups", body: `{`, args: []string{"cloud-init", "group", "get", "raw"}},
+		{name: "single group", body: `{`, args: []string{"cloud-init", "group", "get", "raw", "compute"}},
+		{name: "node metadata", body: `: invalid`, args: []string{"cloud-init", "node", "get", "meta-data", "node01"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = io.WriteString(w, tc.body) //nolint:errcheck // malformed response is the fixture
+			}))
+			defer srv.Close()
+			args := append([]string{"--ignore-config"}, tc.args...)
+			args = append(args, "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, args...)
+			if res.err == nil || res.exitCode != cli.CodePayload {
+				t.Fatalf("result = (err %v, exit %d), want CodePayload", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// TestCloudInitDefaults_GetMalformedResponse verifies handling of malformed responses.
+func TestCloudInitDefaults_GetMalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"defaults":`)) //nolint:errcheck // malformed test response
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"cloud-init", "defaults", "get")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodePayload {
+		t.Errorf("exit code = %d, want %d (CodePayload)", res.exitCode, cli.CodePayload)
+	}
+}

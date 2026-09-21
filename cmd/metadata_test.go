@@ -579,3 +579,194 @@ func TestMetadataServiceStatus_Success(t *testing.T) {
 		t.Errorf("path = %q, want /health", gotPath)
 	}
 }
+
+// TestMetadataGroupList_HTTPError verifies that an unsuccessful HTTP response
+// from the metadata service resolves to a non-success exit code. The metadata
+// client wraps an upstream library, so we assert exit-code behavior rather than
+// the exact request path.
+func TestMetadataGroupList_HTTPError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "group", "list", "--uri", srv.URL, "--token", "faketoken")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode == cli.CodeSuccess {
+		t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+	}
+}
+
+// TestMetadataGroupList_Success verifies that "metadata group list" exits
+// successfully when the service returns a valid list response.
+func TestMetadataGroupList_Success(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "group", "list", "--uri", srv.URL, "--token", "faketoken")
+
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if res.exitCode != cli.CodeSuccess {
+		t.Errorf("exit code = %d, want %d (CodeSuccess)", res.exitCode, cli.CodeSuccess)
+	}
+}
+
+// TestMetadataDefaults_GetMalformedResponse verifies handling of malformed responses.
+func TestMetadataDefaults_GetMalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"Defaults":`)) //nolint:errcheck // malformed test response
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "defaults", "get", "test-uid",
+		"--uri", srv.URL, "--token", "t")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeNetwork {
+		t.Errorf("exit code = %d, want %d (CodeNetwork)", res.exitCode, cli.CodeNetwork)
+	}
+}
+
+// TestMetadataDefaults_ListHTTPError verifies HTTP error handling.
+func TestMetadataDefaults_ListHTTPError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "defaults", "list",
+		"--uri", srv.URL, "--token", "t")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestMetadataGroupGet_MalformedResponse verifies handling of malformed responses.
+func TestMetadataGroupGet_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"Group":`)) //nolint:errcheck // malformed test response
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "group", "get", "test-group",
+		"--uri", srv.URL, "--token", "t")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeNetwork {
+		t.Errorf("exit code = %d, want %d (CodeNetwork)", res.exitCode, cli.CodeNetwork)
+	}
+}
+
+// TestMetadataGroupList_NotFoundHTTPError verifies HTTP error handling.
+func TestMetadataGroupList_NotFoundHTTPError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "group", "list",
+		"--uri", srv.URL, "--token", "t")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestMetadataInstanceGet_MalformedResponse verifies handling of malformed responses.
+func TestMetadataInstanceGet_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"Instance":`)) //nolint:errcheck // malformed test response
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "instance", "get", "x0c0s1b0n0",
+		"--uri", srv.URL, "--token", "t")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeNetwork {
+		t.Errorf("exit code = %d, want %d (CodeNetwork)", res.exitCode, cli.CodeNetwork)
+	}
+}
+
+// TestMetadataPeerGet_MalformedResponse verifies handling of malformed responses.
+func TestMetadataPeerGet_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"Peer":`)) //nolint:errcheck // malformed test response
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "peer", "get", "x0c0s1b0n0",
+		"--uri", srv.URL, "--token", "t")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeNetwork {
+		t.Errorf("exit code = %d, want %d (CodeNetwork)", res.exitCode, cli.CodeNetwork)
+	}
+}
+
+// TestMetadataServiceStatus_HTTPError verifies HTTP error handling.
+func TestMetadataServiceStatus_HTTPError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "service", "status",
+		"--uri", srv.URL, "--token", "t")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}

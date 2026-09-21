@@ -6,7 +6,7 @@ package cmd
 
 // pcs_test.go exercises "pcs status" and "pcs service" commands end-to-end
 // against an httptest.Server. Transition commands are covered in
-// services_test.go.
+// pcs_transition_test.go.
 
 import (
 	"net/http"
@@ -219,5 +219,53 @@ func TestPCSServiceStatus_HealthHTTPError(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeHTTP {
 		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestPCSStatusList_MalformedResponse verifies a malformed status-list
+// response resolves to CodePayload (a decode failure, not an HTTP failure:
+// the server responds 200 OK with an undecodable body).
+func TestPCSStatusList_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"State":`)) //nolint:errcheck // malformed test response
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"pcs", "status", "list")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodePayload {
+		t.Errorf("exit code = %d, want %d (CodePayload)", res.exitCode, cli.CodePayload)
+	}
+}
+
+// TestPCSServiceStatus_MalformedResponse verifies a malformed readiness/liveness
+// response resolves to CodeGeneric: the command can't classify the failure as
+// a specific HTTP status once neither probe successfully reports a state.
+func TestPCSServiceStatus_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"Status":`)) //nolint:errcheck // malformed test response
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"pcs", "service", "status")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeGeneric {
+		t.Errorf("exit code = %d, want %d (CodeGeneric)", res.exitCode, cli.CodeGeneric)
 	}
 }

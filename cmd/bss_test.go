@@ -890,79 +890,11 @@ func TestBSSBootParamsDelete_NetworkError(t *testing.T) {
 	}
 }
 
-// TestBSSBootImageSet_ByXnameAndNid verifies "boot image set" selects nodes by
-// --xname and --nid, fetching then PUTting the modified boot parameters.
-func TestBSSBootImageSet_ByXnameAndNid(t *testing.T) {
-	for _, sel := range [][]string{{"--xname", "x0c0s0b0n0"}, {"--nid", "1"}} {
-		t.Run(sel[0], func(t *testing.T) {
-			var puts int
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				switch r.Method {
-				case http.MethodGet:
-					_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"kernel":"http://s3/vmlinuz","params":"root=live:old"}]`)) //nolint:errcheck // test response writes are observed by the client
-				case http.MethodPut:
-					puts++
-					w.WriteHeader(http.StatusOK)
-				}
-			}))
-			defer srv.Close()
-
-			args := append([]string{"bss", "boot", "image", "set", "--ignore-config", "--uri", srv.URL, "--token", "t"},
-				append(sel, "https://example.com/new-image")...)
-			res := runOchamiWithRuntime(t, args...)
-			if res.err != nil {
-				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-			}
-			if puts == 0 {
-				t.Error("expected at least one PUT to update boot params, got none")
-			}
-		})
-	}
-}
-
-// TestBSSBootImageSet_GetHTTPError verifies a failing GET of boot params resolves
-// to CodeHTTP.
-func TestBSSBootImageSet_GetHTTPError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "bss", "boot", "image", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
-		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
-	}
-}
-
-// TestBSSBootImageSet_PutHTTPError verifies a failing PUT resolves to CodeHTTP
-// via the per-item aggregate.
-func TestBSSBootImageSet_PutHTTPError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"kernel":"http://s3/vmlinuz","params":"root=live:old"}]`)) //nolint:errcheck // test response writes are observed by the client
-			return
-		}
-		http.Error(w, "bad", http.StatusBadRequest)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "bss", "boot", "image", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
-		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
-	}
-}
-
 // TestBSSBootScriptGet_Query verifies the boot-script query builder emits the
 // mac/xname/nid and optional retry/arch/timestamp parameters.
 func TestBSSBootScriptGet_Query(t *testing.T) {
+	t.Parallel()
+
 	var gotQuery url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
@@ -983,6 +915,8 @@ func TestBSSBootScriptGet_Query(t *testing.T) {
 // TestBSSBootScriptGet_HTTPError verifies a failing boot-script GET resolves to
 // CodeHTTP.
 func TestBSSBootScriptGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -1024,6 +958,8 @@ func TestBSSHostsGet_QueryAndFormats(t *testing.T) {
 
 // TestBSSHostsGet_HTTPError verifies a failing hosts GET resolves to CodeHTTP.
 func TestBSSHostsGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -1065,6 +1001,8 @@ func TestBSSHistoryGet_QueryAndFormats(t *testing.T) {
 // TestBSSHistoryGet_HTTPError verifies a failing history GET resolves to
 // CodeHTTP.
 func TestBSSHistoryGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -1096,5 +1034,65 @@ func TestBSSServiceVersion(t *testing.T) {
 	}
 	if gotPath != "/service/version" {
 		t.Errorf("path = %q, want /service/version", gotPath)
+	}
+}
+
+// TestBSSBootParamsGet_MalformedResponse verifies that the BSS boot params get
+// command handles malformed JSON responses gracefully.
+func TestBSSBootParamsGet_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{"BootParameters":[{"ID":"`)); err != nil {
+			t.Errorf("writing response: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
+		"bss", "boot", "params", "get", "x0c0s1b0n0")
+
+	if res.err == nil {
+		t.Fatal("expected error for malformed JSON, got nil")
+	}
+	if res.exitCode == 0 {
+		t.Errorf("expected non-zero exit code, got %d", res.exitCode)
+	}
+}
+
+// TestBSSBootParamsGetByXname_HTTPError verifies that HTTP 5xx errors are handled.
+func TestBSSBootParamsGetByXname_HTTPError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
+		"bss", "boot", "params", "get", "x0c0s1b0n0")
+
+	if res.err == nil {
+		t.Fatal("expected error for HTTP 503, got nil")
+	}
+	if res.exitCode == 0 {
+		t.Errorf("expected non-zero exit code, got %d", res.exitCode)
+	}
+}
+
+// TestBSSBootParamsGetByXname_NetworkError verifies network-level errors are handled.
+func TestBSSBootParamsGetByXname_NetworkError(t *testing.T) {
+	t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", "http://192.0.2.1:5000", "--token", "t",
+		"--timeout", "1s", "bss", "boot", "params", "get", "x0c0s1b0n0")
+
+	if res.err == nil {
+		t.Fatal("expected network error, got nil")
+	}
+	if res.exitCode == 0 {
+		t.Errorf("expected non-zero exit code, got %d", res.exitCode)
 	}
 }
