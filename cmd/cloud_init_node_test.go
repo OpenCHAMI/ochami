@@ -33,7 +33,7 @@ func TestCloudInitNodeGetData_Success(t *testing.T) {
 			var gotPath string
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
-				_, _ = w.Write([]byte("#cloud-config\n"))
+				_, _ = w.Write([]byte("#cloud-config\n")) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -58,7 +58,7 @@ func TestCloudInitNodeGet_Group(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte("#cloud-config\n"))
+		_, _ = w.Write([]byte("#cloud-config\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -97,7 +97,7 @@ func TestCloudInitNodeGetData_HTTPError(t *testing.T) {
 // "node get meta-data".
 func TestCloudInitNodeGet_MetadataFormats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("hostname: node01\n"))
+		_, _ = w.Write([]byte("hostname: node01\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -117,7 +117,7 @@ func TestCloudInitNodeGet_MetadataFormats(t *testing.T) {
 // user-data for the node.
 func TestCloudInitNodeGet_Userdata(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n"))
+		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -135,7 +135,7 @@ func TestCloudInitNodeGet_Userdata(t *testing.T) {
 // vendor-data for the node.
 func TestCloudInitNodeGet_Vendordata(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("#cloud-config\nvendor: acme\n"))
+		_, _ = w.Write([]byte("#cloud-config\nvendor: acme\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -264,7 +264,7 @@ func TestCloudInitNodeSet_MalformedPayload(t *testing.T) {
 // header-printing arms).
 func TestCloudInitNodeGet_DataHeaderModes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n"))
+		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -283,7 +283,7 @@ func TestCloudInitNodeGet_DataHeaderModes(t *testing.T) {
 // group data over multiple groups.
 func TestCloudInitNodeGet_GroupHeaderModes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n"))
+		_, _ = w.Write([]byte("#cloud-config\nfoo: bar\n")) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

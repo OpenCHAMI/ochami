@@ -43,7 +43,7 @@ var bootListCases = func() []bootListCase {
 func TestBootList_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -66,7 +66,7 @@ func TestBootList_Success(t *testing.T) {
 func TestBootServiceStatus(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -84,7 +84,7 @@ func TestBootServiceStatus(t *testing.T) {
 func TestBootGet_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -106,7 +106,7 @@ func TestBootGet_Success(t *testing.T) {
 func TestBootDelete_NoConfirm(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -149,7 +149,7 @@ func TestBootList_Formats(t *testing.T) {
 			t.Run(typ+"/"+f, func(t *testing.T) {
 				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(`[]`))
+					_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 				}))
 				defer srv.Close()
 
@@ -169,7 +169,7 @@ func TestBootGet_Formats(t *testing.T) {
 			t.Run(typ+"/"+f, func(t *testing.T) {
 				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+					_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 				}))
 				defer srv.Close()
 
@@ -231,7 +231,7 @@ func TestBootAdd_Envelope(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -252,7 +252,7 @@ func TestBootAdd_Stdin(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -272,7 +272,7 @@ func TestBootSet_Envelope(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -336,7 +336,7 @@ func TestBootDelete_ConfirmYes(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -449,7 +449,7 @@ func TestBootSet_Stdin(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -469,7 +469,7 @@ func TestBootPatch_Stdin(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -490,7 +490,7 @@ func TestBootAdd_EnvelopeStdin(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -510,7 +510,7 @@ func TestBootSet_EnvelopeStdin(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -530,7 +530,7 @@ func TestBootPatch_Keyval(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -549,7 +549,7 @@ func TestBootPatch_RFC6902(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -569,7 +569,7 @@ func TestBootPatch_StdinData(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+				_, _ = w.Write([]byte(`{"metadata":{"name":"thing-1"}}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 

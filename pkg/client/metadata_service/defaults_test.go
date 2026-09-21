@@ -14,15 +14,29 @@ import (
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 )
 
+func decodeMetadataTestJSON(t *testing.T, r *http.Request, dst any) {
+	t.Helper()
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		t.Errorf("decode request body: %v", err)
+	}
+}
+
+func encodeMetadataTestJSON(t *testing.T, w http.ResponseWriter, value any) {
+	t.Helper()
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		t.Errorf("encode response body: %v", err)
+	}
+}
+
 func TestAddDefaultsSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeMetadataTestJSON(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.ClusterDefaults{})
+		encodeMetadataTestJSON(t, w, api.ClusterDefaults{})
 	})
 	defer srv.Close()
 
@@ -61,9 +75,9 @@ func TestAddDefaultsSpecs_OmitsLabels(t *testing.T) {
 func TestAddDefaults_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeMetadataTestJSON(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.ClusterDefaults{})
+		encodeMetadataTestJSON(t, w, api.ClusterDefaults{})
 	})
 	defer srv.Close()
 
@@ -92,7 +106,7 @@ func TestSetDefaultsSpec_UsesUIDEndpoint(t *testing.T) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.ClusterDefaults{})
+		encodeMetadataTestJSON(t, w, api.ClusterDefaults{})
 	})
 	defer srv.Close()
 

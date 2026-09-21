@@ -29,7 +29,7 @@ func TestSMDComponentGet_All(t *testing.T) {
 		gotMethod = r.Method
 		gotPath = r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`))
+		_, _ = w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -60,7 +60,11 @@ func TestSMDComponentAdd_ViaFlags(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
 		gotPath = r.URL.Path
-		gotBody, _ = io.ReadAll(r.Body)
+		var err error
+		gotBody, err = io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read request body: %v", err)
+		}
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer srv.Close()
@@ -147,7 +151,7 @@ func TestSMDComponentGet_ByXname(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"ID":"x0c0s0b0n0"}`))
+		_, _ = w.Write([]byte(`{"ID":"x0c0s0b0n0"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -166,7 +170,7 @@ func TestSMDComponentGet_ByNID(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"NID":1}`))
+		_, _ = w.Write([]byte(`{"NID":1}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -183,7 +187,7 @@ func TestSMDComponentGet_ByNID(t *testing.T) {
 // TestSMDComponentGet_Formats verifies output-format variants of get-all.
 func TestSMDComponentGet_Formats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`))
+		_, _ = w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

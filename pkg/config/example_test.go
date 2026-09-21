@@ -15,16 +15,23 @@ import (
 // ExampleLoad demonstrates loading configuration from an explicit set of
 // sources and resolving a service base URI for a cluster.
 func ExampleLoad() {
-	dir, _ := os.MkdirTemp("", "ochami-config-example-")
-	defer os.RemoveAll(dir)
+	dir, err := os.MkdirTemp("", "ochami-config-example-")
+	if err != nil {
+		fmt.Println("temp directory error:", err)
+		return
+	}
+	defer os.RemoveAll(dir) //nolint:errcheck // best-effort cleanup after the example exits
 
 	path := filepath.Join(dir, "config.yaml")
-	_ = os.WriteFile(path, []byte(`default-cluster: foobar
+	if err := os.WriteFile(path, []byte(`default-cluster: foobar
 clusters:
   - name: foobar
     cluster:
       uri: https://foobar.openchami.cluster
-`), 0o644)
+`), 0o644); err != nil {
+		fmt.Println("write error:", err)
+		return
+	}
 
 	cfg, err := config.Load([]config.Source{{Name: "example", Path: path}})
 	if err != nil {

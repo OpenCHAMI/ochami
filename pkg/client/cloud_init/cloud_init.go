@@ -113,7 +113,7 @@ func (cic *CloudInitClient) GetDefaults(token string) (client.HTTPEnvelope, erro
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err := cic.GetData(CloudInitRelpathDefaults, "", headers)
 	if err != nil {
@@ -133,7 +133,7 @@ func (cic *CloudInitClient) GetGroups(token string, ids ...string) ([]client.HTT
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	if len(ids) == 0 {
 		henv, err := cic.GetData(CloudInitRelpathGroups, "", headers)
@@ -185,7 +185,7 @@ func (cic *CloudInitClient) GetNodeData(dataType CIDataType, token string, ids .
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, id := range ids {
 		var henv client.HTTPEnvelope
@@ -229,7 +229,7 @@ func (cic *CloudInitClient) GetNodeGroupData(token, id string, groups ...string)
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, group := range groups {
 		var henv client.HTTPEnvelope
@@ -279,7 +279,7 @@ func (cic *CloudInitClient) PostDefaults(ciDflts cistore.ClusterDefaults, token 
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	henv, err = cic.PostData(CloudInitRelpathDefaults, "", headers, body)
 	if err != nil {
@@ -301,7 +301,7 @@ func (cic *CloudInitClient) PostGroups(ciGroups []cistore.GroupData, token strin
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, cig := range ciGroups {
 		var body client.HTTPBody
@@ -337,7 +337,7 @@ func (cic *CloudInitClient) PutGroups(ciGroups []cistore.GroupData, token string
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, cig := range ciGroups {
 		var (
@@ -386,7 +386,7 @@ func (cic *CloudInitClient) PutInstanceInfo(instanceInfoList []cistore.OpenCHAMI
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	if len(instanceInfoList) == 0 {
 		return henvs, errors, fmt.Errorf("PutInstanceInfo(): at least one instance info is required")
@@ -443,7 +443,7 @@ func (cic *CloudInitClient) DeleteGroups(token string, groups ...string) ([]clie
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		_ = headers.SetAuthorization(token)
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	for _, group := range groups {
 		finalEP, err := url.JoinPath(CloudInitRelpathGroups, group)

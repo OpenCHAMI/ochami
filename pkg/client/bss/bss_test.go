@@ -39,7 +39,7 @@ func TestGetBootParams(t *testing.T) {
 	bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath, gotQuery = r.Method, r.URL.Path, r.URL.RawQuery
 		gotAuth = r.Header.Get("Authorization")
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -67,7 +67,11 @@ func TestPostBootParams(t *testing.T) {
 	var gotBody []byte
 	bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		gotBody, _ = io.ReadAll(r.Body)
+		var err error
+		gotBody, err = io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read request body: %v", err)
+		}
 		w.WriteHeader(http.StatusCreated)
 	})
 	defer srv.Close()
@@ -140,7 +144,7 @@ func TestGetStatus_Components(t *testing.T) {
 			var gotPath string
 			bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 
@@ -171,7 +175,7 @@ func TestSimpleGetters(t *testing.T) {
 			var gotPath string
 			bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
-				_, _ = w.Write([]byte(`[]`))
+				_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 

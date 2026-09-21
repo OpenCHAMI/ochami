@@ -28,7 +28,7 @@ func TestBSSBootParamsGet_All(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`[{"hosts":["x0c0s0b0n0"]}]`))
+		_, _ = w.Write([]byte(`[{"hosts":["x0c0s0b0n0"]}]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -55,7 +55,7 @@ func TestBSSBootParamsGet_WithMAC(t *testing.T) {
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -79,7 +79,11 @@ func TestBSSBootParamsAdd_ViaFlags(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
 		gotPath = r.URL.Path
-		gotBody, _ = io.ReadAll(r.Body)
+		var err error
+		gotBody, err = io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read request body: %v", err)
+		}
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer srv.Close()
@@ -139,7 +143,7 @@ func TestBSSDumpstate(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"state":"ok"}`))
+		_, _ = w.Write([]byte(`{"state":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -158,7 +162,7 @@ func TestBSSHostsGet_Success(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -177,7 +181,7 @@ func TestBSSServiceStatus_Success(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -197,7 +201,7 @@ func TestBSSBootScriptGet_Success(t *testing.T) {
 	var gotPath, gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
-		_, _ = w.Write([]byte(`#!ipxe`))
+		_, _ = w.Write([]byte(`#!ipxe`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -219,7 +223,7 @@ func TestBSSHistoryGet_Success(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -238,7 +242,7 @@ func TestBSSStatusDeprecated(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -261,7 +265,7 @@ func TestBSSBootImageSet_Success(t *testing.T) {
 		if r.Method == http.MethodGet {
 			// Return one boot-params entry matching the requested mac so the
 			// command has something to edit and PUT back.
-			_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"params":"console=tty0"}]`))
+			_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"params":"console=tty0"}]`)) //nolint:errcheck // test response writes are observed by the client
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -307,7 +311,7 @@ func TestBSSBootParamsGet_Query(t *testing.T) {
 			var gotQuery url.Values
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotQuery = r.URL.Query()
-				_, _ = w.Write([]byte(`[]`))
+				_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -327,7 +331,7 @@ func TestBSSBootParamsGet_Query(t *testing.T) {
 // TestBSSBootParamsGet_Formats verifies the output-format variants.
 func TestBSSBootParamsGet_Formats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"params":"console=tty0"}]`))
+		_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"params":"console=tty0"}]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -774,5 +778,190 @@ func TestBSSBootParamsDelete_NetworkError(t *testing.T) {
 		"--no-confirm", "--mac", "de:ad:be:ef:00:00", "--kernel", "http://k")
 	if res.err == nil || res.exitCode != cli.CodeNetwork {
 		t.Errorf("err=%v exit=%d, want CodeNetwork", res.err, res.exitCode)
+	}
+}
+
+// TestBSSBootImageSet_ByXnameAndNid verifies "boot image set" selects nodes by
+// --xname and --nid, fetching then PUTting the modified boot parameters.
+func TestBSSBootImageSet_ByXnameAndNid(t *testing.T) {
+	for _, sel := range [][]string{{"--xname", "x0c0s0b0n0"}, {"--nid", "1"}} {
+		t.Run(sel[0], func(t *testing.T) {
+			var puts int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.Method {
+				case http.MethodGet:
+					_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"kernel":"http://s3/vmlinuz","params":"root=live:old"}]`)) //nolint:errcheck // test response writes are observed by the client
+				case http.MethodPut:
+					puts++
+					w.WriteHeader(http.StatusOK)
+				}
+			}))
+			defer srv.Close()
+
+			args := append([]string{"bss", "boot", "image", "set", "--ignore-config", "--uri", srv.URL, "--token", "t"},
+				append(sel, "https://example.com/new-image")...)
+			res := runOchami(t, args...)
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if puts == 0 {
+				t.Error("expected at least one PUT to update boot params, got none")
+			}
+		})
+	}
+}
+
+// TestBSSBootImageSet_GetHTTPError verifies a failing GET of boot params resolves
+// to CodeHTTP.
+func TestBSSBootImageSet_GetHTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "image", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestBSSBootImageSet_PutHTTPError verifies a failing PUT resolves to CodeHTTP
+// via the per-item aggregate.
+func TestBSSBootImageSet_PutHTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"kernel":"http://s3/vmlinuz","params":"root=live:old"}]`)) //nolint:errcheck // test response writes are observed by the client
+			return
+		}
+		http.Error(w, "bad", http.StatusBadRequest)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "image", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestBSSBootScriptGet_Query verifies the boot-script query builder emits the
+// mac/xname/nid and optional retry/arch/timestamp parameters.
+func TestBSSBootScriptGet_Query(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_, _ = w.Write([]byte(`#!ipxe`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "script", "get", "--ignore-config", "--uri", srv.URL,
+		"--xname", "x0c0s0b0n0", "--retry", "3", "--arch", "x86_64", "--timestamp", "12345")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotQuery.Get("name") == "" && gotQuery.Get("xname") == "" {
+		t.Errorf("query = %v, want an xname/name parameter", gotQuery)
+	}
+}
+
+// TestBSSBootScriptGet_HTTPError verifies a failing boot-script GET resolves to
+// CodeHTTP.
+func TestBSSBootScriptGet_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "script", "get", "--ignore-config", "--uri", srv.URL,
+		"--mac", "de:ad:be:ef:00:00")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestBSSHostsGet_QueryAndFormats verifies the hosts query builder and
+// output-format variants.
+func TestBSSHostsGet_QueryAndFormats(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_, _ = w.Write([]byte(`[{"ID":"x0c0s0b0n0"}]`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	for _, f := range []string{"json", "yaml"} {
+		res := runOchami(t, "bss", "hosts", "get", "--ignore-config", "--uri", srv.URL,
+			"--xname", "x0c0s0b0n0", "-F", f)
+		if res.err != nil {
+			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
+		}
+	}
+	if len(gotQuery) == 0 {
+		t.Error("expected a non-empty query for --xname")
+	}
+}
+
+// TestBSSHostsGet_HTTPError verifies a failing hosts GET resolves to CodeHTTP.
+func TestBSSHostsGet_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "hosts", "get", "--ignore-config", "--uri", srv.URL, "--mac", "de:ad:be:ef:00:00")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+// TestBSSHistoryGet_QueryAndFormats verifies the history query builder and
+// output-format variants.
+func TestBSSHistoryGet_QueryAndFormats(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	for _, f := range []string{"json", "yaml"} {
+		res := runOchami(t, "bss", "history", "--ignore-config", "--uri", srv.URL,
+			"--xname", "x0c0s0b0n0", "-F", f)
+		if res.err != nil {
+			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
+		}
+	}
+	if len(gotQuery) == 0 {
+		t.Error("expected a non-empty query for --xname")
+	}
+}
+
+// TestBSSHistoryGet_HTTPError verifies a failing history GET resolves to
+// CodeHTTP.
+func TestBSSHistoryGet_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "history", "--ignore-config", "--uri", srv.URL, "--endpoint", "x0c0s0b0")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
 	}
 }

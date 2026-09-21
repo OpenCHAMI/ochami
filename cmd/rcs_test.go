@@ -24,7 +24,7 @@ func TestRCSConsoleList_Success(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		_, _ = w.Write([]byte(`{"consoles":[{"id":"x0c0s1b0n0","connectionType":"ipmi","connectionHost":"bmc"}]}`))
+		_, _ = w.Write([]byte(`{"consoles":[{"id":"x0c0s1b0n0","connectionType":"ipmi","connectionHost":"bmc"}]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -53,9 +53,14 @@ func TestRCSConsoleShow_Success(t *testing.T) {
 			return
 		}
 		defer conn.Close()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("console output line"))
-		_ = conn.WriteMessage(websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("console output line")); err != nil {
+			t.Errorf("write console message: %v", err)
+			return
+		}
+		if err := conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			t.Errorf("write close message: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -82,8 +87,13 @@ func TestRCSConsole_Connect(t *testing.T) {
 			return
 		}
 		defer conn.Close()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("connected"))
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("connected")); err != nil {
+			t.Errorf("write console message: %v", err)
+			return
+		}
+		if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			t.Errorf("write close message: %v", err)
+		}
 	}))
 	defer srv.Close()
 

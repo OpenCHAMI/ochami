@@ -40,7 +40,7 @@ func TestSMDRFEGet_Filters(t *testing.T) {
 			var gotQuery url.Values
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotQuery = r.URL.Query()
-				_, _ = w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -59,7 +59,7 @@ func TestSMDRFEGet_Filters(t *testing.T) {
 // TestSMDRFEGet_Formats verifies the output-format variants.
 func TestSMDRFEGet_Formats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"RedfishEndpoints":[{"ID":"x3000c1s7b56"}]}`))
+		_, _ = w.Write([]byte(`{"RedfishEndpoints":[{"ID":"x3000c1s7b56"}]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

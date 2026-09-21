@@ -6,7 +6,6 @@
 package iface
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -57,12 +56,10 @@ See ochami-smd(1) for more details.`,
 				}
 				httpEnv, err := smdClient.GetEthernetInterfaceByID(id, cli.Token, byIP)
 				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						return cli.Errorf(cli.CodeHTTP, "SMD ethernet interface request by ID yielded unsuccessful HTTP response: %w", err)
-					}
-					return cli.Errorf(cli.CodeNetwork, "failed to request ethernet interfaces by ID from SMD: %w", err)
+					return cli.ClassifyClientError(err, "SMD ethernet interface request by ID yielded unsuccessful HTTP response", "failed to request ethernet interfaces by ID from SMD")
+
 				}
-				fmt.Println(string(httpEnv.Body))
+				fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
 				return nil
 			} else if cmd.Flag("by-ip").Changed {
 				return cli.Errorf(cli.CodeUsage, "--by-ip can only be used with --id")
@@ -74,51 +71,49 @@ See ochami-smd(1) for more details.`,
 				cmd.Flag("type").Changed || cmd.Flag("older-than").Changed || cmd.Flag("newer-than").Changed {
 				values := url.Values{}
 				if cmd.Flag("mac").Changed {
-					s, _ := cmd.Flags().GetStringSlice("mac")
+					s, _ := cmd.Flags().GetStringSlice("mac") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, m := range s {
 						values.Add("MACAddress", m)
 					}
 				}
 				if cmd.Flag("ip").Changed {
-					s, _ := cmd.Flags().GetStringSlice("ip")
+					s, _ := cmd.Flags().GetStringSlice("ip") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, i := range s {
 						values.Add("IPAddress", i)
 					}
 				}
 				if cmd.Flag("net").Changed {
-					s, _ := cmd.Flags().GetStringSlice("net")
+					s, _ := cmd.Flags().GetStringSlice("net") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, n := range s {
 						values.Add("Network", n)
 					}
 				}
 				if cmd.Flag("comp-id").Changed {
-					s, _ := cmd.Flags().GetStringSlice("comp-id")
+					s, _ := cmd.Flags().GetStringSlice("comp-id") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, c := range s {
 						values.Add("ComponentID", c)
 					}
 				}
 				if cmd.Flag("type").Changed {
-					s, _ := cmd.Flags().GetStringSlice("type")
+					s, _ := cmd.Flags().GetStringSlice("type") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, t := range s {
 						values.Add("Type", t)
 					}
 				}
 				if cmd.Flag("older-than").Changed {
-					s, _ := cmd.Flags().GetString("older-than")
+					s, _ := cmd.Flags().GetString("older-than") //nolint:errcheck // flag is registered with the matching type on this command
 					values.Add("OlderThan", s)
 				}
 				if cmd.Flag("newer-than").Changed {
-					s, _ := cmd.Flags().GetString("newer-than")
+					s, _ := cmd.Flags().GetString("newer-than") //nolint:errcheck // flag is registered with the matching type on this command
 					values.Add("NewerThan", s)
 				}
 				qstr = values.Encode()
 			}
 			httpEnv, err := smdClient.GetEthernetInterfaces(qstr)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "SMD ethernet interface request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request ethernet interfaces from SMD: %w", err)
+				return cli.ClassifyClientError(err, "SMD ethernet interface request yielded unsuccessful HTTP response", "failed to request ethernet interfaces from SMD")
+
 			}
 
 			// Print output
@@ -126,7 +121,7 @@ See ochami-smd(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Print(string(outBytes))
+			fmt.Fprint(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},

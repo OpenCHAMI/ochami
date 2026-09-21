@@ -75,5 +75,5 @@ func TestUserConfigPathHomeUnset(t *testing.T) {
 	// With HOME unset, UserConfigPath falls back to user.Current(). On most
 	// systems this succeeds; either outcome (a path or an error) exercises the
 	// fallback branch.
-	_, _ = UserConfigPath()
+	_, _ = UserConfigPath() //nolint:errcheck // both success and error are valid outcomes for this environment-dependent fallback
 }

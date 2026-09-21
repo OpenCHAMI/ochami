@@ -41,7 +41,7 @@ func TestGetStatus_RequestPath(t *testing.T) {
 	var gotPath string
 	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"consoles":"3","hardwareupdate":"2026-01-01"}`))
+		_, _ = w.Write([]byte(`{"consoles":"3","hardwareupdate":"2026-01-01"}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -63,7 +63,7 @@ func TestListConsoles_Success(t *testing.T) {
 	var gotPath string
 	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{"consoles":[{"id":"x0c0s1b0n0","connectionType":"ipmi","connectionHost":"bmc"}]}`))
+		_, _ = w.Write([]byte(`{"consoles":[{"id":"x0c0s1b0n0","connectionType":"ipmi","connectionHost":"bmc"}]}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -94,11 +94,19 @@ func TestShowConsole_StreamsOutput(t *testing.T) {
 			return
 		}
 		defer conn.Close()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("hello "))
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("console"))
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("hello ")); err != nil {
+			t.Errorf("write first websocket message: %v", err)
+			return
+		}
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("console")); err != nil {
+			t.Errorf("write second websocket message: %v", err)
+			return
+		}
 		// Close normally so ShowConsole returns nil.
-		_ = conn.WriteMessage(websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err := conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			t.Errorf("write websocket close message: %v", err)
+		}
 	}))
 	defer srv.Close()
 

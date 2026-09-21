@@ -6,7 +6,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -41,10 +40,8 @@ See ochami-smd(1) for more details.`,
 				httpEnv, err = smdClient.GetStatus("")
 			}
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "SMD status request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get SMD status: %w", err)
+				return cli.ClassifyClientError(err, "SMD status request yielded unsuccessful HTTP response", "failed to get SMD status")
+
 			}
 
 			// Print output
@@ -52,7 +49,7 @@ See ochami-smd(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Print(string(outBytes))
+			fmt.Fprint(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},

@@ -5,7 +5,6 @@
 package boot_service
 
 import (
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -20,9 +19,9 @@ func TestAddBootConfigSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) 
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{})
+		encodeJSONResponse(t, w, api.BootConfiguration{})
 	})
 	defer srv.Close()
 
@@ -63,9 +62,9 @@ func TestAddBootConfigSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) 
 func TestAddBootConfigs_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{})
+		encodeJSONResponse(t, w, api.BootConfiguration{})
 	})
 	defer srv.Close()
 
@@ -97,7 +96,7 @@ func TestAddBootConfigSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
+		encodeJSONResponse(t, w, api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
 	})
 	defer srv.Close()
 
@@ -128,7 +127,7 @@ func TestAddBootConfigs_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
+		encodeJSONResponse(t, w, api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
 	})
 	defer srv.Close()
 
@@ -156,9 +155,9 @@ func TestSetBootConfigSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{})
+		encodeJSONResponse(t, w, api.BootConfiguration{})
 	})
 	defer srv.Close()
 

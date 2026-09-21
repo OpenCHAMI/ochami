@@ -118,7 +118,7 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope")
+			envelope, _ := cmd.Flags().GetBool("envelope") //nolint:errcheck // flag is registered with the matching type on this command
 
 			var nodesCreated []*api.Node
 			var reqErrs []error

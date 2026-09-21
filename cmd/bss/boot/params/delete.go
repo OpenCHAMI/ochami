@@ -6,14 +6,11 @@
 package params
 
 import (
-	"errors"
-
 	"github.com/openchami/bss/pkg/bssTypes"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
@@ -95,31 +92,31 @@ See ochami-bss(1) for more details.`,
 			// Set the hosts the boot parameters are for
 			var err error
 			if cmd.Flag("xname").Changed {
-				bp.Hosts, _ = cmd.Flags().GetStringSlice("xname")
+				bp.Hosts, _ = cmd.Flags().GetStringSlice("xname") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 			if cmd.Flag("mac").Changed {
-				bp.Macs, _ = cmd.Flags().GetStringSlice("mac")
+				bp.Macs, _ = cmd.Flags().GetStringSlice("mac") //nolint:errcheck // flag is registered with the matching type on this command
 				if err = bp.CheckMacs(); err != nil {
 					return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
 				}
 			}
 			if cmd.Flag("nid").Changed {
-				bp.Nids, _ = cmd.Flags().GetInt32Slice("nid")
+				bp.Nids, _ = cmd.Flags().GetInt32Slice("nid") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 
 			// Set the boot parameters
 			if cmd.Flag("kernel").Changed {
-				bp.Kernel, _ = cmd.Flags().GetString("kernel")
+				bp.Kernel, _ = cmd.Flags().GetString("kernel") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 			if cmd.Flag("initrd").Changed {
-				bp.Initrd, _ = cmd.Flags().GetString("initrd")
+				bp.Initrd, _ = cmd.Flags().GetString("initrd") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 			if cmd.Flag("params").Changed {
-				bp.Params, _ = cmd.Flags().GetString("params")
+				bp.Params, _ = cmd.Flags().GetString("params") //nolint:errcheck // flag is registered with the matching type on this command
 			}
 
 			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
+			noConfirm, _ := cmd.Flags().GetBool("no-confirm") //nolint:errcheck // flag is registered with the matching type on this command
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
@@ -147,10 +144,8 @@ See ochami-bss(1) for more details.`,
 			// Send 'em off
 			_, err = bssClient.DeleteBootParams(bp, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS boot parameter request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to set boot parameters in BSS: %w", err)
+				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to set boot parameters in BSS")
+
 			}
 
 			return nil

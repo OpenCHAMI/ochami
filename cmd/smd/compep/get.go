@@ -45,10 +45,8 @@ See ochami-smd(1) for more details.`,
 				// Get all ComponentEndpoints if no args passed
 				httpEnv, err = smdClient.GetComponentEndpointsAll(cli.Token)
 				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						return cli.Errorf(cli.CodeHTTP, "SMD component endpoint request yielded unsuccessful HTTP response: %w", err)
-					}
-					return cli.Errorf(cli.CodeNetwork, "failed to request component endpoints from SMD: %w", err)
+					return cli.ClassifyClientError(err, "SMD component endpoint request yielded unsuccessful HTTP response", "failed to request component endpoints from SMD")
+
 				}
 
 				// Print output
@@ -56,7 +54,7 @@ See ochami-smd(1) for more details.`,
 				if err != nil {
 					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 				}
-				fmt.Print(string(outBytes))
+				fmt.Fprint(cli.Ios.Out(), string(outBytes))
 			} else {
 				httpEnvs, errs, err := smdClient.GetComponentEndpoints(cli.Token, args...)
 				if err != nil {
@@ -109,7 +107,7 @@ See ochami-smd(1) for more details.`,
 				if err != nil {
 					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 				}
-				fmt.Print(string(outBytes))
+				fmt.Fprint(cli.Ios.Out(), string(outBytes))
 			}
 
 			return nil

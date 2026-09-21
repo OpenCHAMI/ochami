@@ -64,7 +64,7 @@ func TestGetTransitions(t *testing.T) {
 	var gotMethod, gotPath, gotAuth string
 	pc, srv := newTestPCS(t, func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath, gotAuth = r.Method, r.URL.Path, r.Header.Get("Authorization")
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -84,7 +84,7 @@ func TestGetTransition_ByID(t *testing.T) {
 	var gotPath string
 	pc, srv := newTestPCS(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -101,7 +101,7 @@ func TestDeleteTransition(t *testing.T) {
 	var gotMethod, gotPath string
 	pc, srv := newTestPCS(t, func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -120,9 +120,13 @@ func TestCreateTransition(t *testing.T) {
 	var gotBody []byte
 	pc, srv := newTestPCS(t, func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		gotBody, _ = io.ReadAll(r.Body)
+		var err error
+		gotBody, err = io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read request body: %v", err)
+		}
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -153,7 +157,7 @@ func TestGetStatus_Query(t *testing.T) {
 	var gotPath, gotQuery string
 	pc, srv := newTestPCS(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 

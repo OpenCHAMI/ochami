@@ -741,7 +741,10 @@ func TestGetUserConfigPath(t *testing.T) {
 
 func TestGetDefaultTimeout(t *testing.T) {
 	got := DefaultTimeout()
-	want, _ := time.ParseDuration(DefaultGlobalMap()["timeout"].(string))
+	want, err := time.ParseDuration(DefaultGlobalMap()["timeout"].(string))
+	if err != nil {
+		t.Fatalf("parse default timeout: %v", err)
+	}
 	if got != want {
 		t.Fatalf("GetDefaultTimeout = %s, want %s", got, want)
 	}

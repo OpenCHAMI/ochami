@@ -25,7 +25,7 @@ func TestCloudInitGroupGet_Success(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
-		_, _ = w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -163,7 +163,7 @@ func TestCloudInitGroupGet_RemainingPaths(t *testing.T) {
 		t.Run(subcommand, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = io.WriteString(w, `{}`)
+				_, _ = io.WriteString(w, `{}`) //nolint:errcheck // test response writes are observed by the client
 			}))
 			defer srv.Close()
 
@@ -180,7 +180,7 @@ func TestCloudInitGroupGet_RemainingPaths(t *testing.T) {
 // document through the command's injected output stream.
 func TestCloudInitServiceStatus_API(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"openapi":"3.0.0"}`))
+		_, _ = w.Write([]byte(`{"openapi":"3.0.0"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

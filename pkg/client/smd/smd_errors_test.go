@@ -104,7 +104,7 @@ func TestIterativeDeletes_PerItemHTTPError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte("boom"))
+				_, _ = w.Write([]byte("boom")) //nolint:errcheck // test response writes are observed by the client
 			})
 			defer srv.Close()
 
@@ -324,7 +324,7 @@ func TestGetEthernetInterfaceByIDWithIPs(t *testing.T) {
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
@@ -494,5 +494,52 @@ func TestDeleteAllHelpersError(t *testing.T) {
 	}
 	if _, err := c.DeleteComponentEndpointsAll("tok"); err == nil {
 		t.Error("DeleteComponentEndpointsAll error arm = nil, want error")
+	}
+}
+
+// TestSingleEnvelopeHTTPErrorWrappers verifies representative SMD helpers
+// preserve the unsuccessful-HTTP sentinel while adding operation context.
+func TestSingleEnvelopeHTTPErrorWrappers(t *testing.T) {
+	cases := []struct {
+		name string
+		call func(*SMDClient) error
+	}{
+		{name: "status", call: func(sc *SMDClient) error {
+			_, err := sc.GetStatus("")
+			return err
+		}},
+		{name: "group members", call: func(sc *SMDClient) error {
+			_, err := sc.GetGroupMembers("compute", "tok")
+			return err
+		}},
+		{name: "put group members", call: func(sc *SMDClient) error {
+			_, err := sc.PutGroupMembers("tok", "compute", "x0c0s0b0n0")
+			return err
+		}},
+		{name: "ethernet interface", call: func(sc *SMDClient) error {
+			_, err := sc.GetEthernetInterfaceByID("deadbeef", "tok", false)
+			return err
+		}},
+		{name: "ethernet interface IPs", call: func(sc *SMDClient) error {
+			_, err := sc.GetEthernetInterfaceByID("deadbeef", "tok", true)
+			return err
+		}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			})
+			defer srv.Close()
+
+			err := tc.call(sc)
+			if err == nil {
+				t.Fatal("call returned nil error on HTTP failure")
+			}
+			if !errors.Is(err, client.UnsuccessfulHTTPError) {
+				t.Errorf("error = %v, want wrapped UnsuccessfulHTTPError", err)
+			}
+		})
 	}
 }

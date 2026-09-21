@@ -532,7 +532,9 @@ func TestBooleanFlags_UseTheirValue(t *testing.T) {
 		ConfigFile = t.TempDir() + "/missing.yaml"
 		cmd := &cobra.Command{Use: "test"}
 		cmd.Flags().Bool("ignore-config", false, "")
-		_ = cmd.Flags().Set("ignore-config", "false")
+		if err := cmd.Flags().Set("ignore-config", "false"); err != nil {
+			t.Fatal(err)
+		}
 		if err := InitConfig(cmd, false); err == nil {
 			t.Fatal("InitConfig unexpectedly ignored a false --ignore-config flag")
 		}
@@ -552,7 +554,9 @@ func TestBooleanFlags_UseTheirValue(t *testing.T) {
 		cmd.Flags().Bool("no-token", false, "")
 		cmd.Flags().String("token", "", "")
 		cmd.Flags().Bool("show-token", false, "")
-		_ = cmd.Flags().Set("no-token", "false")
+		if err := cmd.Flags().Set("no-token", "false"); err != nil {
+			t.Fatal(err)
+		}
 		if err := HandleToken(cmd); err == nil || ExitCode(err) != CodeAuth {
 			t.Fatalf("HandleToken error = %v, want CodeAuth", err)
 		}
@@ -608,7 +612,9 @@ func TestGetTimeout_ConfigAndFlag(t *testing.T) {
 	if got := GetTimeout(cmd); got != 9*time.Second {
 		t.Errorf("GetTimeout config = %v", got)
 	}
-	_ = cmd.Flags().Set("timeout", "2s")
+	if err := cmd.Flags().Set("timeout", "2s"); err != nil {
+		t.Fatal(err)
+	}
 	if got := GetTimeout(cmd); got != 2*time.Second {
 		t.Errorf("GetTimeout flag = %v", got)
 	}
@@ -727,6 +733,13 @@ func TestPrintUsageHandleError(t *testing.T) {
 	// PrintUsage adapter should behave the same.
 	if err := PrintUsage(cmd, nil); err != nil {
 		t.Errorf("PrintUsage = %v, want nil", err)
+	}
+
+	wantErr := errors.New("usage output failed")
+	cmd.SetUsageFunc(func(*cobra.Command) error { return wantErr })
+	err := PrintUsageHandleError(cmd)
+	if err == nil || ExitCode(err) != CodeGeneric || !errors.Is(err, wantErr) {
+		t.Errorf("PrintUsageHandleError failure = %v, want wrapped CodeGeneric error", err)
 	}
 }
 

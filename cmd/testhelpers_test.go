@@ -13,6 +13,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -24,6 +25,13 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/format"
 )
+
+func writeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
+	t.Helper()
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		t.Errorf("encode test response: %v", err)
+	}
+}
 
 // cmdResult captures everything a command-level test needs to assert on after
 // running the CLI: the error returned from Execute, the exit code that error
@@ -84,7 +92,9 @@ func runOchamiWithStdin(t *testing.T, stdin io.Reader, args ...string) cmdResult
 	outCh := make(chan string, 1)
 	go func() {
 		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
+		if _, err := io.Copy(&buf, r); err != nil {
+			t.Errorf("copy command output: %v", err)
+		}
 		outCh <- buf.String()
 	}()
 
@@ -156,7 +166,7 @@ func runOchamiWithStdin(t *testing.T, stdin io.Reader, args ...string) cmdResult
 func TestRunOchami_ResetsFormatFlagsBetweenCalls(t *testing.T) {
 	setupSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`[]`))
+		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer setupSrv.Close()
 
@@ -167,7 +177,7 @@ func TestRunOchami_ResetsFormatFlagsBetweenCalls(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"version":"1.0.0"}`))
+		_, _ = w.Write([]byte(`{"version":"1.0.0"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 

@@ -119,7 +119,7 @@ func TestGetStatus_HTTPError(t *testing.T) {
 
 func TestGetStatus_MalformedBody(t *testing.T) {
 	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`not json`))
+		_, _ = w.Write([]byte(`not json`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 
@@ -130,7 +130,7 @@ func TestGetStatus_MalformedBody(t *testing.T) {
 
 func TestListConsolesMalformedBody(t *testing.T) {
 	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`not json`))
+		_, _ = w.Write([]byte(`not json`)) //nolint:errcheck // test response writes are observed by the client
 	})
 	defer srv.Close()
 

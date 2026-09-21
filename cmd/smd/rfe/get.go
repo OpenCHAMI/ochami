@@ -6,7 +6,6 @@
 package rfe
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -48,37 +47,37 @@ See ochami-smd(1) for more details.`,
 				cmd.Flag("fqdn").Changed || cmd.Flag("type").Changed || cmd.Flag("uuid").Changed {
 				values := url.Values{}
 				if cmd.Flag("xname").Changed {
-					s, _ := cmd.Flags().GetStringSlice("xname")
+					s, _ := cmd.Flags().GetStringSlice("xname") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, x := range s {
 						values.Add("id", x)
 					}
 				}
 				if cmd.Flag("mac").Changed {
-					s, _ := cmd.Flags().GetStringSlice("mac")
+					s, _ := cmd.Flags().GetStringSlice("mac") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, m := range s {
 						values.Add("macaddr", m)
 					}
 				}
 				if cmd.Flag("ip").Changed {
-					s, _ := cmd.Flags().GetStringSlice("ip")
+					s, _ := cmd.Flags().GetStringSlice("ip") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, i := range s {
 						values.Add("ipaddress", i)
 					}
 				}
 				if cmd.Flag("fqdn").Changed {
-					s, _ := cmd.Flags().GetStringSlice("fqdn")
+					s, _ := cmd.Flags().GetStringSlice("fqdn") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, f := range s {
 						values.Add("fqdn", f)
 					}
 				}
 				if cmd.Flag("type").Changed {
-					s, _ := cmd.Flags().GetStringSlice("type")
+					s, _ := cmd.Flags().GetStringSlice("type") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, t := range s {
 						values.Add("type", t)
 					}
 				}
 				if cmd.Flag("uuid").Changed {
-					s, _ := cmd.Flags().GetStringSlice("uuid")
+					s, _ := cmd.Flags().GetStringSlice("uuid") //nolint:errcheck // flag is registered with the matching type on this command
 					for _, u := range s {
 						values.Add("uuid", u)
 					}
@@ -87,10 +86,8 @@ See ochami-smd(1) for more details.`,
 			}
 			httpEnv, err := smdClient.GetRedfishEndpoints(qstr, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "SMD redfish endpoint request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request redfish endpoints from SMD: %w", err)
+				return cli.ClassifyClientError(err, "SMD redfish endpoint request yielded unsuccessful HTTP response", "failed to request redfish endpoints from SMD")
+
 			}
 
 			// Print output
@@ -98,7 +95,7 @@ See ochami-smd(1) for more details.`,
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Print(string(outBytes))
+			fmt.Fprint(cli.Ios.Out(), string(outBytes))
 
 			return nil
 		},

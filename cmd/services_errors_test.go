@@ -21,7 +21,7 @@ import (
 // CodeGeneric (the "no status found" case).
 func TestPCSStatusShow_Empty(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"status":[]}`))
+		_, _ = w.Write([]byte(`{"status":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
