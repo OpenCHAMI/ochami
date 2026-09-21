@@ -13,15 +13,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
 )
-
-var xnames []string
-var operation string
 
 // validOperations returns a list of valid PCS operations
 func validOperations() []string {
@@ -57,7 +53,7 @@ See ochami-pcs(1) for more details.`,
 		Example: `  # Turn on a set of nodes
   ochami pcs transition start --xname "x0c0s7b0n1,x0c0s7b0n0,x0c0s4b0n1" on`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			operation = args[0]
+			operation := args[0]
 
 			if !isValidOperation(operation) {
 				// Include invalid operation in error message
@@ -76,10 +72,7 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			// Get the list of target components
-			xnames, err = cmd.Flags().GetStringSlice("xname")
-			if err != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to get value for --xname: %w", err)
-			}
+			xnames, _ := cmd.Flags().GetStringSlice("xname")
 
 			// Create transition
 			transitionHttpEnv, err := pcsClient.CreateTransition(operation, nil, xnames, cli.Token)
@@ -110,9 +103,7 @@ See ochami-pcs(1) for more details.`,
 
 	// Create flags
 	transitionStartCmd.Flags().StringSliceP("xname", "x", []string{}, "The list of target components")
-	if err := transitionStartCmd.MarkFlagRequired("xname"); err != nil {
-		log.Logger.Fatal().Err(err).Msg("failed to mark xname as required")
-	}
+	_ = transitionStartCmd.MarkFlagRequired("xname")
 
 	transitionStartCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 

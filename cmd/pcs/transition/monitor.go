@@ -19,8 +19,6 @@ import (
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
 )
 
-var pollInterval int = 1
-
 // Possible transition states
 const (
 	transitionStatusNew           = "new"
@@ -91,6 +89,8 @@ func newCmdTransitionMonitor() *cobra.Command {
 // using the given client provider. It exists so tests can inject a fake client
 // and drive the polling loop deterministically.
 func newCmdTransitionMonitorWithClient(getClient pcsTransitionClientProvider) *cobra.Command {
+	pollInterval := 1
+
 	// transitionMonitorCmd represents the "pcs transition monitor" command
 	var transitionMonitorCmd = &cobra.Command{
 		Use:   "monitor <transition_id>",

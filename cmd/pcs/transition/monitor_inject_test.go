@@ -46,12 +46,9 @@ func transitionProvider(c pcsTransitionClient, err error) pcsTransitionClientPro
 // discarding progress-bar output.
 func runMonitor(t *testing.T, provider pcsTransitionClientProvider, args ...string) error {
 	t.Helper()
-	// Speed up any polling that does occur.
-	origInterval := pollInterval
-	pollInterval = 0
-	t.Cleanup(func() { pollInterval = origInterval })
-
 	cmd := newCmdTransitionMonitorWithClient(provider)
+	// Speed up any polling that does occur.
+	_ = cmd.Flags().Set("poll-interval", "0")
 	// The command relies on token handling, which inspects these flags.
 	cmd.Flags().Bool("no-token", true, "")
 	cmd.Flags().String("cluster", "", "")
