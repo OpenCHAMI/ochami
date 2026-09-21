@@ -9,7 +9,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/configfile"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 func newCmdClusterSet() *cobra.Command {
@@ -29,14 +30,16 @@ Creates the following entry in the 'clusters' list:
 	  cluster:
 	    uri: https://foobar.openchami.cluster
 
-If this is the first cluster created, the following is also set:
+Passing -d also makes it the default cluster:
 
 	default-cluster: foobar
 
 default-cluster is used to determine which cluster in the list should be used for subcommands.
 
-This same command can be use to modify existing cluster information. Running the same command above
-with a different base URI will change the cluster base URI for the 'foobar' cluster.
+This same command can be used to modify existing cluster information. Running the same command above
+with a different base URI will change the cluster base URI for the 'foobar' cluster. Setting the
+'name' key renames an existing cluster; it fails if the cluster does not exist. A cluster
+name must be non-empty and must not contain a period ('.').
 
 See ochami-config(1) for details on the config commands.
 See ochami-config(5) for details on the configuration options.`,
@@ -54,15 +57,7 @@ See ochami-config(5) for details on the configuration options.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// We must have a config file in order to write cluster info
-			var fileToModify string
-			if cmd.Flags().Changed("config") {
-				fileToModify = cli.ConfigFile
-			} else if cmd.Parent().Parent().Flags().Changed("system") {
-				// Check if --system passed to 'config' command
-				fileToModify = config.SystemConfigFile
-			} else {
-				fileToModify = config.UserConfigFile
-			}
+			fileToModify := cli.ConfigFileToModify(cmd)
 
 			// Ask to create file if it doesn't exist
 			if create, err := cli.Ios.AskToCreate(fileToModify); err != nil {
@@ -82,7 +77,39 @@ See ochami-config(5) for details on the configuration options.`,
 			if err != nil {
 				return cli.Errorf(cli.CodeUsage, "failed to retrieve \"default\" flag: %w", err)
 			}
-			if err := config.ModifyConfigCluster(fileToModify, args[0], args[1], dflt, config.StringToType(args[2])); err != nil {
+
+			f, err := config.OpenFile(fileToModify)
+			if err != nil {
+				return cli.Errorf(cli.CodeConfig, "failed to open config file: %w", err)
+			}
+
+			// If the key is "name", this is a rename. The new name is taken
+			// as the raw argument rather than run through StringToType, since
+			// a cluster name is always a string regardless of what it looks
+			// like (e.g. a name of "true" or "42" should stay a string).
+			//
+			// Both the key change and the optional default-cluster update
+			// (below) are made through a single Update call so they're
+			// committed to disk in one write.
+			targetName := args[0]
+			err = f.Update(func(f *config.File) error {
+				if args[1] == "name" {
+					if err := f.RenameCluster(args[0], args[2]); err != nil {
+						return err
+					}
+					targetName = args[2]
+				} else if err := f.SetClusterKey(args[0], args[1], configfile.StringToType(args[2])); err != nil {
+					return err
+				}
+
+				if dflt {
+					if err := f.SetDefaultCluster(targetName); err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+			if err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}
 

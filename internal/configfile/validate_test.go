@@ -2,42 +2,16 @@
 //
 // SPDX-License-Identifier: MIT
 
-package config
+package configfile
 
 import (
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
-)
 
-func TestCoerceBool(t *testing.T) {
-	tests := []struct {
-		name   string
-		in     any
-		want   bool
-		wantOK bool
-	}{
-		{"bool true", true, true, true},
-		{"bool false", false, false, true},
-		{"string true", "true", true, true},
-		{"string True", "True", true, true},
-		{"string false", "False", false, true},
-		{"string 1", "1", true, true},
-		{"string 0", "0", false, true},
-		{"invalid string", "yesplease", false, false},
-		{"int not supported", 1, false, false},
-		{"nil", nil, false, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, ok := coerceBool(tt.in)
-			if ok != tt.wantOK || (ok && got != tt.want) {
-				t.Fatalf("coerceBool(%v) = (%v, %v), want (%v, %v)", tt.in, got, ok, tt.want, tt.wantOK)
-			}
-		})
-	}
-}
+	"github.com/openchami/ochami/pkg/config"
+)
 
 // writeCfg writes content to a temp config file and returns its path.
 func writeCfg(t *testing.T, content string) string {
@@ -57,7 +31,7 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for null timeout, got nil")
 		}
-		var eicv ErrInvalidConfigVal
+		var eicv config.ErrInvalidConfigVal
 		if !errors.As(err, &eicv) {
 			t.Fatalf("expected ErrInvalidConfigVal, got %T: %v", err, err)
 		}
@@ -72,7 +46,7 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid timeout, got nil")
 		}
-		var eicv ErrInvalidConfigVal
+		var eicv config.ErrInvalidConfigVal
 		if !errors.As(err, &eicv) {
 			t.Fatalf("expected ErrInvalidConfigVal, got %T: %v", err, err)
 		}
@@ -84,7 +58,7 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for null enable-auth, got nil")
 		}
-		var eicv ErrInvalidConfigVal
+		var eicv config.ErrInvalidConfigVal
 		if !errors.As(err, &eicv) {
 			t.Fatalf("expected ErrInvalidConfigVal, got %T: %v", err, err)
 		}
@@ -92,12 +66,12 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 
 	t.Run("string enable-auth coerced", func(t *testing.T) {
 		path := writeCfg(t, "clusters:\n  - name: foo\n    cluster:\n      uri: https://foo\n      enable-auth: \"false\"\n")
-		ko, err := ReadConfigWithDefaults(path)
+		eff, err := ReadConfigWithDefaults(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		var clusters []ConfigCluster
-		if err := ko.Unmarshal("clusters", &clusters); err != nil {
+		var clusters []config.ConfigCluster
+		if err := eff.Unmarshal("clusters", &clusters); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
 		if len(clusters) != 1 {
@@ -114,7 +88,7 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid enable-auth string, got nil")
 		}
-		var eicv ErrInvalidConfigVal
+		var eicv config.ErrInvalidConfigVal
 		if !errors.As(err, &eicv) {
 			t.Fatalf("expected ErrInvalidConfigVal, got %T: %v", err, err)
 		}
@@ -122,11 +96,11 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 
 	t.Run("valid config accepted", func(t *testing.T) {
 		path := writeCfg(t, "timeout: 45s\nclusters:\n  - name: foo\n    cluster:\n      uri: https://foo\n      enable-auth: false\n")
-		ko, err := ReadConfigWithDefaults(path)
+		eff, err := ReadConfigWithDefaults(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if got := ko.String("timeout"); got != "45s" {
+		if got, _ := eff.Get("timeout").(string); got != "45s" {
 			t.Errorf("timeout = %q, want 45s", got)
 		}
 	})
@@ -137,7 +111,7 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty log.level, got nil")
 		}
-		var eicv ErrInvalidConfigVal
+		var eicv config.ErrInvalidConfigVal
 		if !errors.As(err, &eicv) {
 			t.Fatalf("expected ErrInvalidConfigVal, got %T: %v", err, err)
 		}
@@ -155,7 +129,7 @@ func TestReadConfigWithDefaults_Validation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty log.format, got nil")
 		}
-		var eicv ErrInvalidConfigVal
+		var eicv config.ErrInvalidConfigVal
 		if !errors.As(err, &eicv) {
 			t.Fatalf("expected ErrInvalidConfigVal, got %T: %v", err, err)
 		}
