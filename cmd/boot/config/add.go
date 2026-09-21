@@ -13,6 +13,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
@@ -111,9 +112,7 @@ See ochami-boot(1) for more details.`,
 			// Determine how to read payload (simple versus advanced API)
 			envelope, _ := cmd.Flags().GetBool("envelope")
 
-			var cfgsCreated []*api.BootConfiguration
-			var reqErrs []error
-			var reqErr error
+			var results client.BatchResult[*api.BootConfiguration]
 			if envelope {
 				// Use advanced API (spec, metadata, annotations)
 
@@ -130,7 +129,7 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off requests
-				cfgsCreated, reqErrs, reqErr = bootServiceClient.AddBootConfigs(cli.Token, bcs)
+				results = bootServiceClient.AddBootConfigs(cmd.Context(), cli.Token, bcs)
 			} else {
 				// Use simple API (spec)
 
@@ -147,20 +146,15 @@ See ochami-boot(1) for more details.`,
 				}
 
 				// Send off requests
-				cfgsCreated, reqErrs, reqErr = bootServiceClient.AddBootConfigSpecs(cli.Token, bcs)
-			}
-
-			// Handle any non-request error
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to add boot configurations", "failed to add boot configurations")
+				results = bootServiceClient.AddBootConfigSpecs(cmd.Context(), cli.Token, bcs)
 			}
 
 			var names []string
-			for _, cfg := range cfgsCreated {
+			for _, cfg := range results.Values() {
 				names = append(names, cfg.Metadata.Name)
 			}
 			log.Logger.Debug().Msgf("boot configs created: %q", names)
-			if err := cli.AggregateItemErrors(reqErrs, "boot configuration addition"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "boot configuration addition"); err != nil {
 				return err
 			}
 

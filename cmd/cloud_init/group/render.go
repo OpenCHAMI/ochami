@@ -50,14 +50,14 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get group config
-			henvs, errs, err := cloudInitClient.GetNodeGroupData(cli.Token, args[1], args[0])
+			results, err := cloudInitClient.GetNodeGroupData(cmd.Context(), cli.Token, args[1], args[0])
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get cloud-init group", "failed to get cloud-init group")
 			}
-			if errs[0] != nil {
-				return cli.ClassifyClientError(errs[0], "cloud-init group request yielded unsuccessful HTTP response", "failed to get cloud-init group")
+			if results[0].Err != nil {
+				return cli.ClassifyClientError(results[0].Err, "cloud-init group request yielded unsuccessful HTTP response", "failed to get cloud-init group")
 			}
-			ciConfigFileBytes := henvs[0].Body
+			ciConfigFileBytes := results[0].Value.Body
 
 			// Don't try to get meta-data and render if config is empty
 			if len(ciConfigFileBytes) == 0 {
@@ -66,16 +66,16 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get node instance data
-			henvs, errs, err = cloudInitClient.GetNodeData(cloud_init.CloudInitMetaData, cli.Token, args[1])
+			results, err = cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitMetaData, cli.Token, args[1])
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get cloud-init node meta-data", "failed to get cloud-init node meta-data")
 			}
-			if errs[0] != nil {
-				return cli.ClassifyClientError(errs[0], "cloud-init node meta-data request yielded unsuccessful HTTP response", "failed to get cloud-init node meta-data")
+			if results[0].Err != nil {
+				return cli.ClassifyClientError(results[0].Err, "cloud-init node meta-data request yielded unsuccessful HTTP response", "failed to get cloud-init node meta-data")
 			}
 			var ciData map[string]interface{}
 			dsWrapper := make(map[string]interface{})
-			if err := yaml.Unmarshal(henvs[0].Body, &ciData); err != nil {
+			if err := yaml.Unmarshal(results[0].Value.Body, &ciData); err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to unmarshal HTTP body into map: %w", err)
 			}
 			dsWrapper["ds"] = map[string]interface{}{"meta_data": ciData}

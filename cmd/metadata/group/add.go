@@ -13,6 +13,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
@@ -111,9 +112,7 @@ See ochami-metadata(1) for more details.`,
 			// Determine how to read payload (simple versus advanced API)
 			envelope, _ := cmd.Flags().GetBool("envelope")
 
-			var groupsCreated []api.Group
-			var reqErrs []error
-			var reqErr error
+			var results client.BatchResult[api.Group]
 			if envelope {
 				// Use advanced API (spec, metadata, annotations)
 
@@ -130,7 +129,7 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off requests
-				groupsCreated, reqErrs, reqErr = metadataServiceClient.AddGroups(cli.Token, groups)
+				results = metadataServiceClient.AddGroups(cmd.Context(), cli.Token, groups)
 			} else {
 				// Use simple API (spec)
 
@@ -147,22 +146,17 @@ See ochami-metadata(1) for more details.`,
 				}
 
 				// Send off requests
-				groupsCreated, reqErrs, reqErr = metadataServiceClient.AddGroupSpecs(cli.Token, groups)
-			}
-
-			// Handle any non-request error
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to add groups", "failed to add groups")
+				results = metadataServiceClient.AddGroupSpecs(cmd.Context(), cli.Token, groups)
 			}
 
 			// Print names of created items
 			var names []string
-			for _, group := range groupsCreated {
+			for _, group := range results.Values() {
 				names = append(names, group.Metadata.Name)
 			}
 			log.Logger.Info().Msgf("Groups created: %q", names)
 
-			if err := cli.AggregateItemErrors(reqErrs, "Group addition"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "Group addition"); err != nil {
 				return err
 			}
 

@@ -5,8 +5,8 @@
 package static
 
 // static_test.go covers the pure helper functions extracted from the static
-// discovery command: buildGroupList (group assembly and deduplication),
-// singleBatchResult, and upsertOnConflict.
+// discovery command: buildGroupList (group assembly and deduplication) and
+// upsertOnConflict.
 
 import (
 	"errors"
@@ -21,21 +21,6 @@ import (
 	"github.com/openchami/ochami/pkg/client/smd"
 )
 
-func TestSingleBatchResult(t *testing.T) {
-	want := errors.New("batch failed")
-	if _, err := singleBatchResult(nil, nil, want); !errors.Is(err, want) {
-		t.Fatalf("singleBatchResult() error = %v, want batch error", err)
-	}
-	if _, err := singleBatchResult(nil, nil, nil); err == nil {
-		t.Fatal("singleBatchResult() accepted misaligned empty results")
-	}
-	henv := client.HTTPEnvelope{StatusCode: http.StatusCreated}
-	got, err := singleBatchResult([]client.HTTPEnvelope{henv}, []error{nil}, nil)
-	if err != nil || got.StatusCode != http.StatusCreated {
-		t.Fatalf("singleBatchResult() = (%v, %v)", got, err)
-	}
-}
-
 // TestUpsertOnConflict verifies conflicts trigger updates while other outcomes
 // are preserved.
 func TestUpsertOnConflict(t *testing.T) {
@@ -48,19 +33,19 @@ func TestUpsertOnConflict(t *testing.T) {
 			describes++
 			return item
 		},
-		func(item string) (client.HTTPEnvelope, error) {
+		func(item string) client.Result[client.HTTPEnvelope] {
 			switch item {
 			case "create":
-				return client.HTTPEnvelope{StatusCode: http.StatusCreated}, nil
+				return client.Result[client.HTTPEnvelope]{Value: client.HTTPEnvelope{StatusCode: http.StatusCreated}}
 			case "replace":
-				return client.HTTPEnvelope{StatusCode: http.StatusConflict}, conflict
+				return client.Result[client.HTTPEnvelope]{Value: client.HTTPEnvelope{StatusCode: http.StatusConflict}, Err: conflict}
 			default:
-				return client.HTTPEnvelope{StatusCode: http.StatusBadRequest}, fmt.Errorf("%w: bad request", client.UnsuccessfulHTTPError)
+				return client.Result[client.HTTPEnvelope]{Value: client.HTTPEnvelope{StatusCode: http.StatusBadRequest}, Err: fmt.Errorf("%w: bad request", client.UnsuccessfulHTTPError)}
 			}
 		},
-		func(string) (client.HTTPEnvelope, error) {
+		func(string) client.Result[client.HTTPEnvelope] {
 			updates++
-			return client.HTTPEnvelope{}, wantUpdateErr
+			return client.Result[client.HTTPEnvelope]{Err: wantUpdateErr}
 		})
 	if updates != 1 {
 		t.Errorf("updates = %d, want 1", updates)

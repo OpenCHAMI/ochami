@@ -39,7 +39,7 @@ See ochami-boot(1) for more details.`,
 			uid := args[0]
 
 			// Make request
-			outBytes, err := bootServiceClient.GetBMC(cli.Token, cli.FormatOutput, uid)
+			outBytes, err := bootServiceClient.GetBMC(cmd.Context(), cli.Token, cli.FormatOutput, uid)
 			if err != nil {
 				return cli.ClassifyClientError(err, fmt.Sprintf("failed to get BMC info for %s", uid), fmt.Sprintf("failed to get BMC info for %s", uid))
 			}
