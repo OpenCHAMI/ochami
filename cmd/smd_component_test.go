@@ -121,3 +121,119 @@ func TestSMDComponentDelete_NoConfirm(t *testing.T) {
 		t.Errorf("request path = %q, want /State/Components/x3000c1s7b56n0", gotPath)
 	}
 }
+
+// TestSMDComponentDelete_ByData verifies IDs in a payload drive DELETE requests.
+func TestSMDComponentDelete_ByData(t *testing.T) {
+	var deletes int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deletes++
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "smd", "component", "delete", "--ignore-config", "--uri", srv.URL,
+		"--token", "faketoken", "--no-confirm", "-d", `{"Components":[{"ID":"x3000c1s7b56n0"}]}`)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if deletes != 1 {
+		t.Errorf("DELETE count = %d, want 1", deletes)
+	}
+}
+
+func TestSMDComponentGet_ByXname(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"ID":"x0c0s0b0n0"}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "smd", "component", "get", "--ignore-config", "--uri", srv.URL,
+		"--token", validToken(t), "--xname", "x0c0s0b0n0")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(gotPath, "x0c0s0b0n0") {
+		t.Errorf("path = %q, want it to reference the xname", gotPath)
+	}
+}
+
+// TestSMDComponentGet_ByNID verifies "get --nid" targets the ByNID endpoint.
+func TestSMDComponentGet_ByNID(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"NID":1}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "smd", "component", "get", "--ignore-config", "--uri", srv.URL,
+		"--token", validToken(t), "--nid", "1")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(gotPath, "ByNID") {
+		t.Errorf("path = %q, want it to reference ByNID", gotPath)
+	}
+}
+
+// TestSMDComponentGet_Formats verifies output-format variants of get-all.
+func TestSMDComponentGet_Formats(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`))
+	}))
+	defer srv.Close()
+
+	for _, f := range []string{"json", "json-pretty", "yaml"} {
+		res := runOchami(t, "smd", "component", "get", "--ignore-config", "--uri", srv.URL, "-F", f)
+		if res.err != nil {
+			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
+		}
+	}
+}
+
+// TestSMDComponentDelete_AllConfirm verifies "delete --all" prompts and, on "y",
+// issues a DELETE to the collection endpoint.
+func TestSMDComponentDelete_AllConfirm(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			gotMethod, gotPath = r.Method, r.URL.Path
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithInput(t, "y\n",
+		"smd", "component", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "--all")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodDelete || gotPath != "/State/Components" {
+		t.Errorf("request = %s %s, want DELETE /State/Components", gotMethod, gotPath)
+	}
+}
+
+// TestSMDComponentDelete_Abort verifies answering "n" aborts without a request.
+func TestSMDComponentDelete_Abort(t *testing.T) {
+	var deletes int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deletes++
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithInput(t, "n\n",
+		"smd", "component", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
+	if res.err != nil {
+		t.Fatalf("unexpected error on abort: %v (exit %d)", res.err, res.exitCode)
+	}
+	if deletes != 0 {
+		t.Errorf("DELETE count = %d, want 0", deletes)
+	}
+}
