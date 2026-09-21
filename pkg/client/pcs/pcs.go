@@ -6,6 +6,7 @@
 package pcs
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -53,7 +54,7 @@ func (pc *PCSClient) GetLiveness() (client.HTTPEnvelope, error) {
 		err  error
 	)
 
-	henv, err = pc.GetData(PCSRelpathLiveness, "", nil)
+	henv, err = pc.GetData(context.Background(), PCSRelpathLiveness, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetLiveness(): error getting PCS liveness: %w", err)
 	}
@@ -69,7 +70,7 @@ func (pc *PCSClient) GetReadiness() (client.HTTPEnvelope, error) {
 		err  error
 	)
 
-	henv, err = pc.GetData(PCSRelpathReadiness, "", nil)
+	henv, err = pc.GetData(context.Background(), PCSRelpathReadiness, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetReadiness(): error getting PCS liveness: %w", err)
 	}
@@ -85,7 +86,7 @@ func (pc *PCSClient) GetHealth() (client.HTTPEnvelope, error) {
 		err  error
 	)
 
-	henv, err = pc.GetData(PCSRelpathHealth, "", nil)
+	henv, err = pc.GetData(context.Background(), PCSRelpathHealth, "", nil)
 	if err != nil {
 		err = fmt.Errorf("GetHealth(): error getting PCS health: %w", err)
 	}
@@ -137,7 +138,7 @@ func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xname
 		return henv, fmt.Errorf("CreateTransition(): failed to create HTTPBody: %w", err)
 	}
 
-	henv, err = pc.PostData(PCSTransitions, "", headers, httpBody)
+	henv, err = pc.PostData(context.Background(), PCSTransitions, "", headers, httpBody)
 	if err != nil {
 		err = fmt.Errorf("CreateTransition(): error creating PCS health: %w", err)
 	}
@@ -158,7 +159,7 @@ func (pc *PCSClient) GetTransitions(token string) (client.HTTPEnvelope, error) {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 
-	henv, err = pc.GetData(PCSTransitions, "", headers)
+	henv, err = pc.GetData(context.Background(), PCSTransitions, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetTransitions(): error getting PCS transitions: %w", err)
 	}
@@ -186,7 +187,7 @@ func (pc *PCSClient) GetTransition(id string, token string) (client.HTTPEnvelope
 		return henv, err
 	}
 
-	henv, err = pc.GetData(pcsTransitionsEndpoint, "", headers)
+	henv, err = pc.GetData(context.Background(), pcsTransitionsEndpoint, "", headers)
 	if err != nil {
 		err = fmt.Errorf("GetTransition(): error getting PCS transition: %w", err)
 	}
@@ -214,7 +215,7 @@ func (pc *PCSClient) DeleteTransition(id string, token string) (client.HTTPEnvel
 		return henv, err
 	}
 
-	henv, err = pc.DeleteData(pcsTransitionEndpoint, "", headers, nil)
+	henv, err = pc.DeleteData(context.Background(), pcsTransitionEndpoint, "", headers, nil)
 	if err != nil {
 		err = fmt.Errorf("DeleteTransition(): error deleting PCS transition: %w", err)
 	}
@@ -250,7 +251,7 @@ func (pc *PCSClient) GetStatus(xnames []string, powerStateFilter string, mgmtSta
 
 	query := values.Encode()
 
-	henv, err = pc.GetData(PCSStatus, query, headers)
+	henv, err = pc.GetData(context.Background(), PCSStatus, query, headers)
 	if err != nil {
 		err = fmt.Errorf("GetStatus(): error getting power state: %w", err)
 	}

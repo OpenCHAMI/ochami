@@ -31,7 +31,7 @@ See ochami-boot(1) for more details.`,
 
 	// Create flags
 	bootCmd.PersistentFlags().String("api-version", "", "version of service API to use in request")
-	bootCmd.PersistentFlags().Duration("timeout", config.DefaultTimeout(), "timeout duration when making requests")
+	cli.AddPositiveDurationFlag(bootCmd.PersistentFlags(), "timeout", config.DefaultTimeout(), "timeout duration when making requests")
 	bootCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of boot service")
 
 	// Add subcommands
