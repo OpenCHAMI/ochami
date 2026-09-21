@@ -14,16 +14,10 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-var (
-	formatPatch client.PatchMethod = client.PatchMethodRFC7386
-
-	setList    []string
-	unsetList  []string
-	addList    []string
-	removeList []string
-)
-
 func newCmdBootBmcPatch() *cobra.Command {
+	formatPatch := client.PatchMethodRFC7386
+	var setList, unsetList, addList, removeList []string
+
 	// bootBmcPatchCmd represents the "boot bmc patch" command
 	var bootBmcPatchCmd = &cobra.Command{
 		Use:   "patch <uid>",
