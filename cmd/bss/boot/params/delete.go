@@ -15,6 +15,66 @@ import (
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
 
+// bootParamsDeleteOptions holds the flag values for the bss boot params delete command.
+type bootParamsDeleteOptions struct {
+	bootParamFields
+	NoConfirm bool
+}
+
+// runCoreBootParamsDelete contains the core logic for the bss boot params delete command.
+// It takes the parsed options and performs the actual work of deleting boot parameters.
+func runCoreBootParamsDelete(cmd *cobra.Command, opts *bootParamsDeleteOptions) error {
+	// The BSS BootParams struct we will send
+	var bp bssTypes.BootParams
+
+	// Read payload from file first, allowing overwrites from flags
+	if cmd.Flag("data").Changed {
+		if err := cli.HandlePayload(cmd, &bp); err != nil {
+			return err
+		}
+	}
+	applyBootParamFlags(cmd, &bp, opts.bootParamFields)
+
+	// If we are deleting by component (xname/mac/nid), validate MAC addresses if any were provided
+	if len(opts.Mac) > 0 {
+		if err := bp.CheckMacs(); err != nil {
+			return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
+		}
+	}
+
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+		} else if !respDelete {
+			return cli.Errorf(cli.CodeDeclined, "user aborted boot parameter deletion")
+		} else {
+			log.Logger.Debug().Msg("User answered affirmatively to delete boot parameters")
+		}
+	}
+
+	// Create client to use for requests
+	bssClient, err := bss_lib.GetClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Send 'em off
+	_, err = bssClient.DeleteBootParams(cmd.Context(), bp, cli.Token)
+	if err != nil {
+		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to delete boot parameters from BSS")
+	}
+
+	return nil
+}
+
 func newCmdBootParamsDelete() *cobra.Command {
 	// bootParamsDelete represents the "bss boot params delete" command
 	var bootParamsDelete = &cobra.Command{
@@ -79,74 +139,15 @@ See ochami-bss(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// The BSS BootParams struct we will send
-			bp := bssTypes.BootParams{}
-
-			// Read payload from file first, allowing overwrites from flags
-			if cmd.Flag("data").Changed {
-				if err := cli.HandlePayload(cmd, &bp); err != nil {
-					return err
-				}
+			// Extract options from flags
+			opts := &bootParamsDeleteOptions{bootParamFields: readBootParamFlags(cmd)}
+			// --no-confirm is registered as a bool on this command, so GetBool
+			// can't fail and its error is ignored
+			if cmd.Flag("no-confirm").Changed {
+				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm")
 			}
 
-			// Set the hosts the boot parameters are for
-			var err error
-			if cmd.Flag("xname").Changed {
-				bp.Hosts, _ = cmd.Flags().GetStringSlice("xname")
-			}
-			if cmd.Flag("mac").Changed {
-				bp.Macs, _ = cmd.Flags().GetStringSlice("mac")
-				if err = bp.CheckMacs(); err != nil {
-					return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
-				}
-			}
-			if cmd.Flag("nid").Changed {
-				bp.Nids, _ = cmd.Flags().GetInt32Slice("nid")
-			}
-
-			// Set the boot parameters
-			if cmd.Flag("kernel").Changed {
-				bp.Kernel, _ = cmd.Flags().GetString("kernel")
-			}
-			if cmd.Flag("initrd").Changed {
-				bp.Initrd, _ = cmd.Flags().GetString("initrd")
-			}
-			if cmd.Flag("params").Changed {
-				bp.Params, _ = cmd.Flags().GetString("params")
-			}
-
-			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
-			if !noConfirm {
-				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
-				if err != nil {
-					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
-				} else if !respDelete {
-					return cli.Errorf(cli.CodeDeclined, "user aborted boot parameter deletion")
-				} else {
-					log.Logger.Debug().Msg("User answered affirmatively to delete boot parameters")
-				}
-			}
-
-			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
-			if err != nil {
-				return err
-			}
-
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
-			}
-
-			// Send 'em off
-			_, err = bssClient.DeleteBootParams(cmd.Context(), bp, cli.Token)
-			if err != nil {
-				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to set boot parameters in BSS")
-			}
-
-			return nil
+			return runCoreBootParamsDelete(cmd, opts)
 		},
 	}
 
