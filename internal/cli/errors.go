@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openchami/ochami/internal/config"
 	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 // Exit code contract for the ochami CLI. These values are a stable, public
@@ -141,20 +141,8 @@ func ExitCode(err error) int {
 // isConfigError reports whether err is (or wraps) one of the config package's
 // typed errors.
 func isConfigError(err error) bool {
-	var (
-		eicv config.ErrInvalidConfigVal
-		euc  config.ErrUnknownCluster
-		emu  config.ErrMissingURI
-		eiu  config.ErrInvalidURI
-		eisu config.ErrInvalidServiceURI
-		eus  config.ErrUnknownService
-	)
-	return errors.As(err, &eicv) ||
-		errors.As(err, &euc) ||
-		errors.As(err, &emu) ||
-		errors.As(err, &eiu) ||
-		errors.As(err, &eisu) ||
-		errors.As(err, &eus)
+	var ce config.Error
+	return errors.As(err, &ce)
 }
 
 // WrapUsageErrors recursively configures cmd and all of its subcommands so that

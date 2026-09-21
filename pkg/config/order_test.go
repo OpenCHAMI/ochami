@@ -16,7 +16,7 @@ import (
 func TestClusterAccumulator_Order(t *testing.T) {
 	// Run repeatedly to guard against Go map iteration nondeterminism.
 	for iter := 0; iter < 10; iter++ {
-		ca := newClusterAccumulator()
+		ca := NewClusterAccumulator(koanfConf)
 
 		// Simulate three sources (default/system/user) contributing
 		// clusters, with some names recurring across sources.
@@ -30,7 +30,7 @@ func TestClusterAccumulator_Order(t *testing.T) {
 
 		want := []string{"zeta", "alpha", "mu", "beta"}
 		got := make([]string, 0, len(want))
-		for _, c := range ca.slice() {
+		for _, c := range ca.Slice() {
 			got = append(got, c["name"].(string))
 		}
 		if !reflect.DeepEqual(got, want) {
@@ -42,11 +42,11 @@ func TestClusterAccumulator_Order(t *testing.T) {
 // TestClusterAccumulator_Precedence verifies that later adds for the same
 // cluster name take precedence (higher-priority sources are added last).
 func TestClusterAccumulator_Precedence(t *testing.T) {
-	ca := newClusterAccumulator()
+	ca := NewClusterAccumulator(koanfConf)
 	mustAdd(t, ca, "foo", map[string]any{"uri": "https://low"})
 	mustAdd(t, ca, "foo", map[string]any{"uri": "https://high"})
 
-	sl := ca.slice()
+	sl := ca.Slice()
 	if len(sl) != 1 {
 		t.Fatalf("got %d clusters, want 1", len(sl))
 	}
@@ -60,9 +60,9 @@ func TestClusterAccumulator_Precedence(t *testing.T) {
 	}
 }
 
-func mustAdd(t *testing.T, ca *clusterAccumulator, name string, cluster map[string]any) {
+func mustAdd(t *testing.T, ca *ClusterAccumulator, name string, cluster map[string]any) {
 	t.Helper()
-	if err := ca.add(name, cluster); err != nil {
+	if err := ca.Add(name, cluster); err != nil {
 		t.Fatalf("add(%q): %v", name, err)
 	}
 }

@@ -15,8 +15,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openchami/ochami/internal/config"
 	"github.com/openchami/ochami/pkg/client"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 // TestErrorfCodeAndMessage verifies Errorf builds a CodedError that carries the

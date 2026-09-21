@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/configfile"
 	"github.com/openchami/ochami/internal/log"
 )
 
@@ -55,15 +55,7 @@ See ochami-config(5) for details on the configuration options.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// We must have a config file in order to write cluster info
-			var fileToModify string
-			if cmd.Flags().Changed("config") {
-				fileToModify = cli.ConfigFile
-			} else if cmd.Parent().Parent().Flags().Changed("system") {
-				// Check if --system passed to 'config' command
-				fileToModify = config.SystemConfigFile
-			} else {
-				fileToModify = config.UserConfigFile
-			}
+			fileToModify := cli.ConfigFileToModify(cmd)
 
 			// Ask to create file if it doesn't exist
 			if create, err := cli.Ios.AskToCreate(fileToModify); err != nil {
@@ -84,7 +76,7 @@ See ochami-config(5) for details on the configuration options.`,
 			if err != nil {
 				return cli.Errorf(cli.CodeUsage, "failed to retrieve \"default\" flag: %w", err)
 			}
-			if err := config.ModifyConfigCluster(fileToModify, args[0], args[1], dflt, config.StringToType(args[2])); err != nil {
+			if err := configfile.ModifyConfigCluster(fileToModify, args[0], args[1], dflt, configfile.StringToType(args[2])); err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}
 

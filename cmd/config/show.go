@@ -9,11 +9,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/knadh/koanf/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/configfile"
 	"github.com/openchami/ochami/internal/log"
 )
 
@@ -46,25 +45,9 @@ See ochami-config(5) for details on the configuration options.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get the config from the relevant file depending on the flag,
 			// or the merged config if none.
-			var ko *koanf.Koanf
-			var err error
-			if cmd.Flags().Changed("system") {
-				ko, err = config.ReadConfigWithDefaults(config.SystemConfigFile)
-				if err != nil {
-					return cli.Errorf(cli.CodeConfig, "failed to read system config file: %w", err)
-				}
-			} else if cmd.Flags().Changed("user") {
-				ko, err = config.ReadConfigWithDefaults(config.UserConfigFile)
-				if err != nil {
-					return cli.Errorf(cli.CodeConfig, "failed to read user config file: %w", err)
-				}
-			} else if cmd.Flags().Changed("config") {
-				ko, err = config.ReadConfigWithDefaults(cmd.Flag("config").Value.String())
-				if err != nil {
-					return cli.Errorf(cli.CodeConfig, "failed to read config file %s: %w", cmd.Flag("config").Value.String(), err)
-				}
-			} else {
-				ko = config.GlobalKoanf
+			ko, err := cli.ResolveShowKoanf(cmd)
+			if err != nil {
+				return err
 			}
 
 			// Individual key was requested, print value directly
@@ -73,7 +56,7 @@ See ochami-config(5) for details on the configuration options.`,
 			if len(args) == 1 {
 				key = args[0]
 			}
-			val, err = config.GetConfigString(ko, key)
+			val, err = configfile.GetConfigString(ko, key)
 			if err != nil {
 				if key == "" {
 					return cli.Errorf(cli.CodeConfig, "failed to get full config: %w", err)

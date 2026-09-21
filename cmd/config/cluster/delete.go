@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/configfile"
 	"github.com/openchami/ochami/internal/log"
 )
 
@@ -36,68 +36,15 @@ See ochami-config(5) for details on configuration options.`,
 			// present in all child commands.
 			cmd.MarkFlagsMutuallyExclusive("system", "user", "config")
 
-			// First and foremost, make sure config is loaded and logging
-			// works.
-			return cli.InitConfigAndLogging(cmd, true)
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Get root command
-			rootCmd := cmd.Root()
-			_ = rootCmd // read persistent flags, annotations, etc.
-
 			// We must have a config file in order to write cluster info
-			var fileToModify string
-			if rootCmd.PersistentFlags().Lookup("config").Changed {
-				var err error
-				if fileToModify, err = rootCmd.PersistentFlags().GetString("config"); err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to get value from --config flag: %w", err)
-				}
-			} else if cmd.Parent().Parent().PersistentFlags().Lookup("system").Changed {
-				// Check if --system was passed to the 'config' command
-				fileToModify = config.SystemConfigFile
-			} else {
-				fileToModify = config.UserConfigFile
-			}
-
-			// Read in config from file
-			ko, err := config.ReadConfig(fileToModify)
-			if err != nil {
-				return cli.Errorf(cli.CodeConfig, "failed to read config from %s: %w", fileToModify, err)
-			}
-
-			var clusters []map[string]any
-			if err := ko.Unmarshal("clusters", &clusters); err != nil {
-				return cli.Errorf(cli.CodeConfig, "unable to unmarshal clusters: %w", err)
-			}
-
-			found := false
+			fileToModify := cli.ConfigFileToModify(cmd)
 			clusterName := args[0]
-			newClusters := make([]map[string]any, 0, len(clusters))
-			for _, c := range clusters {
-				if c["name"] == clusterName {
-					found = true
-					continue
-				}
-				newClusters = append(newClusters, c)
-			}
 
-			// It doesn't make sense to delete a cluster that doesn't
-			// exist, so err before writing anything back to the file.
-			if !found {
-				return cli.Errorf(cli.CodeConfig, "cluster %s not found in config file %s", clusterName, fileToModify)
-			}
-
-			if err := ko.Set("clusters", newClusters); err != nil {
-				return cli.Errorf(cli.CodeConfig, "failed to set clusters: %w", err)
-			}
-
-			if clusterName == ko.String("default-cluster") {
-				ko.Delete("default-cluster")
-			}
-
-			// Write config to file
-			if err := config.WriteConfig(fileToModify, ko); err != nil {
-				return cli.Errorf(cli.CodeConfig, "failed to write config to %s: %w", fileToModify, err)
+			if err := configfile.DeleteCluster(fileToModify, clusterName); err != nil {
+				return cli.Errorf(cli.CodeConfig, "failed to delete cluster %s from config file %s: %w", clusterName, fileToModify, err)
 			}
 
 			log.Logger.Info().Msgf("deleted cluster %s from config file %s", clusterName, fileToModify)

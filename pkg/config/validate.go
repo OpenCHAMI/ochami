@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/v2"
 )
 
@@ -33,7 +34,7 @@ func coerceBool(v any) (bool, bool) {
 
 // requiredGlobalScalars lists the global scalar keys that must never be
 // explicitly null in a config source. These correspond to required values with
-// defaults in DefaultConfigMap.
+// defaults in DefaultGlobalMap.
 var requiredGlobalScalars = []string{
 	"log.format",
 	"log.level",
@@ -43,11 +44,15 @@ var requiredGlobalScalars = []string{
 	"default-output-format",
 }
 
-// checkGlobalNulls returns an ErrInvalidConfigVal if any required global scalar
-// key exists in ko but is explicitly null or an empty string. This is checked per-source
-// before merging so that a clean validation error is surfaced instead of the cryptic
-// type-mismatch error StrictMerge would otherwise produce.
-func checkGlobalNulls(ko *koanf.Koanf) error {
+// CheckGlobalNulls returns an ErrInvalidConfigVal if any required global scalar
+// key exists in ko but is explicitly null or an empty string. This is checked
+// per-source before merging so that a clean validation error is surfaced
+// instead of the cryptic type-mismatch error StrictMerge would otherwise
+// produce.
+//
+// It is a low-level helper exposed for the internal config-file tooling and is
+// not intended for general external use.
+func CheckGlobalNulls(ko *koanf.Koanf) error {
 	for _, key := range requiredGlobalScalars {
 		if ko.Exists(key) {
 			val := ko.Get(key)
@@ -62,15 +67,16 @@ func checkGlobalNulls(ko *koanf.Koanf) error {
 	return nil
 }
 
-// validateConfig performs semantic validation on a fully-merged (effective)
+// ValidateConfig performs semantic validation on a fully-merged (effective)
 // koanf instance. It rejects explicitly-null required values and type-incorrect
 // values for known keys. For boolean cluster keys such as enable-auth, string
 // values are coerced for backward tolerance.
 //
 // It returns an ErrInvalidConfigVal describing the first problem encountered, or
-// nil if the config is valid.
-func validateConfig(ko *koanf.Koanf) error {
-	if err := checkGlobalNulls(ko); err != nil {
+// nil if the config is valid. It is a low-level helper exposed for the internal
+// config-file tooling and is not intended for general external use.
+func ValidateConfig(ko *koanf.Koanf) error {
+	if err := CheckGlobalNulls(ko); err != nil {
 		return err
 	}
 
@@ -120,7 +126,7 @@ func validateConfig(ko *koanf.Koanf) error {
 // boolean cluster keys into actual booleans within a cluster's "cluster"
 // sub-map, mutating it in place. This is applied before the config is merged so
 // that StrictMerge does not fail on a string-vs-bool mismatch against the
-// DefaultClusterConfigMap default.
+// DefaultClusterMap default.
 //
 // If a known boolean key is present but explicitly null or otherwise not
 // coercible to a boolean, an ErrInvalidConfigVal is returned so a clean error
@@ -138,4 +144,60 @@ func normalizeClusterBools(name string, cluster map[string]any) error {
 		cluster["enable-auth"] = b
 	}
 	return nil
+}
+
+// ClusterAccumulator merges cluster configurations by name across multiple
+// sources while preserving the order in which cluster names are first seen.
+// This provides deterministic output regardless of Go's map iteration order.
+//
+// It is a low-level helper exposed for the internal config-file tooling and is
+// not intended for general external use.
+type ClusterAccumulator struct {
+	conf   koanf.Conf              // koanf configuration for per-cluster instances
+	order  []string                // cluster names in first-seen order
+	byName map[string]*koanf.Koanf // per-cluster merged koanf instance
+}
+
+// NewClusterAccumulator returns an initialized ClusterAccumulator that builds
+// per-cluster koanf instances using conf.
+func NewClusterAccumulator(conf koanf.Conf) *ClusterAccumulator {
+	return &ClusterAccumulator{conf: conf, byName: map[string]*koanf.Koanf{}}
+}
+
+// Add merges a single cluster's config (the "cluster" sub-map) into the
+// accumulator under the given name, applying DefaultClusterMap the first time a
+// name is seen. Later calls for the same name merge on top of earlier ones
+// (higher-priority sources should be added last).
+func (ca *ClusterAccumulator) Add(name string, cluster map[string]any) error {
+	if ca.byName[name] == nil {
+		ca.order = append(ca.order, name)
+		ca.byName[name] = koanf.NewWithConf(ca.conf)
+		if err := ca.byName[name].Load(confmap.Provider(DefaultClusterMap(), "."), nil); err != nil {
+			return fmt.Errorf("unable to load default cluster config: %w", err)
+		}
+	}
+	// Coerce string booleans (e.g. "true") into real booleans so that
+	// StrictMerge does not fail merging against the typed defaults in
+	// DefaultClusterMap. This also rejects null/invalid boolean values with
+	// a clean error.
+	if err := normalizeClusterBools(name, cluster); err != nil {
+		return err
+	}
+	if err := ca.byName[name].Load(confmap.Provider(cluster, ""), nil); err != nil {
+		return fmt.Errorf("unable to merge cluster '%s': %w", name, err)
+	}
+	return nil
+}
+
+// Slice returns the accumulated clusters as a slice of maps suitable for
+// koanf.Set("clusters", ...), in first-seen order.
+func (ca *ClusterAccumulator) Slice() []map[string]any {
+	clusterSlice := make([]map[string]any, 0, len(ca.order))
+	for _, name := range ca.order {
+		clusterSlice = append(clusterSlice, map[string]any{
+			"name":    name,
+			"cluster": ca.byName[name].Raw(),
+		})
+	}
+	return clusterSlice
 }

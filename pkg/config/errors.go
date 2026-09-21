@@ -9,6 +9,17 @@ import (
 	"fmt"
 )
 
+// Error is implemented by every typed error this package defines. Callers
+// that need to distinguish "a config error occurred" from other error
+// classes (e.g. internal/cli's exit-code classification) should match
+// against this interface via errors.As rather than hand-enumerating the
+// concrete types below, so that a new error type added here is
+// automatically recognized.
+type Error interface {
+	error
+	ochamiConfigError()
+}
+
 // ErrInvalidConfigVal represents an error that occurs when a value for a key in
 // the configuration is invalid.
 type ErrInvalidConfigVal struct {
@@ -26,6 +37,8 @@ func (eicv ErrInvalidConfigVal) Error() string {
 	return msg
 }
 
+func (ErrInvalidConfigVal) ochamiConfigError() {}
+
 // ErrUnknownCluster represents an error that occurs when a requested cluster
 // name is not found in the config.
 type ErrUnknownCluster struct {
@@ -35,6 +48,8 @@ type ErrUnknownCluster struct {
 func (euc ErrUnknownCluster) Error() string {
 	return fmt.Sprintf("cluster %s not found", euc.ClusterName)
 }
+
+func (ErrUnknownCluster) ochamiConfigError() {}
 
 // ErrMissingURI represents an error that occurs when neither the cluster.uri
 // nor the <service>.uri config values are set for a service. Service is the
@@ -47,6 +62,8 @@ func (emu ErrMissingURI) Error() string {
 	return fmt.Sprintf("base URI for %s not found (neither cluster.uri nor %s.uri specified)", emu.Service, emu.Service)
 }
 
+func (ErrMissingURI) ochamiConfigError() {}
+
 // ErrInvalidURI represents an error that occurs when the cluster URI is
 // invalid, i.e. is not a valid absolute URI (proto://host[:port][/path]). Err
 // contains the specific error representing the problem.
@@ -57,6 +74,8 @@ type ErrInvalidURI struct {
 func (eiu ErrInvalidURI) Error() string {
 	return fmt.Sprintf("invalid URI: %v", eiu.Err)
 }
+
+func (ErrInvalidURI) ochamiConfigError() {}
 
 // ErrInvalidServiceURI represents an error that occurs when a service's URI is
 // invalid, i.e. is neither a valid absolute URI (proto://host[:port][/path])
@@ -70,6 +89,8 @@ func (eisu ErrInvalidServiceURI) Error() string {
 	return fmt.Sprintf("invalid service URI for %s: %v", eisu.Service, eisu.Err)
 }
 
+func (ErrInvalidServiceURI) ochamiConfigError() {}
+
 // ErrUnknownService represents an error that occurs when the service name
 // presented is unknown.
 type ErrUnknownService struct {
@@ -79,3 +100,5 @@ type ErrUnknownService struct {
 func (eus ErrUnknownService) Error() string {
 	return fmt.Sprintf("unknown service: %s", eus.Service)
 }
+
+func (ErrUnknownService) ochamiConfigError() {}
