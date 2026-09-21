@@ -122,19 +122,31 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 func Execute() {
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
-	if err != nil {
-		log.Logger.Error().Err(err).Msg("failed to execute command")
-		if cmd, _, ferr := rootCmd.Find(os.Args[1:]); ferr != nil {
-			// Error looking up invoked command, default to printing
-			// help suggestion for root command, printing debug
-			// message only for debugging (most users don't need to
-			// know an error occurred).
-			log.Logger.Debug().Err(ferr).Msg("failed to lookup invoked command")
-			cli.LogHelpHint(rootCmd)
-		} else {
-			// Print help suggestion for invoked command
-			cli.LogHelpHint(cmd)
-		}
-		os.Exit(cli.ExitCode(err))
+	if code := handleExecuteError(rootCmd, err); code != cli.CodeSuccess {
+		os.Exit(code)
 	}
+}
+
+// handleExecuteError centralizes the post-Execute error handling: it logs the
+// failure, emits the appropriate "--help" hint for the invoked (or root)
+// command, and returns the process exit code the error resolves to. It is
+// separated from Execute so the logic can be exercised without terminating the
+// test binary via os.Exit. A nil error yields CodeSuccess.
+func handleExecuteError(rootCmd *cobra.Command, err error) int {
+	if err == nil {
+		return cli.CodeSuccess
+	}
+	log.Logger.Error().Err(err).Msg("failed to execute command")
+	if cmd, _, ferr := rootCmd.Find(os.Args[1:]); ferr != nil {
+		// Error looking up invoked command, default to printing
+		// help suggestion for root command, printing debug
+		// message only for debugging (most users don't need to
+		// know an error occurred).
+		log.Logger.Debug().Err(ferr).Msg("failed to lookup invoked command")
+		cli.LogHelpHint(rootCmd)
+	} else {
+		// Print help suggestion for invoked command
+		cli.LogHelpHint(cmd)
+	}
+	return cli.ExitCode(err)
 }
