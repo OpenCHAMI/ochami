@@ -6,13 +6,10 @@
 package defaults
 
 import (
-	"os"
-
 	"github.com/openchami/cloud-init/pkg/cistore"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 
 	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
@@ -57,29 +54,38 @@ See ochami-cloud-init(1) for more details.`,
   echo '<json_data>' | ochami cloud-init defaults set -d @-
   echo '<yaml_data>' | ochami cloud-init defaults set -f yaml
   echo '<yaml_data>' | ochami cloud-init defaults set -d @- -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// The ClusterDefaults data we will send
 			ciDflts := cistore.ClusterDefaults{}
 
 			// Read payload from file or stdin.
 			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &ciDflts)
+				if err := cli.HandlePayload(cmd, &ciDflts); err != nil {
+					return err
+				}
 			} else {
-				cli.HandlePayloadStdin(cmd, &ciDflts)
+				if err := cli.HandlePayloadStdin(cmd, &ciDflts); err != nil {
+					return err
+				}
 			}
 
 			// Send data
 			if _, err := cloudInitClient.PostDefaults(ciDflts, cli.Token); err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to set defaults")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to set defaults: %w", err)
 			}
+
+			return nil
 		},
 	}
 

@@ -9,12 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
@@ -30,9 +28,12 @@ func newCmdHostsGet() *cobra.Command {
 		Long: `Get information on hosts known to BSS.
 
 See ochami-bss(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bssClient := bss_lib.GetClient(cmd)
+			bssClient, err := bss_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// If no ID flags are specified, get all boot parameters
 			qstr := ""
@@ -43,27 +44,21 @@ See ochami-bss(1) for more details.`,
 				if cmd.Flag("xname").Changed {
 					x, err := cmd.Flags().GetString("xname")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch xname")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch xname: %w", err)
 					}
 					values.Add("name", x)
 				}
 				if cmd.Flag("mac").Changed {
 					m, err := cmd.Flags().GetString("mac")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch mac")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch mac: %w", err)
 					}
 					values.Add("mac", m)
 				}
 				if cmd.Flag("nid").Changed {
 					n, err := cmd.Flags().GetInt32("nid")
 					if err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch nid")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch nid: %w", err)
 					}
 					values.Add("nid", fmt.Sprintf("%d", n))
 				}
@@ -72,22 +67,19 @@ See ochami-bss(1) for more details.`,
 			httpEnv, err := bssClient.GetHosts(qstr)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("BSS hosts request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to request hosts from BSS")
+					return cli.Errorf(cli.CodeHTTP, "BSS hosts request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to request hosts from BSS: %w", err)
 			}
 
 			// Print output
-			if outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

@@ -10,13 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/elliotchance/pie/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/pcs"
 	"github.com/openchami/ochami/pkg/format"
@@ -45,10 +43,9 @@ func getStatus(pcsClient *pcs.PCSClient) (string, error) {
 	httpEnv, err := pcsClient.GetReadiness()
 	if err != nil {
 		if errors.Is(err, client.UnsuccessfulHTTPError) {
-			log.Logger.Fatal().Err(err).Msg("PCS status (readiness) request yielded unsuccessful HTTP response")
-		} else {
-			log.Logger.Fatal().Err(err).Msg("failed to get PCS status (readiness)")
+			return "", cli.Errorf(cli.CodeHTTP, "PCS status (readiness) request yielded unsuccessful HTTP response: %w", err)
 		}
+		return "", cli.Errorf(cli.CodeNetwork, "failed to get PCS status (readiness): %w", err)
 	}
 
 	// We are in the "ready" state
@@ -60,18 +57,16 @@ func getStatus(pcsClient *pcs.PCSClient) (string, error) {
 	httpEnv, err = pcsClient.GetLiveness()
 	if err != nil {
 		if errors.Is(err, client.UnsuccessfulHTTPError) {
-			log.Logger.Fatal().Err(err).Msg("PCS status (liveness) request yielded unsuccessful HTTP response")
-		} else {
-			log.Logger.Fatal().Err(err).Msg("failed to get PCS status (liveness)")
+			return "", cli.Errorf(cli.CodeHTTP, "PCS status (liveness) request yielded unsuccessful HTTP response: %w", err)
 		}
+		return "", cli.Errorf(cli.CodeNetwork, "failed to get PCS status (liveness): %w", err)
 	}
 
 	// We are in the "live" status
 	if httpEnv.StatusCode == http.StatusNoContent {
 		return pcsLiveStatus, nil
-	} else {
-		return "", errors.New("unable to get PCS state")
 	}
+	return "", errors.New("unable to get PCS state")
 }
 
 // struct used to unmarshall /health endpoint response
@@ -99,9 +94,12 @@ func newCmdServiceStatus() *cobra.Command {
 See ochami-pcs(1) for more details.`,
 		Example: `  # Get status of PCS
   ochami pcs service status`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			pcsClient := pcs_lib.GetClient(cmd)
+			pcsClient, err := pcs_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Figure out if we need to hit the /health endpoint (only if a flag has been provided)
 			flagsProvided := false
@@ -115,20 +113,15 @@ See ochami-pcs(1) for more details.`,
 				healthHttpEnv, err := pcsClient.GetHealth()
 				if err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("PCS status (health) request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(err).Msg("failed to get PCS status (health)")
+						return cli.Errorf(cli.CodeHTTP, "PCS status (health) request yielded unsuccessful HTTP response: %w", err)
 					}
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeNetwork, "failed to get PCS status (health): %w", err)
 				}
 
 				// Unmarshall the health
 				err = json.Unmarshal(healthHttpEnv.Body, &health)
 				if err != nil {
-					log.Logger.Error().Msg("failed to unmarshal health")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "failed to unmarshal health: %w", err)
 				}
 			}
 
@@ -159,22 +152,20 @@ See ochami-pcs(1) for more details.`,
 			if reportPCSState {
 				status, err := getStatus(pcsClient)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to get PCS status")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return err
 				}
 
 				output.Status = status
 			}
 
 			// Print output
-			if outBytes, err := format.MarshalData(output, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Println(string(outBytes))
+			outBytes, err := format.MarshalData(output, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Println(string(outBytes))
+
+			return nil
 		},
 	}
 

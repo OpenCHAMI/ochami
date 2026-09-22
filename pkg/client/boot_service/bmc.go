@@ -39,7 +39,7 @@ func (bsc *BootServiceClient) AddBMCs(token string, bmcs []boot_service_client.C
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBMC(ctx, bmc)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add bmc %+v: %w", bmc, err)
+			newErr := fmt.Errorf("failed to add bmc %+v: %w", bmc, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			bmcsAdded = append(bmcsAdded, item)
@@ -64,7 +64,7 @@ func (bsc *BootServiceClient) DeleteBMCs(token string, uids []string) (bmcsDelet
 		defer cancel()
 
 		if err := bsc.Client.WithBearerToken(token).DeleteBMC(ctx, bmcUid); err != nil {
-			newErr := fmt.Errorf("failed to delete BMC %s: %w", bmcUid, err)
+			newErr := fmt.Errorf("failed to delete BMC %s: %w", bmcUid, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else {
 			bmcsDeleted = append(bmcsDeleted, bmcUid)
@@ -83,7 +83,7 @@ func (bsc *BootServiceClient) GetBMC(token string, outFormat format.DataFormat, 
 
 	bcfg, err := bsc.Client.WithBearerToken(token).GetBMC(ctx, uid)
 	if err != nil {
-		return nil, fmt.Errorf("request to get BMC info for %s failed: %w", uid, err)
+		return nil, fmt.Errorf("request to get BMC info for %s failed: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(bcfg, outFormat)
@@ -103,7 +103,7 @@ func (bsc *BootServiceClient) ListBMCs(token string, outFormat format.DataFormat
 
 	nodes, err := bsc.Client.WithBearerToken(token).GetBMCs(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("request to list BMCs failed: %w", err)
+		return nil, fmt.Errorf("request to list BMCs failed: %w", client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(nodes, outFormat)
@@ -141,7 +141,7 @@ func (bsc *BootServiceClient) PatchBMC(token string, patchFormat client.PatchMet
 
 	item, err := bsc.Client.WithBearerToken(token).PatchBMC(ctx, uid, outData, contentType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to patch BMC for %s: %w", uid, err)
+		return nil, fmt.Errorf("failed to patch BMC for %s: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -156,7 +156,7 @@ func (bsc *BootServiceClient) SetBMC(token string, uid string, bmc boot_service_
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateBMC(ctx, uid, bmc)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set BMC %+v: %w", bmc, err)
+		return nil, fmt.Errorf("failed to set BMC %+v: %w", bmc, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -172,7 +172,7 @@ func (bsc *BootServiceClient) AddBMCSpecs(token string, bmcs []BMCSpec) (bmcsAdd
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBMCSimple(ctx, bmc.Name, bmc.BMCSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add bmc %q (%+v): %w", bmc.Name, bmc.BMCSpec, err)
+			newErr := fmt.Errorf("failed to add bmc %q (%+v): %w", bmc.Name, bmc.BMCSpec, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			bmcsAdded = append(bmcsAdded, item)
@@ -193,7 +193,7 @@ func (bsc *BootServiceClient) SetBMCSpec(token string, uid string, spec api.BMCS
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateBMCSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set BMC %+v: %w", spec, err)
+		return nil, fmt.Errorf("failed to set BMC %+v: %w", spec, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil

@@ -5,7 +5,6 @@
 package boot_service
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -37,9 +36,9 @@ func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{})
+		encodeJSONResponse(t, w, api.Node{})
 	})
 	defer srv.Close()
 
@@ -80,9 +79,9 @@ func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 func TestAddNodes_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{})
+		encodeJSONResponse(t, w, api.Node{})
 	})
 	defer srv.Close()
 
@@ -114,7 +113,7 @@ func TestAddNodeSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
+		encodeJSONResponse(t, w, api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
 	})
 	defer srv.Close()
 
@@ -145,7 +144,7 @@ func TestAddNodes_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
+		encodeJSONResponse(t, w, api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
 	})
 	defer srv.Close()
 
@@ -173,9 +172,9 @@ func TestSetNodeSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{})
+		encodeJSONResponse(t, w, api.Node{})
 	})
 	defer srv.Close()
 

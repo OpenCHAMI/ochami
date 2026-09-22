@@ -10,7 +10,9 @@ import (
 	"testing"
 )
 
-func Test_colorize(t *testing.T) {
+// TestColorize verifies that colorize wraps a value in the ANSI escape codes
+// for a color unless coloring is disabled.
+func TestColorize(t *testing.T) {
 	type args struct {
 		s        interface{}
 		c        int

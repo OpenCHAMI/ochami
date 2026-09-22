@@ -1855,7 +1855,9 @@ func TestGetConfigClusterString(t *testing.T) {
 	})
 }
 
-func TestReadConfig(t *testing.T) {
+// TestReadConfig_Success verifies that ReadConfig rejects an empty path, a
+// missing file, and invalid YAML, and reads a valid file.
+func TestReadConfig_Success(t *testing.T) {
 	t.Run("empty path", func(t *testing.T) {
 		_, err := ReadConfig("")
 		if err == nil {
@@ -1984,7 +1986,10 @@ func TestWriteConfig(t *testing.T) {
 	})
 }
 
-func TestReadConfigWithDefaults(t *testing.T) {
+// TestReadConfigWithDefaults_Success verifies that ReadConfigWithDefaults
+// rejects an empty path, applies the global and per-cluster defaults, and keeps
+// the clusters in file order.
+func TestReadConfigWithDefaults_Success(t *testing.T) {
 	t.Run("empty path", func(t *testing.T) {
 		if _, err := ReadConfigWithDefaults(""); err == nil {
 			t.Fatal("ReadConfigWithDefaults(): expected error for empty path, got nil")

@@ -7,9 +7,7 @@ package iface
 
 import (
 	"errors"
-	"fmt"
 	"net"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -55,7 +53,7 @@ See ochami-smd(1) for more details.`,
 			// Check that all required args are passed
 			if !cmd.Flag("data").Changed {
 				if len(args) != 3 {
-					return fmt.Errorf("expected -d or >= 3 arguments (component id, mac address, network name, ip address), got %d", len(args))
+					return cli.Errorf(cli.CodeUsage, "expected -d or >= 3 arguments (component id, mac address, network name, ip address), got %d", len(args))
 				}
 			} else {
 				if len(args) > 0 {
@@ -65,25 +63,31 @@ See ochami-smd(1) for more details.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			var eis []smd.EthernetInterface
 			if cmd.Flag("data").Changed {
 				// Use payload file if passed
-				cli.HandlePayload(cmd, &eis)
+				if err := cli.HandlePayload(cmd, &eis); err != nil {
+					return err
+				}
 			} else {
 				// ...otherwise use CLI options/args
 				var nets []smd.EthernetIP
 				for i := 2; i < len(args); i++ {
 					tokens := strings.SplitN(args[i], ",", 2)
 					if ip := net.ParseIP(tokens[1]); ip.To4() == nil {
-						log.Logger.Error().Msgf("invalid IP address: %s", tokens[1])
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "invalid IP address: %s", tokens[1])
 					}
 					net := smd.EthernetIP{
 						Network:   tokens[0],
@@ -103,28 +107,26 @@ See ochami-smd(1) for more details.`,
 			// Send off request
 			_, errs, err := smdClient.PostEthernetInterfaces(eis, cli.Token)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to add ethernet interface in SMD")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to add ethernet interface in SMD: %w", err)
 			}
 			// Since smdClient.PostEthernetInterfaces does the addition iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("SMD ethernet interface request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("SMD ethernet interface request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to add ethernet interfaces to SMD")
+						log.Logger.Error().Err(e).Msg("failed to add ethernet interfaces to SMD")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("SMD ethernet interface addition completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "SMD ethernet interface addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 

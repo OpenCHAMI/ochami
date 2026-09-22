@@ -231,7 +231,10 @@ type testItem struct {
 	Name string `json:"name" yaml:"name"`
 }
 
-func TestUnmarshalDataSlice(t *testing.T) {
+// TestUnmarshalDataSlice_Table verifies that UnmarshalDataSlice reads a single
+// item or a list in JSON, pretty-printed JSON, and YAML block or flow style,
+// and rejects a scalar, malformed JSON, and an unknown format.
+func TestUnmarshalDataSlice_Table(t *testing.T) {
 	type args struct {
 		data     []byte
 		inFormat DataFormat
@@ -345,7 +348,10 @@ func TestUnmarshalDataSlice_NilDestination(t *testing.T) {
 	}
 }
 
-func TestUnmarshalDataSliceJSON(t *testing.T) {
+// TestUnmarshalDataSlice_JSON verifies that unmarshalDataSliceJSON reads a
+// single object or an array, and rejects a scalar, malformed JSON, and a nil
+// destination.
+func TestUnmarshalDataSlice_JSON(t *testing.T) {
 	tests := []struct {
 		name    string
 		data    []byte
@@ -385,7 +391,10 @@ func TestUnmarshalDataSliceJSON(t *testing.T) {
 	}
 }
 
-func TestUnmarshalDataSliceYAML(t *testing.T) {
+// TestUnmarshalDataSlice_YAML verifies that unmarshalDataSliceYAML reads a
+// single mapping or a sequence in block or flow style, and rejects a scalar,
+// malformed YAML, and a nil destination.
+func TestUnmarshalDataSlice_YAML(t *testing.T) {
 	tests := []struct {
 		name    string
 		data    []byte
@@ -427,7 +436,10 @@ func TestUnmarshalDataSliceYAML(t *testing.T) {
 	}
 }
 
-func TestSetNestedField(t *testing.T) {
+// TestSetNestedField_Success verifies that SetNestedField creates or replaces
+// nested maps as needed, keeps sibling keys, sets nil explicitly, and
+// unmarshals string values that are valid JSON.
+func TestSetNestedField_Success(t *testing.T) {
 	type tc struct {
 		name  string
 		start map[string]interface{}

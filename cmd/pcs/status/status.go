@@ -17,10 +17,11 @@ func NewCmd() *cobra.Command {
 		Use:   "status",
 		Args:  cobra.NoArgs,
 		Short: "Manage PCS status",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				cli.PrintUsageHandleError(cmd)
+				return cli.PrintUsageHandleError(cmd)
 			}
+			return nil
 		},
 	}
 

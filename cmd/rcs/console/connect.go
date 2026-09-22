@@ -5,13 +5,10 @@
 package console
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/cli/rcs"
-	"github.com/openchami/ochami/internal/log"
 )
 
 func newConnectCmd() *cobra.Command {
@@ -24,17 +21,22 @@ See ochami-rcs(1) for more details.`,
 		Example: `  # Connect to a node console
   ochami rcs console connect x0c0s1b0n0`,
 		Args: cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			cli.HandleToken(cmd)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			nodeID := args[0]
-			rcsClient := rcs.GetClient(cmd)
-			err := rcsClient.ConnectConsole(cmd.Context(), nodeID, cli.Token, os.Stdin, os.Stdout)
+			rcsClient, err := rcs.GetClient(cmd)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to connect to console")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return err
 			}
+			err = rcsClient.ConnectConsole(cmd.Context(), nodeID, cli.Token, cli.Ios.In(), cli.Ios.Out())
+			if err != nil {
+				return cli.Errorf(cli.CodeNetwork, "failed to connect to console: %w", err)
+			}
+
+			return nil
 		},
 	}
 }

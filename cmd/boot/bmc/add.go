@@ -5,7 +5,7 @@
 package bmc
 
 import (
-	"os"
+	"errors"
 
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
@@ -15,6 +15,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
@@ -88,17 +89,22 @@ See ochami-boot(1) for more details.`,
   echo '<json_data>' | ochami boot bmc add
   echo '<yaml_data>' | ochami boot bmc add -d @- -f yaml
   echo '<yaml_data>' | ochami boot bmc add -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
 			if flagErr != nil {
-				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
+				return cli.Errorf(cli.CodeUsage, "failed to read --envelope flag: %w", flagErr)
 			}
 
 			var bmcsCreated []*api.BMC
@@ -110,9 +116,13 @@ See ochami-boot(1) for more details.`,
 				// Read node data
 				bmcs := []boot_service_client.CreateBMCRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+					if err := cli.HandlePayloadSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs)
+					if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateBMCRequest](cmd, &bmcs); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -123,9 +133,13 @@ See ochami-boot(1) for more details.`,
 				// Read node data
 				bmcs := []boot_service.BMCSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[boot_service.BMCSpec](cmd, &bmcs)
+					if err := cli.HandlePayloadSlice[boot_service.BMCSpec](cmd, &bmcs); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[boot_service.BMCSpec](cmd, &bmcs)
+					if err := cli.HandlePayloadStdinSlice[boot_service.BMCSpec](cmd, &bmcs); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -134,9 +148,10 @@ See ochami-boot(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to add BMCs")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to add BMCs: %w", reqErr)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to add BMCs: %w", reqErr)
 			}
 
 			// Deal with per-request errors
@@ -153,10 +168,10 @@ See ochami-boot(1) for more details.`,
 			}
 			log.Logger.Debug().Msgf("BMCs created: %q", names)
 			if reqErrorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("BMC addition completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "BMC addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 
