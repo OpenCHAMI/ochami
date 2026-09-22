@@ -17,6 +17,9 @@ import (
 	"github.com/openchami/ochami/pkg/client/smd"
 )
 
+// TestDiscoveryInfoV2_Table verifies the components, Redfish endpoints,
+// systems, and interfaces DiscoveryInfoV2 builds for explicit and xname-derived
+// BMCs and for duplicate nodes, and that it rejects a malformed base URI.
 func TestDiscoveryInfoV2_Table(t *testing.T) {
 	type wantRFE struct {
 		count          int
@@ -310,6 +313,8 @@ func TestDiscoveryInfoV2_Table(t *testing.T) {
 	}
 }
 
+// TestAddMemberToGroup verifies that AddMemberToGroup appends an xname to a
+// group's members unless it is already a member.
 func TestAddMemberToGroup(t *testing.T) {
 	newGroup := func(members []string) smd.Group {
 		var g smd.Group
@@ -358,9 +363,10 @@ func TestAddMemberToGroup(t *testing.T) {
 	}
 }
 
-// Test that EthernetInterfaces created from Redfish System uses first IP address.
-//
-// SMD does not support multiple IP addresses in its inventory detail.
+// TestDiscoveryInfoV2_SystemInterface_UsesFirstIP verifies that an
+// EthernetInterface created from a Redfish System uses only the first of a node
+// interface's IP addresses, since SMD does not support multiple IP addresses in
+// its inventory detail.
 func TestDiscoveryInfoV2_SystemInterface_UsesFirstIP(t *testing.T) {
 	base := "http://example.com"
 	di := DiscoveryItems{
@@ -415,6 +421,8 @@ func TestDiscoveryInfoV2_SystemInterface_UsesFirstIP(t *testing.T) {
 //                       //
 ///////////////////////////
 
+// TestDiscoveryInfoV2Deprecated_InvalidURI verifies that
+// DiscoveryInfoV2Deprecated rejects a malformed base URI.
 func TestDiscoveryInfoV2Deprecated_InvalidURI(t *testing.T) {
 	_, _, _, err := DiscoveryInfoV2Deprecated("://bad_uri", NodeListDeprecated{})
 	if err == nil {
@@ -422,6 +430,10 @@ func TestDiscoveryInfoV2Deprecated_InvalidURI(t *testing.T) {
 	}
 }
 
+// TestDiscoveryInfoV2Deprecated_Success verifies the components, Redfish
+// endpoints, and ethernet interfaces DiscoveryInfoV2Deprecated builds for a
+// node, using the node's xname as the BMC's when no BMC xname can be derived
+// from it.
 func TestDiscoveryInfoV2Deprecated_Success(t *testing.T) {
 	base := "http://example.com"
 	nl := NodeListDeprecated{
@@ -538,6 +550,9 @@ func TestDiscoveryInfoV2Deprecated_Success(t *testing.T) {
 	}
 }
 
+// TestDiscoveryInfoV2Deprecated_MultipleNodesPerBMC verifies that
+// DiscoveryInfoV2Deprecated creates one Redfish endpoint per BMC, with a system
+// for each of its nodes.
 func TestDiscoveryInfoV2Deprecated_MultipleNodesPerBMC(t *testing.T) {
 	base := "http://example.com"
 	bmc0Xname := "x1000c0s0b0"

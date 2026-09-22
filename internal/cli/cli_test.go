@@ -23,6 +23,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TestIOStream_AskToCreate verifies that AskToCreate rejects an empty path,
+// reports an existing file with FileExistsError without prompting, and prompts
+// before creating a missing file, creating it only if the user agrees.
 func TestIOStream_AskToCreate(t *testing.T) {
 	t.Run("empty path", func(t *testing.T) {
 		t.Parallel()
@@ -127,6 +130,8 @@ func TestIOStream_AskToCreate(t *testing.T) {
 	})
 }
 
+// TestIOStream_LoopYesNo verifies that LoopYesNo returns the user's yes or no
+// answer and prompts again after an invalid one.
 func TestIOStream_LoopYesNo(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -181,6 +186,8 @@ func TestIOStream_LoopYesNo(t *testing.T) {
 	}
 }
 
+// Test_CreateIfNotExists verifies that CreateIfNotExists rejects an empty path
+// and succeeds for both a missing and an existing file.
 func Test_CreateIfNotExists(t *testing.T) {
 	type args struct {
 		path string
@@ -256,6 +263,8 @@ func generateTestToken(exp time.Time, nbf time.Time, iat time.Time) (string, err
 	return string(signed), nil
 }
 
+// TestCheckToken_ValidToken verifies that CheckToken accepts a token that is
+// currently valid.
 func TestCheckToken_ValidToken(t *testing.T) {
 	now := time.Now()
 	exp := now.Add(1 * time.Hour)
@@ -294,6 +303,8 @@ func TestCheckToken_ValidToken(t *testing.T) {
 	}
 }
 
+// TestCheckToken_ExpiredToken verifies that CheckToken rejects an expired token
+// with CodeAuth.
 func TestCheckToken_ExpiredToken(t *testing.T) {
 	now := time.Now()
 	exp := now.Add(-1 * time.Hour) // Expired 1 hour ago
@@ -329,6 +340,8 @@ func TestCheckToken_ExpiredToken(t *testing.T) {
 	}
 }
 
+// TestCheckToken_NotYetValid verifies that CheckToken rejects a token whose
+// not-before time is in the future with CodeAuth.
 func TestCheckToken_NotYetValid(t *testing.T) {
 	now := time.Now()
 	exp := now.Add(2 * time.Hour)
@@ -364,6 +377,8 @@ func TestCheckToken_NotYetValid(t *testing.T) {
 	}
 }
 
+// TestCheckToken_ExpiringSoon verifies that CheckToken accepts a token that
+// expires within the warning window.
 func TestCheckToken_ExpiringSoon(t *testing.T) {
 	now := time.Now()
 	exp := now.Add(10 * time.Minute) // Expires in 10 minutes (< 15 min threshold)
@@ -403,6 +418,8 @@ func TestCheckToken_ExpiringSoon(t *testing.T) {
 	}
 }
 
+// TestCheckToken_EmptyToken verifies that CheckToken rejects an empty token
+// with CodeAuth.
 func TestCheckToken_EmptyToken(t *testing.T) {
 	// Save original token and restore after test
 	originalToken := Token
@@ -419,6 +436,8 @@ func TestCheckToken_EmptyToken(t *testing.T) {
 	}
 }
 
+// TestCheckToken_MalformedToken verifies that CheckToken rejects a token that
+// isn't a valid JWT with CodeAuth.
 func TestCheckToken_MalformedToken(t *testing.T) {
 	malformedToken := "not.a.valid.jwt.token.at.all"
 
@@ -443,6 +462,7 @@ func TestCheckToken_MalformedToken(t *testing.T) {
 	}
 }
 
+// TestSetToken_FromFlag verifies that SetToken uses the value of --token.
 func TestSetToken_FromFlag(t *testing.T) {
 	// Save original token and restore after test
 	originalToken := Token
@@ -463,6 +483,8 @@ func TestSetToken_FromFlag(t *testing.T) {
 	}
 }
 
+// TestSetToken_FromEnvironment verifies that SetToken reads the token from the
+// selected cluster's <CLUSTER>_ACCESS_TOKEN environment variable.
 func TestSetToken_FromEnvironment(t *testing.T) {
 	// Save original token and restore after test
 	originalToken := Token

@@ -30,6 +30,8 @@ func mustWriteFile(t *testing.T, path string, data []byte) {
 	}
 }
 
+// TestConfig_GetCluster verifies that GetCluster returns the cluster with the
+// exact name given and reports a missing cluster by name.
 func TestConfig_GetCluster(t *testing.T) {
 	type args struct {
 		name string
@@ -191,6 +193,8 @@ func TestConfig_GetCluster(t *testing.T) {
 	}
 }
 
+// TestConfigClusterConfig_MergeURIConfig verifies that MergeURIConfig overrides
+// each URI the new configuration sets and keeps the others.
 func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 	type fields struct {
 		URI       string
@@ -451,6 +455,9 @@ func TestConfigClusterConfig_MergeURIConfig(t *testing.T) {
 	}
 }
 
+// TestConfigClusterConfig_GetServiceBaseURI verifies how GetServiceBaseURI
+// combines the cluster URI with each service's absolute or relative URI or
+// default base path, and that it fails when neither is usable.
 func TestConfigClusterConfig_GetServiceBaseURI(t *testing.T) {
 	type fields struct {
 		URI       string
@@ -663,6 +670,10 @@ func TestConfigClusterConfig_GetServiceBaseURI(t *testing.T) {
 	}
 }
 
+// TestConfigClusterConfig_BootServiceBaseURIAndMerge verifies the boot-service
+// base URI for the default path and for absolute and relative overrides, that
+// MergeURIConfig merges the boot-service URI, and that the boot-service API
+// version unmarshals.
 func TestConfigClusterConfig_BootServiceBaseURIAndMerge(t *testing.T) {
 	t.Run("default boot-service path with cluster", func(t *testing.T) {
 		ccc := ConfigClusterConfig{URI: "https://cluster.local/api"}
@@ -720,6 +731,8 @@ func TestConfigClusterConfig_BootServiceBaseURIAndMerge(t *testing.T) {
 	})
 }
 
+// TestRemoveFromSlice verifies that RemoveFromSlice removes the element at an
+// index by moving the last element into its place.
 func TestRemoveFromSlice(t *testing.T) {
 	type args struct {
 		slice []interface{}
@@ -797,6 +810,10 @@ func TestRemoveFromSlice(t *testing.T) {
 	}
 }
 
+// TestLoadGlobalConfigFromFile verifies that LoadGlobalConfigFromFile replaces
+// the global configuration with the file merged over the defaults, applying
+// cluster defaults and coercing quoted booleans, and that a failed load leaves
+// the globals unchanged.
 func TestLoadGlobalConfigFromFile(t *testing.T) {
 	originalConfig := GlobalConfig
 	originalKoanf := GlobalKoanf
@@ -921,6 +938,9 @@ clusters:
 	})
 }
 
+// TestModifyConfig verifies that ModifyConfig sets a top-level or nested key in
+// the file, and that it rejects an empty or missing file path and a file it
+// cannot write.
 func TestModifyConfig(t *testing.T) {
 	t.Run("empty path returns error", func(t *testing.T) {
 		err := ModifyConfig("", "default-cluster", "new")
@@ -996,6 +1016,9 @@ func TestModifyConfig(t *testing.T) {
 	})
 }
 
+// TestModifyConfigCluster verifies that ModifyConfigCluster rejects an empty
+// path and a rename to an existing cluster's name, adds a new cluster (as the
+// default when asked), and keeps default-cluster pointing at a renamed cluster.
 func TestModifyConfigCluster(t *testing.T) {
 	t.Run("empty path", func(t *testing.T) {
 		err := ModifyConfigCluster("", "c1", "name", false, "c1")
@@ -1112,6 +1135,10 @@ clusters: null`))
 	})
 }
 
+// TestDeleteConfig verifies that DeleteConfig removes a top-level or nested key
+// while leaving its siblings in place, and that it rejects an empty or missing
+// file path, a key that is not present (leaving the file unchanged), and a file
+// it cannot write.
 func TestDeleteConfig(t *testing.T) {
 	t.Run("empty path returns error", func(t *testing.T) {
 		err := DeleteConfig("", "default-cluster")
@@ -1237,6 +1264,9 @@ log:
 	})
 }
 
+// TestDeleteConfigCluster verifies that DeleteConfigCluster rejects an empty
+// path, removing a cluster's name, and an unknown cluster, and removes only the
+// requested cluster key.
 func TestDeleteConfigCluster(t *testing.T) {
 	t.Run("empty path returns error", func(t *testing.T) {
 		err := DeleteConfigCluster("", "c1", "cluster.uri")
@@ -1343,6 +1373,8 @@ clusters:
 	})
 }
 
+// TestGetConfig verifies that GetConfig returns top-level and nested values,
+// nil for an unknown key, and the whole configuration for an empty key.
 func TestGetConfig(t *testing.T) {
 	// sample config for testing
 	cfg := koanf.NewWithConf(kConfig)
@@ -1431,6 +1463,9 @@ func TestGetConfig(t *testing.T) {
 	})
 }
 
+// TestGetConfigFromFile verifies that GetConfigFromFile rejects an empty or
+// missing file path and reads top-level and nested keys from a file, returning
+// nil for an unknown key.
 func TestGetConfigFromFile(t *testing.T) {
 	// Prepare a sample Config struct and write it to a temp YAML file.
 	sample := Config{
@@ -1536,6 +1571,9 @@ clusters:
 	})
 }
 
+// TestGetConfigString verifies that GetConfigString returns an empty string for
+// an unknown key and marshals scalar and map values as YAML, keeping ambiguous
+// strings as strings.
 func TestGetConfigString(t *testing.T) {
 	ko := koanf.NewWithConf(kConfig)
 	if err := ko.Load(structs.Provider(Config{
@@ -1631,6 +1669,9 @@ func TestGetConfigString(t *testing.T) {
 	})
 }
 
+// TestGetConfigStringFromFile verifies that GetConfigStringFromFile rejects an
+// empty or missing file path and a clusters key, and marshals a value or the
+// whole file as YAML.
 func TestGetConfigStringFromFile(t *testing.T) {
 	// Prepare a sample config and write it to a temp file
 	data := []byte(`
@@ -1693,6 +1734,9 @@ clusters:
 	})
 }
 
+// TestGetConfigCluster verifies that GetConfigCluster returns a cluster's name
+// and its top-level and nested keys, nil for an unknown key, and the whole
+// cluster as a map for an empty key.
 func TestGetConfigCluster(t *testing.T) {
 	cluster := ConfigCluster{
 		Name: "c1",
@@ -1789,6 +1833,9 @@ func TestGetConfigCluster(t *testing.T) {
 	})
 }
 
+// TestGetConfigClusterString verifies that GetConfigClusterString returns an
+// empty string for an unknown key and marshals values and the whole cluster as
+// YAML, keeping ambiguous strings as strings.
 func TestGetConfigClusterString(t *testing.T) {
 	cluster := ConfigCluster{
 		Name: "c1",
@@ -1921,6 +1968,9 @@ func TestReadConfig_Success(t *testing.T) {
 	})
 }
 
+// TestWriteConfig verifies that WriteConfig rejects an empty path, writes a new
+// file, keeps an existing file's permissions when overwriting it, and reports a
+// file it cannot write.
 func TestWriteConfig(t *testing.T) {
 	ko := koanf.NewWithConf(kConfig)
 	err := ko.Load(confmap.Provider(DefaultConfigMap, "."), nil)

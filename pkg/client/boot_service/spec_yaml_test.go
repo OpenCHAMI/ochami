@@ -10,6 +10,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// TestBootConfigSpecUnmarshalsFlatYAML verifies that a list of BootConfigSpec
+// unmarshals the name and spec fields from flat YAML.
 func TestBootConfigSpecUnmarshalsFlatYAML(t *testing.T) {
 	data := []byte(`
 - name: compute-debug-rocky9
@@ -45,6 +47,8 @@ func TestBootConfigSpecUnmarshalsFlatYAML(t *testing.T) {
 	}
 }
 
+// TestNodeSpecUnmarshalsFlatYAML verifies that NodeSpec unmarshals the name and
+// spec fields from flat YAML.
 func TestNodeSpecUnmarshalsFlatYAML(t *testing.T) {
 	var got NodeSpec
 	if err := yaml.Unmarshal([]byte("name: node-1\nxname: x1000c0s0b0n0\nnid: 42\n"), &got); err != nil {
@@ -55,6 +59,8 @@ func TestNodeSpecUnmarshalsFlatYAML(t *testing.T) {
 	}
 }
 
+// TestBMCSpecUnmarshalsFlatYAML verifies that BMCSpec unmarshals the name and
+// spec fields from flat YAML.
 func TestBMCSpecUnmarshalsFlatYAML(t *testing.T) {
 	var got BMCSpec
 	if err := yaml.Unmarshal([]byte("name: bmc-1\nxname: x1000c0s0b0\ndescription: test BMC\n"), &got); err != nil {

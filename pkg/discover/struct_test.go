@@ -10,6 +10,8 @@ import (
 	"testing"
 )
 
+// TestDiscoveryItems_String_Table verifies that DiscoveryItems.String lists
+// every BMC and node, rendering empty lists explicitly.
 func TestDiscoveryItems_String_Table(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -76,6 +78,8 @@ func TestDiscoveryItems_String_Table(t *testing.T) {
 	}
 }
 
+// TestBMC_String_Table verifies that BMC.String includes every field, rendering
+// an empty FQDN explicitly.
 func TestBMC_String_Table(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -130,6 +134,8 @@ func TestBMC_String_Table(t *testing.T) {
 	}
 }
 
+// TestNode_String_Table verifies that Node.String includes every field and each
+// interface's addresses, with the BMC derived from the xname when it isn't set.
 func TestNode_String_Table(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -206,6 +212,9 @@ func TestNode_String_Table(t *testing.T) {
 	}
 }
 
+// TestNode_ResolveBMC_Table verifies that ResolveBMC prefers an explicit BMC,
+// otherwise derives it from the node's xname, and reports an xname it can't
+// derive one from.
 func TestNode_ResolveBMC_Table(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -246,6 +255,8 @@ func TestNode_ResolveBMC_Table(t *testing.T) {
 	}
 }
 
+// TestIface_String_Table verifies that Iface.String indexes each IP address and
+// renders no IP addresses as an empty list.
 func TestIface_String_Table(t *testing.T) {
 	tests := []struct {
 		name string
@@ -288,6 +299,8 @@ func TestIface_String_Table(t *testing.T) {
 	}
 }
 
+// TestIfaceIP_String verifies the format of IfaceIP.String, including an empty
+// network name.
 func TestIfaceIP_String(t *testing.T) {
 	tests := []struct {
 		name string
@@ -322,6 +335,8 @@ func TestIfaceIP_String(t *testing.T) {
 //                       //
 ///////////////////////////
 
+// TestNodeListDeprecated_String_Full verifies the exact output of
+// NodeListDeprecated.String for two fully populated nodes.
 func TestNodeListDeprecated_String_Full(t *testing.T) {
 	nl := NodeListDeprecated{
 		Nodes: []NodeDeprecated{
@@ -375,6 +390,8 @@ func TestNodeListDeprecated_String_Full(t *testing.T) {
 	}
 }
 
+// TestNodeListDeprecated_String_Empty verifies that NodeListDeprecated.String
+// renders an empty list as "[]".
 func TestNodeListDeprecated_String_Empty(t *testing.T) {
 	nl := NodeListDeprecated{Nodes: nil}
 
@@ -383,6 +400,8 @@ func TestNodeListDeprecated_String_Empty(t *testing.T) {
 	}
 }
 
+// TestIfaceDeprecated_String_Format verifies the exact format of
+// IfaceDeprecated.String with two IP addresses.
 func TestIfaceDeprecated_String_Format(t *testing.T) {
 	iface := IfaceDeprecated{
 		MACAddr: "00:00:00:00:00:00",
@@ -397,6 +416,8 @@ func TestIfaceDeprecated_String_Format(t *testing.T) {
 	}
 }
 
+// TestIfaceDeprecated_String_WithTwoIPs verifies that IfaceDeprecated.String
+// indexes each of an interface's IP addresses.
 func TestIfaceDeprecated_String_WithTwoIPs(t *testing.T) {
 	iface := IfaceDeprecated{
 		MACAddr: "00:00:00:00:00:00",
@@ -412,6 +433,8 @@ func TestIfaceDeprecated_String_WithTwoIPs(t *testing.T) {
 	}
 }
 
+// TestIfaceDeprecated_String_NoIPs verifies that IfaceDeprecated.String renders
+// an interface with no IP addresses as an empty list.
 func TestIfaceDeprecated_String_NoIPs(t *testing.T) {
 	iface := IfaceDeprecated{
 		MACAddr: "de:ad:be:ef:00:01",
@@ -428,6 +451,8 @@ func TestIfaceDeprecated_String_NoIPs(t *testing.T) {
 	}
 }
 
+// TestIfaceIPDeprecated_String_Format verifies the format of
+// IfaceIPDeprecated.String.
 func TestIfaceIPDeprecated_String_Format(t *testing.T) {
 	ip := IfaceIPDeprecated{Network: "nw", IPAddr: "1.2.3.4"}
 	got := ip.String()
@@ -437,6 +462,8 @@ func TestIfaceIPDeprecated_String_Format(t *testing.T) {
 	}
 }
 
+// TestNodeDeprecated_String_Full verifies that NodeDeprecated.String includes
+// every field and each interface's addresses.
 func TestNodeDeprecated_String_Full(t *testing.T) {
 	n := NodeDeprecated{
 		Name:   "nid1",
@@ -486,6 +513,8 @@ func TestNodeDeprecated_String_Full(t *testing.T) {
 	}
 }
 
+// TestNodeListDeprecated_String_MultipleNodes verifies that
+// NodeListDeprecated.String includes and indexes each node.
 func TestNodeListDeprecated_String_MultipleNodes(t *testing.T) {
 	nl := NodeListDeprecated{
 		Nodes: []NodeDeprecated{

@@ -11,6 +11,7 @@ import (
 	"testing"
 )
 
+// TestDataFormat_String verifies the string form of each DataFormat.
 func TestDataFormat_String(t *testing.T) {
 	tests := []struct {
 		name string
@@ -30,6 +31,8 @@ func TestDataFormat_String(t *testing.T) {
 	}
 }
 
+// TestDataFormat_Set verifies that DataFormat.Set accepts json, json-pretty,
+// and yaml and rejects anything else.
 func TestDataFormat_Set(t *testing.T) {
 	type args struct {
 		v string
@@ -54,6 +57,8 @@ func TestDataFormat_Set(t *testing.T) {
 	}
 }
 
+// TestDataFormat_Type verifies that every DataFormat reports the type
+// "DataFormat".
 func TestDataFormat_Type(t *testing.T) {
 	tests := []struct {
 		name string
@@ -73,6 +78,8 @@ func TestDataFormat_Type(t *testing.T) {
 	}
 }
 
+// TestMarshalData verifies that MarshalData produces JSON, pretty-printed JSON,
+// and YAML.
 func TestMarshalData(t *testing.T) {
 	type args struct {
 		data      interface{}
@@ -153,6 +160,8 @@ arr:
 	}
 }
 
+// TestUnmarshalData verifies that UnmarshalData reads JSON, pretty-printed
+// JSON, and YAML.
 func TestUnmarshalData(t *testing.T) {
 	type args struct {
 		data     []byte
@@ -326,6 +335,8 @@ func TestUnmarshalDataSlice_Table(t *testing.T) {
 	}
 }
 
+// TestUnmarshalDataSlice_NilDestination verifies that UnmarshalDataSlice
+// rejects a nil destination for JSON and YAML.
 func TestUnmarshalDataSlice_NilDestination(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -611,6 +622,9 @@ func TestSetNestedField_Success(t *testing.T) {
 	}
 }
 
+// TestSetNestedField_EdgeCases_NoPanics verifies that SetNestedField does
+// nothing for a nil map, an empty path, or a path of only dots, and ignores
+// empty path segments.
 func TestSetNestedField_EdgeCases_NoPanics(t *testing.T) {
 	t.Run("nil target is a no-op (no panic)", func(t *testing.T) {
 		var m map[string]interface{}  // nil
@@ -677,6 +691,8 @@ func TestSetNestedField_EdgeCases_NoPanics(t *testing.T) {
 	})
 }
 
+// TestFirstNonSpaceByte verifies that firstNonSpaceByte returns the first byte
+// that isn't whitespace, or 0 if there is none.
 func TestFirstNonSpaceByte(t *testing.T) {
 	tests := []struct {
 		name string

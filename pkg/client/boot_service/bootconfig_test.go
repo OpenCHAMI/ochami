@@ -13,6 +13,9 @@ import (
 	"github.com/openchami/fabrica/pkg/fabrica"
 )
 
+// TestAddBootConfigSpecs_SendsNameAndSpecWithoutEnvelopeExtras verifies that
+// AddBootConfigSpecs POSTs to /bootconfigurations with an envelope built from
+// the name and spec only, without labels.
 func TestAddBootConfigSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -59,6 +62,8 @@ func TestAddBootConfigSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) 
 	}
 }
 
+// TestAddBootConfigs_EnvelopeIncludesLabels verifies that AddBootConfigs sends
+// a request's labels in the envelope.
 func TestAddBootConfigs_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +92,9 @@ func TestAddBootConfigs_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestAddBootConfigSpecs_ReturnsOnlyCreatedResources verifies that
+// AddBootConfigSpecs returns only the boot configurations the service created
+// and reports each failed request separately.
 func TestAddBootConfigSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +126,9 @@ func TestAddBootConfigSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
+// TestAddBootConfigs_ReturnsOnlyCreatedResources verifies that AddBootConfigs
+// returns only the boot configurations the service created and reports each
+// failed request separately.
 func TestAddBootConfigs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -149,6 +160,9 @@ func TestAddBootConfigs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
+// TestSetBootConfigSpec_SendsSpecToUIDEndpoint verifies that SetBootConfigSpec
+// PUTs the spec, without labels, to the boot configuration's
+// /bootconfigurations/<uid> endpoint.
 func TestSetBootConfigSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}
