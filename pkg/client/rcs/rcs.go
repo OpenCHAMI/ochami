@@ -27,6 +27,13 @@ import (
 // ctrlCByte is the byte value for Ctrl+C in raw terminal mode.
 const ctrlCByte = byte(0x03)
 
+// messageWriter is the subset of *websocket.Conn used to forward console input.
+// It is an interface so the input-streaming helpers can be unit-tested with a
+// fake writer instead of a live websocket connection.
+type messageWriter interface {
+	WriteMessage(messageType int, data []byte) error
+}
+
 // HealthResponse represents the response from the /health endpoint of the Remote Console Service.
 type HealthResponse struct {
 	NumberConsoles     string `json:"consoles" yaml:"consoles"`
@@ -250,52 +257,58 @@ func enableRawTerminalMode(stdinFile *os.File) (*term.State, error) {
 	return oldState, nil
 }
 
+// forwardBytes writes buf[:n] to conn if n > 0, then reports whether the
+// read loop that called it should stop: on a write error (forwarded to
+// errChan) or when readErr is a real, non-io.EOF read error (also forwarded).
+// It forwards bytes read before inspecting readErr, since io.Reader permits a
+// read to return n > 0 together with io.EOF in the same call, and some real
+// readers (pipes, files, sockets) do this on stream close.
+func forwardBytes(conn messageWriter, buf []byte, n int, readErr error, errChan chan error) (stop bool) {
+	if n > 0 {
+		if writeErr := conn.WriteMessage(websocket.TextMessage, buf[:n]); writeErr != nil {
+			errChan <- writeErr
+			return true
+		}
+	}
+	if readErr != nil {
+		if readErr != io.EOF {
+			errChan <- readErr
+		}
+		return true
+	}
+	return false
+}
+
 // streamRawConsoleInput reads from stdin in raw mode and forwards keystrokes to the websocket connection, translating Ctrl+C into an interrupt signal.
-func streamRawConsoleInput(stdin io.Reader, conn *websocket.Conn, interrupt chan os.Signal, errChan chan error) {
+func streamRawConsoleInput(stdin io.Reader, conn messageWriter, interrupt chan os.Signal, errChan chan error) {
 	buf := make([]byte, 1)
 	for {
 		bytesRead, err := stdin.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				errChan <- err
-			}
-			return
-		}
 
-		if bytesRead == 0 {
-			continue
-		}
-
-		// In raw mode, Ctrl+C arrives as the ETX byte instead of a signal.
-		if buf[0] == ctrlCByte {
+		// In raw mode, Ctrl+C arrives as the ETX byte instead of a signal;
+		// check before forwarding so the ETX byte itself is never sent. This
+		// also means Ctrl+C takes priority over a same-call read error (also
+		// permitted by io.Reader alongside n > 0, like the io.EOF case
+		// forwardBytes handles): the interrupt path leads to the same clean
+		// session shutdown the error path would, so responding to the user's
+		// Ctrl+C instead of surfacing that error is an acceptable, intentional
+		// tradeoff rather than an oversight.
+		if bytesRead > 0 && buf[0] == ctrlCByte {
 			interrupt <- syscall.SIGINT
 			return
 		}
 
-		if err := conn.WriteMessage(websocket.TextMessage, buf[:bytesRead]); err != nil {
-			errChan <- err
+		if forwardBytes(conn, buf, bytesRead, err, errChan) {
 			return
 		}
 	}
 }
 
-func streamBufferedConsoleInput(stdin io.Reader, conn *websocket.Conn, errChan chan error) {
+func streamBufferedConsoleInput(stdin io.Reader, conn messageWriter, errChan chan error) {
 	buf := make([]byte, 1024)
 	for {
 		bytesRead, err := stdin.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				errChan <- err
-			}
-			return
-		}
-
-		if bytesRead == 0 {
-			continue
-		}
-
-		if err := conn.WriteMessage(websocket.TextMessage, buf[:bytesRead]); err != nil {
-			errChan <- err
+		if forwardBytes(conn, buf, bytesRead, err, errChan) {
 			return
 		}
 	}
