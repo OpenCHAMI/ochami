@@ -6,12 +6,15 @@ package cloud_init
 
 // cloud_init_errors_test.go unit-tests the CloudInitClient wrapper methods'
 // error arms: input rejected before a request is made, and a non-2XX response
-// surfacing as an UnsuccessfulHTTPError.
+// surfacing as an UnsuccessfulHTTPError. It also covers DecodeCloudConfig's
+// own rejection case (see cloud_init_test.go for its success cases).
 
 import (
 	"errors"
 	"net/http"
 	"testing"
+
+	"github.com/openchami/cloud-init/pkg/cistore"
 
 	"github.com/openchami/ochami/pkg/client"
 )
@@ -45,5 +48,13 @@ func TestGetDefaults_UnsuccessfulHTTP(t *testing.T) {
 	}
 	if !errors.Is(err, client.UnsuccessfulHTTPError) {
 		t.Errorf("error = %v, want it to wrap client.UnsuccessfulHTTPError", err)
+	}
+}
+
+// TestDecodeCloudConfig_UnknownEncoding verifies that an unrecognized
+// CloudConfigFile.Encoding value is rejected.
+func TestDecodeCloudConfig_UnknownEncoding(t *testing.T) {
+	if _, err := DecodeCloudConfig(cistore.CloudConfigFile{Content: []byte("x"), Encoding: "rot13"}); err == nil {
+		t.Error("expected an error for unknown encoding, got nil")
 	}
 }
