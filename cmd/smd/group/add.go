@@ -7,8 +7,6 @@ package group
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -74,7 +72,7 @@ See ochami-smd(1) for more details.`,
 			// Check that all required args are passed
 			if !cmd.Flag("data").Changed {
 				if len(args) != 1 {
-					return fmt.Errorf("expected -d or 1 argument (group label), got %d", len(args))
+					return cli.Errorf(cli.CodeUsage, "expected -d or 1 argument (group label), got %d", len(args))
 				}
 			} else {
 				if len(args) > 0 {
@@ -84,50 +82,50 @@ See ochami-smd(1) for more details.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Check if a CA certificate was passed and load it into client if valid
-			cli.UseCACert(smdClient.OchamiClient)
+			if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+				return err
+			}
 
 			var groups []smd.Group
-			var err error
 			if cmd.Flag("data").Changed {
 				// Use payload file if passed
-				cli.HandlePayload(cmd, &groups)
+				if err := cli.HandlePayload(cmd, &groups); err != nil {
+					return err
+				}
 			} else {
 				// ...otherwise use CLI options/args
 				group := smd.Group{Label: args[0]}
 				if cmd.Flag("description").Changed {
 					if group.Description, err = cmd.Flags().GetString("description"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch description")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch description: %w", err)
 					}
 				}
 				if cmd.Flag("tag").Changed {
 					if group.Tags, err = cmd.Flags().GetStringSlice("tag"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch tags")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch tags: %w", err)
 					}
 				}
 				if cmd.Flag("exclusive-group").Changed {
 					if group.ExclusiveGroup, err = cmd.Flags().GetString("exclusive-group"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch exclusive group name")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch exclusive group name: %w", err)
 					}
 				}
 				if cmd.Flag("member").Changed {
 					if group.Members.IDs, err = cmd.Flags().GetStringSlice("member"); err != nil {
-						log.Logger.Error().Err(err).Msg("unable to fetch members")
-						cli.LogHelpError(cmd)
-						os.Exit(1)
+						return cli.Errorf(cli.CodeUsage, "unable to fetch members: %w", err)
 					}
 				}
 				groups = append(groups, group)
@@ -136,28 +134,26 @@ See ochami-smd(1) for more details.`,
 			// Send off request
 			_, errs, err := smdClient.PostGroups(groups, cli.Token)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to add group to SMD")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to add group to SMD: %w", err)
 			}
 			// Since smdClient.PostGroups does the addition iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("SMD group request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("SMD group request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to add group(s) to SMD")
+						log.Logger.Error().Err(e).Msg("failed to add group(s) to SMD")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("SMD group addition completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "SMD group addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 

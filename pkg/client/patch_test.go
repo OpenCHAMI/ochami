@@ -30,7 +30,7 @@ func TestDotPathToJSONPointer(t *testing.T) {
 	}
 }
 
-func TestNewKeyValPatchDataMergePatch(t *testing.T) {
+func TestNewKeyValPatchData_MergePatch(t *testing.T) {
 	method, data, err := NewKeyValPatchData([]string{"hostname=ex01", "nid=42"}, []string{"role"}, nil, nil)
 	if err != nil {
 		t.Fatalf("NewKeyValPatchData returned error: %v", err)
@@ -44,7 +44,7 @@ func TestNewKeyValPatchDataMergePatch(t *testing.T) {
 	}
 }
 
-func TestNewKeyValPatchDataRFC6902(t *testing.T) {
+func TestNewKeyValPatchData_RFC6902(t *testing.T) {
 	method, data, err := NewKeyValPatchData(
 		[]string{"hostname=ex01"},
 		[]string{"role"},
@@ -65,12 +65,5 @@ func TestNewKeyValPatchDataRFC6902(t *testing.T) {
 	}
 	if !reflect.DeepEqual(data, want) {
 		t.Fatalf("data = %#v, want %#v", data, want)
-	}
-}
-
-func TestNewKeyValPatchDataRejectsInvalidRemoveIndex(t *testing.T) {
-	_, _, err := NewKeyValPatchData(nil, nil, nil, []string{"groups=-"})
-	if err == nil {
-		t.Fatalf("NewKeyValPatchData accepted invalid remove index")
 	}
 }

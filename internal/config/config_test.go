@@ -1855,7 +1855,7 @@ func TestGetConfigClusterString(t *testing.T) {
 	})
 }
 
-func TestReadConfig(t *testing.T) {
+func TestReadConfig_Success(t *testing.T) {
 	t.Run("empty path", func(t *testing.T) {
 		_, err := ReadConfig("")
 		if err == nil {
@@ -1984,7 +1984,7 @@ func TestWriteConfig(t *testing.T) {
 	})
 }
 
-func TestReadConfigWithDefaults(t *testing.T) {
+func TestReadConfigWithDefaults_Success(t *testing.T) {
 	t.Run("empty path", func(t *testing.T) {
 		if _, err := ReadConfigWithDefaults(""); err == nil {
 			t.Fatal("ReadConfigWithDefaults(): expected error for empty path, got nil")

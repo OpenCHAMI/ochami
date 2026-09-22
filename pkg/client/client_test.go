@@ -24,10 +24,10 @@ func TestGetData(t *testing.T) {
 		case "/ok":
 			w.Header().Set("X-Test", "yes")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"msg":"success"}`))
+			w.Write([]byte(`{"msg":"success"}`))
 		case "/fail":
 			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("oops"))
+			w.Write([]byte("oops"))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -90,10 +90,10 @@ func TestPostData(t *testing.T) {
 		switch r.URL.Path {
 		case "/ok":
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"msg":"created"}`))
+			w.Write([]byte(`{"msg":"created"}`))
 		case "/fail":
 			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("boom"))
+			w.Write([]byte("boom"))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

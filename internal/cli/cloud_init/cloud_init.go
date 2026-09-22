@@ -7,12 +7,10 @@ package cloud_init
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/cloud_init"
 )
@@ -69,25 +67,23 @@ func CompletionHeaderWhen(cmd *cobra.Command, args []string, toComplete string) 
 // GetClient sets up the cloud-init client with the cloud-init base URI
 // and certificates (if necessary) and returns it. This function is used by
 // each subcommand.
-func GetClient(cmd *cobra.Command) *cloud_init.CloudInitClient {
+func GetClient(cmd *cobra.Command) (*cloud_init.CloudInitClient, error) {
 	// Without a base URI, we cannot do anything
 	cloudInitbaseURI, err := cli.GetBaseURICloudInit(cmd)
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("failed to get base URI for cloud-init")
-		cli.LogHelpError(cmd)
-		os.Exit(1)
+		return nil, cli.Errorf(cli.CodeConfig, "failed to get base URI for cloud-init: %w", err)
 	}
 
 	// Create client to make request to cloud-init
 	cloudInitClient, err := cloud_init.NewClient(cloudInitbaseURI, client.WithInsecure(cli.Insecure), client.WithShowToken(cli.ShowToken(cmd)))
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("error creating new cloud-init client")
-		cli.LogHelpError(cmd)
-		os.Exit(1)
+		return nil, cli.Errorf(cli.CodeGeneric, "error creating new cloud-init client: %w", err)
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	cli.UseCACert(cloudInitClient.OchamiClient)
+	if err := cli.UseCACert(cloudInitClient.OchamiClient); err != nil {
+		return nil, err
+	}
 
-	return cloudInitClient
+	return cloudInitClient, nil
 }

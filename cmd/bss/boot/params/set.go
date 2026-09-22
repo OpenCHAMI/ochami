@@ -7,8 +7,6 @@ package params
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/openchami/bss/pkg/bssTypes"
 	"github.com/spf13/cobra"
@@ -75,56 +73,56 @@ See ochami-bss(1) for more details.`,
 				// If -d/--data not passed, then at least one of --xname/--nid/--mac must
 				// be specified, along with at least one of --kernel/--initrd/--params
 				if !anyChanged("xname", "nid", "mac") {
-					return fmt.Errorf("expected -d or one of --xname, --nid, or --mac")
+					return cli.Errorf(cli.CodeUsage, "expected -d or one of --xname, --nid, or --mac")
 				} else if !anyChanged("kernel", "initrd", "params") {
-					return fmt.Errorf("specifying any of --xname, --nid, or --mac also requires specifying at least one of --kernel, --initrd, or --params")
+					return cli.Errorf(cli.CodeUsage, "specifying any of --xname, --nid, or --mac also requires specifying at least one of --kernel, --initrd, or --params")
 				}
 			}
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bssClient := bss_lib.GetClient(cmd)
+			bssClient, err := bss_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// The BSS BootParams struct we will send
 			bp := bssTypes.BootParams{}
 
 			// Read payload from file first, allowing overwrites from flags
-			cli.HandlePayload(cmd, &bp)
+			if cmd.Flag("data").Changed {
+				if err := cli.HandlePayload(cmd, &bp); err != nil {
+					return err
+				}
+			}
 
 			// Set the hosts the boot parameters are for
-			var err error
 			if cmd.Flag("xname").Changed {
 				bp.Hosts, err = cmd.Flags().GetStringSlice("xname")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch xname list")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch xname list: %w", err)
 				}
 			}
 			if cmd.Flag("mac").Changed {
 				bp.Macs, err = cmd.Flags().GetStringSlice("mac")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch mac list")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch mac list: %w", err)
 				}
 				if err = bp.CheckMacs(); err != nil {
-					log.Logger.Error().Err(err).Msg("invalid mac(s)")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
 				}
 			}
 			if cmd.Flag("nid").Changed {
 				bp.Nids, err = cmd.Flags().GetInt32Slice("nid")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch nid list")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch nid list: %w", err)
 				}
 			}
 
@@ -132,25 +130,19 @@ See ochami-bss(1) for more details.`,
 			if cmd.Flag("kernel").Changed {
 				bp.Kernel, err = cmd.Flags().GetString("kernel")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch kernel uri")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch kernel uri: %w", err)
 				}
 			}
 			if cmd.Flag("initrd").Changed {
 				bp.Initrd, err = cmd.Flags().GetString("initrd")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch initrd uri")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch initrd uri: %w", err)
 				}
 			}
 			if cmd.Flag("params").Changed {
 				bp.Params, err = cmd.Flags().GetString("params")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("unable to fetch params")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeUsage, "unable to fetch params: %w", err)
 				}
 			}
 
@@ -158,13 +150,12 @@ See ochami-bss(1) for more details.`,
 			_, err = bssClient.PutBootParams(bp, cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("BSS boot parameter request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to set boot parameters in BSS")
+					return cli.Errorf(cli.CodeHTTP, "BSS boot parameter request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to set boot parameters in BSS: %w", err)
 			}
+
+			return nil
 		},
 	}
 

@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func Test_colorize(t *testing.T) {
+func TestColorize(t *testing.T) {
 	type args struct {
 		s        interface{}
 		c        int

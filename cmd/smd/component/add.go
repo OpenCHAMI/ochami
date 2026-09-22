@@ -7,8 +7,6 @@ package component
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -65,9 +63,9 @@ See ochami-smd(1) for more details.`,
 			// Check that all required args are passed
 			if !cmd.Flag("data").Changed {
 				if len(args) == 0 {
-					return fmt.Errorf("expected -d or 2 arguments (xname, nid), got neither")
+					return cli.Errorf(cli.CodeUsage, "expected -d or 2 arguments (xname, nid), got neither")
 				} else if len(args) != 2 {
-					return fmt.Errorf("expected -d or 2 arguments (xname, nid) but got %d: %v", len(args), args)
+					return cli.Errorf(cli.CodeUsage, "expected -d or 2 arguments (xname, nid) but got %d: %v", len(args), args)
 				}
 			} else {
 				if len(args) > 0 {
@@ -77,17 +75,23 @@ See ochami-smd(1) for more details.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			var compSlice smd.ComponentSlice
-			var err error
 			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &compSlice)
+				if err := cli.HandlePayload(cmd, &compSlice); err != nil {
+					return err
+				}
 			} else {
 				// ...otherwise use CLI options
 				comp := smd.Component{
@@ -109,13 +113,12 @@ See ochami-smd(1) for more details.`,
 			_, err = smdClient.PostComponents(compSlice, cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("SMD component request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to add component(s) to SMD")
+					return cli.Errorf(cli.CodeHTTP, "SMD component request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to add component(s) to SMD: %w", err)
 			}
+
+			return nil
 		},
 	}
 

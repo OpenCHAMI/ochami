@@ -7,7 +7,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/knadh/koanf/v2"
@@ -32,9 +31,7 @@ See ochami-config(5) for details on the configuration options.`,
 			// It doesn't make sense to show the config value from a config
 			// file that doesn't exist, so err if the specified config file
 			// doesn't exist.
-			cli.InitConfigAndLogging(cmd, false)
-
-			return nil
+			return cli.InitConfigAndLogging(cmd, false)
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			log.Logger.Debug().Msgf("COMMAND: %v", strings.Split(cmd.CommandPath(), " "))
@@ -46,7 +43,7 @@ See ochami-config(5) for details on the configuration options.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get the config from the relevant file depending on the flag,
 			// or the merged config if none.
 			var ko *koanf.Koanf
@@ -54,23 +51,17 @@ See ochami-config(5) for details on the configuration options.`,
 			if cmd.Flags().Changed("system") {
 				ko, err = config.ReadConfigWithDefaults(config.SystemConfigFile)
 				if err != nil {
-					log.Logger.Error().Err(err).Msgf("failed to read system config file")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "failed to read system config file: %w", err)
 				}
 			} else if cmd.Flags().Changed("user") {
 				ko, err = config.ReadConfigWithDefaults(config.UserConfigFile)
 				if err != nil {
-					log.Logger.Error().Err(err).Msgf("failed to read user config file")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "failed to read user config file: %w", err)
 				}
 			} else if cmd.Flags().Changed("config") {
 				ko, err = config.ReadConfigWithDefaults(cmd.Flag("config").Value.String())
 				if err != nil {
-					log.Logger.Error().Err(err).Msgf("failed to read config file %s", cmd.Flag("config").Value.String())
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "failed to read config file %s: %w", cmd.Flag("config").Value.String(), err)
 				}
 			} else {
 				ko = config.GlobalKoanf
@@ -85,16 +76,15 @@ See ochami-config(5) for details on the configuration options.`,
 			val, err = config.GetConfigString(ko, key)
 			if err != nil {
 				if key == "" {
-					log.Logger.Error().Err(err).Msgf("failed to get full config")
-				} else {
-					log.Logger.Error().Err(err).Msgf("failed to get config for key %q", key)
+					return cli.Errorf(cli.CodeConfig, "failed to get full config: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "failed to get config for key %q: %w", key, err)
 			}
 			if val != "" {
 				fmt.Print(val)
 			}
+
+			return nil
 		},
 	}
 

@@ -709,8 +709,8 @@ Subcommands for this command are as follows:
 
 	Without *--api*, prints that cloud-init is running to stdout if it is, or an
 	error to stdout if not. If *-q* is passed, no output is printed to stdout
-	and the command exits with a status code of 0 if cloud-init is running and 1
-	if not.
+	and the command exits with a status code of 0 if cloud-init is running, 6 if
+	it responds unsuccessfully, and 7 if it can't be reached.
 
 	Passing *--api* will print the cloud-init server's version and OpenAPI
 	specification, respectively. These flags cannot be passed along with *-q*.
@@ -732,9 +732,10 @@ Subcommands for this command are as follows:
 
 	*-q, --quiet*
 		Do not print any output. Exit with an exit status of 0 if cloud-init is
-		running and 1 if not. *ochami* determines if cloud-init is running by
-		sending a GET to cloud-init's version endpoint and checking if the
-		response was successful (< 400).
+		running, 6 if it responds unsuccessfully, and 7 if it can't be reached.
+		*ochami* determines if cloud-init is running by sending a GET to
+		cloud-init's version endpoint and checking if the response was
+		successful (< 400).
 
 		This flag is mutually exclusive with *--api*.
 
