@@ -11,6 +11,8 @@ import (
 	"testing"
 )
 
+// TestCoerceBool verifies which bool and string values coerceBool accepts as
+// booleans and that it rejects other strings and types.
 func TestCoerceBool(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -50,6 +52,9 @@ func writeCfg(t *testing.T, content string) string {
 	return path
 }
 
+// TestReadConfigWithDefaults_Validation verifies that ReadConfigWithDefaults
+// rejects null, empty, or malformed timeout, enable-auth, and log values with
+// ErrInvalidConfigVal, coerces a quoted enable-auth, and accepts a valid file.
 func TestReadConfigWithDefaults_Validation(t *testing.T) {
 	t.Run("null timeout rejected", func(t *testing.T) {
 		path := writeCfg(t, "timeout:\n")

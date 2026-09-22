@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+// TestDotPathToJSONPointer verifies that DotPathToJSONPointer converts a dotted
+// key path to a JSON pointer, skipping empty segments and escaping "~" and "/".
 func TestDotPathToJSONPointer(t *testing.T) {
 	tests := []struct {
 		name string

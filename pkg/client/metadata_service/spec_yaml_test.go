@@ -10,6 +10,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// TestClusterDefaultsSpecUnmarshalsFlatYAML verifies that ClusterDefaultsSpec
+// unmarshals the name and spec fields from flat YAML.
 func TestClusterDefaultsSpecUnmarshalsFlatYAML(t *testing.T) {
 	var got ClusterDefaultsSpec
 	data := []byte("name: defaults\nbase_url: https://example.com/cloud-init\ncluster_name: demo\n")
@@ -21,6 +23,8 @@ func TestClusterDefaultsSpecUnmarshalsFlatYAML(t *testing.T) {
 	}
 }
 
+// TestGroupSpecUnmarshalsFlatYAML verifies that GroupSpec unmarshals the name
+// and spec fields from flat YAML.
 func TestGroupSpecUnmarshalsFlatYAML(t *testing.T) {
 	var got GroupSpec
 	if err := yaml.Unmarshal([]byte("name: computes\ntemplate: compute.yaml\nosVersion: rocky9\n"), &got); err != nil {
@@ -31,6 +35,8 @@ func TestGroupSpecUnmarshalsFlatYAML(t *testing.T) {
 	}
 }
 
+// TestInstanceInfoSpecUnmarshalsFlatYAML verifies that InstanceInfoSpec
+// unmarshals the name and spec fields from flat YAML.
 func TestInstanceInfoSpecUnmarshalsFlatYAML(t *testing.T) {
 	var got InstanceInfoSpec
 	data := []byte("name: node-1\ninstance_id: x1000c0s0b0n0\nlocal_hostname: node-1\n")
@@ -42,6 +48,8 @@ func TestInstanceInfoSpecUnmarshalsFlatYAML(t *testing.T) {
 	}
 }
 
+// TestWireGuardPeerSpecUnmarshalsFlatYAML verifies that WireGuardPeerSpec
+// unmarshals the name and spec fields from flat YAML.
 func TestWireGuardPeerSpecUnmarshalsFlatYAML(t *testing.T) {
 	var got WireGuardPeerSpec
 	data := []byte("name: peer-1\npublic_key: test-key\nallowed_ip: 10.0.0.1/32\n")

@@ -12,6 +12,8 @@ import (
 	"testing"
 )
 
+// TestIOReader_readIn verifies that readIn returns the input with each line
+// ended by a newline, adding one to a final line that lacks it.
 func TestIOReader_readIn(t *testing.T) {
 	type fields struct {
 		in io.Reader

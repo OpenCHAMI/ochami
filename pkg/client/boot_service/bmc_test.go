@@ -28,6 +28,9 @@ func encodeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
 	}
 }
 
+// TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras verifies that
+// AddBMCSpecs POSTs to /bmcs with an envelope built from the name and spec
+// only, without labels.
 func TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -74,6 +77,8 @@ func TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	}
 }
 
+// TestAddBMCs_EnvelopeIncludesLabels verifies that AddBMCs sends a request's
+// labels in the envelope.
 func TestAddBMCs_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -102,6 +107,8 @@ func TestAddBMCs_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestAddBMCSpecs_ReturnsOnlyCreatedResources verifies that AddBMCSpecs returns
+// only the BMCs the service created and reports each failed request separately.
 func TestAddBMCSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -133,6 +140,8 @@ func TestAddBMCSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
+// TestAddBMCs_ReturnsOnlyCreatedResources verifies that AddBMCs returns only
+// the BMCs the service created and reports each failed request separately.
 func TestAddBMCs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -164,6 +173,8 @@ func TestAddBMCs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
+// TestSetBMCSpec_SendsSpecToUIDEndpoint verifies that SetBMCSpec PUTs the spec,
+// without labels, to the BMC's /bmcs/<uid> endpoint.
 func TestSetBMCSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}

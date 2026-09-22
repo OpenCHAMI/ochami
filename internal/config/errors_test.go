@@ -11,6 +11,8 @@ import (
 	"testing"
 )
 
+// TestErrInvalidConfigVal_Error verifies ErrInvalidConfigVal's message,
+// including the line number only when it is known.
 func TestErrInvalidConfigVal_Error(t *testing.T) {
 	tests := []struct {
 		name string
@@ -56,6 +58,8 @@ func TestErrInvalidConfigVal_Error(t *testing.T) {
 	}
 }
 
+// TestErrUnknownCluster_Error verifies that ErrUnknownCluster's message names
+// the cluster.
 func TestErrUnknownCluster_Error(t *testing.T) {
 	type fields struct {
 		ClusterName string
@@ -85,6 +89,9 @@ func TestErrUnknownCluster_Error(t *testing.T) {
 	}
 }
 
+// TestErrMissingURI_Error verifies that ErrMissingURI's message names the
+// service and the cluster.uri and <service>.uri keys either of which would
+// provide it.
 func TestErrMissingURI_Error(t *testing.T) {
 	type fields struct {
 		Service ServiceName
@@ -114,6 +121,8 @@ func TestErrMissingURI_Error(t *testing.T) {
 	}
 }
 
+// TestErrInvalidURI_Error verifies that ErrInvalidURI's message includes the
+// underlying error.
 func TestErrInvalidURI_Error(t *testing.T) {
 	type fields struct {
 		Err error
@@ -143,6 +152,8 @@ func TestErrInvalidURI_Error(t *testing.T) {
 	}
 }
 
+// TestErrInvalidServiceURI_Error verifies that ErrInvalidServiceURI's message
+// names the service and includes the underlying error.
 func TestErrInvalidServiceURI_Error(t *testing.T) {
 	type fields struct {
 		Err     error
@@ -175,6 +186,8 @@ func TestErrInvalidServiceURI_Error(t *testing.T) {
 	}
 }
 
+// TestErrUnknownService_Error verifies that ErrUnknownService's message names
+// the service.
 func TestErrUnknownService_Error(t *testing.T) {
 	type fields struct {
 		Service string

@@ -15,6 +15,7 @@ import (
 	"github.com/openchami/ochami/pkg/format"
 )
 
+// TestNewHTTPHeaders verifies that NewHTTPHeaders returns an empty header map.
 func TestNewHTTPHeaders(t *testing.T) {
 	tests := []struct {
 		name string
@@ -34,6 +35,8 @@ func TestNewHTTPHeaders(t *testing.T) {
 	}
 }
 
+// TestHTTPHeaders_Add verifies that Add rejects a nil header map and adds or
+// appends a header value otherwise.
 func TestHTTPHeaders_Add(t *testing.T) {
 	type args struct {
 		key   string
@@ -77,6 +80,8 @@ func TestHTTPHeaders_Add(t *testing.T) {
 	}
 }
 
+// TestHTTPHeaders_SetAuthorization verifies that SetAuthorization rejects a nil
+// header map and sets the header otherwise.
 func TestHTTPHeaders_SetAuthorization(t *testing.T) {
 	type args struct {
 		token string
@@ -109,6 +114,8 @@ func TestHTTPHeaders_SetAuthorization(t *testing.T) {
 	}
 }
 
+// TestHTTPHeaders_SetContentType verifies that SetContentType rejects a nil
+// header map and sets the header otherwise.
 func TestHTTPHeaders_SetContentType(t *testing.T) {
 	type args struct {
 		ct string
@@ -141,6 +148,9 @@ func TestHTTPHeaders_SetContentType(t *testing.T) {
 	}
 }
 
+// TestNewHTTPEnvelopeFromResponse verifies that NewHTTPEnvelopeFromResponse
+// rejects a nil response and copies a response's status, protocol, headers, and
+// body.
 func TestNewHTTPEnvelopeFromResponse(t *testing.T) {
 	type args struct {
 		res *http.Response
@@ -192,6 +202,8 @@ func TestNewHTTPEnvelopeFromResponse(t *testing.T) {
 	}
 }
 
+// TestFormatBody verifies that FormatBody formats a valid JSON body and rejects
+// one that isn't valid JSON.
 func TestFormatBody(t *testing.T) {
 	type args struct {
 		body      HTTPBody
@@ -233,6 +245,8 @@ func TestFormatBody(t *testing.T) {
 	}
 }
 
+// TestHTTPEnvelope_CheckResponse verifies that CheckResponse accepts a 2XX
+// status and rejects 4XX and 5XX statuses, with or without a body.
 func TestHTTPEnvelope_CheckResponse(t *testing.T) {
 	type fields struct {
 		Status     string

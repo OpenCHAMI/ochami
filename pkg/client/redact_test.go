@@ -17,6 +17,9 @@ import (
 	"github.com/openchami/ochami/internal/log"
 )
 
+// TestRedactToken verifies that RedactToken keeps only a short prefix of a
+// token, masks a token no longer than the prefix entirely, and leaves the token
+// unchanged when showing tokens is enabled.
 func TestRedactToken(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -72,6 +75,8 @@ func TestRedactToken(t *testing.T) {
 	}
 }
 
+// TestRedactAuthHeaderValues verifies that redactAuthHeaderValues truncates
+// each token, keeping a "Bearer" scheme, unless showing tokens is enabled.
 func TestRedactAuthHeaderValues(t *testing.T) {
 	tests := []struct {
 		name string
@@ -115,6 +120,8 @@ func TestRedactAuthHeaderValues(t *testing.T) {
 	}
 }
 
+// TestIsAuthorizationHeader verifies that isAuthorizationHeader matches the
+// Authorization header name case-insensitively and nothing else.
 func TestIsAuthorizationHeader(t *testing.T) {
 	tests := []struct {
 		key  string

@@ -81,6 +81,8 @@ func TestInit_Table(t *testing.T) {
 	}
 }
 
+// TestNewBasicLogger verifies that NewBasicLogger returns a logger with the
+// given prefix and verbosity and writes nothing when it is created.
 func TestNewBasicLogger(t *testing.T) {
 	type args struct {
 		prefix  string
@@ -158,6 +160,8 @@ func TestNewBasicLogger(t *testing.T) {
 	}
 }
 
+// TestBasicLogger_BasicLog verifies that BasicLog writes its arguments, with
+// the logger's prefix, only when verbose output is on.
 func TestBasicLogger_BasicLog(t *testing.T) {
 	type fields struct {
 		prefix string
@@ -278,6 +282,8 @@ func TestBasicLogger_BasicLog(t *testing.T) {
 	}
 }
 
+// TestBasicLogger_BasicLogf verifies that BasicLogf writes its formatted
+// message, with the logger's prefix, only when verbose output is on.
 func TestBasicLogger_BasicLogf(t *testing.T) {
 	type fields struct {
 		prefix string

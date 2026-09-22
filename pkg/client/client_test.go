@@ -17,6 +17,8 @@ import (
 	"github.com/openchami/ochami/pkg/format"
 )
 
+// TestGetData verifies that GetData returns the response for a successful
+// request and an UnsuccessfulHTTPError for a failed one.
 func TestGetData(t *testing.T) {
 	// Test server for GET
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +86,8 @@ func TestGetData(t *testing.T) {
 	}
 }
 
+// TestPostData verifies that PostData returns the response for a successful
+// request and an UnsuccessfulHTTPError for a failed one.
 func TestPostData(t *testing.T) {
 	// Test server for POST
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -153,6 +157,8 @@ func TestPostData(t *testing.T) {
 	}
 }
 
+// TestFileToHTTPBody verifies that FileToHTTPBody returns a payload file's
+// contents in the requested format and rejects an empty path.
 func TestFileToHTTPBody(t *testing.T) {
 	// Prepare a temp JSON file
 	dir := t.TempDir()
@@ -202,6 +208,8 @@ func TestFileToHTTPBody(t *testing.T) {
 	}
 }
 
+// TestReadPayload verifies that ReadPayloadFile, ReadPayload with an @<path>
+// argument, and ReadPayloadData each unmarshal the payload.
 func TestReadPayload(t *testing.T) {
 	// Prepare a temp JSON file
 	dir := t.TempDir()
@@ -271,6 +279,9 @@ func TestReadPayload(t *testing.T) {
 	}
 }
 
+// TestReadPayloadSlice verifies that ReadPayloadSlice reads a single object or
+// a list, in JSON or YAML, inline, from an @<path> file, or from stdin via @-,
+// and rejects empty input, a missing file, malformed JSON, and a scalar.
 func TestReadPayloadSlice(t *testing.T) {
 	type Item struct {
 		K int `json:"k" yaml:"k"`
@@ -420,6 +431,8 @@ func TestReadPayloadSlice(t *testing.T) {
 	}
 }
 
+// TestReadPayloadInterfaceRFC6902Array verifies that ReadPayload into an
+// interface{} keeps a JSON array of RFC 6902 operations as a slice.
 func TestReadPayloadInterfaceRFC6902Array(t *testing.T) {
 	var got interface{}
 	err := ReadPayload(`[{"op":"replace","path":"/hostname","value":"ex01"}]`, format.DataFormatJson, &got)

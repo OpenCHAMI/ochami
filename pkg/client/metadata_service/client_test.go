@@ -17,6 +17,9 @@ import (
 	"github.com/openchami/ochami/pkg/client"
 )
 
+// TestNewClient verifies which base URIs, timeouts, API versions, and loggers
+// NewClient accepts, and that it rejects a base URI with no scheme or with
+// spaces.
 func TestNewClient(t *testing.T) {
 	tests := []struct {
 		name        string
