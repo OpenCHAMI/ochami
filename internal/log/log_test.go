@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestInit(t *testing.T) {
+func TestInit_Table(t *testing.T) {
 	type args struct {
 		ll string
 		lf string

@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -29,52 +28,49 @@ func newCmdCompepGet() *cobra.Command {
 		Long: `Get all component endpoints or a subset, identified by xname.
 
 See ochami-smd(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			var httpEnv client.HTTPEnvelope
-			var err error
 			if len(args) == 0 {
 				// Get all ComponentEndpoints if no args passed
 				httpEnv, err = smdClient.GetComponentEndpointsAll(cli.Token)
 				if err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("SMD component endpoimt request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(err).Msg("failed to request component endpoints from SMD")
+						return cli.Errorf(cli.CodeHTTP, "SMD component endpoint request yielded unsuccessful HTTP response: %w", err)
 					}
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeNetwork, "failed to request component endpoints from SMD: %w", err)
 				}
 
 				// Print output
-				if outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput); err != nil {
-					log.Logger.Error().Err(err).Msg("failed to format output")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
-				} else {
-					fmt.Print(string(outBytes))
+				outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 				}
+				fmt.Print(string(outBytes))
 			} else {
 				httpEnvs, errs, err := smdClient.GetComponentEndpoints(cli.Token, args...)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to get component endpoints from SMD")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeNetwork, "failed to get component endpoints from SMD: %w", err)
 				}
-				// Since smdClient.GetComponentEndpoints does the deletion iteratively, we need to
+				// Since smdClient.GetComponentEndpoints does the fetching iteratively, we need to
 				// deal with each error that might have occurred.
 				var errorsOccurred = false
 				for _, e := range errs {
-					if err != nil {
+					if e != nil {
 						if errors.Is(e, client.UnsuccessfulHTTPError) {
-							log.Logger.Error().Err(e).Msg("SMD redfish endpoint deletion yielded unsuccessful HTTP response")
+							log.Logger.Error().Err(e).Msg("SMD component endpoint request yielded unsuccessful HTTP response")
 						} else {
-							log.Logger.Error().Err(e).Msg("failed to delete redfish endpoint")
+							log.Logger.Error().Err(e).Msg("failed to get component endpoint")
 						}
 						errorsOccurred = true
 					}
@@ -97,30 +93,26 @@ See ochami-smd(1) for more details.`,
 					}
 				}
 
-				// Warn the user if any errors occurred during deletion iterations
+				// Warn the user if any errors occurred during fetch iterations
 				if errorsOccurred {
-					cli.LogHelpError(cmd)
-					log.Logger.Warn().Msg("SMD redfish endpoint deletion completed with errors")
-					os.Exit(1)
+					return cli.Errorf(cli.CodeHTTP, "SMD component endpoint request completed with errors")
 				}
 
 				ces := compEp{ComponentEndpoints: ceArr}
 				cesBytes, err := json.Marshal(ces)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to unmarshal list of component endpoints")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "failed to marshal list of component endpoints: %w", err)
 				}
 
 				// Print output
-				if outBytes, err := client.FormatBody(cesBytes, cli.FormatOutput); err != nil {
-					log.Logger.Error().Err(err).Msg("failed to format output")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
-				} else {
-					fmt.Print(string(outBytes))
+				outBytes, err := client.FormatBody(cesBytes, cli.FormatOutput)
+				if err != nil {
+					return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 				}
+				fmt.Print(string(outBytes))
 			}
+
+			return nil
 		},
 	}
 

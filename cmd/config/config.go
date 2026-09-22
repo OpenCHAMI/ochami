@@ -6,8 +6,6 @@
 package config
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -37,11 +35,11 @@ See ochami-config(5) for details on the configuration options.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				cli.PrintUsageHandleError(cmd)
-				os.Exit(0)
+				return cli.PrintUsageHandleError(cmd)
 			}
+			return nil
 		},
 	}
 

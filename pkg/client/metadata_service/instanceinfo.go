@@ -40,7 +40,7 @@ func (msc *MetadataServiceClient) AddInstanceInfos(token string, instances []met
 
 		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfo(ctx, i)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add instance info %+v: %w", i, err)
+			newErr := fmt.Errorf("failed to add instance info %+v: %w", i, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			instancesAdded = append(instancesAdded, *item)
@@ -65,7 +65,7 @@ func (msc *MetadataServiceClient) DeleteInstanceInfos(token string, uids []strin
 		defer cancel()
 
 		if err := msc.Client.WithBearerToken(token).DeleteInstanceInfo(ctx, instanceUid); err != nil {
-			newErr := fmt.Errorf("failed to delete instance info %s: %w", instanceUid, err)
+			newErr := fmt.Errorf("failed to delete instance info %s: %w", instanceUid, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else {
 			instancesDeleted = append(instancesDeleted, instanceUid)
@@ -85,7 +85,7 @@ func (msc *MetadataServiceClient) GetInstanceInfo(token string, outFormat format
 
 	instance, err := msc.Client.WithBearerToken(token).GetInstanceInfo(ctx, uid)
 	if err != nil {
-		return nil, fmt.Errorf("request to get instance info for %s failed: %w", uid, err)
+		return nil, fmt.Errorf("request to get instance info for %s failed: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(instance, outFormat)
@@ -105,7 +105,7 @@ func (msc *MetadataServiceClient) ListInstanceInfos(token string, outFormat form
 
 	instances, err := msc.Client.WithBearerToken(token).GetInstanceInfos(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("request to list instance infos failed: %w", err)
+		return nil, fmt.Errorf("request to list instance infos failed: %w", client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(instances, outFormat)
@@ -144,7 +144,7 @@ func (msc *MetadataServiceClient) PatchInstanceInfo(token string, patchFormat cl
 
 	item, err := msc.Client.WithBearerToken(token).PatchInstanceInfo(ctx, uid, outData, contentType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to patch instance info for %s: %w", uid, err)
+		return nil, fmt.Errorf("failed to patch instance info for %s: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -159,7 +159,7 @@ func (msc *MetadataServiceClient) SetInstanceInfo(token string, uid string, inst
 
 	item, err := msc.Client.WithBearerToken(token).UpdateInstanceInfo(ctx, uid, instance)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set instance info %+v: %w", instance, err)
+		return nil, fmt.Errorf("failed to set instance info %+v: %w", instance, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -176,7 +176,7 @@ func (msc *MetadataServiceClient) AddInstanceInfoSpecs(token string, instances [
 
 		item, err := msc.Client.WithBearerToken(token).CreateInstanceInfoSimple(ctx, i.Name, i.InstanceInfoSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add instance info %q (%+v): %w", i.Name, i.InstanceInfoSpec, err)
+			newErr := fmt.Errorf("failed to add instance info %q (%+v): %w", i.Name, i.InstanceInfoSpec, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			instancesAdded = append(instancesAdded, *item)
@@ -198,7 +198,7 @@ func (msc *MetadataServiceClient) SetInstanceInfoSpec(token string, uid string, 
 
 	item, err := msc.Client.WithBearerToken(token).UpdateInstanceInfoSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set instance info %+v: %w", spec, err)
+		return nil, fmt.Errorf("failed to set instance info %+v: %w", spec, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil

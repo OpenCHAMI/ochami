@@ -39,7 +39,7 @@ func (msc *MetadataServiceClient) AddGroups(token string, groups []metadata_serv
 
 		item, err := msc.Client.WithBearerToken(token).CreateGroup(ctx, g)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add group %+v: %w", g, err)
+			newErr := fmt.Errorf("failed to add group %+v: %w", g, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			groupsAdded = append(groupsAdded, *item)
@@ -64,7 +64,7 @@ func (msc *MetadataServiceClient) DeleteGroups(token string, uids []string) (gro
 		defer cancel()
 
 		if err := msc.Client.WithBearerToken(token).DeleteGroup(ctx, groupUid); err != nil {
-			newErr := fmt.Errorf("failed to delete group %s: %w", groupUid, err)
+			newErr := fmt.Errorf("failed to delete group %s: %w", groupUid, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else {
 			groupsDeleted = append(groupsDeleted, groupUid)
@@ -84,7 +84,7 @@ func (msc *MetadataServiceClient) GetGroup(token string, outFormat format.DataFo
 
 	group, err := msc.Client.WithBearerToken(token).GetGroup(ctx, uid)
 	if err != nil {
-		return nil, fmt.Errorf("request to get group info for %s failed: %w", uid, err)
+		return nil, fmt.Errorf("request to get group info for %s failed: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(group, outFormat)
@@ -104,7 +104,7 @@ func (msc *MetadataServiceClient) ListGroups(token string, outFormat format.Data
 
 	groups, err := msc.Client.WithBearerToken(token).GetGroups(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("request to list groups failed: %w", err)
+		return nil, fmt.Errorf("request to list groups failed: %w", client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(groups, outFormat)
@@ -143,7 +143,7 @@ func (msc *MetadataServiceClient) PatchGroup(token string, patchFormat client.Pa
 
 	item, err := msc.Client.WithBearerToken(token).PatchGroup(ctx, uid, outData, contentType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to patch group for %s: %w", uid, err)
+		return nil, fmt.Errorf("failed to patch group for %s: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -158,7 +158,7 @@ func (msc *MetadataServiceClient) SetGroup(token string, uid string, group metad
 
 	item, err := msc.Client.WithBearerToken(token).UpdateGroup(ctx, uid, group)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set group %+v: %w", group, err)
+		return nil, fmt.Errorf("failed to set group %+v: %w", group, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -175,7 +175,7 @@ func (msc *MetadataServiceClient) AddGroupSpecs(token string, groups []GroupSpec
 
 		item, err := msc.Client.WithBearerToken(token).CreateGroupSimple(ctx, g.Name, g.GroupSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add group %q (%+v): %w", g.Name, g.GroupSpec, err)
+			newErr := fmt.Errorf("failed to add group %q (%+v): %w", g.Name, g.GroupSpec, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			groupsAdded = append(groupsAdded, *item)
@@ -196,7 +196,7 @@ func (msc *MetadataServiceClient) SetGroupSpec(token string, uid string, spec ap
 
 	item, err := msc.Client.WithBearerToken(token).UpdateGroupSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set group %+v: %w", spec, err)
+		return nil, fmt.Errorf("failed to set group %+v: %w", spec, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil

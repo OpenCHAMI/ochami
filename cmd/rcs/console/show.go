@@ -5,13 +5,10 @@
 package console
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/cli/rcs"
-	"github.com/openchami/ochami/internal/log"
 )
 
 func newShowCmd() *cobra.Command {
@@ -27,32 +24,33 @@ See ochami-rcs(1) for more details.`,
 		Example: `  # Show console output for a node
   ochami rcs console show x0c0s1b0n0`,
 		Args: cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			cli.HandleToken(cmd)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			follow, err := cmd.Flags().GetBool("follow")
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("unable to get follow flag")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "unable to get follow flag: %w", err)
 			}
 
 			lines, err := cmd.Flags().GetInt("lines")
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("unable to get lines flag")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "unable to get lines flag: %w", err)
 			}
 
 			nodeID := args[0]
 
-			rcsClient := rcs.GetClient(cmd)
-			err = rcsClient.ShowConsole(cmd.Context(), nodeID, follow, lines, cli.Token, os.Stdout)
+			rcsClient, err := rcs.GetClient(cmd)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to show console")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return err
 			}
+			err = rcsClient.ShowConsole(cmd.Context(), nodeID, follow, lines, cli.Token, cli.Ios.Out())
+			if err != nil {
+				return cli.Errorf(cli.CodeNetwork, "failed to show console: %w", err)
+			}
+
+			return nil
 		},
 	}
 

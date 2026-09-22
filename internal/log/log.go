@@ -22,7 +22,16 @@ import (
 )
 
 var (
-	Logger zerolog.Logger
+	// Logger is the global logger used throughout the CLI. It defaults to a
+	// plain writer to os.Stderr at the CLI's own default level (warning)
+	// rather than zerolog's zero-value Logger, whose nil writer silently
+	// discards every message regardless of level. That matters because Init
+	// (below) can itself fail before it replaces this value, and callers
+	// reporting that failure via Logger must not have their error message
+	// swallowed. Init always replaces this with a fully configured logger
+	// (built from the resolved --log-level/--log-format/--log-color) once it
+	// succeeds.
+	Logger = zerolog.New(os.Stderr).Level(zerolog.WarnLevel).With().Timestamp().Logger()
 
 	// A BasicLogger that is turned off until turned on by the
 	// --verbose flag.

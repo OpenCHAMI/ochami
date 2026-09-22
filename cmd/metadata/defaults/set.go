@@ -5,7 +5,7 @@
 package defaults
 
 import (
-	"os"
+	"errors"
 
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
@@ -15,6 +15,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataDefaultsSet() *cobra.Command {
@@ -59,17 +60,22 @@ See ochami-metadata(1) for more details.`,
   echo '<json_data>' | ochami metadata defaults set clusterdefaults-d614b918
   echo '<yaml_data>' | ochami metadata defaults set clusterdefaults-d614b918 -f yaml -d @-
   echo '<yaml_data>' | ochami metadata defaults set clusterdefaults-d614b918 -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
 			if flagErr != nil {
-				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
+				return cli.Errorf(cli.CodeUsage, "failed to read --envelope flag: %w", flagErr)
 			}
 
 			var defaultsSet *api.ClusterDefaults
@@ -80,9 +86,13 @@ See ochami-metadata(1) for more details.`,
 				// Read cluster defaults data
 				defaults := metadata_service_client.UpdateClusterDefaultsRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &defaults)
+					if err := cli.HandlePayload(cmd, &defaults); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &defaults)
+					if err := cli.HandlePayloadStdin(cmd, &defaults); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
@@ -93,29 +103,34 @@ See ochami-metadata(1) for more details.`,
 				// Read cluster defaults data
 				spec := api.ClusterDefaultsSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayload(cmd, &spec)
+					if err := cli.HandlePayload(cmd, &spec); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdin(cmd, &spec)
+					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+						return err
+					}
 				}
 
 				// Send off request
 				defaultsSet, reqErr = metadataServiceClient.SetDefaultsSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to set cluster defaults")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to set cluster defaults: %w", reqErr)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to set cluster defaults: %w", reqErr)
 			}
 
 			// Check that a modified item was returned
 			if defaultsSet == nil {
-				log.Logger.Error().Msg("cluster defaults set returned no resource")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeGeneric, "cluster defaults set returned no resource")
 			}
 
 			// Print UIDs of modified items
 			log.Logger.Info().Msgf("Cluster defaults set: %+v", []string{defaultsSet.Metadata.UID})
+
+			return nil
 		},
 	}
 

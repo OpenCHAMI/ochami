@@ -231,7 +231,7 @@ type testItem struct {
 	Name string `json:"name" yaml:"name"`
 }
 
-func TestUnmarshalDataSlice(t *testing.T) {
+func TestUnmarshalDataSlice_Table(t *testing.T) {
 	type args struct {
 		data     []byte
 		inFormat DataFormat
@@ -427,7 +427,7 @@ func TestUnmarshalDataSliceYAML(t *testing.T) {
 	}
 }
 
-func TestSetNestedField(t *testing.T) {
+func TestSetNestedField_Success(t *testing.T) {
 	type tc struct {
 		name  string
 		start map[string]interface{}

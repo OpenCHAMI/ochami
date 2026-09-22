@@ -40,7 +40,7 @@ func (msc *MetadataServiceClient) AddWireGuardPeers(token string, peers []metada
 
 		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeer(ctx, p)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add WireGuard peer %+v: %w", p, err)
+			newErr := fmt.Errorf("failed to add WireGuard peer %+v: %w", p, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			peersAdded = append(peersAdded, *item)
@@ -65,7 +65,7 @@ func (msc *MetadataServiceClient) DeleteWireGuardPeers(token string, uids []stri
 		defer cancel()
 
 		if err := msc.Client.WithBearerToken(token).DeleteWireGuardPeer(ctx, peerUid); err != nil {
-			newErr := fmt.Errorf("failed to delete WireGuard peer %s: %w", peerUid, err)
+			newErr := fmt.Errorf("failed to delete WireGuard peer %s: %w", peerUid, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else {
 			peersDeleted = append(peersDeleted, peerUid)
@@ -85,7 +85,7 @@ func (msc *MetadataServiceClient) GetWireGuardPeer(token string, outFormat forma
 
 	peer, err := msc.Client.WithBearerToken(token).GetWireGuardPeer(ctx, uid)
 	if err != nil {
-		return nil, fmt.Errorf("request to get WireGuard peer info for %s failed: %w", uid, err)
+		return nil, fmt.Errorf("request to get WireGuard peer info for %s failed: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(peer, outFormat)
@@ -105,7 +105,7 @@ func (msc *MetadataServiceClient) ListWireGuardPeers(token string, outFormat for
 
 	peers, err := msc.Client.WithBearerToken(token).GetWireGuardPeers(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("request to list WireGuard peers failed: %w", err)
+		return nil, fmt.Errorf("request to list WireGuard peers failed: %w", client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(peers, outFormat)
@@ -144,7 +144,7 @@ func (msc *MetadataServiceClient) PatchWireGuardPeer(token string, patchFormat c
 
 	item, err := msc.Client.WithBearerToken(token).PatchWireGuardPeer(ctx, uid, outData, contentType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to patch WireGuard peer for %s: %w", uid, err)
+		return nil, fmt.Errorf("failed to patch WireGuard peer for %s: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -159,7 +159,7 @@ func (msc *MetadataServiceClient) SetWireGuardPeer(token string, uid string, pee
 
 	item, err := msc.Client.WithBearerToken(token).UpdateWireGuardPeer(ctx, uid, peer)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set WireGuard peer %+v: %w", peer, err)
+		return nil, fmt.Errorf("failed to set WireGuard peer %+v: %w", peer, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -176,7 +176,7 @@ func (msc *MetadataServiceClient) AddWireGuardPeerSpecs(token string, peers []Wi
 
 		item, err := msc.Client.WithBearerToken(token).CreateWireGuardPeerSimple(ctx, p.Name, p.WireGuardPeerSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add WireGuard peer %q (%+v): %w", p.Name, p.WireGuardPeerSpec, err)
+			newErr := fmt.Errorf("failed to add WireGuard peer %q (%+v): %w", p.Name, p.WireGuardPeerSpec, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			peersAdded = append(peersAdded, *item)
@@ -198,7 +198,7 @@ func (msc *MetadataServiceClient) SetWireGuardPeerSpec(token string, uid string,
 
 	item, err := msc.Client.WithBearerToken(token).UpdateWireGuardPeerSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set WireGuard peer %+v: %w", spec, err)
+		return nil, fmt.Errorf("failed to set WireGuard peer %+v: %w", spec, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil

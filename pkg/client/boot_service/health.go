@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -20,7 +21,7 @@ func (bsc *BootServiceClient) GetHealth(outFormat format.DataFormat) ([]byte, er
 
 	health, err := bsc.Client.GetHealth(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("request to get health data failed: %w", err)
+		return nil, fmt.Errorf("request to get health data failed: %w", client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(health, outFormat)

@@ -40,7 +40,7 @@ func (msc *MetadataServiceClient) AddDefaults(token string, defaults []metadata_
 
 		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaults(ctx, d)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add cluster defaults %+v: %w", d, err)
+			newErr := fmt.Errorf("failed to add cluster defaults %+v: %w", d, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			defaultsAdded = append(defaultsAdded, *item)
@@ -65,7 +65,7 @@ func (msc *MetadataServiceClient) DeleteDefaults(token string, uids []string) (d
 		defer cancel()
 
 		if err := msc.Client.WithBearerToken(token).DeleteClusterDefaults(ctx, defaultsUid); err != nil {
-			newErr := fmt.Errorf("failed to delete cluster defaults %s: %w", defaultsUid, err)
+			newErr := fmt.Errorf("failed to delete cluster defaults %s: %w", defaultsUid, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else {
 			defaultsDeleted = append(defaultsDeleted, defaultsUid)
@@ -85,7 +85,7 @@ func (msc *MetadataServiceClient) GetDefaults(token string, outFormat format.Dat
 
 	defaults, err := msc.Client.WithBearerToken(token).GetClusterDefaults(ctx, uid)
 	if err != nil {
-		return nil, fmt.Errorf("request to get cluster defaults info for %s failed: %w", uid, err)
+		return nil, fmt.Errorf("request to get cluster defaults info for %s failed: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(defaults, outFormat)
@@ -105,7 +105,7 @@ func (msc *MetadataServiceClient) ListDefaults(token string, outFormat format.Da
 
 	defaults, err := msc.Client.WithBearerToken(token).GetClusterDefaultss(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("request to list cluster defaults failed: %w", err)
+		return nil, fmt.Errorf("request to list cluster defaults failed: %w", client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(defaults, outFormat)
@@ -144,7 +144,7 @@ func (msc *MetadataServiceClient) PatchDefaults(token string, patchFormat client
 
 	item, err := msc.Client.WithBearerToken(token).PatchClusterDefaults(ctx, uid, outData, contentType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to patch cluster defaults for %s: %w", uid, err)
+		return nil, fmt.Errorf("failed to patch cluster defaults for %s: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -159,7 +159,7 @@ func (msc *MetadataServiceClient) SetDefaults(token string, uid string, defaults
 
 	item, err := msc.Client.WithBearerToken(token).UpdateClusterDefaults(ctx, uid, defaults)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set cluster defaults %+v: %w", defaults, err)
+		return nil, fmt.Errorf("failed to set cluster defaults %+v: %w", defaults, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -176,7 +176,7 @@ func (msc *MetadataServiceClient) AddDefaultsSpecs(token string, defaults []Clus
 
 		item, err := msc.Client.WithBearerToken(token).CreateClusterDefaultsSimple(ctx, d.Name, d.ClusterDefaultsSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add cluster defaults %q (%+v): %w", d.Name, d.ClusterDefaultsSpec, err)
+			newErr := fmt.Errorf("failed to add cluster defaults %q (%+v): %w", d.Name, d.ClusterDefaultsSpec, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			defaultsAdded = append(defaultsAdded, *item)
@@ -198,7 +198,7 @@ func (msc *MetadataServiceClient) SetDefaultsSpec(token string, uid string, spec
 
 	item, err := msc.Client.WithBearerToken(token).UpdateClusterDefaultsSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set cluster defaults %+v: %w", spec, err)
+		return nil, fmt.Errorf("failed to set cluster defaults %+v: %w", spec, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil

@@ -6,8 +6,6 @@
 package iface
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -23,11 +21,11 @@ func NewCmd() *cobra.Command {
 interact with the State Management Database (SMD).
 
 See ochami-smd(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				cli.PrintUsageHandleError(cmd)
-				os.Exit(0)
+				return cli.PrintUsageHandleError(cmd)
 			}
+			return nil
 		},
 	}
 

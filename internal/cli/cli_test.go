@@ -21,6 +21,8 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/spf13/cobra"
+
+	"github.com/openchami/ochami/internal/config"
 )
 
 func TestIOStream_AskToCreate(t *testing.T) {
@@ -267,12 +269,14 @@ func TestCheckToken_ValidToken(t *testing.T) {
 		t.Fatalf("failed to generate test token: %v", err)
 	}
 
-	// Set global Token variable
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
 	Token = tokenStr
 
-	// Note: We can't actually call CheckToken() here because it calls os.Exit()
-	// In a real test harness, CheckToken should be refactored to return errors
-	t.Log("Testing valid token - CheckToken would succeed without calling os.Exit()")
+	if err := CheckToken(&cobra.Command{}); err != nil {
+		t.Errorf("CheckToken returned unexpected error: %v", err)
+	}
 
 	// We'll just verify the token was generated correctly by parsing it
 	// Use WithVerify(false) since we're testing parsing, not signature verification
@@ -313,9 +317,18 @@ func TestCheckToken_ExpiredToken(t *testing.T) {
 		t.Errorf("Expected TokenExpiredError, got: %v", err)
 	}
 
-	// Note: We can't call CheckToken(cmd) because it calls os.Exit(1)
-	// In a production test environment, we would refactor CheckToken to return errors
-	t.Log("Verified expired token is detected - CheckToken would call os.Exit(1)")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+	Token = tokenStr
+
+	ctErr := CheckToken(&cobra.Command{})
+	if ctErr == nil {
+		t.Fatal("CheckToken should have returned an error for an expired token")
+	}
+	if ExitCode(ctErr) != CodeAuth {
+		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(ctErr), CodeAuth)
+	}
 }
 
 func TestCheckToken_NotYetValid(t *testing.T) {
@@ -339,7 +352,18 @@ func TestCheckToken_NotYetValid(t *testing.T) {
 		t.Errorf("Expected TokenNotYetValidError, got: %v", err)
 	}
 
-	t.Log("Verified not-yet-valid token is detected - CheckToken would call os.Exit(1)")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+	Token = tokenStr
+
+	ctErr := CheckToken(&cobra.Command{})
+	if ctErr == nil {
+		t.Fatal("CheckToken should have returned an error for a not-yet-valid token")
+	}
+	if ExitCode(ctErr) != CodeAuth {
+		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(ctErr), CodeAuth)
+	}
 }
 
 func TestCheckToken_ExpiringSoon(t *testing.T) {
@@ -369,7 +393,16 @@ func TestCheckToken_ExpiringSoon(t *testing.T) {
 		t.Errorf("Token should expire in less than 15 minutes, got: %v", timeUntilExpiry)
 	}
 
-	t.Log("Verified token expiring soon - CheckToken would log a warning but not exit")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+	Token = tokenStr
+
+	// A token expiring soon is still valid, so CheckToken should only warn,
+	// not return an error.
+	if err := CheckToken(&cobra.Command{}); err != nil {
+		t.Errorf("CheckToken returned unexpected error for a token expiring soon: %v", err)
+	}
 }
 
 func TestCheckToken_EmptyToken(t *testing.T) {
@@ -379,13 +412,13 @@ func TestCheckToken_EmptyToken(t *testing.T) {
 
 	Token = ""
 
-	// We can't actually call CheckToken because it calls os.Exit(1)
-	// But we can verify the logic
-	if Token != "" {
-		t.Error("Token should be empty for this test")
+	err := CheckToken(&cobra.Command{})
+	if err == nil {
+		t.Fatal("CheckToken should have returned an error for an empty token")
 	}
-
-	t.Log("Verified empty token case - CheckToken would log error and call os.Exit(1)")
+	if ExitCode(err) != CodeAuth {
+		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(err), CodeAuth)
+	}
 }
 
 func TestCheckToken_MalformedToken(t *testing.T) {
@@ -398,7 +431,18 @@ func TestCheckToken_MalformedToken(t *testing.T) {
 		t.Error("Expected malformed token to fail parsing")
 	}
 
-	t.Log("Verified malformed token is detected - CheckToken would call os.Exit(1)")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+	Token = malformedToken
+
+	ctErr := CheckToken(&cobra.Command{})
+	if ctErr == nil {
+		t.Fatal("CheckToken should have returned an error for a malformed token")
+	}
+	if ExitCode(ctErr) != CodeAuth {
+		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(ctErr), CodeAuth)
+	}
 }
 
 func TestSetToken_FromFlag(t *testing.T) {
@@ -412,7 +456,9 @@ func TestSetToken_FromFlag(t *testing.T) {
 		t.Fatalf("Failed to set flag: %v", err)
 	}
 
-	SetToken(cmd)
+	if err := SetToken(cmd); err != nil {
+		t.Fatalf("SetToken returned unexpected error: %v", err)
+	}
 
 	if Token != "test-token-from-flag" {
 		t.Errorf("Token = %q, want %q", Token, "test-token-from-flag")
@@ -420,7 +466,50 @@ func TestSetToken_FromFlag(t *testing.T) {
 }
 
 func TestSetToken_FromEnvironment(t *testing.T) {
-	// This test is skipped because SetToken calls os.Exit() on errors
-	// To properly test this, SetToken should be refactored to return errors
-	t.Skip("Skipping test that may call os.Exit() - SetToken needs refactoring for testability")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("token", "", "token flag")
+	cmd.Flags().String("cluster", "", "cluster flag")
+	if err := cmd.Flags().Set("cluster", "test-cluster"); err != nil {
+		t.Fatalf("Failed to set flag: %v", err)
+	}
+
+	t.Setenv("TEST_CLUSTER_ACCESS_TOKEN", "test-token-from-environment")
+
+	if err := SetToken(cmd); err != nil {
+		t.Fatalf("SetToken returned unexpected error: %v", err)
+	}
+
+	if Token != "test-token-from-environment" {
+		t.Errorf("Token = %q, want %q", Token, "test-token-from-environment")
+	}
+}
+
+// TestSetToken_NoTokenNoCluster verifies that SetToken returns a CodeAuth
+// error when neither --token nor --cluster/default-cluster is available to
+// resolve a token from.
+func TestSetToken_NoTokenNoCluster(t *testing.T) {
+	// Save original token/default-cluster and restore after test
+	originalToken := Token
+	originalDefaultCluster := config.GlobalConfig.DefaultCluster
+	defer func() {
+		Token = originalToken
+		config.GlobalConfig.DefaultCluster = originalDefaultCluster
+	}()
+	config.GlobalConfig.DefaultCluster = ""
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("token", "", "token flag")
+	cmd.Flags().String("cluster", "", "cluster flag")
+
+	err := SetToken(cmd)
+	if err == nil {
+		t.Fatal("SetToken should have returned an error when no token or cluster is available")
+	}
+	if ExitCode(err) != CodeAuth {
+		t.Errorf("ExitCode = %d, want %d (CodeAuth)", ExitCode(err), CodeAuth)
+	}
 }

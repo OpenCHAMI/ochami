@@ -39,7 +39,7 @@ func (bsc *BootServiceClient) AddNodes(token string, nodes []boot_service_client
 
 		item, err := bsc.Client.WithBearerToken(token).CreateNode(ctx, node)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add node %+v: %w", node, err)
+			newErr := fmt.Errorf("failed to add node %+v: %w", node, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			nodesAdded = append(nodesAdded, item)
@@ -64,7 +64,7 @@ func (bsc *BootServiceClient) DeleteNodes(token string, uids []string) (nodesDel
 		defer cancel()
 
 		if err := bsc.Client.WithBearerToken(token).DeleteNode(ctx, nodeUid); err != nil {
-			newErr := fmt.Errorf("failed to delete node %s: %w", nodeUid, err)
+			newErr := fmt.Errorf("failed to delete node %s: %w", nodeUid, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else {
 			nodesDeleted = append(nodesDeleted, nodeUid)
@@ -83,7 +83,7 @@ func (bsc *BootServiceClient) GetNode(token string, outFormat format.DataFormat,
 
 	bcfg, err := bsc.Client.WithBearerToken(token).GetNode(ctx, uid)
 	if err != nil {
-		return nil, fmt.Errorf("request to get node info for %s failed: %w", uid, err)
+		return nil, fmt.Errorf("request to get node info for %s failed: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(bcfg, outFormat)
@@ -103,7 +103,7 @@ func (bsc *BootServiceClient) ListNodes(token string, outFormat format.DataForma
 
 	nodes, err := bsc.Client.WithBearerToken(token).GetNodes(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("request to list nodes failed: %w", err)
+		return nil, fmt.Errorf("request to list nodes failed: %w", client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(nodes, outFormat)
@@ -144,7 +144,7 @@ func (bsc *BootServiceClient) PatchNode(token string, patchFormat client.PatchMe
 
 	item, err := bsc.Client.WithBearerToken(token).PatchNode(ctx, uid, outData, contentType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to patch node for %s: %w", uid, err)
+		return nil, fmt.Errorf("failed to patch node for %s: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -159,7 +159,7 @@ func (bsc *BootServiceClient) SetNode(token string, uid string, node boot_servic
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateNode(ctx, uid, node)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set node %+v: %w", node, err)
+		return nil, fmt.Errorf("failed to set node %+v: %w", node, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -175,7 +175,7 @@ func (bsc *BootServiceClient) AddNodeSpecs(token string, nodes []NodeSpec) (node
 
 		item, err := bsc.Client.WithBearerToken(token).CreateNodeSimple(ctx, node.Name, node.NodeSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add node %q (%+v): %w", node.Name, node.NodeSpec, err)
+			newErr := fmt.Errorf("failed to add node %q (%+v): %w", node.Name, node.NodeSpec, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			nodesAdded = append(nodesAdded, item)
@@ -196,7 +196,7 @@ func (bsc *BootServiceClient) SetNodeSpec(token string, uid string, spec api.Nod
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateNodeSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set node %+v: %w", spec, err)
+		return nil, fmt.Errorf("failed to set node %+v: %w", spec, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil

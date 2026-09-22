@@ -40,7 +40,7 @@ func (bsc *BootServiceClient) AddBootConfigs(token string, bootCfgs []boot_servi
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBootConfiguration(ctx, bootCfg)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add boot configuration %+v: %w", bootCfg, err)
+			newErr := fmt.Errorf("failed to add boot configuration %+v: %w", bootCfg, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			cfgsAdded = append(cfgsAdded, item)
@@ -65,7 +65,7 @@ func (bsc *BootServiceClient) DeleteBootConfigs(token string, uids []string) (bc
 		defer cancel()
 
 		if err := bsc.Client.WithBearerToken(token).DeleteBootConfiguration(ctx, bcfgUid); err != nil {
-			newErr := fmt.Errorf("failed to delete boot config %s: %w", bcfgUid, err)
+			newErr := fmt.Errorf("failed to delete boot config %s: %w", bcfgUid, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else {
 			bcfgsDeleted = append(bcfgsDeleted, bcfgUid)
@@ -84,7 +84,7 @@ func (bsc *BootServiceClient) GetBootConfig(token string, outFormat format.DataF
 
 	bcfg, err := bsc.Client.WithBearerToken(token).GetBootConfiguration(ctx, uid)
 	if err != nil {
-		return nil, fmt.Errorf("request to get boot configuration for %s failed: %w", uid, err)
+		return nil, fmt.Errorf("request to get boot configuration for %s failed: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(bcfg, outFormat)
@@ -104,7 +104,7 @@ func (bsc *BootServiceClient) ListBootConfigs(token string, outFormat format.Dat
 
 	bcfgs, err := bsc.Client.WithBearerToken(token).GetBootConfigurations(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("request to list boot configurations failed: %w", err)
+		return nil, fmt.Errorf("request to list boot configurations failed: %w", client.FabricaWrapHTTPError(err))
 	}
 
 	out, err := format.MarshalData(bcfgs, outFormat)
@@ -145,7 +145,7 @@ func (bsc *BootServiceClient) PatchBootConfig(token string, patchFormat client.P
 
 	item, err := bsc.Client.WithBearerToken(token).PatchBootConfiguration(ctx, uid, outData, contentType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to patch boot configuration for %s: %w", uid, err)
+		return nil, fmt.Errorf("failed to patch boot configuration for %s: %w", uid, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -161,7 +161,7 @@ func (bsc *BootServiceClient) SetBootConfig(token string, uid string, bootCfg bo
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateBootConfiguration(ctx, uid, bootCfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set boot configuration %+v: %w", bootCfg, err)
+		return nil, fmt.Errorf("failed to set boot configuration %+v: %w", bootCfg, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil
@@ -178,7 +178,7 @@ func (bsc *BootServiceClient) AddBootConfigSpecs(token string, bootCfgs []BootCo
 
 		item, err := bsc.Client.WithBearerToken(token).CreateBootConfigurationSimple(ctx, bootCfg.Name, bootCfg.BootConfigurationSpec)
 		if err != nil {
-			newErr := fmt.Errorf("failed to add boot configuration %q (%+v): %w", bootCfg.Name, bootCfg.BootConfigurationSpec, err)
+			newErr := fmt.Errorf("failed to add boot configuration %q (%+v): %w", bootCfg.Name, bootCfg.BootConfigurationSpec, client.FabricaWrapHTTPError(err))
 			errors = append(errors, newErr)
 		} else if item != nil {
 			cfgsAdded = append(cfgsAdded, item)
@@ -200,7 +200,7 @@ func (bsc *BootServiceClient) SetBootConfigSpec(token string, uid string, spec a
 
 	item, err := bsc.Client.WithBearerToken(token).UpdateBootConfigurationSimple(ctx, uid, spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set boot configuration %+v: %w", spec, err)
+		return nil, fmt.Errorf("failed to set boot configuration %+v: %w", spec, client.FabricaWrapHTTPError(err))
 	}
 
 	return item, nil

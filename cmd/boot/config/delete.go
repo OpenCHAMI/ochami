@@ -5,8 +5,6 @@
 package config
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
@@ -32,55 +30,56 @@ See ochami-boot(1) for more details.`,
 
   # Don't confirm deletion
   ochami boot config delete --no-confirm boo-ebf2a27a`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Ask before attempting deletion unless --no-confirm was passed
 			noConfirm, err := cmd.Flags().GetBool("no-confirm")
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get --no-confirm")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "failed to get --no-confirm: %w", err)
 			}
 			if !noConfirm {
 				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
 				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to fetch user input")
-					os.Exit(1)
+					return cli.Errorf(cli.CodeGeneric, "failed to fetch user input: %w", err)
 				} else if !respDelete {
 					log.Logger.Info().Msg("user aborted boot config deletion")
-					os.Exit(0)
+					return nil
 				} else {
 					log.Logger.Debug().Msg("user answered affirmatively to delete boot config(s)")
 				}
 			}
 
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Send off requests
 			bcfgsDeleted, errs, err := bootServiceClient.DeleteBootConfigs(cli.Token, args)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to delete boot configs")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to delete boot configs: %w", err)
 			}
 
 			// Deal with per-request errors
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to delete boot config")
+			for _, e := range errs {
+				if e != nil {
+					log.Logger.Error().Err(e).Msg("failed to delete boot config")
 					errorsOccurred = true
 				}
 			}
 			log.Logger.Debug().Msgf("boot configs deleted: %+v", bcfgsDeleted)
 			if errorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("boot config deletion completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "boot config deletion completed with errors")
 			}
+
+			return nil
 		},
 	}
 

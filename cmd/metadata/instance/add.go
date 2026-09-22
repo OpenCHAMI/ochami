@@ -5,7 +5,7 @@
 package instance
 
 import (
-	"os"
+	"errors"
 
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
@@ -15,6 +15,7 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
@@ -79,17 +80,22 @@ See ochami-metadata(1) for more details.`,
   # Add instances using data from stdin
   echo '<json_data>' | ochami metadata instance add -d @-
   echo '<yaml_data>' | ochami metadata instance add -d @- -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Determine how to read payload (simple versus advanced API)
 			envelope, flagErr := cmd.Flags().GetBool("envelope")
 			if flagErr != nil {
-				log.Logger.Warn().Err(flagErr).Msg("failed to read --envelope, falling back to simple API")
+				return cli.Errorf(cli.CodeUsage, "failed to read --envelope flag: %w", flagErr)
 			}
 
 			var instancesCreated []api.InstanceInfo
@@ -101,9 +107,13 @@ See ochami-metadata(1) for more details.`,
 				// Read instance data
 				instances := []metadata_service_client.CreateInstanceInfoRequest{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances)
+					if err := cli.HandlePayloadSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances)
+					if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateInstanceInfoRequest](cmd, &instances); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -114,9 +124,13 @@ See ochami-metadata(1) for more details.`,
 				// Read instance data
 				instances := []metadata_service.InstanceInfoSpec{}
 				if cmd.Flag("data").Changed {
-					cli.HandlePayloadSlice[metadata_service.InstanceInfoSpec](cmd, &instances)
+					if err := cli.HandlePayloadSlice[metadata_service.InstanceInfoSpec](cmd, &instances); err != nil {
+						return err
+					}
 				} else {
-					cli.HandlePayloadStdinSlice[metadata_service.InstanceInfoSpec](cmd, &instances)
+					if err := cli.HandlePayloadStdinSlice[metadata_service.InstanceInfoSpec](cmd, &instances); err != nil {
+						return err
+					}
 				}
 
 				// Send off requests
@@ -125,9 +139,10 @@ See ochami-metadata(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				log.Logger.Error().Err(reqErr).Msg("failed to add instance infos")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to add instance infos: %w", reqErr)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to add instance infos: %w", reqErr)
 			}
 
 			// Deal with per-request errors
@@ -148,10 +163,10 @@ See ochami-metadata(1) for more details.`,
 
 			// Warn if any request errors occurred
 			if reqErrorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("Instance info addition completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "Instance info addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 

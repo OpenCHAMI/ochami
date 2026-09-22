@@ -6,8 +6,6 @@
 package cluster
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -55,7 +53,7 @@ See ochami-config(5) for details on the configuration options.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// We must have a config file in order to write cluster info
 			var fileToModify string
 			if cmd.Flags().Changed("config") {
@@ -70,33 +68,27 @@ See ochami-config(5) for details on the configuration options.`,
 			// Ask to create file if it doesn't exist
 			if create, err := cli.Ios.AskToCreate(fileToModify); err != nil {
 				if err != cli.FileExistsError {
-					log.Logger.Error().Err(err).Msg("error asking to create file")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "error asking to create file: %w", err)
 				}
 			} else if create {
 				if err := cli.CreateIfNotExists(fileToModify); err != nil {
-					log.Logger.Error().Err(err).Msg("error creating file")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "error creating file: %w", err)
 				}
 			} else {
-				log.Logger.Error().Msg("user declined to create file, not modifying")
-				os.Exit(0)
+				log.Logger.Info().Msg("user declined to create file, not modifying")
+				return nil
 			}
 
 			// Perform modification
 			dflt, err := cmd.Flags().GetBool("default")
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to retrieve \"default\" flag")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeUsage, "failed to retrieve \"default\" flag: %w", err)
 			}
 			if err := config.ModifyConfigCluster(fileToModify, args[0], args[1], dflt, config.StringToType(args[2])); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to modify config file")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}
+
+			return nil
 		},
 	}
 
