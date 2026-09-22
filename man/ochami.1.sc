@@ -197,6 +197,42 @@ See *ochami-config*(5) for more information on configuring these files, as well
 as *ochami-config*(1) for how to use *ochami* commands to manage configuration
 options.
 
+# EXIT STATUS
+
+*ochami* exposes the exit codes below so that scripts and other tooling can
+distinguish between classes of failure. A command generally exits with one of
+the following codes:
+
+[[ *Code*
+:< *Name*
+:< *Meaning*
+|  *0*
+:  _CodeSuccess_
+:  The command completed successfully.
+|  *1*
+:  _CodeGeneric_
+:  A fallback code for any error without a more specific classification.
+|  *2*
+:  _CodeUsage_
+:  Invalid usage: bad flags, arguments, or mutually exclusive options.
+|  *3*
+:  _CodeConfig_
+:  A configuration error occurred (reading, parsing, or resolving
+   configuration values).
+|  *4*
+:  _CodeAuth_
+:  An authentication/token error occurred (missing, expired, or otherwise
+   invalid token).
+|  *5*
+:  _CodePayload_
+:  A payload, (un)marshalling, input, or output formatting error occurred.
+|  *6*
+:  _CodeHTTP_
+:  The contacted service returned an unsuccessful HTTP response.
+|  *7*
+:  _CodeNetwork_
+:  A network/transport error occurred while reaching a service.
+
 # FILES
 
 _/usr/share/doc/ochami/config.example.yaml_
