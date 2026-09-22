@@ -41,59 +41,52 @@ See ochami-cloud-init(1) for more details.`,
   ochami -k cloud-init group render --extra-vars @extra-vars.json compute x1000c0s0b0n0
   ochami -k cloud-init group render --extra-vars @- compute x1000c0s0b0n0
   ochami -k cloud-init group render --extra-vars '{"key":"value"}' compute x1000c0s0b0n0`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Get group config
 			henvs, errs, err := cloudInitClient.GetNodeGroupData(cli.Token, args[1], args[0])
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get cloud-init group")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init group: %w", err)
 			}
 			if errs[0] != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("cloud-init group request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to get cloud-init group")
+				if errors.Is(errs[0], client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "cloud-init group request yielded unsuccessful HTTP response: %w", errs[0])
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init group: %w", errs[0])
 			}
 			ciConfigFileBytes := henvs[0].Body
 
 			// Don't try to get meta-data and render if config is empty
 			if len(ciConfigFileBytes) == 0 {
 				log.Logger.Warn().Msgf("cloud-config for group %s was empty, cannot render for node %s", args[0], args[1])
-				os.Exit(0)
+				return nil
 			}
 
 			// Get node instance data
 			henvs, errs, err = cloudInitClient.GetNodeData(cloud_init.CloudInitMetaData, cli.Token, args[1])
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get cloud-init node meta-data")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init node meta-data: %w", err)
 			}
 			if errs[0] != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("cloud-init node meta-data request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to get cloud-init node meta-data")
+				if errors.Is(errs[0], client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "cloud-init node meta-data request yielded unsuccessful HTTP response: %w", errs[0])
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get cloud-init node meta-data: %w", errs[0])
 			}
 			var ciData map[string]interface{}
 			dsWrapper := make(map[string]interface{})
 			if err := yaml.Unmarshal(henvs[0].Body, &ciData); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to unmarshal HTTP body into map")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to unmarshal HTTP body into map: %w", err)
 			}
 			dsWrapper["ds"] = map[string]interface{}{"meta_data": ciData}
 
@@ -103,9 +96,7 @@ See ochami-cloud-init(1) for more details.`,
 			if cmd.Flag("extra-vars").Changed {
 				extraVars := cmd.Flag("extra-vars").Value.String()
 				if err := client.ReadPayload(extraVars, cli.FormatInput, &extraVarsMap); err != nil {
-					log.Logger.Error().Err(err).Msg("unable to read extra variable data or file")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "unable to read extra variable data or file: %w", err)
 				}
 			}
 
@@ -120,23 +111,19 @@ See ochami-cloud-init(1) for more details.`,
 			// Render
 			tpl, err := gonja.FromBytes(ciConfigFileBytes)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to create template")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to create template: %w", err)
 			}
 			out := bufio.NewWriter(os.Stdout)
 			if err := tpl.Execute(out, refData); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to render template")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to render template: %w", err)
 			}
 
 			// Write rendered template to stdout
 			if err := out.Flush(); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to write rendered template")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to write rendered template: %w", err)
 			}
+
+			return nil
 		},
 	}
 

@@ -6,13 +6,11 @@ package node
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
-	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdBootNodeList() *cobra.Command {
@@ -24,23 +22,28 @@ func newCmdBootNodeList() *cobra.Command {
 		Long: `List nodes that boot-service knows about.
 
 See ochami-boot(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			bootServiceClient := boot_service_lib.GetClient(cmd)
+			bootServiceClient, err := boot_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Make request
 			outBytes, err := bootServiceClient.ListNodes(cli.Token, cli.FormatOutput)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to list boot configurations")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to list nodes: %w", err)
 			}
 
 			// Print output
 			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

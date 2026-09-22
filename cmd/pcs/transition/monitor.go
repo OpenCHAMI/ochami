@@ -7,7 +7,6 @@ package transition
 
 import (
 	"encoding/json"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -15,7 +14,6 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
 )
@@ -77,14 +75,19 @@ func newCmdTransitionMonitor() *cobra.Command {
 See ochami-pcs(1) for more details.`,
 		Example: `  # Monitor the progress of a transition
   ochami pcs transition monitor 8f252166-c53c-435e-8354-e69649537a0f`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			transitionID := args[0]
 
 			// Create client to use for requests
-			pcsClient := pcs_lib.GetClient(cmd)
+			pcsClient, err := pcs_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			p := mpb.New(mpb.WithWidth(64))
 
@@ -97,17 +100,13 @@ See ochami-pcs(1) for more details.`,
 			for {
 				transitionHttpEnv, err := pcsClient.GetTransition(transitionID, cli.Token)
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to get transition")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeNetwork, "failed to get transition: %w", err)
 				}
 
 				// Unmarshal the progress information
 				var progress transitionProgress
 				if err := json.Unmarshal(transitionHttpEnv.Body, &progress); err != nil {
-					log.Logger.Error().Err(err).Msg("failed to unmarshal transition")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodePayload, "failed to unmarshal transition: %w", err)
 				}
 
 				// Set the totals for each bar
@@ -136,6 +135,8 @@ See ochami-pcs(1) for more details.`,
 			}
 
 			p.Shutdown()
+
+			return nil
 		},
 	}
 

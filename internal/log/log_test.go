@@ -7,11 +7,15 @@ package log
 
 import (
 	"bytes"
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 )
 
-func TestInit(t *testing.T) {
+// TestInit_Table verifies that Init accepts a supported log level, format, and
+// color setting and rejects an unsupported one.
+func TestInit_Table(t *testing.T) {
 	type args struct {
 		ll string
 		lf string
@@ -400,5 +404,25 @@ func TestBasicLogger_BasicLogf(t *testing.T) {
 				t.Errorf("BasicLogf() = %v, want %v", outBytes, tt.want)
 			}
 		})
+	}
+}
+
+// TestNewDefault verifies the pre-initialization logger writes plain,
+// program-prefixed lines at warning level and above.
+func TestNewDefault(t *testing.T) {
+	var buf bytes.Buffer
+	logger := NewDefault(&buf)
+	logger.Info().Msg("hidden")
+	logger.Error().Err(errors.New("boom")).Msg("failed to execute command")
+
+	got := buf.String()
+	if strings.Contains(got, "hidden") {
+		t.Errorf("output %q contains info-level message, want warning and above only", got)
+	}
+	if !strings.HasPrefix(got, "ochami: failed to execute command") || !strings.Contains(got, "boom") {
+		t.Errorf("output = %q, want plain \"ochami: failed to execute command ... boom\" line", got)
+	}
+	if strings.Contains(got, "{") {
+		t.Errorf("output = %q, want non-JSON output", got)
 	}
 }

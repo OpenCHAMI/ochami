@@ -20,10 +20,11 @@ func NewCmd() *cobra.Command {
 		Long: `Manage and check PCS itself. This is a metacommand.
 
 See ochami-pcs(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				cli.PrintUsageHandleError(cmd)
+				return cli.PrintUsageHandleError(cmd)
 			}
+			return nil
 		},
 	}
 
