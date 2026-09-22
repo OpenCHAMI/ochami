@@ -1,0 +1,111 @@
+// SPDX-FileCopyrightText: © 2026 OpenCHAMI a Series of LF Projects, LLC
+//
+// SPDX-License-Identifier: MIT
+
+package cmd
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+// TestPCSTransitionList_Success verifies "pcs transition list" issues GET /transitions.
+func TestPCSTransitionList_Success(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
+		w.Write([]byte(`{"transitions":[]}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "transition", "list", "--ignore-config", "--uri", srv.URL)
+
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodGet || gotPath != "/transitions" {
+		t.Errorf("request = %s %s, want GET /transitions", gotMethod, gotPath)
+	}
+}
+
+// TestPCSTransitionShow_Success verifies "pcs transition show <id>" issues GET
+// /transitions/<id>.
+func TestPCSTransitionShow_Success(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "transition", "show", "--ignore-config", "--uri", srv.URL, "abc-123")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodGet || gotPath != "/transitions/abc-123" {
+		t.Errorf("request = %s %s, want GET /transitions/abc-123", gotMethod, gotPath)
+	}
+}
+
+// TestPCSTransitionAbort_Success verifies "pcs transition abort <id>" issues DELETE
+// /transitions/<id>.
+func TestPCSTransitionAbort_Success(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "transition", "abort", "--ignore-config", "--uri", srv.URL, "abc-123")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodDelete || gotPath != "/transitions/abc-123" {
+		t.Errorf("request = %s %s, want DELETE /transitions/abc-123", gotMethod, gotPath)
+	}
+}
+
+// TestPCSTransitionStart_Success verifies "pcs transition start <op> --xname ..." issues
+// POST /transitions.
+func TestPCSTransitionStart_Success(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "transition", "start", "--ignore-config", "--uri", srv.URL,
+		"--xname", "x0c0s0b0n0", "on")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/transitions" {
+		t.Errorf("request = %s %s, want POST /transitions", gotMethod, gotPath)
+	}
+}
+
+// TestPCSTransitionMonitor_Success verifies "pcs transition monitor <id>" polls
+// /transitions/<id> and exits when the transition reports "completed".
+func TestPCSTransitionMonitor_Success(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		// Report completion immediately so the poll loop exits on the first
+		// iteration without sleeping.
+		w.Write([]byte(`{"transitionStatus":"completed","taskCounts":{"total":1,"succeeded":1}}`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "transition", "monitor", "--ignore-config", "--uri", srv.URL, "abc-123")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/transitions/abc-123" {
+		t.Errorf("path = %q, want /transitions/abc-123", gotPath)
+	}
+}
