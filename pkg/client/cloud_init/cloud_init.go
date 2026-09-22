@@ -67,11 +67,12 @@ func DecodeCloudConfig(ccf cistore.CloudConfigFile) ([]byte, error) {
 	case "plain":
 		return ccf.Content, nil
 	case "base64":
-		contentBytes := make([]byte, base64.StdEncoding.EncodedLen(len(ccf.Content)))
-		if n, err := base64.StdEncoding.Decode(contentBytes, ccf.Content); err != nil {
+		contentBytes := make([]byte, base64.StdEncoding.DecodedLen(len(ccf.Content)))
+		n, err := base64.StdEncoding.Decode(contentBytes, ccf.Content)
+		if err != nil {
 			return []byte{}, fmt.Errorf("failed to base64 decode cloud config (read %d bytes): %w", n, err)
 		}
-		return contentBytes, nil
+		return contentBytes[:n], nil
 	default:
 		return []byte{}, fmt.Errorf("unknown encoding for cloud-config: %s", ccf.Encoding)
 	}
