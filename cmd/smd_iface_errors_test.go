@@ -15,6 +15,8 @@ import (
 // TestSMDIfaceGet_ByIPWithoutID verifies "--by-ip" without "--id" is a usage
 // error.
 func TestSMDIfaceGet_ByIPWithoutID(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--by-ip")
 	if res.err == nil {
@@ -28,6 +30,8 @@ func TestSMDIfaceGet_ByIPWithoutID(t *testing.T) {
 // TestSMDIfaceGet_HTTPError verifies an unsuccessful HTTP response resolves to
 // CodeHTTP.
 func TestSMDIfaceGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -45,6 +49,8 @@ func TestSMDIfaceGet_HTTPError(t *testing.T) {
 // TestSMDIfaceGet_NetworkError verifies pointing at a closed port resolves to
 // CodeNetwork.
 func TestSMDIfaceGet_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", url, "--token", "t")
@@ -59,6 +65,8 @@ func TestSMDIfaceGet_NetworkError(t *testing.T) {
 // TestSMDIfaceAdd_InvalidIP verifies an invalid IP in the net,ip pair is a usage
 // error.
 func TestSMDIfaceAdd_InvalidIP(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t",
 		"x3000c1s7b55n0", "de:ca:fc:0f:fe:ee", "NMN,not-an-ip")
 	if res.err == nil {
@@ -72,6 +80,8 @@ func TestSMDIfaceAdd_InvalidIP(t *testing.T) {
 // TestSMDIfaceAdd_HTTPError verifies a failing POST resolves to CodeHTTP via the
 // per-item aggregation.
 func TestSMDIfaceAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
@@ -89,6 +99,8 @@ func TestSMDIfaceAdd_HTTPError(t *testing.T) {
 
 // TestSMDIfaceDelete_Abort verifies answering "n" aborts without a request.
 func TestSMDIfaceDelete_Abort(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -111,6 +123,8 @@ func TestSMDIfaceDelete_Abort(t *testing.T) {
 // TestSMDIfaceDelete_NoSelector verifies delete with neither -d, --all, nor args
 // is a usage error.
 func TestSMDIfaceDelete_NoSelector(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--no-confirm")
 	if res.err == nil {
@@ -124,6 +138,8 @@ func TestSMDIfaceDelete_NoSelector(t *testing.T) {
 // TestSMDIfaceDelete_AllHTTPError verifies a failing "delete --all" resolves to
 // CodeHTTP.
 func TestSMDIfaceDelete_AllHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -142,6 +158,8 @@ func TestSMDIfaceDelete_AllHTTPError(t *testing.T) {
 // TestSMDIfaceDelete_ByIDsHTTPError verifies a failing per-item DELETE resolves
 // to CodeHTTP via the aggregate.
 func TestSMDIfaceDelete_ByIDsHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))

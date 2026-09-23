@@ -18,6 +18,8 @@ import (
 // cli.WrapUsageErrors, which composes each command's PreRunE/PreRun to
 // re-run and wrap Cobra's ValidateRequiredFlags/ValidateFlagGroups checks.
 func TestPCSTransitionStart_RequiresXname(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "pcs", "transition", "start", "--ignore-config",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "on")
 	if res.err == nil {

@@ -15,6 +15,8 @@ import (
 // TestBootAdd_HTTPError verifies that "boot <type> add" fails with CodeHTTP for
 // an unsuccessful HTTP response, for every boot resource type.
 func TestBootAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
