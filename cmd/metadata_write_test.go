@@ -37,6 +37,8 @@ func addPayloadFor(typ string) string {
 // TestMetadataAdd_Success verifies that "metadata <type> add" succeeds for
 // every metadata resource type.
 func TestMetadataAdd_Success(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +48,7 @@ func TestMetadataAdd_Success(t *testing.T) {
 			}))
 			defer srv.Close()
 
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "add",
 				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
@@ -62,6 +65,8 @@ func TestMetadataAdd_Success(t *testing.T) {
 // TestMetadataSet_Success verifies that "metadata <type> set" succeeds for
 // every metadata resource type.
 func TestMetadataSet_Success(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,6 +75,7 @@ func TestMetadataSet_Success(t *testing.T) {
 			}))
 			defer srv.Close()
 
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "set", "some-uid",
 				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
@@ -86,6 +92,8 @@ func TestMetadataSet_Success(t *testing.T) {
 // TestMetadataDelete_NoConfirm verifies that "metadata <type> delete
 // --no-confirm" deletes without prompting, for every metadata resource type.
 func TestMetadataDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -94,6 +102,7 @@ func TestMetadataDelete_NoConfirm(t *testing.T) {
 			}))
 			defer srv.Close()
 
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "delete", "some-uid",
 				"--uri", srv.URL, "--token", "t", "--no-confirm")
 			if res.err != nil {

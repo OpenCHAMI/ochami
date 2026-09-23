@@ -21,6 +21,8 @@ import (
 // TestSMDGroupGet_Filters verifies the query builder emits group/tag query
 // parameters.
 func TestSMDGroupGet_Filters(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		args    []string
@@ -53,6 +55,8 @@ func TestSMDGroupGet_Filters(t *testing.T) {
 
 // TestSMDGroupGet_Formats verifies the output-format variants.
 func TestSMDGroupGet_Formats(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[{"label":"compute"}]`))
 	}))
@@ -70,6 +74,8 @@ func TestSMDGroupGet_Formats(t *testing.T) {
 // TestSMDGroupAdd_WithOptionalFlags verifies "add <label>" with
 // description/tag/exclusive-group/member issues a POST.
 func TestSMDGroupAdd_WithOptionalFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -90,6 +96,8 @@ func TestSMDGroupAdd_WithOptionalFlags(t *testing.T) {
 
 // TestSMDGroupAdd_ByData verifies "add -d <payload>" issues a POST.
 func TestSMDGroupAdd_ByData(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -110,6 +118,8 @@ func TestSMDGroupAdd_ByData(t *testing.T) {
 // TestSMDGroupUpdate_ByFlags verifies "update <label> --description/--tag" issues
 // a PATCH.
 func TestSMDGroupUpdate_ByFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -130,6 +140,8 @@ func TestSMDGroupUpdate_ByFlags(t *testing.T) {
 // TestSMDGroupDelete_ByLabels verifies "delete --no-confirm <label>..." issues a
 // DELETE per group.
 func TestSMDGroupDelete_ByLabels(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -151,6 +163,8 @@ func TestSMDGroupDelete_ByLabels(t *testing.T) {
 
 // TestSMDGroupDelete_ByData verifies labels in a payload drive DELETE requests.
 func TestSMDGroupDelete_ByData(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -173,6 +187,8 @@ func TestSMDGroupDelete_ByData(t *testing.T) {
 // TestSMDGroupMembership_Filters verifies the membership filter builder emits
 // slice and scalar query parameters.
 func TestSMDGroupMembership_Filters(t *testing.T) {
+	t.Parallel()
+
 	var gotQuery url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
@@ -197,6 +213,8 @@ func TestSMDGroupMembership_Filters(t *testing.T) {
 // <label>" ignores the extra argument, logs a warning about it, and sends a
 // POST.
 func TestSMDGroupAdd_DataWithExtraArgs(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -221,6 +239,8 @@ func TestSMDGroupAdd_DataWithExtraArgs(t *testing.T) {
 // <label>" ignores the extra argument and sends a PATCH for the payload's
 // group.
 func TestSMDGroupUpdate_DataWithExtraArgs(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -242,6 +262,8 @@ func TestSMDGroupUpdate_DataWithExtraArgs(t *testing.T) {
 // <payload> <label>" ignores the extra argument and sends a DELETE for the
 // payload's group.
 func TestSMDGroupDelete_DataWithExtraArgs(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path

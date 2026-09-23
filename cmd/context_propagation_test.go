@@ -27,6 +27,8 @@ import (
 // an already-cancelled context fails with context.Canceled from its request,
 // proving cancellation is wired through to the client.
 func TestContextPropagation_CancellationWiring(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{}`))

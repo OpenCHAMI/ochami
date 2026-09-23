@@ -34,6 +34,8 @@ func bootAddPayload(typ string) string {
 // TestBootAdd_Success verifies that "boot <type> add" succeeds for every boot
 // resource type.
 func TestBootAdd_Success(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +61,8 @@ func TestBootAdd_Success(t *testing.T) {
 // TestBootSet_Success verifies that "boot <type> set" succeeds for every boot
 // resource type.
 func TestBootSet_Success(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +87,8 @@ func TestBootSet_Success(t *testing.T) {
 // TestBootPatch_Success verifies that "boot <type> patch" with a payload
 // succeeds for every boot resource type.
 func TestBootPatch_Success(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

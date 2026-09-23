@@ -13,6 +13,8 @@ import (
 // with no direct action of its own) prints usage and exits successfully when
 // invoked without a subcommand.
 func TestMetacommandPaths_PrintUsage(t *testing.T) {
+	t.Parallel()
+
 	paths := [][]string{
 		{},
 		{"boot"}, {"boot", "bmc"}, {"boot", "config"}, {"boot", "node"}, {"boot", "service"},
@@ -33,6 +35,8 @@ func TestMetacommandPaths_PrintUsage(t *testing.T) {
 			name = strings.Join(path, " ")
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			args := append(append([]string{}, path...), "--ignore-config")
 			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {

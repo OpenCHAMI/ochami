@@ -27,6 +27,8 @@ import (
 // TestUpsertOnConflict verifies conflicts trigger updates while other outcomes
 // are preserved.
 func TestUpsertOnConflict(t *testing.T) {
+	t.Parallel()
+
 	conflict := fmt.Errorf("%w: conflict", client.UnsuccessfulHTTPError)
 	wantUpdateErr := errors.New("update failed")
 	updates := 0
@@ -72,6 +74,8 @@ func groupByLabel(groups []smd.Group) map[string]smd.Group {
 // TestBuildGroupList verifies discovered groups are normalized into SMD group
 // payloads.
 func TestBuildGroupList(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		nodes []nodeCommon
@@ -159,6 +163,8 @@ func TestBuildGroupList(t *testing.T) {
 // TestDeprecatedFormat_Detection verifies legacy discovery input remains
 // supported.
 func TestDeprecatedFormat_Detection(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		data map[string][]map[string]any

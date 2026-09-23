@@ -24,6 +24,7 @@ import (
 // causes the delete to proceed (a DELETE request is issued) and the command
 // exits successfully.
 func TestDeleteConfirm_Yes(t *testing.T) {
+	t.Parallel()
 
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +53,7 @@ func TestDeleteConfirm_Yes(t *testing.T) {
 // prompt declines the delete: no request is sent and the command exits with
 // CodeDeclined.
 func TestDeleteConfirm_No(t *testing.T) {
+	t.Parallel()
 
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +81,7 @@ func TestDeleteConfirm_No(t *testing.T) {
 // TestDeleteConfirm_YesComponent verifies that "smd component delete" prompts
 // for confirmation and, on "y", sends the DELETE.
 func TestDeleteConfirm_YesComponent(t *testing.T) {
+	t.Parallel()
 
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +110,7 @@ func TestDeleteConfirm_YesComponent(t *testing.T) {
 // prompt of "bss boot params delete" sends no request and exits with
 // CodeDeclined.
 func TestDeleteConfirm_NoBSS(t *testing.T) {
+	t.Parallel()
 
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -133,6 +137,8 @@ func TestDeleteConfirm_NoBSS(t *testing.T) {
 // command asks for confirmation before it needs a base URI: with none
 // configured, answering "n" prints the prompt and exits with CodeDeclined.
 func TestDeleteConfirm_DeclineBeforeClient(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		args []string
@@ -151,6 +157,8 @@ func TestDeleteConfirm_DeclineBeforeClient(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			res := runOchamiWithInputAndRuntime(t, "n\n", append([]string{"--ignore-config"}, tc.args...)...)
 
 			if res.exitCode != cli.CodeDeclined {

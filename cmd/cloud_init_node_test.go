@@ -18,6 +18,8 @@ import (
 // TestCloudInitNodeGetData_Success verifies the per-datatype node get subcommands issue
 // GET requests under /admin/impersonation/<id>/<datatype>.
 func TestCloudInitNodeGetData_Success(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		sub      string
 		wantLeaf string
@@ -36,6 +38,7 @@ func TestCloudInitNodeGetData_Success(t *testing.T) {
 			}))
 			defer srv.Close()
 
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "node", "get", tt.sub, "x3000c0s0b0n0",
 				"--uri", srv.URL, "--token", "t")
 			if res.err != nil {
@@ -57,6 +60,8 @@ func TestCloudInitNodeGetData_Success(t *testing.T) {
 // TestCloudInitNodeGet_Group verifies "cloud-init node get group" issues a GET
 // under the impersonation path for the given group.
 func TestCloudInitNodeGet_Group(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -84,6 +89,8 @@ func TestCloudInitNodeGet_Group(t *testing.T) {
 // TestCloudInitNodeGet_MetadataFormats verifies the output-format variants of
 // "node get meta-data".
 func TestCloudInitNodeGet_MetadataFormats(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hostname: node01\n"))
 	}))
@@ -104,6 +111,8 @@ func TestCloudInitNodeGet_MetadataFormats(t *testing.T) {
 // TestCloudInitNodeGet_Userdata verifies "node get user-data" prints the raw
 // user-data for the node.
 func TestCloudInitNodeGet_Userdata(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("#cloud-config\nfoo: bar\n"))
 	}))
@@ -122,6 +131,8 @@ func TestCloudInitNodeGet_Userdata(t *testing.T) {
 // TestCloudInitNodeGet_Vendordata verifies "node get vendor-data" prints the raw
 // vendor-data for the node.
 func TestCloudInitNodeGet_Vendordata(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("#cloud-config\nvendor: acme\n"))
 	}))
@@ -140,6 +151,8 @@ func TestCloudInitNodeGet_Vendordata(t *testing.T) {
 // TestCloudInitNodeSet_Stdin verifies "node set" reads payload from stdin when -d
 // is not supplied.
 func TestCloudInitNodeSet_Stdin(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -161,6 +174,8 @@ func TestCloudInitNodeSet_Stdin(t *testing.T) {
 // "cloud-init node get user-data" and "vendor-data" print a header above each
 // node's data with --headers always or multiple, and none with --headers never.
 func TestCloudInitNodeGet_DataHeaderModes(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("#cloud-config\nfoo: bar\n"))
 	}))
@@ -185,6 +200,8 @@ func TestCloudInitNodeGet_DataHeaderModes(t *testing.T) {
 // "cloud-init node get group" prints a header above each group's data with
 // --headers always or multiple, and none with --headers never.
 func TestCloudInitNodeGet_GroupHeaderModes(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("#cloud-config\nfoo: bar\n"))
 	}))

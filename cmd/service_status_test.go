@@ -17,6 +17,8 @@ import (
 // TestServiceCommands_VersionAndStatusPaths verifies GET path routing for
 // several services' version/status leaf commands.
 func TestServiceCommands_VersionAndStatusPaths(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		args     []string

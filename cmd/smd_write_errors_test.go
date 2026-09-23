@@ -16,6 +16,8 @@ import (
 // TestSMDGroupMemberAdd_HTTPError verifies an unsuccessful HTTP response
 // resolves to CodeHTTP.
 func TestSMDGroupMemberAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "conflict", http.StatusConflict)
 	}))
@@ -34,6 +36,8 @@ func TestSMDGroupMemberAdd_HTTPError(t *testing.T) {
 // TestSMDDelete_RejectsEmptyData verifies an explicit empty payload cannot
 // turn a requested deletion into a silent no-op.
 func TestSMDDelete_RejectsEmptyData(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		command string
@@ -49,6 +53,7 @@ func TestSMDDelete_RejectsEmptyData(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var deletes int
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodDelete {
@@ -80,6 +85,8 @@ func TestSMDDelete_RejectsEmptyData(t *testing.T) {
 // whole collection, fails the delete with CodeUsage before any request is
 // made, including for the payload's valid items.
 func TestSMDDelete_RejectsInvalidPayloadIDs(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		command string
@@ -98,6 +105,7 @@ func TestSMDDelete_RejectsInvalidPayloadIDs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var deletes int
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodDelete {
@@ -106,7 +114,7 @@ func TestSMDDelete_RejectsInvalidPayloadIDs(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithRuntime(t, "smd", tc.command, "delete", "--ignore-config",
+			res := runOchamiWithRuntime(t, "smd", "--ignore-config", tc.command, "delete",
 				"--uri", srv.URL, "--token", "t", "--no-confirm", "-d", tc.payload)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -128,6 +136,8 @@ func TestSMDDelete_RejectsInvalidPayloadIDs(t *testing.T) {
 // is blank or is not a single path segment fails the delete with CodeUsage
 // before any request is made, including for the valid arguments.
 func TestSMDDelete_RejectsInvalidArgumentIDs(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		args    []string
@@ -145,6 +155,7 @@ func TestSMDDelete_RejectsInvalidArgumentIDs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var deletes int
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodDelete {
@@ -153,8 +164,8 @@ func TestSMDDelete_RejectsInvalidArgumentIDs(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append([]string{"smd"}, tc.args...)
-			args = append(args, "--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
+			args := append([]string{"smd", "--ignore-config"}, tc.args...)
+			args = append(args, "--uri", srv.URL, "--token", "t", "--no-confirm")
 			res := runOchamiWithRuntime(t, args...)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")

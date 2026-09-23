@@ -18,6 +18,7 @@ import (
 // TestBSSBootParamsAdd_MissingSelectors verifies that add without -d and without
 // any of --xname/--nid/--mac is a usage error.
 func TestBSSBootParamsAdd_MissingSelectors(t *testing.T) {
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "add",
 		"--ignore-config", "--uri", "http://127.0.0.1:0", "--token", "faketoken",
@@ -34,6 +35,7 @@ func TestBSSBootParamsAdd_MissingSelectors(t *testing.T) {
 // TestBSSServiceStatus_HTTPError verifies an unsuccessful HTTP response from the
 // status endpoint resolves to CodeHTTP.
 func TestBSSServiceStatus_HTTPError(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
@@ -53,6 +55,8 @@ func TestBSSServiceStatus_HTTPError(t *testing.T) {
 // TestBSSBootScriptGet_HTTPError verifies a failing boot-script GET resolves to
 // CodeHTTP.
 func TestBSSBootScriptGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -70,6 +74,8 @@ func TestBSSBootScriptGet_HTTPError(t *testing.T) {
 
 // TestBSSHostsGet_HTTPError verifies a failing hosts GET resolves to CodeHTTP.
 func TestBSSHostsGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -87,6 +93,8 @@ func TestBSSHostsGet_HTTPError(t *testing.T) {
 // TestBSSHistoryGet_HTTPError verifies a failing history GET resolves to
 // CodeHTTP.
 func TestBSSHistoryGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -104,6 +112,8 @@ func TestBSSHistoryGet_HTTPError(t *testing.T) {
 // TestBSSBootParamsGet_AllHTTPError verifies an unsuccessful HTTP response resolves
 // to CodeHTTP.
 func TestBSSBootParamsGet_AllHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -122,6 +132,8 @@ func TestBSSBootParamsGet_AllHTTPError(t *testing.T) {
 // TestBSSBootParamsGet_AllNetworkError verifies pointing at a closed port resolves
 // to CodeNetwork.
 func TestBSSBootParamsGet_AllNetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "get",
@@ -137,6 +149,8 @@ func TestBSSBootParamsGet_AllNetworkError(t *testing.T) {
 // TestBSSBootParamsAdd_MalformedPayload verifies malformed inline payload
 // resolves to CodePayload.
 func TestBSSBootParamsAdd_MalformedPayload(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	}))
@@ -155,6 +169,8 @@ func TestBSSBootParamsAdd_MalformedPayload(t *testing.T) {
 // TestBSSBootParamsUpdate_HTTPError verifies a failing PATCH resolves to
 // CodeHTTP.
 func TestBSSBootParamsUpdate_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
@@ -174,6 +190,8 @@ func TestBSSBootParamsUpdate_HTTPError(t *testing.T) {
 // TestBSSBootParamsDelete_MissingSelector verifies delete without -d and without
 // a component selector is a usage error.
 func TestBSSBootParamsDelete_MissingSelector(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "delete",
 		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm")
 	if res.err == nil {
@@ -187,6 +205,8 @@ func TestBSSBootParamsDelete_MissingSelector(t *testing.T) {
 // TestBSSBootParamsDelete_MissingConfig verifies delete with a component selector
 // but no config selector is a usage error.
 func TestBSSBootParamsDelete_MissingConfig(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "delete",
 		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm",
 		"--mac", "de:ad:be:ef:00:00")
@@ -201,6 +221,8 @@ func TestBSSBootParamsDelete_MissingConfig(t *testing.T) {
 // TestBSSBootParamsDelete_HTTPError verifies a failing DELETE resolves to
 // CodeHTTP.
 func TestBSSBootParamsDelete_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusInternalServerError)
 	}))
@@ -220,6 +242,8 @@ func TestBSSBootParamsDelete_HTTPError(t *testing.T) {
 // TestBSSBootParamsUpdate_MissingSelector verifies update without -d and without
 // a component selector is a usage error.
 func TestBSSBootParamsUpdate_MissingSelector(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "update", "--ignore-config",
 		"--uri", "http://127.0.0.1:1", "--token", "t")
 	if res.err == nil || res.exitCode != cli.CodeUsage {
@@ -230,6 +254,8 @@ func TestBSSBootParamsUpdate_MissingSelector(t *testing.T) {
 // TestBSSBootParamsUpdate_MissingConfig verifies update with a component selector
 // but no config selector is a usage error.
 func TestBSSBootParamsUpdate_MissingConfig(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "update", "--ignore-config",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "de:ad:be:ef:00:00")
 	if res.err == nil || res.exitCode != cli.CodeUsage {
@@ -240,6 +266,8 @@ func TestBSSBootParamsUpdate_MissingConfig(t *testing.T) {
 // TestBSSBootParamsSet_InvalidMac verifies an invalid MAC address is a usage
 // error for "set".
 func TestBSSBootParamsSet_InvalidMac(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "set", "--ignore-config",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "not-a-mac", "--kernel", "http://k")
 	if res.err == nil || res.exitCode != cli.CodeUsage {
@@ -250,6 +278,8 @@ func TestBSSBootParamsSet_InvalidMac(t *testing.T) {
 // TestBSSBootParamsUpdate_NetworkError verifies a closed port surfaces
 // CodeNetwork for update.
 func TestBSSBootParamsUpdate_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "update", "--ignore-config", "--uri", url, "--token", "t",
@@ -262,6 +292,8 @@ func TestBSSBootParamsUpdate_NetworkError(t *testing.T) {
 // TestBSSBootParamsAdd_InvalidMac verifies an invalid MAC is a usage error for
 // "add".
 func TestBSSBootParamsAdd_InvalidMac(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "add", "--ignore-config",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "not-a-mac", "--kernel", "http://k")
 	if res.err == nil || res.exitCode != cli.CodeUsage {
@@ -272,6 +304,8 @@ func TestBSSBootParamsAdd_InvalidMac(t *testing.T) {
 // TestBSSBootParamsAdd_NetworkError verifies a closed port surfaces CodeNetwork
 // for "add".
 func TestBSSBootParamsAdd_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "add", "--ignore-config", "--uri", url, "--token", "t",
@@ -284,6 +318,8 @@ func TestBSSBootParamsAdd_NetworkError(t *testing.T) {
 // TestBSSBootParamsSet_NetworkError verifies a closed port surfaces CodeNetwork
 // for "set".
 func TestBSSBootParamsSet_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "set", "--ignore-config", "--uri", url, "--token", "t",
@@ -296,6 +332,8 @@ func TestBSSBootParamsSet_NetworkError(t *testing.T) {
 // TestBSSBootParamsDelete_NetworkError verifies a closed port surfaces
 // CodeNetwork for "delete".
 func TestBSSBootParamsDelete_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "delete", "--ignore-config", "--uri", url, "--token", "t",

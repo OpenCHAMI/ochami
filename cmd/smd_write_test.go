@@ -18,6 +18,8 @@ import (
 // TestSMDGroupMemberAdd_Success verifies "smd group member add" issues POST under
 // /groups/<label>/members.
 func TestSMDGroupMemberAdd_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -42,6 +44,8 @@ func TestSMDGroupMemberAdd_Success(t *testing.T) {
 // TestSMDGroupMemberDelete_Success verifies "smd group member delete" issues DELETE
 // under /groups/<label>/members/<component>.
 func TestSMDGroupMemberDelete_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -64,6 +68,8 @@ func TestSMDGroupMemberDelete_Success(t *testing.T) {
 
 // TestSMDGroupUpdate_Success verifies "smd group update" issues PATCH under /groups.
 func TestSMDGroupUpdate_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -88,6 +94,8 @@ func TestSMDGroupUpdate_Success(t *testing.T) {
 // TestSMDRFEDelete_NoConfirm verifies "smd rfe delete --no-confirm" issues a
 // DELETE.
 func TestSMDRFEDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method

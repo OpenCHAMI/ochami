@@ -15,6 +15,7 @@ import (
 // TestVersion_Success verifies "ochami version" exits successfully and prints
 // the version metadata fields to stdout.
 func TestVersion_Success(t *testing.T) {
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "version", "--ignore-config")
 	if res.err != nil {

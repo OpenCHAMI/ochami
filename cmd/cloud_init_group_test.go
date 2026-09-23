@@ -54,6 +54,8 @@ func b64(s string) string { return base64.StdEncoding.EncodeToString([]byte(s)) 
 // TestCloudInitGroupGet_RawFormats verifies "get raw" formats output as JSON and
 // YAML from a group map returned by the server.
 func TestCloudInitGroupGet_RawFormats(t *testing.T) {
+	t.Parallel()
+
 	groups := map[string]any{
 		"compute": map[string]any{"name": "compute", "meta-data": map[string]any{"foo": "bar"}},
 	}
@@ -75,6 +77,8 @@ func TestCloudInitGroupGet_RawFormats(t *testing.T) {
 // TestCloudInitGroupGet_Metadata verifies "get meta-data" extracts and formats
 // the meta-data map for each group.
 func TestCloudInitGroupGet_Metadata(t *testing.T) {
+	t.Parallel()
+
 	groups := map[string]any{
 		"compute": map[string]any{"name": "compute", "meta-data": map[string]any{"role": "worker"}},
 	}
@@ -94,6 +98,8 @@ func TestCloudInitGroupGet_Metadata(t *testing.T) {
 // TestCloudInitGroupGet_Config verifies "get config" base64-decodes the group's
 // cloud-config content and prints it.
 func TestCloudInitGroupGet_Config(t *testing.T) {
+	t.Parallel()
+
 	content := "#cloud-config\nfoo: bar\n"
 	groups := map[string]any{
 		"compute": map[string]any{
@@ -117,6 +123,8 @@ func TestCloudInitGroupGet_Config(t *testing.T) {
 // TestCloudInitGroupGet_ConfigHeaders verifies the --headers always/never modes
 // of "get config" over multiple groups.
 func TestCloudInitGroupGet_ConfigHeaders(t *testing.T) {
+	t.Parallel()
+
 	groups := map[string]any{
 		"compute": map[string]any{
 			"name": "compute",
@@ -154,6 +162,8 @@ func TestCloudInitGroupGet_ConfigHeaders(t *testing.T) {
 // TestCloudInitGroupAdd_Stdin verifies "group add" reads payload from stdin when
 // -d is not supplied.
 func TestCloudInitGroupAdd_Stdin(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -174,6 +184,8 @@ func TestCloudInitGroupAdd_Stdin(t *testing.T) {
 // TestCloudInitGroupDelete_ByArgsConfirm verifies answering "y" to the delete
 // prompt issues DELETEs for each named group.
 func TestCloudInitGroupDelete_ByArgsConfirm(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -200,6 +212,8 @@ func TestCloudInitGroupDelete_ByArgsConfirm(t *testing.T) {
 // TestCloudInitGroupDelete_ByData verifies "delete -d <payload>" derives the
 // group names to delete from the payload.
 func TestCloudInitGroupDelete_ByData(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -222,6 +236,8 @@ func TestCloudInitGroupDelete_ByData(t *testing.T) {
 // TestCloudInitGroupRender_Success verifies the full render path: fetch the group's
 // jinja config, fetch node meta-data, and render the template to stdout.
 func TestCloudInitGroupRender_Success(t *testing.T) {
+	t.Parallel()
+
 	tmpl := "## template: jinja\n#cloud-config\nhostname: {{ ds.meta_data.hostname }}\n"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -248,6 +264,8 @@ func TestCloudInitGroupRender_Success(t *testing.T) {
 // TestCloudInitGroupRender_WithExtraVars verifies --extra-vars are merged into
 // the render context.
 func TestCloudInitGroupRender_WithExtraVars(t *testing.T) {
+	t.Parallel()
+
 	tmpl := "## template: jinja\n#cloud-config\nx: {{ myvar }}\n"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
