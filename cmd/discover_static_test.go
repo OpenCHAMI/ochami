@@ -46,6 +46,7 @@ const discoveryPayload = `{
 // issuing POST requests for the discovered structures, and exits successfully
 // when the server accepts them.
 func TestDiscoverStatic_Success(t *testing.T) {
+	t.Parallel()
 
 	sawPost := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +72,7 @@ func TestDiscoverStatic_Success(t *testing.T) {
 // TestDiscoverStatic_Overwrite verifies the --overwrite path, which PUTs/PATCHes
 // existing structures instead of only POSTing.
 func TestDiscoverStatic_Overwrite(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -161,6 +163,8 @@ func smdOverwriteServer(t *testing.T, rec *smdOverwriteRecorder) *httptest.Serve
 // server that returns 409 on POST, the command falls back to PUT (redfish) and
 // PATCH (group), exercising the 409-fallback loops.
 func TestDiscoverStatic_OverwriteFallback(t *testing.T) {
+	t.Parallel()
+
 	rec := &smdOverwriteRecorder{}
 	srv := smdOverwriteServer(t, rec)
 	defer srv.Close()
@@ -183,6 +187,8 @@ func TestDiscoverStatic_OverwriteFallback(t *testing.T) {
 // TestDiscoverStatic_V1Overwrite verifies the discovery-version v1 path with
 // --overwrite exercises the ethernet-interface POST->409->PATCH fallback loop.
 func TestDiscoverStatic_V1Overwrite(t *testing.T) {
+	t.Parallel()
+
 	rec := &smdOverwriteRecorder{}
 	srv := smdOverwriteServer(t, rec)
 	defer srv.Close()
@@ -203,6 +209,8 @@ func TestDiscoverStatic_V1Overwrite(t *testing.T) {
 // TestDiscoverStatic_V1 verifies the discovery-version v1 path (non-overwrite)
 // POSTs ethernet interfaces.
 func TestDiscoverStatic_V1(t *testing.T) {
+	t.Parallel()
+
 	var sawIfacePost bool
 	var mu sync.Mutex
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -233,6 +241,8 @@ func TestDiscoverStatic_V1(t *testing.T) {
 // TestDiscoverStatic_Stdin verifies the command reads the discovery payload from
 // stdin when -d is not passed.
 func TestDiscoverStatic_Stdin(t *testing.T) {
+	t.Parallel()
+
 	var sawPost bool
 	var mu sync.Mutex
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -262,6 +272,8 @@ func TestDiscoverStatic_Stdin(t *testing.T) {
 // TestDiscoverStatic_DeprecatedFormatE2E verifies the deprecated discovery format
 // (detected via the bmc_mac node key) is accepted and populates SMD.
 func TestDiscoverStatic_DeprecatedFormatE2E(t *testing.T) {
+	t.Parallel()
+
 	const deprecatedPayload = `{
   "nodes": [
     {

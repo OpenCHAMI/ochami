@@ -11,7 +11,6 @@ package cmd
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -22,6 +21,7 @@ import (
 // cluster config (which belongs to "config cluster set") and reports a usage
 // error.
 func TestConfigSet_RejectsClusterKey(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
@@ -39,6 +39,7 @@ func TestConfigSet_RejectsClusterKey(t *testing.T) {
 // rejected with a config error, since cluster keys must be read via
 // "config cluster show".
 func TestConfigShow_RejectsClusterKey(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
@@ -54,6 +55,8 @@ func TestConfigShow_RejectsClusterKey(t *testing.T) {
 // TestEnableAuth_MissingTokenFails verifies that with enable-auth true and no
 // token available, the command fails with CodeAuth.
 func TestEnableAuth_MissingTokenFails(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[]`))
 	}))
@@ -67,9 +70,8 @@ clusters:
     enable-auth: true
 `)
 
-	// Ensure the env var is not set.
-	os.Unsetenv("DEMO_ACCESS_TOKEN")
-
+	// runOchamiWithRuntime's environment is empty, so DEMO_ACCESS_TOKEN is
+	// unset regardless of the host's environment.
 	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err == nil {
 		t.Fatal("expected an auth error, got nil")
@@ -82,6 +84,8 @@ clusters:
 // TestConfigUnset_UnknownKey verifies "config unset" rejects a key that does
 // not exist in the config file.
 func TestConfigUnset_UnknownKey(t *testing.T) {
+	t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
 	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.does-not-exist")

@@ -37,6 +37,7 @@ func writeTempConfig(t *testing.T, contents string) string {
 // TestConfigSet_ThenShow verifies that "config set" persists a key to the given
 // config file and "config show" reads it back.
 func TestConfigSet_ThenShow(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
@@ -67,6 +68,7 @@ func TestConfigSet_ThenShow(t *testing.T) {
 
 // TestConfigUnset_Success verifies that "config unset" removes a previously-set key.
 func TestConfigUnset_Success(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
@@ -90,6 +92,7 @@ func TestConfigUnset_Success(t *testing.T) {
 // sets only log.level, so log.format should come back as its default rather
 // than empty.
 func TestConfigShow_DefaultedKey(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "log:\n  level: debug\n")
 
@@ -107,6 +110,7 @@ func TestConfigShow_DefaultedKey(t *testing.T) {
 // TestConfigShow_WholeConfig verifies that "config show" with no key prints the
 // merged configuration, including defaulted values.
 func TestConfigShow_WholeConfig(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "log:\n  level: debug\n")
 
@@ -126,6 +130,8 @@ func TestConfigShow_WholeConfig(t *testing.T) {
 // TestConfigSet_CreatesFileOnConfirm verifies "config set" offers to create a
 // missing config file and, on "y", creates and writes it.
 func TestConfigSet_CreatesFileOnConfirm(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
 	res := runOchamiWithInputAndRuntime(t, "y\n", "--config", path, "config", "set", "log.format", "json")
@@ -140,6 +146,8 @@ func TestConfigSet_CreatesFileOnConfirm(t *testing.T) {
 // TestConfigSet_DeclineCreate verifies that declining to create a missing config
 // file exits without writing the file.
 func TestConfigSet_DeclineCreate(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
 	res := runOchamiWithInputAndRuntime(t, "n\n", "--config", path, "config", "set", "log.format", "json")
@@ -154,6 +162,8 @@ func TestConfigSet_DeclineCreate(t *testing.T) {
 // TestConfigShow_NonexistentKey verifies "config show <key>" for a key not
 // present returns the defaulted or empty value without error.
 func TestConfigShow_NonexistentKey(t *testing.T) {
+	t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
 	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show", "log.format")
@@ -171,6 +181,8 @@ func TestConfigShow_NonexistentKey(t *testing.T) {
 // test hermetic while exercising the non-user branch selection is covered by
 // the mutually-exclusive tests.
 func TestConfigSet_SystemFlag(t *testing.T) {
+	t.Parallel()
+
 	// Use --config to keep the write hermetic; this still exercises the
 	// config-source selection branch.
 	cfg := writeTempConfig(t, "")
@@ -191,6 +203,8 @@ func TestConfigSet_SystemFlag(t *testing.T) {
 // TestConfigShow_WholeConfigViaConfigFlag verifies "config show" (no key) reads
 // the whole config from an explicit --config file (the --config branch).
 func TestConfigShow_WholeConfigViaConfigFlag(t *testing.T) {
+	t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
 
 	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show")
@@ -205,6 +219,8 @@ func TestConfigShow_WholeConfigViaConfigFlag(t *testing.T) {
 // TestConfigUnset_ViaConfigFlag verifies "config unset <key>" removes a key from
 // an explicit --config file.
 func TestConfigUnset_ViaConfigFlag(t *testing.T) {
+	t.Parallel()
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
 
 	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.level")
@@ -230,6 +246,8 @@ func TestConfigUnset_ViaConfigFlag(t *testing.T) {
 // TestDefaultCluster_URIResolution verifies a command resolves its base URI from
 // the default cluster's cluster.uri in a config file (no --uri flag).
 func TestDefaultCluster_URIResolution(t *testing.T) {
+	t.Parallel()
+
 	var hit bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit = true
@@ -257,6 +275,8 @@ clusters:
 // TestPerServiceURI_Override verifies a per-service URI override in the cluster
 // config is honored.
 func TestPerServiceURI_Override(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -317,6 +337,8 @@ clusters:
 // TestEnableAuth_DisabledSkipsToken verifies that with enable-auth false, no
 // token is required or sent.
 func TestEnableAuth_DisabledSkipsToken(t *testing.T) {
+	t.Parallel()
+
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")

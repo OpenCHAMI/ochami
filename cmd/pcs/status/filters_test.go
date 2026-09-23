@@ -13,6 +13,8 @@ import (
 )
 
 func TestPowerFilter_SetAndType(t *testing.T) {
+	t.Parallel()
+
 	var pf PowerFilter
 	for _, v := range []string{"on", "OFF", "Undefined"} {
 		if err := pf.Set(v); err != nil {
@@ -34,6 +36,8 @@ func TestPowerFilter_SetAndType(t *testing.T) {
 }
 
 func TestMgmtFilter_SetAndType(t *testing.T) {
+	t.Parallel()
+
 	var mf MgmtFilter
 	for _, v := range []string{"available", "Unavailable"} {
 		if err := mf.Set(v); err != nil {

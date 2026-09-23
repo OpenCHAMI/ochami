@@ -19,6 +19,8 @@ import (
 )
 
 func TestHandleExecuteError(t *testing.T) {
+	t.Parallel()
+
 	rootCmd := NewRootCmd()
 
 	// nil error -> success.
@@ -61,6 +63,8 @@ func TestHandleExecuteError(t *testing.T) {
 // 'metadata' defining a 'timeout' persistent flag) are intentional and allowed,
 // as each subtree maintains its own flag namespace.
 func TestNoDuplicateFlags(t *testing.T) {
+	t.Parallel()
+
 	rootCmd := NewRootCmd()
 
 	// Recursively traverse all commands in the tree, passing inherited persistent flags

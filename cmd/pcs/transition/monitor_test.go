@@ -77,6 +77,8 @@ func runMonitor(t *testing.T, provider pcsTransitionClientProvider, args ...stri
 // TestTransitionMonitor_CompletesOnCompletedStatus verifies monitoring stops
 // after a completed transition.
 func TestTransitionMonitor_CompletesOnCompletedStatus(t *testing.T) {
+	t.Parallel()
+
 	fake := &scriptedTransitionClient{
 		responses: []client.HTTPEnvelope{
 			{Body: []byte(`{"transitionStatus":"in-progress","taskCounts":{"total":2,"in-progress":2}}`)},
@@ -95,6 +97,8 @@ func TestTransitionMonitor_CompletesOnCompletedStatus(t *testing.T) {
 // TestTransitionMonitor_CompletesOnAbortedStatus verifies monitoring stops
 // after an aborted transition.
 func TestTransitionMonitor_CompletesOnAbortedStatus(t *testing.T) {
+	t.Parallel()
+
 	fake := &scriptedTransitionClient{
 		responses: []client.HTTPEnvelope{
 			{Body: []byte(`{"transitionStatus":"aborted","taskCounts":{"total":1,"failed":1}}`)},
@@ -111,6 +115,8 @@ func TestTransitionMonitor_CompletesOnAbortedStatus(t *testing.T) {
 // TestTransitionMonitor_RealProviderIsWired ensures the production wrapper is
 // wired with the real provider.
 func TestTransitionMonitor_RealProviderIsWired(t *testing.T) {
+	t.Parallel()
+
 	if cmd := newCmdTransitionMonitor(); cmd == nil || cmd.RunE == nil {
 		t.Fatal("newCmdTransitionMonitor() did not produce a runnable command")
 	}

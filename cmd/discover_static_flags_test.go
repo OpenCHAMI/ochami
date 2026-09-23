@@ -17,6 +17,8 @@ import (
 // TestDiscoverStatic_FlagStateIsLocal verifies one command invocation cannot
 // change the default discovery version of a subsequently constructed command.
 func TestDiscoverStatic_FlagStateIsLocal(t *testing.T) {
+	t.Parallel()
+
 	first := discover_static.NewCmd()
 	if err := first.Flags().Set("discovery-version", "1"); err != nil {
 		t.Fatalf("set first discovery version: %v", err)

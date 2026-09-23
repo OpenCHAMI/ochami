@@ -34,6 +34,8 @@ func okJSONServer(t *testing.T) *httptest.Server {
 // TestMetadataList_Success verifies that "<type> list" exits successfully for
 // each metadata resource type.
 func TestMetadataList_Success(t *testing.T) {
+	t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -53,6 +55,8 @@ func TestMetadataList_Success(t *testing.T) {
 // TestMetadataGet_Success verifies that "<type> get <uid>" exits successfully for
 // each metadata resource type.
 func TestMetadataGet_Success(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{}`))
@@ -76,6 +80,8 @@ func TestMetadataGet_Success(t *testing.T) {
 // --remove on "metadata <resource> patch" produce an RFC 6902 JSON Patch
 // request instead of being silently dropped.
 func TestMetadataPatch_PathsAndArrayOperations(t *testing.T) {
+	t.Parallel()
+
 	for _, resource := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(resource, func(t *testing.T) {
 			var gotContentType, gotBody string
@@ -119,6 +125,8 @@ func envelopePayloadFor(typ string) string {
 
 // TestMetadataList_Formats verifies list output-format variants across types.
 func TestMetadataList_Formats(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		for _, f := range []string{"json", "json-pretty", "yaml"} {
 			t.Run(typ+"/"+f, func(t *testing.T) {
@@ -136,6 +144,8 @@ func TestMetadataList_Formats(t *testing.T) {
 
 // TestMetadataGet_Formats verifies get output-format variants across types.
 func TestMetadataGet_Formats(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		for _, f := range []string{"json", "json-pretty", "yaml"} {
 			t.Run(typ+"/"+f, func(t *testing.T) {
@@ -157,6 +167,8 @@ func TestMetadataGet_Formats(t *testing.T) {
 // TestMetadataAdd_Envelope verifies the envelope (advanced) API path of "add -e"
 // across types.
 func TestMetadataAdd_Envelope(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -178,6 +190,8 @@ func TestMetadataAdd_Envelope(t *testing.T) {
 // TestMetadataAdd_Stdin verifies add reads payload from stdin when -d is not
 // supplied (simple API path).
 func TestMetadataAdd_Stdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -199,6 +213,8 @@ func TestMetadataAdd_Stdin(t *testing.T) {
 // TestMetadataSet_Envelope verifies the envelope API path of "set -e" across
 // types.
 func TestMetadataSet_Envelope(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -218,6 +234,8 @@ func TestMetadataSet_Envelope(t *testing.T) {
 
 // TestMetadataPatch_Success verifies the patch verb across types.
 func TestMetadataPatch_Success(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -238,6 +256,8 @@ func TestMetadataPatch_Success(t *testing.T) {
 // TestMetadataDelete_ConfirmYes verifies answering "y" at the confirmation prompt
 // proceeds with deletion across types.
 func TestMetadataDelete_ConfirmYes(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -258,6 +278,8 @@ func TestMetadataDelete_ConfirmYes(t *testing.T) {
 // TestMetadataSet_Stdin verifies "set <uid>" reads the payload from stdin when -d
 // is not supplied (simple API path) across metadata types.
 func TestMetadataSet_Stdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -278,6 +300,8 @@ func TestMetadataSet_Stdin(t *testing.T) {
 // TestMetadataPatch_Stdin verifies "patch <uid>" reads the payload from stdin
 // when -d is not supplied across metadata types.
 func TestMetadataPatch_Stdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -298,6 +322,8 @@ func TestMetadataPatch_Stdin(t *testing.T) {
 // TestMetadataAdd_EnvelopeStdin verifies the envelope API path reads from stdin
 // when -d is not supplied across metadata types.
 func TestMetadataAdd_EnvelopeStdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -319,6 +345,8 @@ func TestMetadataAdd_EnvelopeStdin(t *testing.T) {
 // TestMetadataSet_EnvelopeStdin verifies the envelope set path reads from stdin
 // when -d is not supplied across metadata types.
 func TestMetadataSet_EnvelopeStdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -339,6 +367,8 @@ func TestMetadataSet_EnvelopeStdin(t *testing.T) {
 // TestMetadataPatch_Keyval verifies the key-value patch path (--set/--unset)
 // across metadata types.
 func TestMetadataPatch_Keyval(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -358,6 +388,8 @@ func TestMetadataPatch_Keyval(t *testing.T) {
 
 // TestMetadataPatch_RFC6902 verifies the rfc6902 patch-method path across types.
 func TestMetadataPatch_RFC6902(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -379,6 +411,8 @@ func TestMetadataPatch_RFC6902(t *testing.T) {
 // is accepted: the generated client decodes null into an empty resource, so
 // the command's "set returned no resource" check isn't reached over HTTP.
 func TestMetadataSet_NilResource(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -399,6 +433,8 @@ func TestMetadataSet_NilResource(t *testing.T) {
 // TestMetadataGroupList_Success verifies that "metadata group list" exits
 // successfully when the service returns a valid list response.
 func TestMetadataGroupList_Success(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`[]`))

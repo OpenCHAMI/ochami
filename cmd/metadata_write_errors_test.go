@@ -13,6 +13,8 @@ import (
 )
 
 func TestMetadataAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +22,7 @@ func TestMetadataAdd_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "add",
 				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
@@ -36,6 +39,8 @@ func TestMetadataAdd_HTTPError(t *testing.T) {
 // TestMetadataDelete_AbortsOnNo verifies that answering "n" at the confirmation
 // prompt aborts deletion without error and without contacting the server.
 func TestMetadataDelete_AbortsOnNo(t *testing.T) {
+	t.Parallel()
+
 	var contacted bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Only record calls to the delete verb (the client may issue a
@@ -58,6 +63,8 @@ func TestMetadataDelete_AbortsOnNo(t *testing.T) {
 }
 
 func TestMetadataDelete_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))

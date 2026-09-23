@@ -19,6 +19,7 @@ import (
 // TestCloudInitGroupGet_Success verifies "cloud-init group get raw" issues GET
 // /admin/groups.
 func TestCloudInitGroupGet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +40,7 @@ func TestCloudInitGroupGet_Success(t *testing.T) {
 // TestCloudInitGroupAdd_Success verifies "cloud-init group add -d <payload>" issues
 // POST /admin/groups.
 func TestCloudInitGroupAdd_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +62,7 @@ func TestCloudInitGroupAdd_Success(t *testing.T) {
 // TestCloudInitGroupSet_Success verifies "cloud-init group set -d <payload>"
 // issues a PUT.
 func TestCloudInitGroupSet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +84,7 @@ func TestCloudInitGroupSet_Success(t *testing.T) {
 // TestCloudInitGroupDelete_NoConfirm verifies "cloud-init group delete
 // --no-confirm <name>" issues DELETE under /admin/groups.
 func TestCloudInitGroupDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -102,6 +106,7 @@ func TestCloudInitGroupDelete_NoConfirm(t *testing.T) {
 // TestCloudInitNodeSet_Success verifies "cloud-init node set -d <payload>" issues a PUT
 // under /admin/instance-info.
 func TestCloudInitNodeSet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -123,6 +128,7 @@ func TestCloudInitNodeSet_Success(t *testing.T) {
 // TestCloudInitDefaults_Set verifies "cloud-init defaults set -d <payload>"
 // issues POST /admin/cluster-defaults.
 func TestCloudInitDefaults_Set(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -146,6 +152,7 @@ func TestCloudInitDefaults_Set(t *testing.T) {
 // server returns an empty body for the group config fetch, so the command logs
 // a warning and returns without error.
 func TestCloudInitGroupRender_EmptyConfig(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Empty body for the group-config fetch => nothing to render.
@@ -163,6 +170,8 @@ func TestCloudInitGroupRender_EmptyConfig(t *testing.T) {
 // TestCloudInitGroupGet_ConfigAndMetaData covers the "cloud-init group get"
 // config and meta-data subcommands.
 func TestCloudInitGroupGet_ConfigAndMetaData(t *testing.T) {
+	t.Parallel()
+
 	for _, subcommand := range []string{"config", "meta-data"} {
 		t.Run(subcommand, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -183,6 +192,8 @@ func TestCloudInitGroupGet_ConfigAndMetaData(t *testing.T) {
 // TestCloudInitServiceStatus_API verifies --api prints the returned OpenAPI
 // document through the command's injected output stream.
 func TestCloudInitServiceStatus_API(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"openapi":"3.0.0"}`))
 	}))
@@ -200,6 +211,8 @@ func TestCloudInitServiceStatus_API(t *testing.T) {
 // TestCloudInitServiceStatus_Success verifies "cloud-init service status" reports
 // success against a healthy server.
 func TestCloudInitServiceStatus_Success(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -217,6 +230,8 @@ func TestCloudInitServiceStatus_Success(t *testing.T) {
 // TestCloudInitDefaults_Get verifies "cloud-init defaults get" issues GET
 // /admin/cluster-defaults.
 func TestCloudInitDefaults_Get(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -237,6 +252,8 @@ func TestCloudInitDefaults_Get(t *testing.T) {
 // TestCloudInitServiceStatus_Running verifies that "cloud-init service status"
 // exits successfully when the /version endpoint responds OK.
 func TestCloudInitServiceStatus_Running(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path

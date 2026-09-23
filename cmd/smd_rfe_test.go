@@ -21,6 +21,8 @@ import (
 // TestSMDRFEGet_Filters verifies the query builder emits the expected filter
 // query parameters for each flag.
 func TestSMDRFEGet_Filters(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		args    []string
@@ -57,6 +59,8 @@ func TestSMDRFEGet_Filters(t *testing.T) {
 
 // TestSMDRFEGet_Formats verifies the output-format variants.
 func TestSMDRFEGet_Formats(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"RedfishEndpoints":[{"ID":"x3000c1s7b56"}]}`))
 	}))
@@ -76,6 +80,8 @@ func TestSMDRFEGet_Formats(t *testing.T) {
 // TestSMDRFEAdd_ByFlagsWithOptional verifies "add" with the optional
 // domain/hostname/username/password flags issues a POST.
 func TestSMDRFEAdd_ByFlagsWithOptional(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -96,6 +102,8 @@ func TestSMDRFEAdd_ByFlagsWithOptional(t *testing.T) {
 
 // TestSMDRFEAdd_ByData verifies "add -d <payload>" issues a POST.
 func TestSMDRFEAdd_ByData(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -116,6 +124,8 @@ func TestSMDRFEAdd_ByData(t *testing.T) {
 // TestSMDRFEDelete_ByXnames verifies "delete --no-confirm <xname>..." issues a
 // DELETE per endpoint.
 func TestSMDRFEDelete_ByXnames(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -137,6 +147,8 @@ func TestSMDRFEDelete_ByXnames(t *testing.T) {
 
 // TestSMDRFEDelete_ByData verifies IDs in a payload drive DELETE requests.
 func TestSMDRFEDelete_ByData(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -159,6 +171,8 @@ func TestSMDRFEDelete_ByData(t *testing.T) {
 // TestSMDRFEDelete_AllConfirm verifies "delete --all" prompts and, on "y", issues
 // a DELETE to the collection endpoint.
 func TestSMDRFEDelete_AllConfirm(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {

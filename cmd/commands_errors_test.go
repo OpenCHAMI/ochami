@@ -20,6 +20,8 @@ import (
 // sending a request (CodeUsage).
 
 func TestGetClient_NoBaseURI(t *testing.T) {
+	t.Parallel()
+
 	cases := [][]string{
 		// cloud-init
 		{"cloud-init", "group", "get", "raw"},
@@ -119,6 +121,8 @@ func TestGetClient_NoBaseURI(t *testing.T) {
 // provided via a config-file cluster so GetClient succeeds and the failure
 // occurs in HandleToken.
 func TestHandleToken_AuthRequired(t *testing.T) {
+	t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -182,6 +186,8 @@ clusters:
 // with CodePayload when --cacert points at an invalid/nonexistent file. This
 // exercises the shared UseCACert error arm.
 func TestUseCACert_Invalid(t *testing.T) {
+	t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -214,6 +220,8 @@ func TestUseCACert_Invalid(t *testing.T) {
 // arm shared by many service commands, including those that fetch several items
 // and aggregate per-item errors.
 func TestServiceCommands_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	cases := []struct {
@@ -256,6 +264,8 @@ func TestServiceCommands_NetworkError(t *testing.T) {
 // TestServiceCommands_HTTPError points commands at a server returning 500 so the
 // HTTP-error mapping arm (CodeHTTP) is exercised broadly.
 func TestServiceCommands_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -298,6 +308,8 @@ func TestServiceCommands_HTTPError(t *testing.T) {
 // per-service GetClient's UseCACert step to fail with CodePayload, exercising
 // that shared arm across every service's GetClient.
 func TestGetClient_UseCACertInvalid(t *testing.T) {
+	t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -345,6 +357,8 @@ func TestGetClient_UseCACertInvalid(t *testing.T) {
 // resolves to CodePayload across the commands that accept a data payload,
 // exercising the shared HandlePayload error arm.
 func TestCommands_MalformedPayload(t *testing.T) {
+	t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -382,6 +396,8 @@ func TestCommands_MalformedPayload(t *testing.T) {
 // positional arguments is accepted (the extra args are ignored with a warning)
 // across the commands that support -d, exercising that warning arm.
 func TestCommands_DataWithExtraArgs(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -416,6 +432,8 @@ func TestCommands_DataWithExtraArgs(t *testing.T) {
 // TestWriteCommands_NetworkError points write commands at a closed port so their
 // network-error arms fire (CodeNetwork, which the per-item aggregate also resolves to).
 func TestWriteCommands_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	cases := [][]string{
@@ -455,6 +473,8 @@ func TestWriteCommands_NetworkError(t *testing.T) {
 // TestMetadataBootWrite_NetworkError points metadata/boot write commands at a
 // closed port so their network-error arms fire across all resource types.
 func TestMetadataBootWrite_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	var cases [][]string
@@ -498,6 +518,8 @@ func TestMetadataBootWrite_NetworkError(t *testing.T) {
 // differ in kind (an HTTP error for one item, a dropped connection for
 // another) exits with CodeMixed.
 func TestBatchDelete_MixedFailures(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/x0c0s0b0n0"):
@@ -524,6 +546,8 @@ func TestBatchDelete_MixedFailures(t *testing.T) {
 // to CodeUsage. Nothing listens on the URI, so a request that was sent anyway
 // would fail with CodeNetwork instead.
 func TestCommands_RejectInvalidArguments(t *testing.T) {
+	t.Parallel()
+
 	cases := [][]string{
 		{"smd", "group", "member", "add", "", "x0c0s0b0n0"},
 		{"smd", "group", "member", "delete", "--no-confirm", "", "x0c0s0b0n0"},

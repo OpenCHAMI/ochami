@@ -14,6 +14,8 @@ import (
 )
 
 func TestCloudInitServiceVersion_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -31,6 +33,8 @@ func TestCloudInitServiceVersion_HTTPError(t *testing.T) {
 // TestCloudInitServiceStatus_HTTPError verifies a responding but unhealthy
 // service is distinguished from a network failure.
 func TestCloudInitServiceStatus_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -51,6 +55,8 @@ func TestCloudInitServiceStatus_HTTPError(t *testing.T) {
 // TestCloudInitServiceStatus_QuietHTTPError verifies quiet mode suppresses the
 // human-readable status while preserving the exit code.
 func TestCloudInitServiceStatus_QuietHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -66,6 +72,8 @@ func TestCloudInitServiceStatus_QuietHTTPError(t *testing.T) {
 }
 
 func TestCloudInitServiceStatus_APIError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -84,6 +92,8 @@ func TestCloudInitServiceStatus_APIError(t *testing.T) {
 // unreachable, "cloud-init service status" reports not running and resolves to
 // CodeNetwork.
 func TestCloudInitServiceStatus_NotRunning(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "service", "status", "--uri", url)

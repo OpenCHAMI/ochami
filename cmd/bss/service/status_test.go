@@ -44,6 +44,8 @@ func createTestRuntime() (*cli.Runtime, *bytes.Buffer) {
 // TestServiceStatus_ComponentSelection verifies each component flag selects the
 // expected status endpoint.
 func TestServiceStatus_ComponentSelection(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		flag string
@@ -85,6 +87,8 @@ func TestServiceStatus_ComponentSelection(t *testing.T) {
 // usable command). Full end-to-end behavior of the real client is covered by
 // the command-level tests that run against an httptest.Server.
 func TestServiceStatus_RealProviderIsWired(t *testing.T) {
+	t.Parallel()
+
 	if cmd := newCmdServiceStatus(); cmd == nil || cmd.RunE == nil {
 		t.Fatal("newCmdServiceStatus() did not produce a runnable command")
 	}

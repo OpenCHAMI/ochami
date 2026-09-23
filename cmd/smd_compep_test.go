@@ -40,6 +40,8 @@ func TestSMDCompepGet_AllFormats(t *testing.T) {
 // TestSMDCompepGet_ByXnames verifies "get <xname>..." fetches per-endpoint and
 // aggregates into a ComponentEndpoints array.
 func TestSMDCompepGet_ByXnames(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"ID":"x3000c1s7b56n0"}`))
 	}))
@@ -58,6 +60,8 @@ func TestSMDCompepGet_ByXnames(t *testing.T) {
 // TestSMDCompepDelete_ByXnames verifies "delete --no-confirm <xname>..." issues a
 // DELETE per endpoint.
 func TestSMDCompepDelete_ByXnames(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -79,6 +83,8 @@ func TestSMDCompepDelete_ByXnames(t *testing.T) {
 
 // TestSMDCompepDelete_ByData verifies IDs in a payload drive DELETE requests.
 func TestSMDCompepDelete_ByData(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -101,6 +107,8 @@ func TestSMDCompepDelete_ByData(t *testing.T) {
 // TestSMDCompepDelete_AllConfirm verifies "delete --all" prompts and, on "y",
 // issues a DELETE.
 func TestSMDCompepDelete_AllConfirm(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {

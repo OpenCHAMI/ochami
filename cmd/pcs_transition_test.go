@@ -17,6 +17,8 @@ import (
 
 // TestPCSTransitionList_Formats verifies list output-format variants.
 func TestPCSTransitionList_Formats(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"transitions":[]}`))
 	}))
@@ -32,6 +34,7 @@ func TestPCSTransitionList_Formats(t *testing.T) {
 
 // TestPCSTransitionList_Success verifies "pcs transition list" issues GET /transitions.
 func TestPCSTransitionList_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +57,8 @@ func TestPCSTransitionList_Success(t *testing.T) {
 // TestPCSTransitionShow_Success verifies "pcs transition show <id>" issues GET
 // /transitions/<id>.
 func TestPCSTransitionShow_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -73,6 +78,8 @@ func TestPCSTransitionShow_Success(t *testing.T) {
 // TestPCSTransitionAbort_Success verifies "pcs transition abort <id>" issues DELETE
 // /transitions/<id>.
 func TestPCSTransitionAbort_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -92,6 +99,8 @@ func TestPCSTransitionAbort_Success(t *testing.T) {
 // TestPCSTransitionStart_Success verifies "pcs transition start <op> --xname ..." issues
 // POST /transitions.
 func TestPCSTransitionStart_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -113,6 +122,8 @@ func TestPCSTransitionStart_Success(t *testing.T) {
 // TestPCSTransitionMonitor_Success verifies "pcs transition monitor <id>" polls
 // /transitions/<id> and exits when the transition reports "completed".
 func TestPCSTransitionMonitor_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
