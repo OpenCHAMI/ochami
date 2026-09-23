@@ -13,6 +13,8 @@ import (
 // TestBSSBootImageSet_ByXnameAndNid verifies "boot image set" selects nodes by
 // --xname and --nid, fetching then PUTting the modified boot parameters.
 func TestBSSBootImageSet_ByXnameAndNid(t *testing.T) {
+	t.Parallel()
+
 	for _, sel := range [][]string{{"--xname", "x0c0s0b0n0"}, {"--nid", "1"}} {
 		t.Run(sel[0], func(t *testing.T) {
 			var puts int
@@ -29,6 +31,7 @@ func TestBSSBootImageSet_ByXnameAndNid(t *testing.T) {
 
 			args := append([]string{"--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t"},
 				append(sel, "https://example.com/new-image")...)
+			t.Parallel()
 			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)

@@ -22,6 +22,7 @@ import (
 // TestBSSBootParamsGet_All verifies "bss boot params get" issues GET
 // /bootparameters and prints the response body.
 func TestBSSBootParamsGet_All(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -51,6 +52,7 @@ func TestBSSBootParamsGet_All(t *testing.T) {
 // TestBSSBootParamsGet_WithMAC verifies that --mac is encoded into the query
 // string sent to /bootparameters.
 func TestBSSBootParamsGet_WithMAC(t *testing.T) {
+	t.Parallel()
 
 	var gotPath, gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,6 +80,7 @@ func TestBSSBootParamsGet_WithMAC(t *testing.T) {
 // TestBSSBootParamsAdd_ViaFlags verifies "bss boot params add" issues POST
 // /bootparameters with the kernel and macs encoded in the body.
 func TestBSSBootParamsAdd_ViaFlags(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	var gotBody []byte
@@ -119,6 +122,7 @@ func TestBSSBootParamsAdd_ViaFlags(t *testing.T) {
 // TestBSSBootParamsDelete_NoConfirm verifies "bss boot params delete --no-confirm"
 // issues DELETE /bootparameters.
 func TestBSSBootParamsDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -146,6 +150,7 @@ func TestBSSBootParamsDelete_NoConfirm(t *testing.T) {
 
 // TestBSSDumpstate verifies "bss dumpstate" issues GET /dumpstate.
 func TestBSSDumpstate(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -170,6 +175,7 @@ func TestBSSDumpstate(t *testing.T) {
 
 // TestBSSHostsGet_Success verifies "bss hosts get" issues GET /hosts.
 func TestBSSHostsGet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -194,6 +200,7 @@ func TestBSSHostsGet_Success(t *testing.T) {
 
 // TestBSSServiceStatus_Success verifies "bss service status" issues GET /service/status.
 func TestBSSServiceStatus_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -219,6 +226,7 @@ func TestBSSServiceStatus_Success(t *testing.T) {
 // TestBSSBootScriptGet_Success verifies "bss boot script get" issues GET /bootscript
 // with the selector encoded in the query string.
 func TestBSSBootScriptGet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath, gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -246,6 +254,7 @@ func TestBSSBootScriptGet_Success(t *testing.T) {
 
 // TestBSSHistoryGet_Success verifies "bss history" issues GET /endpoint-history.
 func TestBSSHistoryGet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -270,6 +279,7 @@ func TestBSSHistoryGet_Success(t *testing.T) {
 // TestBSSStatus_Deprecated verifies the deprecated top-level "bss status" command
 // still issues a GET under /service.
 func TestBSSStatus_Deprecated(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -295,6 +305,7 @@ func TestBSSStatus_Deprecated(t *testing.T) {
 // existing boot parameters with a GET and writes the updated root back with a
 // PUT.
 func TestBSSBootImageSet_Success(t *testing.T) {
+	t.Parallel()
 
 	var methods []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -333,6 +344,8 @@ func TestBSSBootImageSet_Success(t *testing.T) {
 // TestBSSBootParamsGet_Query verifies the query builder emits name/mac/nid query
 // parameters for the corresponding flags.
 func TestBSSBootParamsGet_Query(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		args    []string
@@ -367,6 +380,8 @@ func TestBSSBootParamsGet_Query(t *testing.T) {
 
 // TestBSSBootParamsGet_Formats verifies the output-format variants.
 func TestBSSBootParamsGet_Formats(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"params":"console=tty0"}]`))
 	}))
@@ -386,6 +401,8 @@ func TestBSSBootParamsGet_Formats(t *testing.T) {
 // --mac sends a POST whose MACs come from the flag and whose kernel comes
 // from the payload.
 func TestBSSBootParamsAdd_DataAndFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	var gotBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -425,6 +442,8 @@ func TestBSSBootParamsAdd_DataAndFlags(t *testing.T) {
 // TestBSSBootParamsAdd_AllFlags verifies that "bss boot params add" accepts
 // every component selector and config-field flag at once and sends a POST.
 func TestBSSBootParamsAdd_AllFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -449,6 +468,8 @@ func TestBSSBootParamsAdd_AllFlags(t *testing.T) {
 // --no-confirm" accepts every component selector and config-field flag at once
 // and sends a DELETE.
 func TestBSSBootParamsDelete_AllFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -473,6 +494,8 @@ func TestBSSBootParamsDelete_AllFlags(t *testing.T) {
 // accepts every component selector (--xname, --mac, --nid) and config field
 // (--kernel, --initrd, --params) at once and sends a PUT.
 func TestBSSBootParamsSet_AllSelectorFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -497,6 +520,8 @@ func TestBSSBootParamsSet_AllSelectorFlags(t *testing.T) {
 // update" accepts the --xname and --nid selectors together with every
 // config-field flag and sends a PATCH.
 func TestBSSBootParamsUpdate_AllSelectorFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -521,6 +546,8 @@ func TestBSSBootParamsUpdate_AllSelectorFlags(t *testing.T) {
 // with --kernel sends a PUT whose kernel comes from the flag and whose MACs
 // come from the payload.
 func TestBSSBootParamsSet_DataWithFlagOverride(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	var gotBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -562,6 +589,8 @@ func TestBSSBootParamsSet_DataWithFlagOverride(t *testing.T) {
 // TestBSSBootParamsDelete_ByFlags verifies "delete --no-confirm" with component
 // and config flags issues a DELETE.
 func TestBSSBootParamsDelete_ByFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -583,6 +612,8 @@ func TestBSSBootParamsDelete_ByFlags(t *testing.T) {
 
 // TestBSSBootParamsDelete_ByData verifies "delete -d <payload>" issues a DELETE.
 func TestBSSBootParamsDelete_ByData(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -604,6 +635,8 @@ func TestBSSBootParamsDelete_ByData(t *testing.T) {
 // TestBSSBootParamsDelete_Confirm verifies the interactive confirm path issues
 // the DELETE when the user answers "y".
 func TestBSSBootParamsDelete_Confirm(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -628,6 +661,8 @@ func TestBSSBootParamsDelete_Confirm(t *testing.T) {
 // -d <payload>" combined with --mac sends a PATCH whose MACs come from the
 // flag, and logs the "raw data passed" warning.
 func TestBSSBootParamsUpdate_DataWithFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	var gotBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -667,6 +702,8 @@ func TestBSSBootParamsUpdate_DataWithFlags(t *testing.T) {
 // TestBSSBootScriptGet_Query verifies the boot-script query builder emits the
 // xname (as name) and the retry, arch, and timestamp parameters.
 func TestBSSBootScriptGet_Query(t *testing.T) {
+	t.Parallel()
+
 	var gotQuery url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
@@ -689,6 +726,8 @@ func TestBSSBootScriptGet_Query(t *testing.T) {
 // TestBSSHostsGet_QueryAndFormats verifies the hosts query builder and
 // output-format variants.
 func TestBSSHostsGet_QueryAndFormats(t *testing.T) {
+	t.Parallel()
+
 	var gotQuery url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
@@ -712,6 +751,8 @@ func TestBSSHostsGet_QueryAndFormats(t *testing.T) {
 // TestBSSHistoryGet_QueryAndFormats verifies the history query builder and
 // output-format variants.
 func TestBSSHistoryGet_QueryAndFormats(t *testing.T) {
+	t.Parallel()
+
 	var gotQuery url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()

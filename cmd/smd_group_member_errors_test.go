@@ -14,6 +14,8 @@ import (
 
 // TestSMDGroupMemberDelete_Abort verifies answering "n" aborts without a request.
 func TestSMDGroupMemberDelete_Abort(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -37,6 +39,8 @@ func TestSMDGroupMemberDelete_Abort(t *testing.T) {
 // TestSMDGroupMemberGet_HTTPError verifies a failing member get resolves to
 // CodeHTTP.
 func TestSMDGroupMemberGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -55,6 +59,8 @@ func TestSMDGroupMemberGet_HTTPError(t *testing.T) {
 // TestSMDGroupMemberSet_HTTPError verifies a failing member set resolves to
 // CodeHTTP.
 func TestSMDGroupMemberSet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -73,6 +79,8 @@ func TestSMDGroupMemberSet_HTTPError(t *testing.T) {
 // TestSMDGroupMember_NetworkErrors verifies member verbs resolve a closed port to
 // CodeNetwork.
 func TestSMDGroupMember_NetworkErrors(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	// add (per-item aggregation surfaces CodeNetwork)

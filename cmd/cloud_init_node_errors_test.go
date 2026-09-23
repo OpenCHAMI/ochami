@@ -15,6 +15,8 @@ import (
 // TestCloudInitNodeGetData_HTTPError verifies an unsuccessful HTTP response from
 // a node get resolves to CodeHTTP.
 func TestCloudInitNodeGetData_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -33,6 +35,8 @@ func TestCloudInitNodeGetData_HTTPError(t *testing.T) {
 // TestCloudInitNodeGet_MetadataHTTPError verifies a failing meta-data fetch
 // resolves to CodeHTTP via the aggregate.
 func TestCloudInitNodeGet_MetadataHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -51,6 +55,8 @@ func TestCloudInitNodeGet_MetadataHTTPError(t *testing.T) {
 // TestCloudInitNodeGet_UserdataHTTPError verifies a failing user-data fetch
 // resolves to CodeHTTP.
 func TestCloudInitNodeGet_UserdataHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -69,6 +75,8 @@ func TestCloudInitNodeGet_UserdataHTTPError(t *testing.T) {
 // TestCloudInitNodeGet_GroupHTTPError verifies a failing node-group fetch
 // resolves to CodeHTTP via the aggregate.
 func TestCloudInitNodeGet_GroupHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -87,6 +95,8 @@ func TestCloudInitNodeGet_GroupHTTPError(t *testing.T) {
 // TestCloudInitNodeSet_HTTPError verifies a failing "node set" resolves to
 // CodeHTTP via the aggregate.
 func TestCloudInitNodeSet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
@@ -105,6 +115,8 @@ func TestCloudInitNodeSet_HTTPError(t *testing.T) {
 // TestCloudInitNodeSet_MalformedPayload verifies malformed inline payload
 // resolves to CodePayload.
 func TestCloudInitNodeSet_MalformedPayload(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

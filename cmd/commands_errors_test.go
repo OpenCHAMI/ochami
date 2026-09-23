@@ -22,6 +22,8 @@ import (
 // TestGetClient_NoBaseURI verifies that each listed command fails with
 // CodeConfig when no base URI is configured for its service.
 func TestGetClient_NoBaseURI(t *testing.T) {
+	t.Parallel()
+
 	cases := [][]string{
 		// cloud-init
 		{"cloud-init", "group", "get", "raw"},
@@ -119,6 +121,8 @@ func TestGetClient_NoBaseURI(t *testing.T) {
 // with CodeAuth when its cluster, configured in the config file, enables auth
 // and no token is available.
 func TestHandleToken_AuthRequired(t *testing.T) {
+	t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -182,6 +186,8 @@ clusters:
 // including those that fetch several items, fails with CodeNetwork when its
 // service can't be reached.
 func TestServiceCommands_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	cases := []struct {
@@ -224,6 +230,8 @@ func TestServiceCommands_NetworkError(t *testing.T) {
 // TestServiceCommands_HTTPError verifies that each listed read command fails
 // with CodeHTTP when its service responds with HTTP 500.
 func TestServiceCommands_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -265,6 +273,8 @@ func TestServiceCommands_HTTPError(t *testing.T) {
 // TestCommands_RejectInvalidCACert verifies that each listed command fails with
 // CodePayload when --cacert names a file that doesn't exist.
 func TestCommands_RejectInvalidCACert(t *testing.T) {
+	t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -314,6 +324,8 @@ func TestCommands_RejectInvalidCACert(t *testing.T) {
 // TestCommands_MalformedPayload verifies that each listed command that accepts
 // -d fails with CodePayload for a payload that isn't valid JSON.
 func TestCommands_MalformedPayload(t *testing.T) {
+	t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -351,6 +363,8 @@ func TestCommands_MalformedPayload(t *testing.T) {
 // accepts -d together with extra positional arguments, succeeds, and logs a
 // warning that the extra arguments are ignored.
 func TestCommands_DataWithExtraArgs(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -389,6 +403,8 @@ func TestCommands_DataWithExtraArgs(t *testing.T) {
 // write command, including the multi-item ones, fails with CodeNetwork when its
 // service can't be reached.
 func TestWriteCommands_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	cases := [][]string{
@@ -429,6 +445,8 @@ func TestWriteCommands_NetworkError(t *testing.T) {
 // and get commands fail with CodeNetwork for every metadata and boot resource
 // type when the service can't be reached.
 func TestMetadataBootWrite_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	var cases [][]string
@@ -472,6 +490,8 @@ func TestMetadataBootWrite_NetworkError(t *testing.T) {
 // differ in kind (an HTTP error for one item, a dropped connection for
 // another) exits with CodeMixed.
 func TestBatchDelete_MixedFailures(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/x0c0s0b0n0"):
@@ -498,6 +518,8 @@ func TestBatchDelete_MixedFailures(t *testing.T) {
 // to CodeUsage. Nothing listens on the URI, so a request that was sent anyway
 // would fail with CodeNetwork instead.
 func TestCommands_RejectInvalidArguments(t *testing.T) {
+	t.Parallel()
+
 	cases := [][]string{
 		{"smd", "group", "member", "add", "", "x0c0s0b0n0"},
 		{"smd", "group", "member", "delete", "--no-confirm", "", "x0c0s0b0n0"},

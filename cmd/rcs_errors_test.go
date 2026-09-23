@@ -18,6 +18,7 @@ import (
 // TestRCSConsoleList_HTTPError verifies an unsuccessful HTTP response resolves
 // to CodeHTTP.
 func TestRCSConsoleList_HTTPError(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)

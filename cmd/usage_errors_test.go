@@ -18,6 +18,7 @@ import (
 
 // TestUsageError_UnknownFlag verifies that an unknown flag is a usage error.
 func TestUsageError_UnknownFlag(t *testing.T) {
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--definitely-not-a-flag")
 	if res.err == nil {
@@ -31,6 +32,7 @@ func TestUsageError_UnknownFlag(t *testing.T) {
 // TestUsageError_BadFlagValue verifies that an invalid value for a typed flag
 // (here, a non-integer for the int32 --nid) is a usage error.
 func TestUsageError_BadFlagValue(t *testing.T) {
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--nid", "not-a-number")
 	if res.err == nil {
@@ -44,6 +46,7 @@ func TestUsageError_BadFlagValue(t *testing.T) {
 // TestUsageError_TooManyArgs verifies that violating a command's Args validator
 // (cobra.NoArgs on "smd component get") is a usage error.
 func TestUsageError_TooManyArgs(t *testing.T) {
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "unexpected-arg")
 	if res.err == nil {
@@ -58,6 +61,7 @@ func TestUsageError_TooManyArgs(t *testing.T) {
 // cobra.ExactArgs (here, "smd group member get" requires exactly 1) is a usage
 // error.
 func TestUsageError_ExactArgs(t *testing.T) {
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "group", "member", "get")
 	if res.err == nil {
@@ -73,6 +77,8 @@ func TestUsageError_ExactArgs(t *testing.T) {
 // --unset, --add, or --remove), which builds the patch without reading a
 // payload.
 func TestUsageError_PatchFormatInputWithKeyValFlags(t *testing.T) {
+	t.Parallel()
+
 	for _, resource := range []string{"boot bmc", "boot config", "boot node", "metadata defaults", "metadata group", "metadata instance", "metadata peer"} {
 		args := append(strings.Fields(resource), "patch", "uid", "--set", "a=b", "-f", "yaml",
 			"--ignore-config", "--uri", "http://127.0.0.1:1", "--no-token")

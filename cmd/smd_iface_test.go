@@ -22,6 +22,8 @@ import (
 // TestSMDIfaceGet_Filters verifies the query builder emits the expected filter
 // query parameters.
 func TestSMDIfaceGet_Filters(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		args    []string
@@ -46,6 +48,8 @@ func TestSMDIfaceGet_Filters(t *testing.T) {
 			defer srv.Close()
 
 			args := append([]string{"smd", "--ignore-config", "iface", "get", "--uri", srv.URL, "--token", "t"}, tc.args...)
+
+			t.Parallel()
 			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -59,6 +63,8 @@ func TestSMDIfaceGet_Filters(t *testing.T) {
 
 // TestSMDIfaceGet_Formats verifies the output-format variants.
 func TestSMDIfaceGet_Formats(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[{"ComponentID":"x0c0s0b0n0","MACAddress":"de:ad:be:ef:00:00"}]`))
 	}))
@@ -76,6 +82,8 @@ func TestSMDIfaceGet_Formats(t *testing.T) {
 // TestSMDIfaceGet_ByID verifies "get --id" targets the by-ID endpoint. The
 // command validates the token, so a real JWT is supplied.
 func TestSMDIfaceGet_ByID(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -96,6 +104,8 @@ func TestSMDIfaceGet_ByID(t *testing.T) {
 // TestSMDIfaceGet_ByIDWithByIP verifies "get --id --by-ip" targets the IP-address
 // subpath.
 func TestSMDIfaceGet_ByIDWithByIP(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -115,6 +125,8 @@ func TestSMDIfaceGet_ByIDWithByIP(t *testing.T) {
 
 // TestSMDIfaceAdd_ByFlags verifies "add <comp> <mac> <net,ip>" issues a POST.
 func TestSMDIfaceAdd_ByFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -134,6 +146,8 @@ func TestSMDIfaceAdd_ByFlags(t *testing.T) {
 
 // TestSMDIfaceAdd_ByData verifies "add -d <payload>" issues a POST.
 func TestSMDIfaceAdd_ByData(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -154,6 +168,8 @@ func TestSMDIfaceAdd_ByData(t *testing.T) {
 // TestSMDIfaceDelete_ByIDs verifies "delete --no-confirm <id>..." issues a DELETE
 // per interface.
 func TestSMDIfaceDelete_ByIDs(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -176,6 +192,8 @@ func TestSMDIfaceDelete_ByIDs(t *testing.T) {
 // TestSMDIfaceDelete_AllConfirm verifies "delete --all" prompts and, on "y",
 // issues a single DELETE to the collection endpoint.
 func TestSMDIfaceDelete_AllConfirm(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -200,6 +218,8 @@ func TestSMDIfaceDelete_AllConfirm(t *testing.T) {
 
 // TestSMDIfaceDelete_ByData verifies IDs in a payload drive DELETE requests.
 func TestSMDIfaceDelete_ByData(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {

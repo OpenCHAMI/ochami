@@ -15,6 +15,8 @@ import (
 // TestPCSStatusList_InvalidPowerFilter verifies that an invalid --power-filter
 // value is a usage error, reported before any request is sent.
 func TestPCSStatusList_InvalidPowerFilter(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", "http://127.0.0.1:0",
 		"--token", "t", "--power-filter", "bogus")
 	if res.err == nil {
@@ -28,6 +30,8 @@ func TestPCSStatusList_InvalidPowerFilter(t *testing.T) {
 // TestPCSStatusList_HTTPError verifies an unsuccessful HTTP response resolves to
 // CodeHTTP.
 func TestPCSStatusList_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
 	}))
@@ -45,6 +49,8 @@ func TestPCSStatusList_HTTPError(t *testing.T) {
 // TestPCSServiceStatus_UnknownState verifies the "unable to get state" path when
 // neither readiness nor liveness reports ready.
 func TestPCSServiceStatus_UnknownState(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) // neither readiness nor liveness returns 204
 	}))
@@ -62,6 +68,8 @@ func TestPCSServiceStatus_UnknownState(t *testing.T) {
 // TestPCSServiceStatus_ReadinessHTTPError verifies a failing readiness request
 // resolves to CodeHTTP.
 func TestPCSServiceStatus_ReadinessHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -79,6 +87,8 @@ func TestPCSServiceStatus_ReadinessHTTPError(t *testing.T) {
 // TestPCSServiceStatus_HealthHTTPError verifies a failing health request (with a
 // flag provided) resolves to CodeHTTP.
 func TestPCSServiceStatus_HealthHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			http.Error(w, "boom", http.StatusInternalServerError)
@@ -101,6 +111,8 @@ func TestPCSServiceStatus_HealthHTTPError(t *testing.T) {
 // TestPCSStatusShow_Empty verifies that an empty status array resolves to
 // CodeGeneric (the "no status found" case).
 func TestPCSStatusShow_Empty(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":[]}`))
 	}))

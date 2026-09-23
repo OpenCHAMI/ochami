@@ -14,6 +14,8 @@ import (
 
 // TestPCSTransitionList_HTTPError verifies a failing list resolves to CodeHTTP.
 func TestPCSTransitionList_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -30,6 +32,8 @@ func TestPCSTransitionList_HTTPError(t *testing.T) {
 
 // TestPCSTransitionShow_HTTPError verifies a failing show resolves to CodeHTTP.
 func TestPCSTransitionShow_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -46,6 +50,8 @@ func TestPCSTransitionShow_HTTPError(t *testing.T) {
 
 // TestPCSTransitionAbort_HTTPError verifies a failing abort resolves to CodeHTTP.
 func TestPCSTransitionAbort_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -62,6 +68,8 @@ func TestPCSTransitionAbort_HTTPError(t *testing.T) {
 
 // TestPCSTransitionStart_HTTPError verifies a failing start resolves to CodeHTTP.
 func TestPCSTransitionStart_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
@@ -80,6 +88,8 @@ func TestPCSTransitionStart_HTTPError(t *testing.T) {
 // TestPCSTransitionStart_InvalidOp verifies that an invalid operation argument
 // is a usage error and no request is made.
 func TestPCSTransitionStart_InvalidOp(t *testing.T) {
+	t.Parallel()
+
 	requestMade := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestMade = true

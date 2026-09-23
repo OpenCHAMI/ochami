@@ -18,6 +18,7 @@ import (
 // TestBootList_HTTPError verifies that an unsuccessful HTTP response from the
 // boot service resolves to CodeHTTP for the "list" subcommands.
 func TestBootList_HTTPError(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
@@ -41,6 +42,7 @@ func TestBootList_HTTPError(t *testing.T) {
 // TestBootGet_HTTPError verifies that an unsuccessful HTTP response from a
 // "<type> get" resolves to CodeHTTP for each resource type.
 func TestBootGet_HTTPError(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -63,6 +65,7 @@ func TestBootGet_HTTPError(t *testing.T) {
 // TestBootConfigDelete_NoArgs verifies that "boot config delete" with no UID
 // arguments is a usage error (MinimumNArgs(1)).
 func TestBootConfigDelete_NoArgs(t *testing.T) {
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "boot", "config", "delete", "--uri", "http://127.0.0.1:0", "--no-confirm")
 	if res.err == nil {
@@ -76,6 +79,8 @@ func TestBootConfigDelete_NoArgs(t *testing.T) {
 // TestBootList_NetworkError verifies a closed port resolves to CodeNetwork for
 // each boot type's list.
 func TestBootList_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
@@ -94,6 +99,8 @@ func TestBootList_NetworkError(t *testing.T) {
 // TestBootSet_HTTPError verifies a failing set resolves to CodeHTTP across boot
 // types.
 func TestBootSet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +123,8 @@ func TestBootSet_HTTPError(t *testing.T) {
 // TestBootPatch_HTTPError verifies a failing patch resolves to CodeHTTP across
 // boot types.
 func TestBootPatch_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +147,8 @@ func TestBootPatch_HTTPError(t *testing.T) {
 // TestBootDelete_Abort verifies answering "n" aborts deletion without contacting
 // the server across boot types.
 func TestBootDelete_Abort(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			var deleted bool
@@ -164,6 +175,8 @@ func TestBootDelete_Abort(t *testing.T) {
 // TestBootAdd_MalformedPayload verifies malformed inline payload resolves to a
 // non-success exit code across boot types.
 func TestBootAdd_MalformedPayload(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -186,6 +199,8 @@ func TestBootAdd_MalformedPayload(t *testing.T) {
 // TestBootAdd_MultiItemAggregate verifies a multi-item add against a failing
 // server aggregates per-item errors into CodeHTTP.
 func TestBootAdd_MultiItemAggregate(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -209,6 +224,8 @@ func TestBootAdd_MultiItemAggregate(t *testing.T) {
 // TestBootDelete_HTTPError verifies a failing delete resolves to CodeHTTP
 // across boot types (per-item aggregation).
 func TestBootDelete_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

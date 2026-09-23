@@ -19,6 +19,8 @@ import (
 
 // TestPCSStatusList_Success verifies "pcs status list" issues GET /power-status.
 func TestPCSStatusList_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -41,6 +43,8 @@ func TestPCSStatusList_Success(t *testing.T) {
 // TestPCSStatusList_WithFilters verifies xname and power/mgmt filters are encoded
 // in the query string.
 func TestPCSStatusList_WithFilters(t *testing.T) {
+	t.Parallel()
+
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
@@ -63,6 +67,8 @@ func TestPCSStatusList_WithFilters(t *testing.T) {
 // TestPCSServiceStatus_Success verifies "pcs service status" contacts PCS readiness and
 // exits successfully when PCS reports ready (HTTP 204 on /readiness).
 func TestPCSServiceStatus_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -85,6 +91,8 @@ func TestPCSServiceStatus_Success(t *testing.T) {
 // TestPCSServiceStatus_Health verifies that passing a health flag causes
 // "pcs service status" to query the /health endpoint.
 func TestPCSServiceStatus_Health(t *testing.T) {
+	t.Parallel()
+
 	var sawHealth bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -111,6 +119,8 @@ func TestPCSServiceStatus_Health(t *testing.T) {
 // TestPCSServiceStatus_LivenessFallback verifies that "pcs service status"
 // succeeds when PCS isn't ready but its liveness endpoint reports it alive.
 func TestPCSServiceStatus_LivenessFallback(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/readiness":
@@ -132,6 +142,7 @@ func TestPCSServiceStatus_LivenessFallback(t *testing.T) {
 // TestPCSStatusShow_Success verifies "pcs status show <xname>" issues GET /power-status
 // and prints the first status entry.
 func TestPCSStatusShow_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

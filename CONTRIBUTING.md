@@ -196,6 +196,15 @@ if got := cli.ExitCode(err); got != cli.CodeNetwork {
 }
 ```
 
+### Command tests
+
+Commands read and write through the invocation runtime's streams
+(`rt.Ios.In()`, `rt.Ios.Out()`, `cli.WriteOutput`), never `os.Stdin` or
+`os.Stdout` directly. Command tests run a real command tree against an
+isolated `cli.NewTestRuntime` through the helpers in `cmd/testhelpers_test.go`
+(`runOchamiWithRuntime` and friends), and call `t.Parallel()` unless they use
+`t.Setenv`, which can't be combined with it.
+
 ## Submitting Pull Requests
 
 ### Container Builds on PRs

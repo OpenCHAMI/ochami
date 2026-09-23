@@ -16,6 +16,8 @@ import (
 // TestCloudInitGroupGet_HTTPError verifies an unsuccessful HTTP response on the
 // all-groups fetch resolves to CodeHTTP.
 func TestCloudInitGroupGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := ciGroupServer(t, nil, http.StatusInternalServerError)
 	defer srv.Close()
 
@@ -33,6 +35,8 @@ func TestCloudInitGroupGet_HTTPError(t *testing.T) {
 // per-group fetch (args form) resolves to CodeHTTP via the per-item error
 // aggregation ("completed with errors").
 func TestCloudInitGroupGet_ByIDHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := ciGroupServer(t, nil, http.StatusNotFound)
 	defer srv.Close()
 
@@ -49,6 +53,8 @@ func TestCloudInitGroupGet_ByIDHTTPError(t *testing.T) {
 // TestCloudInitGroupGet_NetworkError verifies pointing at a closed port resolves
 // to CodeNetwork.
 func TestCloudInitGroupGet_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", "raw",
@@ -64,6 +70,8 @@ func TestCloudInitGroupGet_NetworkError(t *testing.T) {
 // TestCloudInitGroupAdd_MalformedPayload verifies malformed inline payload data
 // resolves to CodePayload.
 func TestCloudInitGroupAdd_MalformedPayload(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	}))
@@ -82,6 +90,8 @@ func TestCloudInitGroupAdd_MalformedPayload(t *testing.T) {
 // TestCloudInitGroupAdd_HTTPError verifies a failing POST resolves to CodeHTTP
 // via the per-item aggregation.
 func TestCloudInitGroupAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
@@ -99,6 +109,8 @@ func TestCloudInitGroupAdd_HTTPError(t *testing.T) {
 
 // TestCloudInitGroupSet_HTTPError verifies a failing PUT resolves to CodeHTTP.
 func TestCloudInitGroupSet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
@@ -116,6 +128,8 @@ func TestCloudInitGroupSet_HTTPError(t *testing.T) {
 
 // TestCloudInitGroupDelete_Abort verifies answering "n" aborts without a request.
 func TestCloudInitGroupDelete_Abort(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -138,6 +152,8 @@ func TestCloudInitGroupDelete_Abort(t *testing.T) {
 // TestCloudInitGroupDelete_NoArgsUsage verifies delete with neither -d nor args
 // is a usage error.
 func TestCloudInitGroupDelete_NoArgsUsage(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "delete",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm")
 	if res.err == nil {
@@ -151,6 +167,8 @@ func TestCloudInitGroupDelete_NoArgsUsage(t *testing.T) {
 // TestCloudInitGroupDelete_HTTPError verifies a failing DELETE resolves to
 // CodeHTTP via the per-item aggregation.
 func TestCloudInitGroupDelete_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusInternalServerError)
 	}))
@@ -169,6 +187,8 @@ func TestCloudInitGroupDelete_HTTPError(t *testing.T) {
 // TestCloudInitGroupRender_HTTPError verifies an unsuccessful HTTP response on
 // the group-config fetch resolves to CodeHTTP.
 func TestCloudInitGroupRender_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusInternalServerError)
 	}))
@@ -188,6 +208,8 @@ func TestCloudInitGroupRender_HTTPError(t *testing.T) {
 // response on the node meta-data fetch (after a successful config fetch)
 // resolves to CodeHTTP.
 func TestCloudInitGroupRender_MetadataHTTPError(t *testing.T) {
+	t.Parallel()
+
 	tmpl := "## template: jinja\n#cloud-config\nhostname: {{ ds.meta_data.hostname }}\n"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -212,6 +234,8 @@ func TestCloudInitGroupRender_MetadataHTTPError(t *testing.T) {
 // TestCloudInitGroupGet_ByIDNetworkError verifies that "cloud-init group get
 // raw <name>" fails with CodeNetwork when the service can't be reached.
 func TestCloudInitGroupGet_ByIDNetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", "raw",
@@ -227,6 +251,8 @@ func TestCloudInitGroupGet_ByIDNetworkError(t *testing.T) {
 // TestCloudInitGroupRender_MalformedExtraVars verifies malformed --extra-vars is
 // a payload error.
 func TestCloudInitGroupRender_MalformedExtraVars(t *testing.T) {
+	t.Parallel()
+
 	tmpl := "## template: jinja\n#cloud-config\nx: {{ ds.meta_data.hostname }}\n"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
