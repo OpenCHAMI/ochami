@@ -20,6 +20,19 @@ GO_TOOLCHAIN_VERSION ?= $(shell awk '/^go / {print $$2; exit}' go.mod)
 # Allow override for PR builds in goreleaser
 IS_PR_BUILD ?= false
 
+# Number of tests to run in parallel, passed to `go test -parallel`. Leave
+# unset (the default) to omit the flag and let `go test` use its own default
+# (GOMAXPROCS). Example: make test PARALLEL=4
+PARALLEL ?=
+# Run tests with Go's data race detector. Set to 0/false/no to disable it for
+# a faster local iteration loop; it stays on by default so CI (and anyone
+# running the default targets) catches data races before they're merged.
+RACE ?= 1
+
+GOTEST_RACE     := $(if $(filter-out 0 false no,$(RACE)),-race)
+GOTEST_PARALLEL := $(if $(PARALLEL),-parallel $(PARALLEL))
+GOTESTFLAGS     := $(GOTEST_RACE) $(GOTEST_PARALLEL)
+
 INSTALL_PROGRAM ?= $(INSTALL) -Dm755
 INSTALL_DATA    ?= $(INSTALL) -Dm644
 
@@ -170,14 +183,14 @@ mod: ## Download and prune Go modules
 test: unit-test ## Run all tests
 
 .PHONY: unit-test
-unit-test: ## Run unit tests only
+unit-test: ## Run unit tests only (accepts PARALLEL=<n>, RACE=0 to disable the race detector)
 	$(call require-command-shell,$(GO),go)
-	$(GO) test -cover -v ./...
+	$(GO) test -cover -v $(GOTESTFLAGS) ./...
 
 .PHONY: coverage
-coverage: ## Run unit tests and generate a coverage profile
+coverage: ## Run unit tests and generate a coverage profile (accepts PARALLEL=<n>, RACE=0 to disable the race detector)
 	$(call require-command-shell,$(GO),go)
-	$(GO) test -covermode=atomic -coverprofile=coverage.out -coverpkg=./... ./...
+	$(GO) test -covermode=atomic -coverprofile=coverage.out -coverpkg=./... $(GOTESTFLAGS) ./...
 	$(GO) tool cover -func=coverage.out
 
 .PHONY: clean
