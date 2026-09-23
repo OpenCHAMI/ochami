@@ -52,7 +52,7 @@ clusters:
 		{name: "unknown cluster key", args: []string{"--config", cfg, "config", "cluster", "show", "alpha", "cluster.missing"}},
 		{name: "set rejects cluster key", args: []string{"--config", cfg, "config", "set", "clusters.0.name", "changed"}, wantCode: cli.CodeUsage, wantError: "config cluster set"},
 		{name: "unset rejects cluster key", args: []string{"--config", cfg, "config", "unset", "clusters.0.name"}, wantCode: cli.CodeUsage, wantError: "config cluster delete"},
-		{name: "delete missing cluster", args: []string{"--config", cfg, "config", "cluster", "delete", "missing"}, wantCode: cli.CodeConfig, wantError: "cluster missing not found"},
+		{name: "delete missing cluster", args: []string{"--config", cfg, "config", "cluster", "delete", "missing"}, wantCode: cli.CodeConfig, wantError: "cluster 'missing' doesn't exist"},
 	}
 
 	for _, tc := range tests {
