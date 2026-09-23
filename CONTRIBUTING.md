@@ -49,6 +49,15 @@ Run tests:
 make test
 ```
 
+Tests run with Go's data race detector by default. Control test parallelism
+with `PARALLEL=<n>` (omit to use Go's own default), or disable the race
+detector for a faster local iteration loop with `RACE=0`:
+
+```bash
+make test PARALLEL=4
+make test RACE=0
+```
+
 Run linting:
 
 ```bash
