@@ -22,6 +22,8 @@ import (
 // TestCloudInitGroupGet_Success verifies "cloud-init group get raw" issues GET
 // /admin/groups.
 func TestCloudInitGroupGet_Success(t *testing.T) {
+	t.Parallel()
+
 	// TODO: Enable t.Parallel() once race conditions are resolved
 	// t.Parallel()
 
@@ -44,6 +46,8 @@ func TestCloudInitGroupGet_Success(t *testing.T) {
 // TestCloudInitGroupAdd_Success verifies "cloud-init group add -d <payload>" issues
 // POST /admin/groups.
 func TestCloudInitGroupAdd_Success(t *testing.T) {
+	t.Parallel()
+
 	// TODO: Enable t.Parallel() once race conditions are resolved
 	// t.Parallel()
 
@@ -67,6 +71,8 @@ func TestCloudInitGroupAdd_Success(t *testing.T) {
 // TestCloudInitGroupSet_Success verifies "cloud-init group set -d <payload>" issues
 // PUT /admin/groups/<name>.
 func TestCloudInitGroupSet_Success(t *testing.T) {
+	t.Parallel()
+
 	// TODO: Enable t.Parallel() once race conditions are resolved
 	// t.Parallel()
 
@@ -90,6 +96,8 @@ func TestCloudInitGroupSet_Success(t *testing.T) {
 // TestCloudInitGroupDelete_NoConfirm verifies "cloud-init group delete
 // --no-confirm <name>" issues DELETE under /admin/groups.
 func TestCloudInitGroupDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
 	// TODO: Enable t.Parallel() once race conditions are resolved
 	// t.Parallel()
 
@@ -113,6 +121,8 @@ func TestCloudInitGroupDelete_NoConfirm(t *testing.T) {
 // TestCloudInitNodeSet_Success verifies "cloud-init node set -d <payload>" issues a PUT
 // under /admin/instance-info.
 func TestCloudInitNodeSet_Success(t *testing.T) {
+	t.Parallel()
+
 	// TODO: Enable t.Parallel() once race conditions are resolved
 	// t.Parallel()
 
@@ -136,6 +146,8 @@ func TestCloudInitNodeSet_Success(t *testing.T) {
 // TestCloudInitDefaultsSet verifies "cloud-init defaults set -d <payload>"
 // issues POST /admin/cluster-defaults.
 func TestCloudInitDefaultsSet(t *testing.T) {
+	t.Parallel()
+
 	// TODO: Enable t.Parallel() once race conditions are resolved
 	// t.Parallel()
 
@@ -161,6 +173,8 @@ func TestCloudInitDefaultsSet(t *testing.T) {
 // server returns an empty body for the group config fetch, so the command logs
 // a warning and returns without error.
 func TestCloudInitGroupRender_EmptyConfig(t *testing.T) {
+	t.Parallel()
+
 	// TODO: Enable t.Parallel() once race conditions are resolved
 	// t.Parallel()
 
@@ -200,6 +214,8 @@ func TestCloudInitGroupGet_RemainingPaths(t *testing.T) {
 // TestCloudInitServiceStatus_API verifies --api prints the returned OpenAPI
 // document through the command's injected output stream.
 func TestCloudInitServiceStatus_API(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"openapi":"3.0.0"}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
@@ -214,6 +230,8 @@ func TestCloudInitServiceStatus_API(t *testing.T) {
 	}
 }
 func TestCloudInitServiceVersion_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -231,6 +249,8 @@ func TestCloudInitServiceVersion_HTTPError(t *testing.T) {
 // TestCloudInitServiceStatus_Success verifies "cloud-init service status" reports
 // success against a healthy server.
 func TestCloudInitServiceStatus_Success(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -248,6 +268,8 @@ func TestCloudInitServiceStatus_Success(t *testing.T) {
 // TestCloudInitServiceStatus_HTTPError verifies a responding but unhealthy
 // service is distinguished from a network failure.
 func TestCloudInitServiceStatus_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -268,6 +290,8 @@ func TestCloudInitServiceStatus_HTTPError(t *testing.T) {
 // TestCloudInitServiceStatus_QuietHTTPError verifies quiet mode suppresses the
 // human-readable status while preserving the exit code.
 func TestCloudInitServiceStatus_QuietHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -282,6 +306,8 @@ func TestCloudInitServiceStatus_QuietHTTPError(t *testing.T) {
 	}
 }
 func TestCloudInitServiceStatus_APIError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -293,5 +319,25 @@ func TestCloudInitServiceStatus_APIError(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeHTTP {
 		t.Errorf("exit code = %d, want %d (CodeHTTP)", res.exitCode, cli.CodeHTTP)
+	}
+}
+
+func TestCloudInitServiceVersion_Success(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"version":"1.0"}`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "service", "version", "--uri", srv.URL)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/version" {
+		t.Errorf("path = %q, want /version", gotPath)
 	}
 }

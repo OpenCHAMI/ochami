@@ -79,6 +79,8 @@ func TestSMDComponentAdd_BadPayload(t *testing.T) {
 // TestSMDComponentAdd_MissingArgs verifies that invoking add without -d and
 // without the required positional arguments is a usage error (CodeUsage).
 func TestSMDComponentAdd_MissingArgs(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "smd", "component", "add", "--ignore-config", "--uri", "http://127.0.0.1:0")
 
 	if res.err == nil {

@@ -19,6 +19,8 @@ import (
 
 // TestPCSStatusList_Success verifies "pcs status list" issues GET /power-status.
 func TestPCSStatusList_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -41,6 +43,8 @@ func TestPCSStatusList_Success(t *testing.T) {
 // TestPCSStatusList_WithFilters verifies xname and power/mgmt filters are encoded
 // in the query string.
 func TestPCSStatusList_WithFilters(t *testing.T) {
+	t.Parallel()
+
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
@@ -61,6 +65,8 @@ func TestPCSStatusList_WithFilters(t *testing.T) {
 // TestPCSStatusList_InvalidPowerFilter verifies an invalid --power-filter value
 // is a usage error handled before any request.
 func TestPCSStatusList_InvalidPowerFilter(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "pcs", "status", "list", "--ignore-config", "--uri", "http://127.0.0.1:0",
 		"--token", "t", "--power-filter", "bogus")
 	if res.err == nil {
@@ -74,6 +80,8 @@ func TestPCSStatusList_InvalidPowerFilter(t *testing.T) {
 // TestPCSStatusList_HTTPError verifies an unsuccessful HTTP response resolves to
 // CodeHTTP.
 func TestPCSStatusList_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
 	}))
@@ -91,6 +99,8 @@ func TestPCSStatusList_HTTPError(t *testing.T) {
 // TestPCSServiceStatus_Success verifies "pcs service status" contacts PCS readiness and
 // exits successfully when PCS reports ready (HTTP 204 on /readiness).
 func TestPCSServiceStatus_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -113,6 +123,8 @@ func TestPCSServiceStatus_Success(t *testing.T) {
 // TestPCSServiceStatus_Health verifies that passing a health flag causes
 // "pcs service status" to query the /health endpoint.
 func TestPCSServiceStatus_Health(t *testing.T) {
+	t.Parallel()
+
 	var sawHealth bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {

@@ -18,14 +18,14 @@ import (
 
 // TestPCSTransitionList_Formats verifies list output-format variants.
 func TestPCSTransitionList_Formats(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"transitions":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		// TODO: Enable t.Parallel() once race conditions are resolved
-		// t.Parallel()
 		res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "list", "--uri", srv.URL, "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
@@ -40,8 +40,7 @@ func TestPCSTransitionList_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "list", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -58,8 +57,7 @@ func TestPCSTransitionShow_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "show", "--uri", srv.URL, "abcd-1234")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -76,8 +74,7 @@ func TestPCSTransitionAbort_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "abort", "--uri", srv.URL, "abcd-1234")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -94,8 +91,7 @@ func TestPCSTransitionStart_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "start", "--uri", srv.URL,
 		"--xname", "x0c0s0b0n0", "on")
 	if res.err == nil {
@@ -109,8 +105,8 @@ func TestPCSTransitionStart_HTTPError(t *testing.T) {
 // TestPCSTransitionStart_MissingXname verifies "start <op>" without the required
 // --xname flag fails (non-success exit).
 func TestPCSTransitionStart_MissingXname(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "start", "--uri", "http://127.0.0.1:1", "on")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

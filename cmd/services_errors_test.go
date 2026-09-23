@@ -19,9 +19,9 @@ import (
 
 // TestPCSStatusShow_Empty verifies that an empty status array resolves to
 // CodeGeneric (the "no status found" case).
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestPCSStatusShow_Empty(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"status":[]}`)) //nolint:errcheck // test response writes are observed by the client
 	}))
@@ -39,9 +39,9 @@ func TestPCSStatusShow_Empty(t *testing.T) {
 
 // TestPCSTransitionStart_InvalidOp verifies that an invalid operation argument
 // is a usage error and no request is made.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestPCSTransitionStart_InvalidOp(t *testing.T) {
+	t.Parallel()
+
 	requestMade := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestMade = true
@@ -66,9 +66,9 @@ func TestPCSTransitionStart_InvalidOp(t *testing.T) {
 // TestCloudInitServiceStatus_NotRunning verifies that when the service is
 // unreachable, "cloud-init service status" reports not running and resolves to
 // a non-zero exit code.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestCloudInitServiceStatus_NotRunning(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
 	srv.Close() // connection refused
@@ -90,9 +90,9 @@ func TestCloudInitServiceStatus_NotRunning(t *testing.T) {
 // from the metadata service resolves to a non-success exit code. The metadata
 // client wraps an upstream library, so we assert exit-code behavior rather than
 // the exact request path.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestMetadataGroupList_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 	}))

@@ -21,6 +21,8 @@ import (
 // TestRCSConsoleList_Success verifies "rcs console list" issues GET /consoles and prints
 // the returned console list.
 func TestRCSConsoleList_Success(t *testing.T) {
+	t.Parallel()
+
 	// TODO: Enable t.Parallel() once race conditions are resolved
 	// t.Parallel()
 
@@ -47,6 +49,8 @@ func TestRCSConsoleList_Success(t *testing.T) {
 // websocket at /consoles/<node>, streams server output to stdout, and returns
 // nil on a normal websocket close.
 func TestRCSConsoleShow_Success(t *testing.T) {
+	t.Parallel()
+
 	// TODO: Enable t.Parallel() once race conditions are resolved
 	// t.Parallel()
 
@@ -86,6 +90,8 @@ func TestRCSConsoleShow_Success(t *testing.T) {
 // TestRCSConsole_Connect verifies that a normal websocket close during an
 // interactive console session is treated as a clean exit, not an error.
 func TestRCSConsole_Connect(t *testing.T) {
+	t.Parallel()
+
 	upgrader := websocket.Upgrader{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -107,5 +113,25 @@ func TestRCSConsole_Connect(t *testing.T) {
 		"--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+}
+
+func TestRCSServiceStatus(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok"}`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "rcs", "service", "status", "--token", "t", "--uri", srv.URL)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/health" {
+		t.Errorf("path = %q, want /health", gotPath)
 	}
 }

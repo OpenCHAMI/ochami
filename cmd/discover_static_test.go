@@ -94,6 +94,8 @@ func smdOverwriteServer(t *testing.T, rec *smdOverwriteRecorder) *httptest.Serve
 // server that returns 409 on POST, the command falls back to PUT (redfish) and
 // PATCH (group), exercising the 409-fallback loops.
 func TestDiscoverStatic_OverwriteFallback(t *testing.T) {
+	t.Parallel()
+
 	rec := &smdOverwriteRecorder{}
 	srv := smdOverwriteServer(t, rec)
 	defer srv.Close()
@@ -116,6 +118,8 @@ func TestDiscoverStatic_OverwriteFallback(t *testing.T) {
 // TestDiscoverStatic_V1Overwrite verifies the discovery-version v1 path with
 // --overwrite exercises the ethernet-interface POST->409->PATCH fallback loop.
 func TestDiscoverStatic_V1Overwrite(t *testing.T) {
+	t.Parallel()
+
 	rec := &smdOverwriteRecorder{}
 	srv := smdOverwriteServer(t, rec)
 	defer srv.Close()
@@ -136,6 +140,8 @@ func TestDiscoverStatic_V1Overwrite(t *testing.T) {
 // TestDiscoverStatic_V1 verifies the discovery-version v1 path (non-overwrite)
 // POSTs ethernet interfaces.
 func TestDiscoverStatic_V1(t *testing.T) {
+	t.Parallel()
+
 	var sawIfacePost bool
 	var mu sync.Mutex
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -166,6 +172,8 @@ func TestDiscoverStatic_V1(t *testing.T) {
 // TestDiscoverStatic_Stdin verifies the command reads the discovery payload from
 // stdin when -d is not passed.
 func TestDiscoverStatic_Stdin(t *testing.T) {
+	t.Parallel()
+
 	var sawPost bool
 	var mu sync.Mutex
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -192,9 +200,11 @@ func TestDiscoverStatic_Stdin(t *testing.T) {
 	}
 }
 
-// TestDiscoverStaticDeprecatedFormat verifies the deprecated discovery format
+// TestDiscoverStatic_DeprecatedFormatE2E verifies the deprecated discovery format
 // (detected via the bmc_mac node key) is accepted and populates SMD.
-func TestDiscoverStaticDeprecatedFormat(t *testing.T) {
+func TestDiscoverStatic_DeprecatedFormatE2E(t *testing.T) {
+	t.Parallel()
+
 	const deprecatedPayload = `{
   "nodes": [
     {
@@ -239,6 +249,8 @@ func TestDiscoverStaticDeprecatedFormat(t *testing.T) {
 // TestDiscoverStatic_MalformedPayload verifies malformed inline payload resolves
 // to CodePayload.
 func TestDiscoverStatic_MalformedPayload(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "discover", "static", "-d", `not json`,
 		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t")
 	if res.err == nil {
@@ -252,6 +264,8 @@ func TestDiscoverStatic_MalformedPayload(t *testing.T) {
 // TestDiscoverStatic_NoConfig verifies that without a resolvable base URI the
 // command fails with CodeConfig.
 func TestDiscoverStatic_NoConfig(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload, "--ignore-config", "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected a config error, got nil")
@@ -264,6 +278,8 @@ func TestDiscoverStatic_NoConfig(t *testing.T) {
 // TestDiscoverStatic_OverwriteHTTPError verifies that with --overwrite, a
 // non-409 HTTP error on the redfish POST resolves to the CodeHTTP aggregate.
 func TestDiscoverStatic_OverwriteHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "RedfishEndpoints") && r.Method == http.MethodPost {
@@ -289,6 +305,8 @@ func TestDiscoverStatic_OverwriteHTTPError(t *testing.T) {
 // redfish POST returns 409 but the fallback PUT also fails, the command reports
 // the CodeHTTP aggregate.
 func TestDiscoverStatic_OverwritePutFails(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "RedfishEndpoints") {
@@ -320,6 +338,8 @@ func TestDiscoverStatic_OverwritePutFails(t *testing.T) {
 // discovery-version v1, when the ethernet-interface POST returns 409 but the
 // fallback PATCH also fails, the command reports the CodeHTTP aggregate.
 func TestDiscoverStatic_V1OverwritePatchFails(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "EthernetInterfaces") {
@@ -351,6 +371,8 @@ func TestDiscoverStatic_V1OverwritePatchFails(t *testing.T) {
 // when the group POST returns 409 but the fallback PATCH also fails, the
 // command reports the CodeHTTP aggregate.
 func TestDiscoverStatic_OverwriteGroupPatchFails(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "groups") {
@@ -380,6 +402,8 @@ func TestDiscoverStatic_OverwriteGroupPatchFails(t *testing.T) {
 // TestDiscoverStatic_ComponentHTTPError verifies that a failing component POST
 // (non-overwrite) surfaces the CodeHTTP aggregate.
 func TestDiscoverStatic_ComponentHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "State/Components") {
@@ -404,6 +428,8 @@ func TestDiscoverStatic_ComponentHTTPError(t *testing.T) {
 // TestDiscoverStatic_OverwriteComponentError verifies that with --overwrite, a
 // failing component PUT surfaces the CodeHTTP aggregate.
 func TestDiscoverStatic_OverwriteComponentError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "State/Components") {
@@ -428,6 +454,8 @@ func TestDiscoverStatic_OverwriteComponentError(t *testing.T) {
 // TestDiscoverStatic_V1IfaceError verifies the discovery-version v1 non-overwrite
 // path surfaces an ethernet-interface POST error as the CodeHTTP aggregate.
 func TestDiscoverStatic_V1IfaceError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "EthernetInterfaces") {
@@ -452,6 +480,8 @@ func TestDiscoverStatic_V1IfaceError(t *testing.T) {
 // TestDiscoverStatic_GroupError verifies a failing group POST (non-overwrite)
 // surfaces the CodeHTTP aggregate.
 func TestDiscoverStatic_GroupError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "groups") {
@@ -477,6 +507,8 @@ func TestDiscoverStatic_GroupError(t *testing.T) {
 // server) surfaces as an aggregate error, exercising the non-HTTP ("failed to
 // add ... to SMD") error-message arms across all sections.
 func TestDiscoverStatic_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
 	srv.Close()
@@ -494,6 +526,8 @@ func TestDiscoverStatic_NetworkError(t *testing.T) {
 // TestDiscoverStatic_V1NetworkError does the same for the discovery-version v1
 // path so the ethernet-interface non-HTTP error arm is exercised.
 func TestDiscoverStatic_V1NetworkError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
 	srv.Close()
@@ -511,6 +545,8 @@ func TestDiscoverStatic_V1NetworkError(t *testing.T) {
 // TestDiscoverStatic_OverwriteNetworkError exercises the overwrite path against a
 // closed server so the function-level error arms in the overwrite loops fire.
 func TestDiscoverStatic_OverwriteNetworkError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	url := srv.URL
 	srv.Close()

@@ -33,9 +33,9 @@ func okJSONServer(t *testing.T) *httptest.Server {
 
 // TestMetadataList_Success verifies that "<type> list" exits successfully for
 // each metadata resource type.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestMetadataList_Success(t *testing.T) {
+	t.Parallel()
+
 	srv := okJSONServer(t)
 	defer srv.Close()
 
@@ -54,9 +54,9 @@ func TestMetadataList_Success(t *testing.T) {
 
 // TestMetadataGet_Success verifies that "<type> get <uid>" exits successfully for
 // each metadata resource type.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestMetadataGet_Success(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
@@ -80,6 +80,8 @@ func TestMetadataGet_Success(t *testing.T) {
 // --remove on "metadata <resource> patch" produce an RFC 6902 JSON Patch
 // request instead of being silently dropped.
 func TestMetadataPatch_PathsAndArrayOperations(t *testing.T) {
+	t.Parallel()
+
 	for _, resource := range []string{"defaults", "group", "instance", "peer"} {
 		t.Run(resource, func(t *testing.T) {
 			var gotContentType, gotBody string
@@ -553,5 +555,27 @@ func TestMetadataSet_NilResource(t *testing.T) {
 			// acceptable depending on how the upstream client decodes null.
 			_ = res
 		})
+	}
+}
+
+// TestMetadataServiceStatus_Success verifies "metadata service status" issues GET
+// /health.
+func TestMetadataServiceStatus_Success(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "service", "status", "--uri", srv.URL)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/health" {
+		t.Errorf("path = %q, want /health", gotPath)
 	}
 }

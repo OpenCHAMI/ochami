@@ -32,6 +32,8 @@ func bootAddPayload(typ string) string {
 }
 
 func TestBootAdd_Success(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +57,8 @@ func TestBootAdd_Success(t *testing.T) {
 }
 
 func TestBootAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +80,8 @@ func TestBootAdd_HTTPError(t *testing.T) {
 }
 
 func TestBootSet_Success(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +104,8 @@ func TestBootSet_Success(t *testing.T) {
 }
 
 func TestBootPatch_Success(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -21,8 +21,8 @@ import (
 
 // TestSMDGroupGet_Success verifies "smd group get" issues GET /groups.
 func TestSMDGroupGet_Success(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -42,8 +42,8 @@ func TestSMDGroupGet_Success(t *testing.T) {
 
 // TestSMDGroupAdd_ViaFlags verifies "smd group add <label>" issues POST /groups.
 func TestSMDGroupAdd_ViaFlags(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,8 +65,8 @@ func TestSMDGroupAdd_ViaFlags(t *testing.T) {
 // TestSMDGroupDelete_NoConfirm verifies "smd group delete --no-confirm <label>"
 // issues DELETE /groups/<label>.
 func TestSMDGroupDelete_NoConfirm(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -88,8 +88,8 @@ func TestSMDGroupDelete_NoConfirm(t *testing.T) {
 // TestSMDGroupMembership_Get verifies "smd group membership" issues GET
 // /memberships.
 func TestSMDGroupMembership_Get(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -112,8 +112,8 @@ func TestSMDGroupMembership_Get(t *testing.T) {
 // TestSMDGroupMemberGet_Success verifies "smd group member get <label>" issues GET
 // /groups/<label>/members.
 func TestSMDGroupMemberGet_Success(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -134,8 +134,8 @@ func TestSMDGroupMemberGet_Success(t *testing.T) {
 // TestSMDGroupMemberSet_Success verifies "smd group member set <label> <comp>..." issues
 // PUT /groups/<label>/members.
 func TestSMDGroupMemberSet_Success(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -159,8 +159,8 @@ func TestSMDGroupMemberSet_Success(t *testing.T) {
 // TestSMDIfaceGet_Success verifies "smd iface get" issues GET
 // /Inventory/EthernetInterfaces.
 func TestSMDIfaceGet_Success(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -316,5 +316,27 @@ func TestSMDServiceStatus(t *testing.T) {
 	}
 	if !strings.HasPrefix(gotPath, "/service") {
 		t.Errorf("path = %q, want a /service path", gotPath)
+	}
+}
+
+// TestSMDDeprecatedStatus_Success verifies the deprecated "smd status" issues GET
+// /service/ready.
+func TestSMDDeprecatedStatus_Success(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "status", "--uri", srv.URL)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/service/ready" {
+		t.Errorf("path = %q, want /service/ready", gotPath)
 	}
 }

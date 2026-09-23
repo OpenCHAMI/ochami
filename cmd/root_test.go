@@ -6,9 +6,12 @@ package cmd
 
 // root_test.go exercises handleExecuteError, the testable core of Execute that
 // resolves an error to a process exit code and emits the help hint, without
-// terminating the test binary via os.Exit.
+// terminating the test binary via os.Exit, plus general root-command-tree
+// dispatch behavior such as every metacommand printing usage when invoked
+// with no further subcommand.
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -133,5 +136,44 @@ func TestNoDuplicateFlags(t *testing.T) {
 	// Check all top-level commands (children of root) with root's persistent flags
 	for _, subCmd := range rootCmd.Commands() {
 		checkCommand(subCmd, rootPersistent)
+	}
+}
+
+// TestMetacommandPathsPrintUsage verifies every metacommand in the tree prints
+// its usage when invoked with no further subcommand or arguments.
+func TestMetacommandPathsPrintUsage(t *testing.T) {
+	t.Parallel()
+
+	paths := [][]string{
+		{},
+		{"boot"}, {"boot", "bmc"}, {"boot", "config"}, {"boot", "node"}, {"boot", "service"},
+		{"bss"}, {"bss", "boot"}, {"bss", "boot", "image"}, {"bss", "boot", "params"},
+		{"bss", "boot", "script"}, {"bss", "hosts"}, {"bss", "service"},
+		{"cloud-init"}, {"cloud-init", "defaults"}, {"cloud-init", "group"}, {"cloud-init", "group", "get"}, {"cloud-init", "node"}, {"cloud-init", "node", "get"}, {"cloud-init", "service"},
+		{"config"}, {"config", "cluster"}, {"discover"},
+		{"metadata"}, {"metadata", "defaults"}, {"metadata", "group"}, {"metadata", "instance"}, {"metadata", "peer"}, {"metadata", "service"},
+		{"pcs"}, {"pcs", "service"}, {"pcs", "status"}, {"pcs", "transition"},
+		{"rcs"}, {"rcs", "console"}, {"rcs", "service"},
+		{"smd"}, {"smd", "compep"}, {"smd", "component"}, {"smd", "group"}, {"smd", "group", "member"},
+		{"smd", "iface"}, {"smd", "rfe"}, {"smd", "service"},
+	}
+
+	for _, path := range paths {
+		name := "root"
+		if len(path) > 0 {
+			name = strings.Join(path, " ")
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			args := append([]string{"--ignore-config"}, path...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v", res.err)
+			}
+			if !strings.Contains(res.stdout, "Usage:") {
+				t.Errorf("stdout = %q, want usage", res.stdout)
+			}
+		})
 	}
 }

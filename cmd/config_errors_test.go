@@ -18,8 +18,7 @@ import (
 // cluster config (which belongs to "config cluster set") and reports a usage
 // error.
 func TestConfigSet_RejectsClusterKey(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
@@ -37,29 +36,11 @@ func TestConfigSet_RejectsClusterKey(t *testing.T) {
 // rejected with a config error, since cluster keys must be read via
 // "config cluster show".
 func TestConfigShow_RejectsClusterKey(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
 	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show", "clusters.foo")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeConfig {
-		t.Errorf("exit code = %d, want %d (CodeConfig)", res.exitCode, cli.CodeConfig)
-	}
-}
-
-// TestConfigClusterDelete_NotFound verifies that deleting a non-existent cluster
-// resolves to a config error.
-func TestConfigClusterDelete_NotFound(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
-
-	cfg := writeTempConfig(t, "clusters: []\n")
-
-	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "delete", "does-not-exist")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}

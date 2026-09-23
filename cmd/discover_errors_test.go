@@ -20,6 +20,8 @@ import (
 // writes, "discover static" resolves to the CodeHTTP exit code (the "completed
 // with errors" aggregate).
 func TestDiscoverStatic_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))

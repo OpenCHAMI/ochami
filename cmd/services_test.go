@@ -23,9 +23,8 @@ import (
 // --- PCS ---
 
 // TestPCSTransitionList_Success verifies "pcs transition list" issues GET /transitions.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestPCSTransitionList_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,9 +46,8 @@ func TestPCSTransitionList_Success(t *testing.T) {
 
 // TestPCSStatusShow_Success verifies "pcs status show <xname>" issues GET /power-status
 // and prints the first status entry.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestPCSStatusShow_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -75,9 +73,9 @@ func TestPCSStatusShow_Success(t *testing.T) {
 
 // TestCloudInitDefaultsGet verifies "cloud-init defaults get" issues GET
 // /admin/cluster-defaults.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestCloudInitDefaultsGet(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -97,9 +95,9 @@ func TestCloudInitDefaultsGet(t *testing.T) {
 
 // TestCloudInitServiceStatus_Running verifies that "cloud-init service status"
 // exits successfully when the /version endpoint responds OK.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestCloudInitServiceStatus_Running(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -124,9 +122,9 @@ func TestCloudInitServiceStatus_Running(t *testing.T) {
 
 // TestMetadataGroupList_Success verifies that "metadata group list" exits
 // successfully when the service returns a valid list response.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestMetadataGroupList_Success(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[]`)) //nolint:errcheck // test response writes are observed by the client
@@ -145,9 +143,9 @@ func TestMetadataGroupList_Success(t *testing.T) {
 
 // TestPCSTransitionShow_Success verifies "pcs transition show <id>" issues GET
 // /transitions/<id>.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestPCSTransitionShow_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -166,9 +164,9 @@ func TestPCSTransitionShow_Success(t *testing.T) {
 
 // TestPCSTransitionAbort_Success verifies "pcs transition abort <id>" issues DELETE
 // /transitions/<id>.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestPCSTransitionAbort_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -187,9 +185,9 @@ func TestPCSTransitionAbort_Success(t *testing.T) {
 
 // TestPCSTransitionStart_Success verifies "pcs transition start <op> --xname ..." issues
 // POST /transitions.
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestPCSTransitionStart_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -210,9 +208,9 @@ func TestPCSTransitionStart_Success(t *testing.T) {
 
 // TestPCSTransitionMonitor_Success verifies "pcs transition monitor <id>" polls
 // /transitions/<id> and exits when the transition reports "completed".
-// TODO: Enable t.Parallel() once race conditions are resolved
-// t.Parallel()
 func TestPCSTransitionMonitor_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path

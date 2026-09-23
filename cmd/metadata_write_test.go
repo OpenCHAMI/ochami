@@ -43,8 +43,7 @@ func TestMetadataAdd_Success(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			// TODO: Enable t.Parallel() once race conditions are resolved
-			// t.Parallel()
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "add",
 				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
@@ -66,8 +65,7 @@ func TestMetadataAdd_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			// TODO: Enable t.Parallel() once race conditions are resolved
-			// t.Parallel()
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "add",
 				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
@@ -90,8 +88,7 @@ func TestMetadataSet_Success(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			// TODO: Enable t.Parallel() once race conditions are resolved
-			// t.Parallel()
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "set", "some-uid",
 				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
@@ -114,8 +111,7 @@ func TestMetadataDelete_NoConfirm(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			// TODO: Enable t.Parallel() once race conditions are resolved
-			// t.Parallel()
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "delete", "some-uid",
 				"--uri", srv.URL, "--token", "t", "--no-confirm")
 			if res.err != nil {
@@ -158,8 +154,7 @@ func TestMetadataDelete_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 	res := runOchamiWithRuntime(t, "metadata", "--ignore-config", "group", "delete", "some-uid",
 		"--uri", srv.URL, "--token", "t", "--no-confirm")
 	if res.err == nil {

@@ -41,8 +41,8 @@ const discoveryPayload = `{
 // issuing POST requests for the discovered structures, and exits successfully
 // when the server accepts them.
 func TestDiscoverStatic_Success(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 
 	sawPost := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -68,8 +68,8 @@ func TestDiscoverStatic_Success(t *testing.T) {
 // TestDiscoverStatic_Overwrite verifies the --overwrite path, which PUTs/PATCHes
 // existing structures instead of only POSTing.
 func TestDiscoverStatic_Overwrite(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

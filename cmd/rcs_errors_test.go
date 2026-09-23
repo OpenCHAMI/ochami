@@ -16,8 +16,7 @@ import (
 // TestRCSConsoleList_HTTPError verifies an unsuccessful HTTP response resolves to
 // a non-zero exit code.
 func TestRCSConsoleList_HTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)

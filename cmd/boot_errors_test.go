@@ -18,8 +18,7 @@ import (
 // TestBootList_HTTPError verifies that an unsuccessful HTTP response from the
 // boot service resolves to a non-success exit code for the "list" subcommands.
 func TestBootList_HTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
@@ -43,8 +42,7 @@ func TestBootList_HTTPError(t *testing.T) {
 // TestBootGet_HTTPError verifies that an unsuccessful HTTP response from a
 // "<type> get" resolves to a non-success exit code for each resource type.
 func TestBootGet_HTTPError(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -67,8 +65,7 @@ func TestBootGet_HTTPError(t *testing.T) {
 // TestBootConfigDelete_NoArgs verifies that "boot config delete" with no UID
 // arguments is a usage error (MinimumNArgs(1)).
 func TestBootConfigDelete_NoArgs(t *testing.T) {
-	// TODO: Enable t.Parallel() once race conditions are resolved
-	// t.Parallel()
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "boot", "config", "delete", "--uri", "http://127.0.0.1:0", "--no-confirm")
 	if res.err == nil {

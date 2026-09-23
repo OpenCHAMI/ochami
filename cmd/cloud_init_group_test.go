@@ -510,3 +510,27 @@ func TestCloudInitGroupRender_MalformedExtraVars(t *testing.T) {
 		t.Errorf("exit code = %d, want %d (CodePayload)", res.exitCode, cli.CodePayload)
 	}
 }
+
+// TestCloudInitGroupGet_RemainingSubcommands verifies "group get config" and
+// "group get meta-data" (in addition to "raw", covered elsewhere).
+func TestCloudInitGroupGet_RemainingSubcommands(t *testing.T) {
+	t.Parallel()
+
+	for _, subcommand := range []string{"config", "meta-data"} {
+		t.Run(subcommand, func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{}`)) //nolint:errcheck // test response writes are observed by the client
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", subcommand,
+				"--uri", srv.URL, "--token", "t")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
