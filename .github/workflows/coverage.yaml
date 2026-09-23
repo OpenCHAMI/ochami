@@ -27,8 +27,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run tests with coverage
-        run: make coverage
+      - name: Run tests with coverage (race detector, parallel)
+        run: make coverage PARALLEL=4
 
       - name: Report coverage
         run: |
