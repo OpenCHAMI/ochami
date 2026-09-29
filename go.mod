@@ -5,7 +5,7 @@
 
 module github.com/openchami/ochami
 
-go 1.26.7
+go 1.27.1
 
 require (
 	github.com/elliotchance/pie/v2 v2.9.1
@@ -18,7 +18,7 @@ require (
 	github.com/knadh/koanf/providers/structs v1.0.1
 	github.com/knadh/koanf/v2 v2.3.6
 	github.com/lestrrat-go/jwx/v3 v3.3.0
-	github.com/nikolalohinski/gonja/v2 v2.9.0
+	github.com/nikolalohinski/gonja/v2 v2.9.1
 	github.com/openchami/boot-service v0.3.2
 	github.com/openchami/bss v1.32.3
 	github.com/openchami/cloud-init v1.4.11
