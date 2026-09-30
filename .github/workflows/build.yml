@@ -28,19 +28,19 @@ jobs:
           sudo apt update
           sudo apt install -y --no-install-recommends scdoc
 
-      - name: Set up latest stable Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: stable
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
       - name: Checkout repo
         uses: actions/checkout@v7
         with:
           fetch-tags: 1
           fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
       - name: Create Tag for PR
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.pr_number != '')
@@ -100,16 +100,16 @@ jobs:
           sudo apt update
           sudo apt install -y --no-install-recommends make git
 
-      - name: Set up latest stable Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: stable
-
       - name: Checkout repo
         uses: actions/checkout@v7
         with:
           fetch-tags: 1
           fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
 
       - name: Build with make
         run: |
@@ -146,16 +146,16 @@ jobs:
           sudo apt update
           sudo apt install -y --no-install-recommends make git scdoc
 
-      - name: Set up latest stable Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: stable
-
       - name: Checkout repo
         uses: actions/checkout@v7
         with:
           fetch-tags: 1
           fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
 
       - name: Build manual pages
         run: |
