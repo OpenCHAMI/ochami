@@ -242,3 +242,54 @@ func TestSMDComponentDelete_AllConfirm(t *testing.T) {
 		t.Errorf("request = %s %s, want DELETE /State/Components", gotMethod, gotPath)
 	}
 }
+
+// TestSMDComponentList_EmptyResponse verifies that "smd component list"
+// succeeds for an empty component list.
+func TestSMDComponentList_EmptyResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"Components":[]}`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
+		"smd", "component", "list")
+
+	// Should succeed with empty list
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v", res.err)
+	}
+	if res.exitCode != cli.CodeSuccess {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
+	}
+}
+
+// TestSMDComponentGet_FormatOutputJSON verifies that --format-output json is
+// parsed and applied to "smd component get" output.
+func TestSMDComponentGet_FormatOutputJSON(t *testing.T) {
+	t.Parallel()
+
+	// Create a test server
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"Components":[]}`))
+	}))
+	defer srv.Close()
+
+	// Test JSON output format with smd component get
+	// Note: smd component get requires --nid flag
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
+		"--format-output", "json", "smd", "component", "get", "--nid", "0")
+	if res.err != nil {
+		t.Fatalf("unexpected error with --format-output json: %v", res.err)
+	}
+
+	// Output should contain the component data in JSON format
+	if !strings.Contains(res.stdout, "Components") {
+		t.Errorf("expected Components in JSON output, got: %s", res.stdout)
+	}
+}

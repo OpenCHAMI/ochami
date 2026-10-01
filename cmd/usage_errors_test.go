@@ -72,6 +72,17 @@ func TestUsageError_ExactArgs(t *testing.T) {
 	}
 }
 
+// TestUsageError_UnknownCommand verifies that an unknown subcommand of the
+// root command is a usage error.
+func TestUsageError_UnknownCommand(t *testing.T) {
+	t.Parallel()
+
+	res := runOchamiWithRuntime(t, "invalid-command")
+	if res.exitCode != cli.CodeUsage {
+		t.Errorf("exit code = %d, want %d (%s): %v", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage), res.err)
+	}
+}
+
 // TestUsageError_PatchFormatInputWithKeyValFlags verifies that the patch
 // commands reject --format-input combined with a key-value flag (--set,
 // --unset, --add, or --remove), which builds the patch without reading a
