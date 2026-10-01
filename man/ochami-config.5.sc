@@ -248,7 +248,15 @@ log:
 # FILES
 
 _/etc/ochami/config.yaml_
+	The system-wide configuration file.
+
+_$XDG_CONFIG_HOME/ochami/config.yaml_
+	The user-level configuration file if *XDG_CONFIG_HOME* is set to an absolute
+	path.
+
 _~/.config/ochami/config.yaml_
+	The user-level configuration file if *XDG_CONFIG_HOME* is unset or not an
+	absolute path.
 
 # AUTHOR
 

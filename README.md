@@ -73,7 +73,8 @@ continue here with how to use it.
 There are two configuration files in YAML format that `ochami` reads, in order:
 
 1. System-Wide: `/etc/ochami/config.yaml`
-2. User: `${HOME}/.config/ochami/config.yaml`
+2. User: `${XDG_CONFIG_HOME}/ochami/config.yaml` if `XDG_CONFIG_HOME` is set to
+   an absolute path, otherwise `${HOME}/.config/ochami/config.yaml`
 
 If neither exist, it will use compiled defaults. Configuration in the second
 file override configuration in the first. Alternatively, the `-c`/`--config`
@@ -86,11 +87,17 @@ exits instead of silently ignoring the invalid configuration.
 Let's generate a user-level configuration:
 
 ```bash
-mkdir -p ~/.config/ochami/
-ochami config show > ~/.config/ochami/config.yaml
+case "$XDG_CONFIG_HOME" in
+  /*) dir="$XDG_CONFIG_HOME/ochami" ;;
+  *)  dir="$HOME/.config/ochami" ;;
+esac
+mkdir -p "$dir"
+ochami config show > "$dir/config.yaml"
 ```
 
-This will generate a default configuration at `~/.config/ochami/config.yaml`.
+This will generate a default configuration at the user config path
+(`~/.config/ochami/config.yaml` unless `XDG_CONFIG_HOME` is set to an absolute
+path).
 
 > [!NOTE]
 > The `ochami config show` command will read in any existing config files. If it

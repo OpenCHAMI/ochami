@@ -135,8 +135,13 @@ The format of this command is:
 _/etc/ochami/config.yaml_
 	The system-wide configuration file for *ochami*.
 
+_$XDG_CONFIG_HOME/ochami/config.yaml_
+	The user-level configuration file for *ochami* if *XDG_CONFIG_HOME* is set
+	to an absolute path.
+
 _~/.config/ochami/config.yaml_
-	The user-level configuration file for *ochami*.
+	The user-level configuration file for *ochami* if *XDG_CONFIG_HOME* is unset
+	or not an absolute path.
 
 # AUTHOR
 
