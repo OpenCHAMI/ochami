@@ -20,9 +20,25 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/spf13/cobra"
 
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/config"
 )
 
+type zeroWriter struct{}
+
+func (zeroWriter) Write([]byte) (int, error) { return 0, nil }
+
+type oversizedWriter struct{}
+
+func (oversizedWriter) Write(p []byte) (int, error) { return len(p) + 1, nil }
+
+type errorWriter struct{ err error }
+
+func (w errorWriter) Write([]byte) (int, error) { return 0, w.err }
+
+type errorReader struct{ err error }
+
+func (r errorReader) Read([]byte) (int, error) { return 0, r.err }
 func TestIOStream_LoopYesNo(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -406,5 +422,22 @@ func TestLogHelpHint(t *testing.T) {
 	LogHelpHint(cmd)
 	if !strings.Contains(stderr.String(), "see 'demo --help' for long command help") {
 		t.Errorf("stderr = %q, want the help hint for demo", stderr.String())
+	}
+}
+
+// TestPatchMethodValue verifies client.PatchMethod's pflag.Value implementation
+// (Set/Type) accepts the documented values and rejects everything else.
+func TestPatchMethodValue(t *testing.T) {
+	var method client.PatchMethod
+	for _, value := range []string{"rfc6902", "rfc7386", "keyval"} {
+		if err := method.Set(value); err != nil {
+			t.Errorf("Set(%q): %v", value, err)
+		}
+	}
+	if err := method.Set("invalid"); err == nil {
+		t.Error("Set(invalid) returned nil")
+	}
+	if method.Type() != "PatchMethod" {
+		t.Errorf("Type = %q", method.Type())
 	}
 }

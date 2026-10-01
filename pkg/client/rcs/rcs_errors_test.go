@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/openchami/ochami/pkg/client"
 )
 
 // TestListConsoles_HTTPError verifies a non-2XX response is returned as an error.
@@ -139,5 +141,15 @@ func TestListConsoles_MalformedBody(t *testing.T) {
 
 	if _, err := c.ListConsoles(context.Background(), "tok"); err == nil {
 		t.Error("ListConsoles with malformed body = nil, want error")
+	}
+}
+
+func TestRCSNewClientAndDial_RejectMalformedURIs(t *testing.T) {
+	if _, err := NewClient("https://example.com/%zz"); err == nil {
+		t.Fatal("NewClient() accepted malformed URI")
+	}
+	c := &RCSClient{OchamiClient: &client.OchamiClient{}}
+	if _, err := c.dialWebSocket(context.Background(), "x0", "", nil); err == nil {
+		t.Fatal("dialWebSocket() accepted nil base URI")
 	}
 }

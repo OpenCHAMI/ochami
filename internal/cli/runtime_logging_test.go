@@ -106,3 +106,20 @@ func TestInitLogging_WritesToRuntimeErrorStream(t *testing.T) {
 		t.Fatalf("runtime stderr = %q, want initialization message", got)
 	}
 }
+
+// TestInitLogging_AppliesDefaults verifies InitLogging fills in default
+// log-level/format/color values when the runtime's config leaves them empty.
+func TestInitLogging_AppliesDefaults(t *testing.T) {
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config.Log.Level = ""
+	rt.Config.Log.Format = ""
+	rt.Config.Log.Color = ""
+
+	cmd := loggingCommand()
+	if err := rt.InitLogging(cmd); err != nil {
+		t.Fatalf("InitLogging() error = %v", err)
+	}
+	if rt.Config.Log.Level == "" || rt.Config.Log.Format == "" || rt.Config.Log.Color == "" {
+		t.Errorf("InitLogging() left empty defaults: %+v", rt.Config.Log)
+	}
+}

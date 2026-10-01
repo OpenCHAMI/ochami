@@ -18,6 +18,34 @@ import (
 	"github.com/openchami/ochami/pkg/config"
 )
 
+func TestIOStream_Errors(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("stream failure")
+	t.Run("prompt writer", func(t *testing.T) {
+		ios := NewIOStreams(strings.NewReader("y\n"), io.Discard, errorWriter{sentinel})
+		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
+		}
+	})
+	t.Run("input reader", func(t *testing.T) {
+		ios := NewIOStreams(errorReader{sentinel}, io.Discard, io.Discard)
+		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
+		}
+	})
+	t.Run("zero write", func(t *testing.T) {
+		if err := WriteOutput(zeroWriter{}, []byte("data")); !errors.Is(err, io.ErrShortWrite) {
+			t.Fatalf("WriteOutput() error = %v, want io.ErrShortWrite", err)
+		}
+	})
+	t.Run("oversized write", func(t *testing.T) {
+		if err := WriteOutput(oversizedWriter{}, []byte("data")); !errors.Is(err, io.ErrShortWrite) {
+			t.Fatalf("WriteOutput() error = %v, want io.ErrShortWrite", err)
+		}
+	})
+}
+
 // TestSetToken_NoTokenNoCluster verifies that SetTokenFromEnv returns a
 // CodeAuth error when neither --token nor --cluster/default-cluster is
 // available to resolve a token from.

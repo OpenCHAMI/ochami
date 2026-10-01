@@ -16,9 +16,11 @@ import (
 	"testing"
 	"time"
 
+	api "github.com/openchami/boot-service/apis/boot.openchami.io/v1"
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/rs/zerolog"
 
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -92,5 +94,113 @@ func TestBootGetListHelpers_ErrorArm(t *testing.T) {
 	}
 	if _, err := c.ListBootConfigs(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListBootConfigs: expected an error")
+	}
+}
+
+func TestBootPatchMethod_Validation(t *testing.T) {
+	c, srv := errClient(t)
+	defer srv.Close()
+	bad := client.PatchMethod("invalid")
+	for name, call := range map[string]func() error{
+		"BMC": func() error { _, err := c.PatchBMC(context.Background(), "", bad, "uid", map[string]any{}); return err },
+		"node": func() error {
+			_, err := c.PatchNode(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		},
+		"boot config": func() error {
+			_, err := c.PatchBootConfig(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := call(); err == nil {
+				t.Fatal("patch accepted an invalid patch method")
+			}
+		})
+	}
+}
+
+func TestBootWriteHelpers_HTTPError(t *testing.T) {
+	c, srv := errClient(t)
+	defer srv.Close()
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "set BMC", call: func() error {
+			_, err := c.SetBMC(context.Background(), "", "uid", boot_service_client.UpdateBMCRequest{})
+			return err
+		}},
+		{name: "set node", call: func() error {
+			_, err := c.SetNode(context.Background(), "", "uid", boot_service_client.UpdateNodeRequest{})
+			return err
+		}},
+		{name: "set boot config", call: func() error {
+			_, err := c.SetBootConfig(context.Background(), "", "uid", boot_service_client.UpdateBootConfigurationRequest{})
+			return err
+		}},
+		{name: "add BMC spec", call: func() error { return c.AddBMCSpecs(context.Background(), "", []BMCSpec{{Name: "one"}})[0].Err }},
+		{name: "add node spec", call: func() error { return c.AddNodeSpecs(context.Background(), "", []NodeSpec{{Name: "one"}})[0].Err }},
+		{name: "add boot config spec", call: func() error {
+			return c.AddBootConfigSpecs(context.Background(), "", []BootConfigSpec{{Name: "one"}})[0].Err
+		}},
+		{name: "set BMC spec", call: func() error { _, err := c.SetBMCSpec(context.Background(), "", "uid", api.BMCSpec{}); return err }},
+		{name: "set node spec", call: func() error { _, err := c.SetNodeSpec(context.Background(), "", "uid", api.NodeSpec{}); return err }},
+		{name: "set boot config spec", call: func() error {
+			_, err := c.SetBootConfigSpec(context.Background(), "", "uid", api.BootConfigurationSpec{})
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("call returned nil error")
+			}
+		})
+	}
+}
+
+func TestReadEndpoints_RejectUnsupportedOutputFormat(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		call func(*BootServiceClient) error
+	}{
+		{name: "get BMC", body: `{}`, call: func(c *BootServiceClient) error {
+			_, err := c.GetBMC(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list BMCs", body: `[]`, call: func(c *BootServiceClient) error {
+			_, err := c.ListBMCs(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get node", body: `{}`, call: func(c *BootServiceClient) error {
+			_, err := c.GetNode(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list nodes", body: `[]`, call: func(c *BootServiceClient) error {
+			_, err := c.ListNodes(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get boot config", body: `{}`, call: func(c *BootServiceClient) error {
+			_, err := c.GetBootConfig(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list boot configs", body: `[]`, call: func(c *BootServiceClient) error {
+			_, err := c.ListBootConfigs(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(tt.body))
+			})
+			defer srv.Close()
+			if err := tt.call(c); err == nil {
+				t.Fatal("call returned nil error for unsupported output format")
+			}
+		})
 	}
 }
