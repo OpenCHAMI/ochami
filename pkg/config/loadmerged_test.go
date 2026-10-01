@@ -18,13 +18,8 @@ import (
 // file exists (the user source is optional).
 func TestLoadMerged_NoUserFile(t *testing.T) {
 	tmpHome := t.TempDir() // empty; no config file present
-	oldHome, had := os.LookupEnv("HOME")
-	os.Setenv("HOME", tmpHome)
-	if had {
-		defer os.Setenv("HOME", oldHome)
-	} else {
-		defer os.Unsetenv("HOME")
-	}
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("HOME", tmpHome)
 
 	if _, err := LoadMerged(); err != nil {
 		t.Fatalf("LoadMerged with no user file returned error: %v", err)
@@ -35,13 +30,10 @@ func TestLoadMerged_NoUserFile(t *testing.T) {
 // falls back to the current user's home directory, or fails if the current user
 // can't be determined.
 func TestUserConfigPath_HomeUnset(t *testing.T) {
-	oldHome, had := os.LookupEnv("HOME")
+	t.Setenv("XDG_CONFIG_HOME", "")
+	// t.Setenv restores HOME when the test ends; unset it until then.
+	t.Setenv("HOME", "")
 	os.Unsetenv("HOME")
-	defer func() {
-		if had {
-			os.Setenv("HOME", oldHome)
-		}
-	}()
 
 	u, userErr := user.Current()
 	got, err := UserConfigPath()

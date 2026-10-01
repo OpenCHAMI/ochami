@@ -161,6 +161,8 @@ func TestConfigClusterDelete_DuplicateCluster(t *testing.T) {
 func TestConfigClusterShow_DuplicateCluster(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	// An absolute XDG_CONFIG_HOME would take precedence over HOME.
+	t.Setenv("XDG_CONFIG_HOME", "")
 	userDir := filepath.Join(home, ".config", "ochami")
 	if err := os.MkdirAll(userDir, 0o755); err != nil {
 		t.Fatalf("failed to create user config dir: %v", err)
