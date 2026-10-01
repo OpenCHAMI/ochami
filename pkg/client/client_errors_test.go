@@ -6,11 +6,22 @@ package client
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
+	"math/big"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 type errorTransport struct{}
@@ -46,6 +57,104 @@ func TestUseCACert_RejectsInvalidPEM(t *testing.T) {
 	}
 	if err := c.UseCACert(path); err == nil {
 		t.Fatal("UseCACert accepted invalid PEM")
+	}
+}
+
+// generateTestCA creates a self-signed CA certificate/key pair for testing,
+// returning the parsed certificate (for signing leaf certs), the private key,
+// and the CA certificate PEM-encoded.
+func generateTestCA(t *testing.T) (*x509.Certificate, *rsa.PrivateKey, []byte) {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate CA key: %v", err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "test-ca"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatalf("create CA cert: %v", err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatalf("parse CA cert: %v", err)
+	}
+	return cert, key, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+}
+
+// generateExpiredLeafCert creates a server certificate for 127.0.0.1, signed
+// by ca/caKey, whose validity period has already elapsed.
+func generateExpiredLeafCert(t *testing.T, ca *x509.Certificate, caKey *rsa.PrivateKey) tls.Certificate {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate leaf key: %v", err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(2),
+		Subject:      pkix.Name{CommonName: "127.0.0.1"},
+		NotBefore:    time.Now().Add(-2 * time.Hour),
+		NotAfter:     time.Now().Add(-time.Hour), // expired
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, ca, &key.PublicKey, caKey)
+	if err != nil {
+		t.Fatalf("create leaf cert: %v", err)
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		t.Fatalf("build tls.Certificate: %v", err)
+	}
+	return tlsCert
+}
+
+// TestUseCACert_RejectsExpiredServerCertificate verifies that a request made
+// with a CA certificate loaded via UseCACert still fails when the server's own
+// certificate has expired. UseCACert only parses the CA's PEM and never
+// inspects certificate validity dates, so this failure can only be observed at
+// the TLS handshake, not at UseCACert's call site.
+func TestUseCACert_RejectsExpiredServerCertificate(t *testing.T) {
+	ca, caKey, caPEM := generateTestCA(t)
+	leafCert := generateExpiredLeafCert(t, ca, caKey)
+
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	srv.TLS = &tls.Config{Certificates: []tls.Certificate{leafCert}}
+	srv.StartTLS()
+	defer srv.Close()
+
+	caPath := filepath.Join(t.TempDir(), "ca.pem")
+	if err := os.WriteFile(caPath, caPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := NewOchamiClient("test", srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.UseCACert(caPath); err != nil {
+		t.Fatalf("UseCACert(valid CA) = %v, want nil", err)
+	}
+
+	_, err = c.MakeRequest(context.Background(), http.MethodGet, srv.URL, nil, nil)
+	if err == nil {
+		t.Fatal("MakeRequest against server with expired certificate = nil, want error")
+	}
+	var certErr x509.CertificateInvalidError
+	if !errors.As(err, &certErr) || certErr.Reason != x509.Expired {
+		t.Errorf("MakeRequest error = %v, want x509.CertificateInvalidError{Reason: Expired}", err)
 	}
 }
 
