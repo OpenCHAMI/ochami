@@ -108,6 +108,54 @@ func TestPCSServiceStatus_HealthHTTPError(t *testing.T) {
 	}
 }
 
+// TestPCSStatusList_MalformedResponse verifies a malformed status-list
+// response resolves to CodePayload (a decode failure, not an HTTP failure:
+// the server responds 200 OK with an undecodable body).
+func TestPCSStatusList_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"State":`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"pcs", "status", "list")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodePayload {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+	}
+}
+
+// TestPCSServiceStatus_MalformedResponse verifies a malformed readiness/liveness
+// response resolves to CodeGeneric: the command can't classify the failure as
+// a specific HTTP status once neither probe successfully reports a state.
+func TestPCSServiceStatus_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"Status":`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"pcs", "service", "status")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeGeneric {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeGeneric, cli.CodeName(cli.CodeGeneric))
+	}
+}
+
 // TestPCSStatusShow_Empty verifies that an empty status array resolves to
 // CodeGeneric (the "no status found" case).
 func TestPCSStatusShow_Empty(t *testing.T) {
