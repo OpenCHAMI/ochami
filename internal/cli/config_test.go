@@ -5,7 +5,6 @@
 package cli
 
 import (
-	"os"
 	"testing"
 
 	"github.com/openchami/ochami/internal/log"
@@ -27,15 +26,8 @@ func TestLoadDefaultConfig_ResolvesUserConfigFile(t *testing.T) {
 	UserConfigFile = ""
 
 	tmpHome := t.TempDir()
-	oldHome, had := os.LookupEnv("HOME")
-	os.Setenv("HOME", tmpHome)
-	t.Cleanup(func() {
-		if had {
-			os.Setenv("HOME", oldHome)
-		} else {
-			os.Unsetenv("HOME")
-		}
-	})
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("HOME", tmpHome)
 
 	if err := loadDefaultConfig(); err != nil {
 		t.Fatalf("loadDefaultConfig() error = %v", err)

@@ -65,7 +65,7 @@ ochami config --user cluster set --default foobar cluster.uri https://foobar.ope
 
 This will create a cluster called _foobar_ and set its base URI to
 _https://foobar.openchami.cluster_, placing this config in
-_~/.config/ochami/config.yaml_ (the user config file). Since *ochami* supports
+the user config file (see *FILES* below). Since *ochami* supports
 multiple cluster configurations, the _--default_ tells *ochami* to set this
 cluster as the default cluster, which means that this cluster's configuration
 will be used if _--cluster_ is not specified on the command line.
@@ -244,6 +244,17 @@ the following codes:
    others a network error). The log output identifies which items failed.
 
 # FILES
+
+_/etc/ochami/config.yaml_
+	The system-wide configuration file for *ochami*.
+
+_$XDG_CONFIG_HOME/ochami/config.yaml_
+	The user-level configuration file for *ochami* if *XDG_CONFIG_HOME* is set
+	to an absolute path.
+
+_~/.config/ochami/config.yaml_
+	The user-level configuration file for *ochami* if *XDG_CONFIG_HOME* is unset
+	or not an absolute path.
 
 _/usr/share/doc/ochami/config.example.yaml_
 	An example configuration file that can be used for reference.

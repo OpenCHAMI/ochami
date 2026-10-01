@@ -732,14 +732,8 @@ func TestClusterConfig_BootServiceBaseURIAndMerge(t *testing.T) {
 // the user config file under $HOME/.config.
 func TestUserConfigPath_UsesHomeConfigDir(t *testing.T) {
 	tmpHome := t.TempDir()
-	// Override HOME for this test.
-	oldHome, had := os.LookupEnv("HOME")
-	os.Setenv("HOME", tmpHome)
-	if had {
-		defer os.Setenv("HOME", oldHome)
-	} else {
-		defer os.Unsetenv("HOME")
-	}
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("HOME", tmpHome)
 
 	p, err := UserConfigPath()
 	if err != nil {
@@ -748,6 +742,41 @@ func TestUserConfigPath_UsesHomeConfigDir(t *testing.T) {
 	want := filepath.Join(tmpHome, ".config", "ochami", "config.yaml")
 	if p != want {
 		t.Fatalf("path = %s, want %s", p, want)
+	}
+}
+
+// TestUserConfigPath_PrefersXDGConfigHome verifies that UserConfigPath uses
+// $XDG_CONFIG_HOME/ochami/config.yaml when XDG_CONFIG_HOME is set.
+func TestUserConfigPath_PrefersXDGConfigHome(t *testing.T) {
+	xdgHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdgHome)
+	t.Setenv("HOME", t.TempDir())
+
+	p, err := UserConfigPath()
+	if err != nil {
+		t.Fatalf("UserConfigPath() error = %v", err)
+	}
+	want := filepath.Join(xdgHome, "ochami", "config.yaml")
+	if p != want {
+		t.Fatalf("UserConfigPath() = %q, want %q", p, want)
+	}
+}
+
+// TestUserConfigPath_IgnoresRelativeXDGConfigHome verifies a relative
+// $XDG_CONFIG_HOME is ignored, as the XDG Base Directory Specification
+// requires.
+func TestUserConfigPath_IgnoresRelativeXDGConfigHome(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", "relative/xdg")
+	t.Setenv("HOME", tmpHome)
+
+	p, err := UserConfigPath()
+	if err != nil {
+		t.Fatalf("UserConfigPath() error = %v", err)
+	}
+	want := filepath.Join(tmpHome, ".config", "ochami", "config.yaml")
+	if p != want {
+		t.Fatalf("UserConfigPath() = %q, want %q", p, want)
 	}
 }
 
@@ -771,13 +800,8 @@ func TestDefaultTimeout(t *testing.T) {
 // (true).
 func TestLoadMerged_UserConfigTakesPrecedenceOverDefaults(t *testing.T) {
 	tmpHome := t.TempDir()
-	oldHome, had := os.LookupEnv("HOME")
-	os.Setenv("HOME", tmpHome)
-	if had {
-		defer os.Setenv("HOME", oldHome)
-	} else {
-		defer os.Unsetenv("HOME")
-	}
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("HOME", tmpHome)
 
 	cfgDir := filepath.Join(tmpHome, ".config", "ochami")
 	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
@@ -820,13 +844,8 @@ clusters:
 // show") can never observe the two disagree.
 func TestLoadMergedEffective_MatchesConfig(t *testing.T) {
 	tmpHome := t.TempDir()
-	oldHome, had := os.LookupEnv("HOME")
-	os.Setenv("HOME", tmpHome)
-	if had {
-		defer os.Setenv("HOME", oldHome)
-	} else {
-		defer os.Unsetenv("HOME")
-	}
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("HOME", tmpHome)
 
 	cfgDir := filepath.Join(tmpHome, ".config", "ochami")
 	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
