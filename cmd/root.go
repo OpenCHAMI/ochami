@@ -160,6 +160,14 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 	// Do not allow simultaneously passing a token and ignoring it
 	rootCmd.MarkFlagsMutuallyExclusive("token", "no-token")
 
+	// --insecure skips all TLS certificate verification, so a custom CA
+	// certificate to verify against is meaningless and, worse, silently
+	// overridden: UseCACert always re-enables verification once a CA is
+	// loaded (see pkg/client.OchamiClient.UseCACert), which would otherwise
+	// make --insecure quietly stop working the moment --cacert is also
+	// passed. Reject the combination instead of guessing intent.
+	rootCmd.MarkFlagsMutuallyExclusive("cacert", "insecure")
+
 	// Add subcommands
 	rootCmd.AddCommand(
 		boot_cmd.NewCmd(),

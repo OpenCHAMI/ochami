@@ -97,7 +97,8 @@ revealing its full value. Pass *--show-token* to log the full token instead.
 
 *--cacert* _cacert_
 	Specify the path to a certificate authority (CA) certificate file to use to
-	verify TLS certificates. Must be PEM-formatted.
+	verify TLS certificates. Must be PEM-formatted. Cannot be combined with
+	*--insecure*.
 
 *-C, --cluster* _cluster_name_
 	Specify the name of a cluster to use. The cluster corresponding to the
@@ -123,7 +124,7 @@ revealing its full value. Pass *--show-token* to log the full token instead.
 	Do not read configuration from any configuration file.
 
 *-k, --insecure*
-	Do not verify TLS certificates.
+	Do not verify TLS certificates. Cannot be combined with *--cacert*.
 
 *-L, --log-format* _format_
 	Specify the format of log messages, overriding what is set in the config
