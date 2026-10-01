@@ -19,12 +19,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
 )
+
+type commandErrorWriter struct{}
+
+func (commandErrorWriter) Write([]byte) (int, error) {
+	return 0, errors.New("injected command output failure")
+}
 
 func writeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
 	t.Helper()
@@ -122,6 +130,27 @@ func runOchamiWithInputAndRuntime(t *testing.T, input string, args ...string) cm
 		exitCode: cli.ExitCode(runErr),
 		stdout:   combinedBuf.String(),
 	}
+}
+
+func runOchamiWithOutputWriter(t *testing.T, writer io.Writer, args ...string) cmdResult {
+	t.Helper()
+
+	var stderr bytes.Buffer
+	rt := cli.NewTestRuntime(strings.NewReader(""), writer, &stderr)
+	rootCmd := NewRootCmd()
+	rootCmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	rootCmd.SetOut(writer)
+	rootCmd.SetErr(&stderr)
+	rootCmd.SetArgs(args)
+	err := rootCmd.Execute()
+	return cmdResult{err: err, exitCode: cli.ExitCode(err), stdout: stderr.String()}
+}
+
+func closedTestServerURL(t *testing.T) string {
+	t.Helper()
+	// Nothing listens on port 1, so connections are refused. Unlike closing a
+	// fresh httptest server, this address can't be reused by a parallel test.
+	return "http://127.0.0.1:1"
 }
 
 // TestRunOchamiWithRuntime_Basic verifies that the runtime-based test helper

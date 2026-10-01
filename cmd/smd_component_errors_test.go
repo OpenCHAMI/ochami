@@ -143,3 +143,69 @@ func TestSMDComponentDelete_Abort(t *testing.T) {
 		t.Errorf("DELETE count = %d, want 0", deletes)
 	}
 }
+
+// TestSMDComponentGet_MalformedResponse verifies that the SMD component get
+// command handles malformed JSON responses gracefully.
+func TestSMDComponentGet_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	// Server returns malformed JSON
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Malformed JSON - missing closing brace
+		w.Write([]byte(`{"Components":[{"ID":"x0c0s1b0n0"`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
+		"smd", "component", "get", "--nid", "0")
+
+	// Should fail due to malformed JSON
+	if res.err == nil {
+		t.Fatal("expected error for malformed JSON, got nil")
+	}
+	if res.exitCode == 0 {
+		t.Errorf("expected non-zero exit code, got %d", res.exitCode)
+	}
+}
+
+// TestSMDComponentGet_HTTPError verifies that HTTP errors (5xx) are handled
+// correctly and distinguished from network errors.
+func TestSMDComponentGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
+	// Server returns 500 Internal Server Error
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
+		"smd", "component", "get", "--nid", "0")
+
+	// Should fail with HTTP error
+	if res.err == nil {
+		t.Fatal("expected error for HTTP 500, got nil")
+	}
+	if res.exitCode == 0 {
+		t.Errorf("expected non-zero exit code, got %d", res.exitCode)
+	}
+}
+
+// TestSMDComponentGet_ByNIDNetworkError verifies that a refused connection
+// while getting a component by NID resolves to CodeNetwork.
+func TestSMDComponentGet_ByNIDNetworkError(t *testing.T) {
+	t.Parallel()
+
+	// Nothing listens on port 1, so the connection is refused.
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", "http://127.0.0.1:1", "--token", "t",
+		"smd", "component", "get", "--nid", "0")
+
+	if res.err == nil {
+		t.Fatal("expected network error, got nil")
+	}
+	if res.exitCode != cli.CodeNetwork {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+}
