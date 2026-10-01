@@ -123,9 +123,83 @@ func TestMakeRequest_FailurePaths(t *testing.T) {
 	})
 }
 
+// TestMakeOchamiRequest_ReportsURIFailures verifies that when the request URI
+// can't be built, MakeOchamiRequest's error names the endpoint and, if one was
+// given, the query.
+func TestMakeOchamiRequest_ReportsURIFailures(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		want  string
+	}{
+		{name: "without query", want: "endpoint items"},
+		{name: "with query", query: "limit=1", want: "endpoint items and query limit=1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oc := &OchamiClient{}
+			_, err := oc.MakeOchamiRequest(context.Background(), http.MethodGet, "items", tt.query, nil, nil)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("MakeOchamiRequest() error = %v, want text %q", err, tt.want)
+			}
+		})
+	}
+}
+
+// TestDataMethods_ReportResponseReadFailures verifies that GetData, PostData,
+// PutData, PatchData, and DeleteData return a failure to read the response
+// body, wrapped with the request's method.
+func TestDataMethods_ReportResponseReadFailures(t *testing.T) {
+	readErr := errors.New("response read failed")
+	tests := []struct {
+		name string
+		call func(*OchamiClient) error
+		want string
+	}{
+		{name: "get", call: func(c *OchamiClient) error {
+			_, err := c.GetData(context.Background(), "items", "", nil)
+			return err
+		}, want: "GET response"},
+		{name: "post", call: func(c *OchamiClient) error {
+			_, err := c.PostData(context.Background(), "items", "", nil, nil)
+			return err
+		}, want: "POST response"},
+		{name: "put", call: func(c *OchamiClient) error {
+			_, err := c.PutData(context.Background(), "items", "", nil, nil)
+			return err
+		}, want: "PUT response"},
+		{name: "patch", call: func(c *OchamiClient) error {
+			_, err := c.PatchData(context.Background(), "items", "", nil, nil)
+			return err
+		}, want: "PATCH response"},
+		{name: "delete", call: func(c *OchamiClient) error {
+			_, err := c.DeleteData(context.Background(), "items", "", nil, nil)
+			return err
+		}, want: "DELETE response"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oc, err := NewOchamiClient("test", "https://example.com")
+			if err != nil {
+				t.Fatal(err)
+			}
+			oc.Client = &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return &http.Response{
+					Status: "200 OK", StatusCode: http.StatusOK, Header: make(http.Header),
+					Body: &controlledReadCloser{reader: failingReader{err: readErr}},
+				}, nil
+			})}
+			err = tt.call(oc)
+			if !errors.Is(err, readErr) || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("call error = %v, want wrapped read error with %q", err, tt.want)
+			}
+		})
+	}
+}
+
 // TestPayloadInput_Failures verifies that the payload helpers return an error
-// for empty bytes, a missing or directory payload file, a malformed payload,
-// and a failing reader.
+// for empty bytes, a missing or directory payload file, a missing stdin reader,
+// a failing reader, and malformed file, data, or reader payloads.
 func TestPayloadInput_Failures(t *testing.T) {
 	dir := t.TempDir()
 	malformed := filepath.Join(dir, "malformed.yaml")
@@ -151,6 +225,30 @@ func TestPayloadInput_Failures(t *testing.T) {
 		{name: "slice reader failure", call: func() error {
 			var v []any
 			return ReadPayloadReaderSlice(failingReader{err: io.ErrUnexpectedEOF}, format.DataFormatJson, &v)
+		}},
+		{name: "nil slice stdin", call: func() error {
+			var v []any
+			return ReadPayloadFileSliceWithReader("-", nil, format.DataFormatJson, &v)
+		}},
+		{name: "malformed file slice", call: func() error {
+			var v []any
+			return ReadPayloadFileSliceWithReader[any](malformed, nil, format.DataFormatYaml, &v)
+		}},
+		{name: "malformed scalar data", call: func() error {
+			var v any
+			return ReadPayloadData("{", format.DataFormatJson, &v)
+		}},
+		{name: "malformed slice data", call: func() error {
+			var v []any
+			return ReadPayloadDataSlice("{", format.DataFormatJson, &v)
+		}},
+		{name: "malformed scalar reader", call: func() error {
+			var v any
+			return ReadPayloadReader(strings.NewReader("{"), format.DataFormatJson, &v)
+		}},
+		{name: "malformed slice reader", call: func() error {
+			var v []any
+			return ReadPayloadReaderSlice(strings.NewReader("{"), format.DataFormatJson, &v)
 		}},
 	}
 	for _, tc := range tests {

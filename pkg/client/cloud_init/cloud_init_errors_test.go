@@ -9,7 +9,8 @@ package cloud_init
 // surfacing as an UnsuccessfulHTTPError, and the per-item edge cases of the
 // mutating helpers (blank names/IDs, empty lists, mixed batch results, and
 // per-item HTTP failures). It also covers DecodeCloudConfig's own rejection
-// case (see cloud_init_test.go for its success cases).
+// case (see cloud_init_test.go for its success cases) and the rejection of a
+// name or ID that would make a malformed URL.
 
 import (
 	"context"
@@ -263,5 +264,70 @@ func TestCloudConfigGetters_PreserveMalformedBodies(t *testing.T) {
 				t.Errorf("DecodeCloudConfig() error = %v, want contextual base64 error", err)
 			}
 		})
+	}
+}
+
+// TestCloudInit_MalformedPathGuards verifies that the cloud-init client methods
+// that build a path from a name or ID reject one that makes a malformed URL,
+// without sending a request.
+func TestCloudInit_MalformedPathGuards(t *testing.T) {
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("unexpected request: %s", r.URL.Path)
+	})
+	defer srv.Close()
+
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "get group", call: func() error { return cic.GetGroups(context.Background(), "", "%zz")[0].Err }},
+		{name: "get node data", call: func() error {
+			results, err := cic.GetNodeData(context.Background(), CloudInitMetaData, "", "%zz")
+			if err != nil {
+				return err
+			}
+			return results[0].Err
+		}},
+		{name: "get node group data", call: func() error {
+			results, err := cic.GetNodeGroupData(context.Background(), "", "%zz", "compute")
+			if err != nil {
+				return err
+			}
+			return results[0].Err
+		}},
+		{name: "put group", call: func() error {
+			return cic.PutGroups(context.Background(), []cistore.GroupData{{Name: "%zz"}}, "")[0].Err
+		}},
+		{name: "put instance info", call: func() error {
+			results, err := cic.PutInstanceInfo(context.Background(), []cistore.OpenCHAMIInstanceInfo{{ID: "%zz"}}, "")
+			if err != nil {
+				return err
+			}
+			return results[0].Err
+		}},
+		{name: "delete group", call: func() error { return cic.DeleteGroups(context.Background(), "", "%zz")[0].Err }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("call returned nil error for malformed path")
+			}
+		})
+	}
+}
+
+// TestGetGroups_PropagatesCancellation verifies that GetGroups called with an
+// already-canceled context returns one context.Canceled result per group.
+func TestGetGroups_PropagatesCancellation(t *testing.T) {
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	results := cic.GetGroups(ctx, "", "one", "two")
+	if len(results) != 2 || !errors.Is(results[0].Err, context.Canceled) || !errors.Is(results[1].Err, context.Canceled) {
+		t.Fatalf("GetGroups(canceled) = %#v", results)
 	}
 }

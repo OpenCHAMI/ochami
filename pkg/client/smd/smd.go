@@ -796,6 +796,8 @@ func (sc *SMDClient) PatchGroups(ctx context.Context, groups []Group, token stri
 // DeleteComponents takes a token and xnames and iteratively calls
 // OchamiClient.DeleteData for each xname. This is necessary because SMD only
 // allows deleting one xname at a time. Each input has one aligned result.
+// The request body is always nil: xnames is only ever used to build each
+// per-ID DELETE path, never sent as a body.
 //
 // An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
 // otherwise address the whole collection) is reported as that item's error,
@@ -847,6 +849,8 @@ func (sc *SMDClient) DeleteComponentsAll(ctx context.Context, token string) (cli
 // DeleteRedfishEndpoints takes a token and xnames and iteratively calls
 // OchamiClient.DeleteData for each xname. This is necessary because SMD only
 // allows deleting one xname at a time. Each input has one aligned result.
+// The request body is always nil: xnames is only ever used to build each
+// per-ID DELETE path, never sent as a body.
 //
 // An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
 // otherwise address the whole collection) is reported as that item's error,
@@ -899,6 +903,8 @@ func (sc *SMDClient) DeleteRedfishEndpointsAll(ctx context.Context, token string
 // DeleteEthernetInterfaces takes a token and one or more ethernet interface
 // IDs and iteratively calls OchamiClient.DeleteData for each ID. This is
 // necessary because SMD only allows deleting one ethernet interface at a time.
+// Each input has one aligned result. The request body is always nil: eIds is
+// only ever used to build each per-ID DELETE path, never sent as a body.
 // Each input has one aligned result.
 //
 // An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
@@ -952,6 +958,8 @@ func (sc *SMDClient) DeleteEthernetInterfacesAll(ctx context.Context, token stri
 // DeleteComponentEndpoints takes a token and one or more xnames and
 // iteratively calls OchamiClient.DeleteData for each xname. This is necessary
 // because SMD only allows deleting one component endpoint at a time. Each input
+// has one aligned result. The request body is always nil: xnames is only ever
+// used to build each per-ID DELETE path, never sent as a body.
 // has one aligned result.
 //
 // An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
@@ -1005,6 +1013,8 @@ func (sc *SMDClient) DeleteComponentEndpointsAll(ctx context.Context, token stri
 // DeleteGroups takes a token and one or more group labels and iteratively
 // calls OchamiClient.DeleteData for each label. This is necessary because SMD
 // only allows deleting one group at a time. Each input has one aligned result.
+// The request body is always nil: groupLabels is only ever used to build each
+// per-label DELETE path, never sent as a body.
 //
 // An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
 // otherwise address the whole collection) is reported as that item's error,

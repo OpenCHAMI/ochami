@@ -5,7 +5,11 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -39,5 +43,37 @@ func TestRuntimeFromCommand_MissingRuntime(t *testing.T) {
 				t.Errorf("exit code = %d, want %d (%s)", code, CodeConfig, CodeName(CodeConfig))
 			}
 		})
+	}
+}
+
+// TestInitLogging_RejectsInvalidConfiguration verifies that InitLogging rejects
+// an invalid configured log level.
+func TestInitLogging_RejectsInvalidConfiguration(t *testing.T) {
+	rt := NewTestRuntime(strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{})
+	rt.Config.Log.Level = "not-a-level"
+	rt.Config.Log.Format = "json"
+	rt.Config.Log.Color = "off"
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().String("log-format", "", "")
+	cmd.Flags().String("log-level", "", "")
+	cmd.Flags().String("log-color", "", "")
+	if err := rt.InitLogging(cmd); err == nil {
+		t.Fatal("InitLogging() accepted invalid level")
+	}
+}
+
+// TestInitConfig_RejectsMalformedFile verifies that InitConfig surfaces a
+// malformed config file as an error. Classifying that error as CodeConfig is
+// cmd/root.go's PersistentPreRunE's responsibility, not InitConfig's, so it's
+// covered at the command-tree level rather than here.
+func TestInitConfig_RejectsMalformedFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bad.yaml")
+	if err := os.WriteFile(path, []byte("clusters: [\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rt := NewTestRuntime(strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{}).WithConfigFile(path)
+	cmd := &cobra.Command{Use: "test"}
+	if err := rt.InitConfig(cmd, false); err == nil {
+		t.Fatal("InitConfig() accepted a malformed config file")
 	}
 }
