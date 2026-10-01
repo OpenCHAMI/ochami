@@ -218,3 +218,35 @@ func TestCloudInitNodeGet_GroupHeaderModes(t *testing.T) {
 		}
 	}
 }
+
+// TestCloudInitNodeGet_GroupSkipsEmptyGroup verifies that when one of several
+// requested groups' cloud-config comes back empty, it is omitted from the
+// rendered output (with a warning logged) rather than printed as a blank
+// entry, while a populated group's data still appears.
+func TestCloudInitNodeGet_GroupSkipsEmptyGroup(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "empty.yaml") {
+			// No body written: this group's cloud-config is empty.
+			return
+		}
+		w.Write([]byte("#cloud-config\nrole: worker\n"))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "group",
+		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0", "compute", "empty")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "role: worker") {
+		t.Errorf("stdout = %q, want it to contain the populated group's data", res.stdout)
+	}
+	if strings.Contains(res.stdout, "group=empty") {
+		t.Errorf("stdout = %q, want the empty group omitted from rendered output", res.stdout)
+	}
+	if !strings.Contains(res.stdout, "cloud-config for group empty was empty") {
+		t.Errorf("output = %q, want a warning about the empty group", res.stdout)
+	}
+}

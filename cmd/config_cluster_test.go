@@ -251,3 +251,35 @@ func TestConfigClusterSet_DeclineCreate(t *testing.T) {
 		t.Errorf("config path stat error = %v, want not-exist", err)
 	}
 }
+
+// TestConfigClusterDelete_ClearsDefaultCluster verifies that deleting the
+// default cluster also removes default-cluster from the file and keeps the
+// other clusters.
+func TestConfigClusterDelete_ClearsDefaultCluster(t *testing.T) {
+	t.Parallel()
+
+	cfg := writeTempConfig(t, `default-cluster: alpha
+clusters:
+- name: alpha
+  cluster:
+    uri: https://alpha.example
+- name: beta
+  cluster:
+    uri: https://beta.example
+`)
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "delete", "alpha")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	data, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	contents := string(data)
+	if strings.Contains(contents, "name: alpha") || strings.Contains(contents, "default-cluster") {
+		t.Errorf("config = %q, want alpha and default-cluster removed", contents)
+	}
+	if !strings.Contains(contents, "name: beta") {
+		t.Errorf("config = %q, want beta retained", contents)
+	}
+}

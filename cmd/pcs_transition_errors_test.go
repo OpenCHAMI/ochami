@@ -110,3 +110,49 @@ func TestPCSTransitionStart_InvalidOp(t *testing.T) {
 		t.Error("a request was made despite the operation being invalid")
 	}
 }
+
+// TestPCSTransitionList_MalformedResponse verifies a malformed transition-list
+// response resolves to CodePayload.
+func TestPCSTransitionList_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"Transitions":`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"pcs", "transition", "list")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodePayload {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+	}
+}
+
+// TestPCSTransitionShow_MalformedResponse verifies a malformed transition-show
+// response resolves to CodePayload.
+func TestPCSTransitionShow_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"Transition":`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"pcs", "transition", "show", "test-transition")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodePayload {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+	}
+}
