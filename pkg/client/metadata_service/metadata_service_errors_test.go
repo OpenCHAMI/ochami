@@ -4,9 +4,10 @@
 
 package metadata_service
 
-// metadata_service_errors_test.go exercises the per-item error arms of the generic
-// Add/Set/Delete/List helpers by returning error statuses from the mock server,
-// and the format/marshal error arms of the getters.
+// metadata_service_errors_test.go exercises the per-item error arms of the
+// generic Add/Set/Delete/List helpers by returning error statuses from the mock
+// server, and the format/marshal error arms of the getters. It also covers
+// patch-method validation.
 
 import (
 	"context"
@@ -16,9 +17,11 @@ import (
 	"testing"
 	"time"
 
+	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/rs/zerolog"
 
+	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -113,5 +116,154 @@ func TestListHelpers_HTTPError(t *testing.T) {
 	}
 	if _, err := c.ListWireGuardPeers(context.Background(), "", format.DataFormatJson); err == nil {
 		t.Error("ListWireGuardPeers: expected an error")
+	}
+}
+
+// TestMetadataPatchMethod_Validation verifies that each metadata-service patch
+// method rejects an invalid patch method.
+func TestMetadataPatchMethod_Validation(t *testing.T) {
+	c, srv := errServer(t)
+	defer srv.Close()
+	bad := client.PatchMethod("invalid")
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "group", call: func() error {
+			_, err := c.PatchGroup(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		}},
+		{name: "defaults", call: func() error {
+			_, err := c.PatchDefaults(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		}},
+		{name: "instance info", call: func() error {
+			_, err := c.PatchInstanceInfo(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		}},
+		{name: "wireguard peer", call: func() error {
+			_, err := c.PatchWireGuardPeer(context.Background(), "", bad, "uid", map[string]any{})
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("patch accepted an invalid patch method")
+			}
+		})
+	}
+}
+
+// TestMetadataWriteHelpers_HTTPError verifies that the set and spec write
+// helpers return an error for an unsuccessful response.
+func TestMetadataWriteHelpers_HTTPError(t *testing.T) {
+	c, srv := errServer(t)
+	defer srv.Close()
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "set group", call: func() error {
+			_, err := c.SetGroup(context.Background(), "", "uid", metadata_service_client.UpdateGroupRequest{})
+			return err
+		}},
+		{name: "set defaults", call: func() error {
+			_, err := c.SetDefaults(context.Background(), "", "uid", metadata_service_client.UpdateClusterDefaultsRequest{})
+			return err
+		}},
+		{name: "set instance info", call: func() error {
+			_, err := c.SetInstanceInfo(context.Background(), "", "uid", metadata_service_client.UpdateInstanceInfoRequest{})
+			return err
+		}},
+		{name: "set wireguard peer", call: func() error {
+			_, err := c.SetWireGuardPeer(context.Background(), "", "uid", metadata_service_client.UpdateWireGuardPeerRequest{})
+			return err
+		}},
+		{name: "add group spec", call: func() error { return c.AddGroupSpecs(context.Background(), "", []GroupSpec{{Name: "one"}})[0].Err }},
+		{name: "add defaults spec", call: func() error {
+			return c.AddDefaultsSpecs(context.Background(), "", []ClusterDefaultsSpec{{Name: "one"}})[0].Err
+		}},
+		{name: "add instance info spec", call: func() error {
+			return c.AddInstanceInfoSpecs(context.Background(), "", []InstanceInfoSpec{{Name: "one"}})[0].Err
+		}},
+		{name: "add wireguard peer spec", call: func() error {
+			return c.AddWireGuardPeerSpecs(context.Background(), "", []WireGuardPeerSpec{{Name: "one"}})[0].Err
+		}},
+		{name: "set group spec", call: func() error { _, err := c.SetGroupSpec(context.Background(), "", "uid", api.GroupSpec{}); return err }},
+		{name: "set defaults spec", call: func() error {
+			_, err := c.SetDefaultsSpec(context.Background(), "", "uid", api.ClusterDefaultsSpec{})
+			return err
+		}},
+		{name: "set instance info spec", call: func() error {
+			_, err := c.SetInstanceInfoSpec(context.Background(), "", "uid", api.InstanceInfoSpec{})
+			return err
+		}},
+		{name: "set wireguard peer spec", call: func() error {
+			_, err := c.SetWireGuardPeerSpec(context.Background(), "", "uid", api.WireGuardPeerSpec{})
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("call returned nil error")
+			}
+		})
+	}
+}
+
+// TestReadEndpoints_RejectUnsupportedOutputFormat verifies that each
+// metadata-service get and list method rejects an unsupported output format.
+func TestReadEndpoints_RejectUnsupportedOutputFormat(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		call func(*MetadataServiceClient) error
+	}{
+		{name: "get group", body: `{}`, call: func(c *MetadataServiceClient) error {
+			_, err := c.GetGroup(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list groups", body: `[]`, call: func(c *MetadataServiceClient) error {
+			_, err := c.ListGroups(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get defaults", body: `{}`, call: func(c *MetadataServiceClient) error {
+			_, err := c.GetDefaults(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list defaults", body: `[]`, call: func(c *MetadataServiceClient) error {
+			_, err := c.ListDefaults(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get instance info", body: `{}`, call: func(c *MetadataServiceClient) error {
+			_, err := c.GetInstanceInfo(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list instance infos", body: `[]`, call: func(c *MetadataServiceClient) error {
+			_, err := c.ListInstanceInfos(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+		{name: "get wireguard peer", body: `{}`, call: func(c *MetadataServiceClient) error {
+			_, err := c.GetWireGuardPeer(context.Background(), "", format.DataFormat("toml"), "uid")
+			return err
+		}},
+		{name: "list wireguard peers", body: `[]`, call: func(c *MetadataServiceClient) error {
+			_, err := c.ListWireGuardPeers(context.Background(), "", format.DataFormat("toml"))
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(tt.body))
+			})
+			defer srv.Close()
+			if err := tt.call(c); err == nil {
+				t.Fatal("call returned nil error for unsupported output format")
+			}
+		})
 	}
 }
