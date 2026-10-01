@@ -349,8 +349,14 @@ func DefaultTimeout() time.Duration {
 }
 
 // UserConfigPath returns the path to the per-user configuration file. It
-// prefers $HOME and falls back to the current user's home directory.
+// honors $XDG_CONFIG_HOME when it is set to an absolute path (a relative path
+// is ignored, as the XDG Base Directory Specification requires), otherwise
+// uses $HOME/.config and finally falls back to the current user's home
+// directory.
 func UserConfigPath() (string, error) {
+	if configHome := os.Getenv("XDG_CONFIG_HOME"); filepath.IsAbs(configHome) {
+		return filepath.Join(configHome, "ochami", "config.yaml"), nil
+	}
 	if home := os.Getenv("HOME"); home != "" {
 		return filepath.Join(home, ".config", "ochami", "config.yaml"), nil
 	}
