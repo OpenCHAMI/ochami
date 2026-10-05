@@ -12,6 +12,10 @@ linters:
     - depguard
     # Flags repeated words ("the the") in comments and strings.
     - dupword
+    # Flags comparisons and type assertions on errors, which miss wrapped
+    # errors (use errors.Is and errors.As), and fmt.Errorf calls that format
+    # an error without %w.
+    - errorlint
     # Forbids calls that bypass the invocation runtime (see settings).
     - forbidigo
     # Requires doc comments on declarations to end with a period.
@@ -29,9 +33,6 @@ linters:
     # Requires tests to use t.TempDir, t.Setenv, and t.Chdir rather than
     # os.MkdirTemp, os.Setenv, and os.Chdir, so the testing package cleans up.
     - usetesting
-  disable:
-    - staticcheck
-    - unused
   settings:
     depguard:
       rules:
@@ -104,6 +105,19 @@ linters:
       # Require t.Parallel() in each command test, not in each of its t.Run
       # subtests; some tables' subtests share state.
       ignore-missing-subtests: true
+    staticcheck:
+      checks:
+        - all
+        # Names with underscores or lowercase initialisms (DataFormatJson,
+        # bmc_spec). Some are exported API, which renaming would break.
+        - -ST1003
+        # Sentinel error variables named ErrFoo. client.UnsuccessfulHTTPError
+        # and its siblings are exported API, which renaming would break.
+        - -ST1012
+        # Dropping an embedded field's name from a selector (oc.Client.Do to
+        # oc.Do). Naming the field shows which value a call or field
+        # belongs to.
+        - -QF1008
   exclusions:
     generated: lax
     presets:
