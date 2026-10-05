@@ -113,7 +113,7 @@ See ochami-cloud-init(1) for more details.`,
 	return nodeGetGroupCmd
 }
 
-// nodeGetMetadataCmd represents the "cloud-init node get meta-data" command
+// nodeGetMetadataCmd represents the "cloud-init node get meta-data" command.
 func newCmdNodeGetMetadata() *cobra.Command {
 	var nodeGetMetadataCmd = &cobra.Command{
 		Use:   "meta-data <node_id>...",

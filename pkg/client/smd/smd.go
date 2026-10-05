@@ -153,7 +153,7 @@ func NewClient(baseURI string, opts ...client.Option) (*SMDClient, error) {
 // endpoint to query. If empty, the /service/ready endpoint is queried.
 // Otherwise:
 //
-// "all" -> "/service/values"
+//	"all" -> "/service/values"
 func (sc *SMDClient) GetStatus(ctx context.Context, component string) (client.HTTPEnvelope, error) {
 	var (
 		henv              client.HTTPEnvelope

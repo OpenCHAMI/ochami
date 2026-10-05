@@ -192,10 +192,10 @@ func (bc *BSSClient) GetBootScript(ctx context.Context, query string) (client.HT
 // endpoint to query. If empty, the /service/status endpoint is queried.
 // Otherwise:
 //
-// "all"     -> "/service/status/all"
-// "storage" -> "/service/storage/status"
-// "smd"     -> "/service/hsm"
-// "version" -> "/service/version"
+//	"all"     -> "/service/status/all"
+//	"storage" -> "/service/storage/status"
+//	"smd"     -> "/service/hsm"
+//	"version" -> "/service/version"
 func (bc *BSSClient) GetStatus(ctx context.Context, component string) (client.HTTPEnvelope, error) {
 	var (
 		henv              client.HTTPEnvelope

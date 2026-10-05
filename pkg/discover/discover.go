@@ -189,7 +189,7 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems, opts ...Option) (smd.Com
 			// indicate supported power actions, and PCS requires
 			// them. We don't have direct configuration for the
 			// System struct that contains this either, so in lieu
-			// of that, simply add every possible action from from
+			// of that, simply add every possible action from
 			// the Redfish Reference 6.5.5.1 ResetType:
 			// https://www.dmtf.org/sites/default/files/standards/documents/DSP2046_2023.3.html#aggregate-102
 			s.Actions = []string{"On", "ForceOff", "GracefulShutdown", "GracefulRestart", "ForceRestart", "Nmi",
@@ -326,7 +326,7 @@ func DiscoveryInfoV2Deprecated(baseURI string, nl NodeListDeprecated, opts ...Op
 			// indicate supported power actions, and PCS requires
 			// them. We don't have direct configuration for the
 			// System struct that contains this either, so in lieu
-			// of that, simply add every possible action from from
+			// of that, simply add every possible action from
 			// the Redfish Reference 6.5.5.1 ResetType:
 			// https://www.dmtf.org/sites/default/files/standards/documents/DSP2046_2023.3.html#aggregate-102
 			s.Actions = []string{"On", "ForceOff", "GracefulShutdown", "GracefulRestart", "ForceRestart", "Nmi",

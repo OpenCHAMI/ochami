@@ -20,7 +20,7 @@ import (
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
 )
 
-// Possible transition states
+// Possible transition states.
 const (
 	transitionStatusNew           = "new"
 	transitionStatusInProgress    = "in-progress"
@@ -29,7 +29,7 @@ const (
 	transitionStatusAbortSignaled = "abort-signaled"
 )
 
-// Possible transition task states
+// Possible transition task states.
 const (
 	transitionTaskStateNew        = "new"
 	transitionTaskStateInProgress = "in-progress"
@@ -37,7 +37,7 @@ const (
 	transitionTaskStateSucceeded  = "succeeded"
 )
 
-// transitionTaskCounts represents the counts of tasks in a PCS transition
+// transitionTaskCounts represents the counts of tasks in a PCS transition.
 type transitionTaskCounts struct {
 	Total       int `json:"total" yaml:"total"`
 	New         int `json:"new" yaml:"new"`
@@ -47,7 +47,7 @@ type transitionTaskCounts struct {
 	Unsupported int `json:"un-supported" yaml:"un-supported"`
 }
 
-// transitionProgress represents the progress of a PCS transition
+// transitionProgress represents the progress of a PCS transition.
 type transitionProgress struct {
 	Status     string               `json:"transitionStatus" yaml:"transitionStatus"`
 	TaskCounts transitionTaskCounts `json:"taskCounts" yaml:"taskCounts"`
@@ -76,7 +76,7 @@ func realPCSTransitionClient(cmd *cobra.Command) (pcsTransitionClient, error) {
 	return pcs_lib.GetClient(cmd, rt)
 }
 
-// Create and style a progress bar
+// Create and style a progress bar.
 func createBar(p *mpb.Progress, name string) *mpb.Bar {
 	return p.AddBar(0, mpb.PrependDecorators(
 		decor.Name(name, decor.WC{W: 12, C: decor.DindentRight}),

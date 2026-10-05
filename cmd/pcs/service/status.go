@@ -29,7 +29,7 @@ const (
 // For now use this to map API name to names that make more sense for the CLI, in
 // the end we might just move these aliases to the service. Note: We don't report
 // status for DistLocking (as the only implementation uses ETCD, so the status
-// is just duplicated) or the TaskRunner (as we only use the local implementation)
+// is just duplicated) or the TaskRunner (as we only use the local implementation).
 type commandOutput struct {
 	Status       string `json:"pcs,omitempty" yaml:"pcs,omitempty"`
 	KvStore      string `json:"storage,omitempty" yaml:"storage,omitempty"`
@@ -37,7 +37,7 @@ type commandOutput struct {
 	Vault        string `json:"vault,omitempty" yaml:"vault,omitempty"`
 }
 
-// Get the status of PCS either "live" or "ready"
+// Get the status of PCS either "live" or "ready".
 func getStatus(ctx context.Context, pcsClient *pcs.PCSClient) (string, error) {
 	httpEnv, err := pcsClient.GetReadiness(ctx)
 	if err != nil {
@@ -62,7 +62,7 @@ func getStatus(ctx context.Context, pcsClient *pcs.PCSClient) (string, error) {
 	return "", errors.New("unable to get PCS state")
 }
 
-// struct used to unmarshall /health endpoint response
+// struct used to unmarshall /health endpoint response.
 type healthOutput struct {
 	KvStore      string
 	DistLocking  string
@@ -71,7 +71,7 @@ type healthOutput struct {
 	TaskRunner   string
 }
 
-// allowed flag for status command
+// allowed flag for status command.
 func flags() []string {
 	return []string{"all", "storage", "smd", "vault"}
 }
