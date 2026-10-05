@@ -51,9 +51,9 @@ func TestGetComponents_All(t *testing.T) {
 // TestGetComponents_Xname verifies GET /State/Components/{xname} with the auth
 // header set.
 func TestGetComponents_Xname(t *testing.T) {
-	var gotPath, gotAuth string
+	var gotMethod, gotPath, gotAuth string
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
-		gotPath, gotAuth = r.URL.Path, r.Header.Get("Authorization")
+		gotMethod, gotPath, gotAuth = r.Method, r.URL.Path, r.Header.Get("Authorization")
 		w.Write([]byte(`{}`))
 	})
 	defer srv.Close()
@@ -61,8 +61,8 @@ func TestGetComponents_Xname(t *testing.T) {
 	if _, err := sc.GetComponentsXname(context.Background(), "x0c0s0b0n0", "tok"); err != nil {
 		t.Fatalf("GetComponentsXname: %v", err)
 	}
-	if gotPath != "/State/Components/x0c0s0b0n0" {
-		t.Errorf("path = %q, want /State/Components/x0c0s0b0n0", gotPath)
+	if gotMethod != http.MethodGet || gotPath != "/State/Components/x0c0s0b0n0" {
+		t.Errorf("request = %s %s, want GET /State/Components/x0c0s0b0n0", gotMethod, gotPath)
 	}
 	if gotAuth != "Bearer tok" {
 		t.Errorf("auth = %q, want Bearer tok", gotAuth)
@@ -174,9 +174,9 @@ func TestDeleteComponents_Iterative(t *testing.T) {
 	}
 }
 
-// TestGetStatus verifies GetStatus routes to the SMD /service readiness/values
-// endpoints depending on the requested component.
-func TestGetStatus(t *testing.T) {
+// TestGetStatus_Routes verifies GetStatus requests SMD's /service/ready or
+// /service/values endpoint depending on the requested component.
+func TestGetStatus_Routes(t *testing.T) {
 	cases := []struct {
 		name      string
 		component string
@@ -288,9 +288,9 @@ func TestPostEthernetInterfaces(t *testing.T) {
 	}
 }
 
-// TestPostGroupMembers verifies the iterative POST helper targets
+// TestPostGroupMembers_Success verifies the iterative POST helper targets
 // /groups/<group>/members.
-func TestPostGroupMembers(t *testing.T) {
+func TestPostGroupMembers_Success(t *testing.T) {
 	var gotMethod, gotPath string
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -309,9 +309,9 @@ func TestPostGroupMembers(t *testing.T) {
 	}
 }
 
-// TestPutGroupMembers verifies PutGroupMembers issues PUT
+// TestPutGroupMembers_Success verifies PutGroupMembers issues PUT
 // /groups/<group>/members.
-func TestPutGroupMembers(t *testing.T) {
+func TestPutGroupMembers_Success(t *testing.T) {
 	var gotMethod, gotPath string
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path

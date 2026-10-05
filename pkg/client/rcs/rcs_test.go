@@ -38,9 +38,9 @@ func newTestRCS(t *testing.T, h http.HandlerFunc) (*RCSClient, *httptest.Server)
 // TestGetStatus_RequestPath verifies GetStatus issues GET /health and unmarshals the
 // response.
 func TestGetStatus_RequestPath(t *testing.T) {
-	var gotPath string
+	var gotMethod, gotPath string
 	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
+		gotMethod, gotPath = r.Method, r.URL.Path
 		w.Write([]byte(`{"consoles":"3","hardwareupdate":"2026-01-01"}`))
 	})
 	defer srv.Close()
@@ -49,8 +49,8 @@ func TestGetStatus_RequestPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetStatus: %v", err)
 	}
-	if gotPath != "/health" {
-		t.Errorf("path = %q, want /health", gotPath)
+	if gotMethod != http.MethodGet || gotPath != "/health" {
+		t.Errorf("request = %s %s, want GET /health", gotMethod, gotPath)
 	}
 	if resp.NumberConsoles != "3" {
 		t.Errorf("NumberConsoles = %q, want 3", resp.NumberConsoles)

@@ -63,9 +63,9 @@ func TestInitLogging_RejectsInvalidConfiguration(t *testing.T) {
 }
 
 // TestInitConfig_RejectsMalformedFile verifies that InitConfig surfaces a
-// malformed config file as an error. Classifying that error as CodeConfig is
-// cmd/root.go's PersistentPreRunE's responsibility, not InitConfig's, so it's
-// covered at the command-tree level rather than here.
+// malformed config file as an error. Giving that error its exit code is
+// cmd/root.go's PersistentPreRunE's responsibility, not InitConfig's, so the
+// command-tree tests check the code rather than this one.
 func TestInitConfig_RejectsMalformedFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bad.yaml")
 	if err := os.WriteFile(path, []byte("clusters: [\n"), 0o600); err != nil {
