@@ -176,7 +176,7 @@ func CheckPathSegment(what, seg string) error {
 
 // GetData is a wrapper around MakeOchamiRequest that sends a GET request to
 // endpoint, using an optional token and optional headers, and returns an
-// HTTPEnvelope containg the response metadata and the data received in the
+// HTTPEnvelope containing the response metadata and the data received in the
 // response along with a nil error. If the HTTP response code is unsuccessful
 // (i.e. not 2XX), then the returned error will contain an
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query
@@ -198,7 +198,7 @@ func (oc *OchamiClient) GetData(ctx context.Context, endpoint, query string, hea
 
 // PostData is a wrapper around MakeOchamiRequest that sends a POST request to
 // endpoint, using an optional token, optional headers, a body, and returns an
-// HTTPEnvelope containg the response metadata and the data received in the
+// HTTPEnvelope containing the response metadata and the data received in the
 // response along with a nil error. If the HTTP response code is unsuccessful
 // (i.e. not 2XX), then the returned error will contain an
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query
@@ -220,7 +220,7 @@ func (oc *OchamiClient) PostData(ctx context.Context, endpoint, query string, he
 
 // PutData is a wrapper around MakeOchamiRequest that sends a PUT request to
 // endpoint, using an optional token, optional headers, a body, and returns an
-// HTTPEnvelope containg the response metadata and the data received in the
+// HTTPEnvelope containing the response metadata and the data received in the
 // response along with a nil error. If the HTTP response code is unsuccessful
 // (i.e. not 2XX), then the returned error will contain an
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query
@@ -242,7 +242,7 @@ func (oc *OchamiClient) PutData(ctx context.Context, endpoint, query string, hea
 
 // PatchData is a wrapper around MakeOchamiRequest that sends a PATCH request to
 // endpoint, using an optional token, optional headers, a body, and returns an
-// HTTPEnvelope containg the response metadata and the data received in the
+// HTTPEnvelope containing the response metadata and the data received in the
 // response along with a nil error. If the HTTP response code is unsuccessful
 // (i.e. not 2XX), then the returned error will contain an
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query
@@ -264,7 +264,7 @@ func (oc *OchamiClient) PatchData(ctx context.Context, endpoint, query string, h
 
 // DeleteData is a wrapper around MakeOchamiRequest that sends a DELETE request
 // to endpoint, using an optional token, optional headers, a body, and returns
-// an HTTPEnvelope containg the response metadata and the data received in the
+// an HTTPEnvelope containing the response metadata and the data received in the
 // response along with a nil error. If the HTTP response code is unsuccessful
 // (i.e. not 2XX), then the returned error will contain an
 // UnsuccessfulHTTPError. Otherwise, the error that occurred is returned. query

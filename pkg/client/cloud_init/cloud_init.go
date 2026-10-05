@@ -51,7 +51,7 @@ const (
 //
 // When GroupData is returned when fetching all groups, a map is returned keyed
 // on the name. It can be easier and more consistent to have this be a list of
-// GroupData instead,
+// GroupData instead.
 func CIGroupDataMapToSlice(gMap map[string]cistore.GroupData) (gSlice []cistore.GroupData) {
 	for _, group := range gMap {
 		gSlice = append(gSlice, group)

@@ -36,7 +36,7 @@ func (op JSONPatchOperation) MarshalJSON() ([]byte, error) {
 	return json.Marshal(operation(op))
 }
 
-// PatchMethod represents the supported patch type
+// PatchMethod represents the supported patch type.
 type PatchMethod string
 
 const (
