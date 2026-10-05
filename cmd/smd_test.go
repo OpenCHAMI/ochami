@@ -334,8 +334,8 @@ func TestSMDCompepDelete_NoConfirm(t *testing.T) {
 
 // --- service / status ---
 
-// TestSMDServiceStatus verifies "smd service status" issues a GET under /service.
-func TestSMDServiceStatus(t *testing.T) {
+// TestSMDServiceStatus_Success verifies "smd service status" issues a GET under /service.
+func TestSMDServiceStatus_Success(t *testing.T) {
 	t.Parallel()
 
 	var gotMethod, gotPath string

@@ -31,9 +31,8 @@ func TestRuntime_NilEnvironmentUsesProcess(t *testing.T) {
 // TestRuntimeFromCommand_IsPureGetter verifies that RuntimeFromCommand does not
 // validate or apply format flags itself; format-flag validation is
 // PersistentPreRunE's responsibility (via ApplyFormatFlags, called once at
-// the root, see TestApplyFormatFlags_InvalidInputFormat), so RuntimeFromCommand
-// succeeds even when the command's format flags hold a value ApplyFormatFlags
-// would reject.
+// the root), so RuntimeFromCommand succeeds even when the command's format
+// flags hold a value ApplyFormatFlags would reject.
 func TestRuntimeFromCommand_IsPureGetter(t *testing.T) {
 	rt := NewTestRuntime(strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{})
 	cmd := &cobra.Command{Use: "test"}
