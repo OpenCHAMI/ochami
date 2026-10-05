@@ -164,19 +164,18 @@ adding or modifying tests.
 
 ### Test function names
 
-Use `TestSubject_Case`: `Subject` names the function, type, or command under
-test; `Case` names the specific scenario or condition being exercised (e.g.
-`TestExitCode_CodedBeatsSentinel`, `TestEnsureCode_NoDoubleWrap`). Omit the
-`_Case` suffix only when a file has exactly one test for that subject and
-there is no competing scenario to distinguish it from (e.g.
-`TestFabricaWrapHTTPError`).
+Use `TestSubject_Case`: `Subject` names the function, type, method
+(`Type_Method`), or command under test; `Case` names the specific scenario or
+condition the test checks (e.g. `TestExitCode_CodedBeatsSentinel`,
+`TestEnsureCode_NoDoubleWrap`). Omit the `_Case` suffix only when the package
+has no other test for that subject (e.g. `TestFabricaWrapHTTPError`).
 
 ### Test file names
 
 Group tests for a subject into files using this suffix taxonomy:
 
 - **`<subject>_test.go`** — happy-path / correctness tests.
-- **`<subject>_errors_test.go`** — error-arm / rejection-path tests (invalid
+- **`<subject>_errors_test.go`** — error-path / rejection tests (invalid
   input, HTTP/network failures, malformed responses, etc).
 - **`<subject>_boundary_test.go`** — edge-value or platform-boundary tests
   (empty/nil inputs, OS-specific behavior, filesystem/process boundaries).
@@ -188,7 +187,7 @@ file if it's more happy-path coverage of the same subject.
 
 The suffix taxonomy groups separate top-level `Test` functions, not the
 `t.Run` subtests within one. A single `TestSubject` that uses subtests to
-exercise several facets of one cohesive contract (e.g. an executor's
+check several facets of one cohesive contract (e.g. an executor's
 ordering, cancellation, and deadline behavior) belongs together in the
 subject's plain `_test.go` file even when individual subtests cover error
 conditions (see `pkg/client/batch_test.go`).
@@ -200,7 +199,9 @@ name and states the behavior it verifies, the same way exported Go
 identifiers are documented (e.g. `// TestEnsureCode_NoDoubleWrap verifies
 EnsureCode preserves an already-coded error's original code`). For a
 table-driven test, summarize what the cases cover rather than describing
-each row.
+each row. Describe behavior, not coverage mechanics: avoid words such as
+"arm", "branch", "exercises", and "handles", and don't refer to other tests.
+An HTTP method, path, or exit code a doc names is one the test asserts.
 
 ### Exit code assertions
 
