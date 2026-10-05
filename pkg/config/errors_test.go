@@ -137,7 +137,7 @@ func TestErrInvalidURI_Error(t *testing.T) {
 			fields: fields{
 				Err: fmt.Errorf("unknown URI format (must be \"proto://host[:port][/path]\")"),
 			},
-			want: fmt.Sprintf("invalid URI: %v", fmt.Sprintf("unknown URI format (must be \"proto://host[:port][/path]\")")),
+			want: fmt.Sprintf("invalid URI: %v", "unknown URI format (must be \"proto://host[:port][/path]\")"),
 		},
 	}
 	for _, tt := range tests {
@@ -170,7 +170,7 @@ func TestErrInvalidServiceURI_Error(t *testing.T) {
 				Err:     fmt.Errorf("unknown URI format (must be \"proto://host[:port][/path]\")"),
 				Service: ServiceBSS,
 			},
-			want: fmt.Sprintf("invalid service URI for %s: %v", ServiceBSS, fmt.Sprintf("unknown URI format (must be \"proto://host[:port][/path]\")")),
+			want: fmt.Sprintf("invalid service URI for %s: %v", ServiceBSS, "unknown URI format (must be \"proto://host[:port][/path]\")"),
 		},
 	}
 	for _, tt := range tests {

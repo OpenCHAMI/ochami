@@ -136,9 +136,10 @@ func (c *RCSClient) dialWebSocket(ctx context.Context, nodeID string, query stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse console URI: %w", err)
 	}
-	if u.Scheme == "https" {
+	switch u.Scheme {
+	case "https":
 		u.Scheme = "wss"
-	} else if u.Scheme == "http" {
+	case "http":
 		u.Scheme = "ws"
 	}
 
@@ -316,7 +317,7 @@ func forwardBytes(conn messageWriter, buf []byte, n int, readErr error, errChan 
 		}
 	}
 	if readErr != nil {
-		if readErr != io.EOF {
+		if !errors.Is(readErr, io.EOF) {
 			errChan <- readErr
 		}
 		return true

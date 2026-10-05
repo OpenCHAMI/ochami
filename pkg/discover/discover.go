@@ -74,13 +74,11 @@ func DiscoveryInfoV2(baseURI string, di DiscoveryItems, opts ...Option) (smd.Com
 	for _, bmc := range di.BMCs {
 		logger.Debug().Msgf("generating redfish endpoint structure for bmc %s", bmc)
 
-		// Create SMD RedfishEndpoint for BMC
-		var rfe *smd.RedfishEndpointV2
-		if r, found := bmcs[bmc.MACAddr]; found {
-			rfe = r
-		} else {
+		// Create SMD RedfishEndpoint for BMC, unless one exists for its MAC
+		// address already
+		if _, found := bmcs[bmc.MACAddr]; !found {
 			// Populate rfe base data
-			rfe = &smd.RedfishEndpointV2{}
+			rfe := &smd.RedfishEndpointV2{}
 			rfe.Name = bmc.Name
 			rfe.Type = "NodeBMC"
 			rfe.ID = bmc.Xname
