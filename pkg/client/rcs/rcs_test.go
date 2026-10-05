@@ -196,10 +196,7 @@ func TestConnectConsole_EchoesInput(t *testing.T) {
 
 	// Wait for the echo to make it back to stdout.
 	deadline := time.After(5 * time.Second)
-	for {
-		if strings.Contains(stdout.String(), "uptime") {
-			break
-		}
+	for !strings.Contains(stdout.String(), "uptime") {
 		select {
 		case <-deadline:
 			t.Fatalf("timed out waiting for echoed output; stdout=%q", stdout.String())
