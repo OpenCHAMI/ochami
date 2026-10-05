@@ -224,6 +224,30 @@ isolated `cli.NewTestRuntime` through the helpers in `cmd/testhelpers_test.go`
 (`runOchamiWithRuntime` and friends), and call `t.Parallel()` unless they use
 `t.Setenv`, which can't be combined with it.
 
+### Automated checks
+
+`make test` runs the tests in `internal/conventions`, which parse the
+module's sources and fail on:
+
+- test names that don't follow `TestSubject_Case`, and test files with a
+  generic suffix;
+- test doc comments that don't start with the test's name, use coverage
+  jargon, or refer to other tests;
+- test doc comments that say the test issues, sends, or requests an HTTP
+  method or path its body never mentions, or that name exit codes none of
+  which its body mentions;
+- tests that can't fail;
+- exit code failure messages without `cli.CodeName`, and exit codes compared
+  with integer literals;
+- an EXIT STATUS table in ochami(1) that differs from the exit codes in
+  `internal/cli/errors.go`;
+- exported `pkg/config` API that exposes koanf.
+
+Run them alone with `go test ./internal/conventions`. `make lint` checks the
+rest: commands use the runtime's streams and return errors rather than
+exiting, `pkg/` doesn't import the command tree or CLI state, command tests
+call `t.Parallel()`, and test helpers call `t.Helper()`.
+
 ## Submitting Pull Requests
 
 ### Container Builds on PRs
