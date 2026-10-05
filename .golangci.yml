@@ -10,8 +10,14 @@ linters:
     # Keeps pkg/ free of imports from the command tree and CLI state (see
     # settings).
     - depguard
+    # Flags repeated words ("the the") in comments and strings.
+    - dupword
     # Forbids calls that bypass the invocation runtime (see settings).
     - forbidigo
+    # Requires doc comments on declarations to end with a period.
+    - godot
+    # Flags commonly misspelled English words in comments and strings.
+    - misspell
     # Requires every //nolint directive to name its linter and give a reason,
     # and flags directives that no longer suppress anything.
     - nolintlint
@@ -42,6 +48,11 @@ linters:
               desc: pkg/ must not depend on CLI invocation state
             - pkg: github.com/openchami/ochami/internal/configfile
               desc: pkg/ must not depend on CLI config formatting
+    dupword:
+      # Tests answer a run of confirmation prompts with "y\ny\n", which
+      # isn't a typo.
+      ignore:
+        - "y"
     errcheck:
       check-type-assertions: false
       check-blank: true
@@ -80,6 +91,11 @@ linters:
         # that exits, with the code cli.ExitCode assigns (see exclusions).
         - pattern: ^os\.Exit$
           msg: return an error; cmd/root.go's Execute is the only place that exits
+    godot:
+      # Check doc comments on top-level declarations and on the entries in
+      # import, const, and var blocks, but not comments inside functions.
+      # Labels inside blocks are exempt (see exclusions).
+      scope: declarations
     nolintlint:
       # Directives take the form //nolint:<linter> // <reason>.
       require-explanation: true
@@ -125,6 +141,12 @@ linters:
         linters:
           - forbidigo
         text: "os\\.Exit"
+      # A short label for a group of entries inside an import, const, or var
+      # block (// Subcommands) isn't a sentence, so it needs no period. Doc
+      # comments on top-level declarations still do.
+      - linters:
+          - godot
+        source: "^\\s+// [A-Z]\\w*( \\w+){0,3}$"
 formatters:
   enable:
     - gofmt

@@ -79,7 +79,7 @@ func TestIOStreams_LoopYesNo(t *testing.T) {
 	}
 }
 
-// Helper function to generate a test JWT token
+// Helper function to generate a test JWT token.
 func generateTestToken(exp time.Time, nbf time.Time, iat time.Time) (string, error) {
 	// Generate RSA key for signing
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
