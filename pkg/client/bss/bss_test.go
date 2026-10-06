@@ -69,7 +69,9 @@ func newUnreachableClient(t *testing.T) *BSSClient {
 }
 
 func TestNewClient(t *testing.T) {
-	bc, err := NewClient("https://example.com/boot/v1", client.WithInsecure(true))
+	// WithShowToken is used rather than WithInsecure because the latter
+	// modifies the shared http.DefaultClient, which would leak into other tests.
+	bc, err := NewClient("https://example.com/boot/v1", client.WithShowToken(true))
 	if err != nil {
 		t.Fatalf("NewClient() returned unexpected error: %v", err)
 	}
@@ -81,6 +83,9 @@ func TestNewClient(t *testing.T) {
 	}
 	if got, want := bc.BaseURI.String(), "https://example.com/boot/v1"; got != want {
 		t.Errorf("BaseURI = %q, want %q", got, want)
+	}
+	if !bc.ShowToken {
+		t.Error("ShowToken = false, want true (WithShowToken option not applied)")
 	}
 }
 
