@@ -52,18 +52,29 @@ func newTestClient(t *testing.T, status int, respBody string) (*BSSClient, *reco
 	return bc, rec
 }
 
-// newUnreachableClient returns a BSSClient whose base URI points at a server
-// that has already been shut down, so every request fails at the transport
-// level.
-func newUnreachableClient(t *testing.T) *BSSClient {
+// newBrokenConnClient returns a BSSClient pointed at a server that closes every
+// connection without writing a response, so every request fails at the
+// transport level.
+func newBrokenConnClient(t *testing.T) *BSSClient {
 	t.Helper()
-	srv := httptest.NewServer(http.NotFoundHandler())
-	uri := srv.URL
-	srv.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Error("test server ResponseWriter does not support hijacking")
+			return
+		}
+		conn, _, err := hj.Hijack()
+		if err != nil {
+			t.Errorf("failed to hijack connection: %v", err)
+			return
+		}
+		_ = conn.Close()
+	}))
+	t.Cleanup(srv.Close)
 
-	bc, err := NewClient(uri)
+	bc, err := NewClient(srv.URL)
 	if err != nil {
-		t.Fatalf("NewClient(%q) returned unexpected error: %v", uri, err)
+		t.Fatalf("NewClient(%q) returned unexpected error: %v", srv.URL, err)
 	}
 	return bc
 }
@@ -78,8 +89,8 @@ func TestNewClient(t *testing.T) {
 	if bc.OchamiClient == nil {
 		t.Fatal("NewClient() returned BSSClient with nil OchamiClient")
 	}
-	if bc.ServiceName != serviceNameBSS {
-		t.Errorf("ServiceName = %q, want %q", bc.ServiceName, serviceNameBSS)
+	if bc.ServiceName != "BSS" {
+		t.Errorf("ServiceName = %q, want %q", bc.ServiceName, "BSS")
 	}
 	if got, want := bc.BaseURI.String(), "https://example.com/boot/v1"; got != want {
 		t.Errorf("BaseURI = %q, want %q", got, want)
@@ -97,7 +108,7 @@ func TestNewClient_InvalidURI(t *testing.T) {
 	if bc != nil {
 		t.Errorf("NewClient() with invalid URI returned non-nil client: %+v", bc)
 	}
-	if !strings.Contains(err.Error(), "failed to create OchamiClient for BSS") {
+	if !strings.HasPrefix(err.Error(), "failed to create OchamiClient for BSS") {
 		t.Errorf("error %q does not mention OchamiClient creation failure", err)
 	}
 }
@@ -126,6 +137,14 @@ func TestBootParamsMethods_Success(t *testing.T) {
 		Params: "console=ttyS0",
 		Kernel: "http://example.com/kernel",
 		Initrd: "http://example.com/initrd",
+		CloudInit: bssTypes.CloudInit{
+			MetaData: bssTypes.CloudDataType{"instance-id": "i-1"},
+			UserData: bssTypes.CloudDataType{"hostname": "nid0001"},
+			PhoneHome: bssTypes.PhoneHome{
+				Hostname: "nid0001",
+				FQDN:     "nid0001.example.com",
+			},
+		},
 	}
 
 	for _, m := range bootParamsMethods {
@@ -139,8 +158,11 @@ func TestBootParamsMethods_Success(t *testing.T) {
 			if rec.Method != m.httpMethod {
 				t.Errorf("method = %q, want %q", rec.Method, m.httpMethod)
 			}
-			if rec.Path != BSSRelpathBootParams {
-				t.Errorf("path = %q, want %q", rec.Path, BSSRelpathBootParams)
+			if rec.Path != "/bootparameters" {
+				t.Errorf("path = %q, want %q", rec.Path, "/bootparameters")
+			}
+			if rec.RawQuery != "" {
+				t.Errorf("query = %q, want it to be empty", rec.RawQuery)
 			}
 			if rec.Auth != "Bearer my-token" {
 				t.Errorf("Authorization = %q, want %q", rec.Auth, "Bearer my-token")
@@ -150,12 +172,7 @@ func TestBootParamsMethods_Success(t *testing.T) {
 			if err := json.Unmarshal(rec.Body, &gotBP); err != nil {
 				t.Fatalf("request body is not valid BootParams JSON: %v (body: %s)", err, rec.Body)
 			}
-			if !reflect.DeepEqual(gotBP.Hosts, bp.Hosts) ||
-				!reflect.DeepEqual(gotBP.Macs, bp.Macs) ||
-				!reflect.DeepEqual(gotBP.Nids, bp.Nids) ||
-				gotBP.Params != bp.Params ||
-				gotBP.Kernel != bp.Kernel ||
-				gotBP.Initrd != bp.Initrd {
+			if !reflect.DeepEqual(gotBP, bp) {
 				t.Errorf("request body = %+v, want %+v", gotBP, bp)
 			}
 
@@ -201,8 +218,8 @@ func TestBootParamsMethods_MarshalError(t *testing.T) {
 			if err == nil {
 				t.Fatalf("%s() with unmarshalable BootParams returned nil error", m.name)
 			}
-			if want := m.name + "(): failed to marshal BootParams"; !strings.Contains(err.Error(), want) {
-				t.Errorf("error %q does not contain %q", err, want)
+			if want := m.name + "(): failed to marshal BootParams"; !strings.HasPrefix(err.Error(), want) {
+				t.Errorf("error %q does not start with %q", err, want)
 			}
 			if rec.Method != "" {
 				t.Errorf("request was sent (%s %s) despite marshal error", rec.Method, rec.Path)
@@ -223,8 +240,8 @@ func TestBootParamsMethods_HTTPError(t *testing.T) {
 			if !errors.Is(err, client.UnsuccessfulHTTPError) {
 				t.Errorf("error %q does not wrap client.UnsuccessfulHTTPError", err)
 			}
-			if !strings.Contains(err.Error(), m.errPrefix) {
-				t.Errorf("error %q does not contain %q", err, m.errPrefix)
+			if !strings.HasPrefix(err.Error(), m.errPrefix) {
+				t.Errorf("error %q does not start with %q", err, m.errPrefix)
 			}
 			if henv.StatusCode != http.StatusBadRequest {
 				t.Errorf("StatusCode = %d, want %d", henv.StatusCode, http.StatusBadRequest)
@@ -236,17 +253,17 @@ func TestBootParamsMethods_HTTPError(t *testing.T) {
 func TestBootParamsMethods_TransportError(t *testing.T) {
 	for _, m := range bootParamsMethods {
 		t.Run(m.name, func(t *testing.T) {
-			bc := newUnreachableClient(t)
+			bc := newBrokenConnClient(t)
 
 			_, err := m.call(bc, bssTypes.BootParams{}, "")
 			if err == nil {
-				t.Fatalf("%s() against unreachable server returned nil error", m.name)
+				t.Fatalf("%s() with connection closed by server returned nil error", m.name)
 			}
 			if errors.Is(err, client.UnsuccessfulHTTPError) {
 				t.Errorf("transport error %q unexpectedly wraps client.UnsuccessfulHTTPError", err)
 			}
-			if !strings.Contains(err.Error(), m.errPrefix) {
-				t.Errorf("error %q does not contain %q", err, m.errPrefix)
+			if !strings.HasPrefix(err.Error(), m.errPrefix) {
+				t.Errorf("error %q does not start with %q", err, m.errPrefix)
 			}
 		})
 	}
@@ -274,8 +291,8 @@ func TestGetBootParams(t *testing.T) {
 			if rec.Method != http.MethodGet {
 				t.Errorf("method = %q, want GET", rec.Method)
 			}
-			if rec.Path != BSSRelpathBootParams {
-				t.Errorf("path = %q, want %q", rec.Path, BSSRelpathBootParams)
+			if rec.Path != "/bootparameters" {
+				t.Errorf("path = %q, want %q", rec.Path, "/bootparameters")
 			}
 			if rec.RawQuery != tt.wantQuery {
 				t.Errorf("query = %q, want %q", rec.RawQuery, tt.wantQuery)
@@ -300,7 +317,7 @@ func TestGetBootParams_Error(t *testing.T) {
 	if !errors.Is(err, client.UnsuccessfulHTTPError) {
 		t.Errorf("error %q does not wrap client.UnsuccessfulHTTPError", err)
 	}
-	if !strings.Contains(err.Error(), "GetBootParams(): error getting boot parameters") {
+	if !strings.HasPrefix(err.Error(), "GetBootParams(): error getting boot parameters") {
 		t.Errorf("error %q is missing GetBootParams context", err)
 	}
 }
@@ -318,27 +335,27 @@ func TestSimpleGetters(t *testing.T) {
 		{
 			name:      "GetBootScript",
 			call:      func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetBootScript("mac=00:11:22:33:44:55") },
-			wantPath:  BSSRelpathBootScript,
+			wantPath:  "/bootscript",
 			wantQuery: "mac=00:11:22:33:44:55",
 			errPrefix: "GetBootScript(): error getting boot script",
 		},
 		{
 			name:      "GetDumpstate",
 			call:      (*BSSClient).GetDumpstate,
-			wantPath:  BSSRelpathDumpstate,
+			wantPath:  "/dumpstate",
 			errPrefix: "GetDumpstate(): error getting dump state",
 		},
 		{
 			name:      "GetEndpointHistory",
 			call:      func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetEndpointHistory("name=x1000c0s0b0n0") },
-			wantPath:  BSSRelpathEndpointHistory,
+			wantPath:  "/endpoint-history",
 			wantQuery: "name=x1000c0s0b0n0",
 			errPrefix: "GetEndpointHistory(): error getting endpoint history",
 		},
 		{
 			name:      "GetHosts",
 			call:      func(bc *BSSClient) (client.HTTPEnvelope, error) { return bc.GetHosts("nid=1") },
-			wantPath:  BSSRelpathHosts,
+			wantPath:  "/hosts",
 			wantQuery: "nid=1",
 			errPrefix: "GetHosts(): error getting hosts",
 		},
@@ -377,8 +394,8 @@ func TestSimpleGetters(t *testing.T) {
 			if !errors.Is(err, client.UnsuccessfulHTTPError) {
 				t.Errorf("error %q does not wrap client.UnsuccessfulHTTPError", err)
 			}
-			if !strings.Contains(err.Error(), tt.errPrefix) {
-				t.Errorf("error %q does not contain %q", err, tt.errPrefix)
+			if !strings.HasPrefix(err.Error(), tt.errPrefix) {
+				t.Errorf("error %q does not start with %q", err, tt.errPrefix)
 			}
 		})
 	}
@@ -409,6 +426,9 @@ func TestGetStatus(t *testing.T) {
 			if rec.Path != tt.wantPath {
 				t.Errorf("path = %q, want %q", rec.Path, tt.wantPath)
 			}
+			if rec.RawQuery != "" {
+				t.Errorf("query = %q, want it to be empty", rec.RawQuery)
+			}
 			if henv.StatusCode != http.StatusOK {
 				t.Errorf("StatusCode = %d, want %d", henv.StatusCode, http.StatusOK)
 			}
@@ -423,8 +443,8 @@ func TestGetStatus_UnknownComponent(t *testing.T) {
 	if err == nil {
 		t.Fatal("GetStatus() with unknown component returned nil error")
 	}
-	if want := "unknown status component: bogus"; !strings.Contains(err.Error(), want) {
-		t.Errorf("error %q does not contain %q", err, want)
+	if want := "GetStatus(): unknown status component: bogus"; !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("error %q does not start with %q", err, want)
 	}
 	if rec.Method != "" {
 		t.Errorf("request was sent (%s %s) for unknown component", rec.Method, rec.Path)
@@ -441,7 +461,7 @@ func TestGetStatus_HTTPError(t *testing.T) {
 	if !errors.Is(err, client.UnsuccessfulHTTPError) {
 		t.Errorf("error %q does not wrap client.UnsuccessfulHTTPError", err)
 	}
-	if !strings.Contains(err.Error(), "GetStatus():") {
+	if !strings.HasPrefix(err.Error(), "GetStatus(): error getting") {
 		t.Errorf("error %q is missing GetStatus context", err)
 	}
 }
