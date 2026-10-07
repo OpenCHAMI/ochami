@@ -11,7 +11,7 @@ import (
 )
 
 // TestColorize verifies that colorize wraps a value in the ANSI escape codes
-// for a color unless coloring is disabled.
+// for a color unless coloring is disabled explicitly or by NO_COLOR.
 func TestColorize(t *testing.T) {
 	type args struct {
 		s        interface{}
@@ -19,9 +19,10 @@ func TestColorize(t *testing.T) {
 		disabled bool
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name    string
+		args    args
+		noColor string
+		want    string
 	}{
 		{
 			name: "color",
@@ -42,6 +43,16 @@ func TestColorize(t *testing.T) {
 			want: fmt.Sprintf("\x1b[%dm%v\x1b[0m", colorBold, ">"),
 		},
 		{
+			name: "NO_COLOR",
+			args: args{
+				s:        ">",
+				c:        colorBold,
+				disabled: false,
+			},
+			noColor: "1",
+			want:    ">",
+		},
+		{
 			name: "disabled",
 			args: args{
 				s:        ">",
@@ -53,6 +64,7 @@ func TestColorize(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("NO_COLOR", tt.noColor)
 			if got := colorize(tt.args.s, tt.args.c, tt.args.disabled); got != tt.want {
 				t.Errorf("colorize() = %v, want %v", got, tt.want)
 			}
