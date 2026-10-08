@@ -20,7 +20,7 @@ func TestSMDCompepGet_AllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "compep", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -37,7 +37,7 @@ func TestSMDCompepGet_ByXnameHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "compep", "get", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b56n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -51,7 +51,7 @@ func TestSMDCompepGet_ByXnameHTTPError(t *testing.T) {
 func TestSMDCompepGet_NetworkError(t *testing.T) {
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-	res := runOchami(t, "smd", "compep", "get", "--ignore-config", "--uri", url, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -71,8 +71,8 @@ func TestSMDCompepDelete_Abort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"smd", "compep", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
+	res := runOchamiWithInputAndRuntime(t, "n\n",
+		"smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t", "x3000c1s7b56n0")
 	if res.exitCode != cli.CodeDeclined {
 		t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
 	}
@@ -84,7 +84,7 @@ func TestSMDCompepDelete_Abort(t *testing.T) {
 // TestSMDCompepDelete_NoSelector verifies delete with neither -d, --all, nor args
 // is a usage error.
 func TestSMDCompepDelete_NoSelector(t *testing.T) {
-	res := runOchami(t, "smd", "compep", "delete", "--ignore-config", "--uri", "http://127.0.0.1:1",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -102,7 +102,7 @@ func TestSMDCompepDelete_AllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "compep", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "--all")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

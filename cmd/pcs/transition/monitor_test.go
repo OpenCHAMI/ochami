@@ -5,12 +5,14 @@
 package transition
 
 import (
+	"bytes"
 	"context"
-	"io"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 
+	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
 )
 
@@ -40,12 +42,22 @@ func transitionProvider(c pcsTransitionClient, err error) pcsTransitionClientPro
 	return func(*cobra.Command) (pcsTransitionClient, error) { return c, err }
 }
 
+// createTestRuntime creates a test runtime with isolated I/O streams.
+func createTestRuntime() (*cli.Runtime, *bytes.Buffer) {
+	var stdoutBuf bytes.Buffer
+	rt := cli.NewTestRuntime(strings.NewReader(""), &stdoutBuf, &stdoutBuf)
+	return rt, &stdoutBuf
+}
+
 // runMonitor executes the monitor command with the given provider and args,
-// registering the flags the command's RunE depends on (via cli.HandleToken) and
+// registering the flags the command's RunE depends on (via rt.HandleToken) and
 // discarding progress-bar output.
 func runMonitor(t *testing.T, provider pcsTransitionClientProvider, args ...string) error {
 	t.Helper()
+	// Create test runtime and inject into command context
+	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdTransitionMonitorWithClient(provider)
+	cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
 	// Speed up any polling that does occur.
 	if err := cmd.Flags().Set("poll-interval", "0"); err != nil {
 		t.Fatalf("set poll-interval flag: %v", err)
@@ -56,8 +68,8 @@ func runMonitor(t *testing.T, provider pcsTransitionClientProvider, args ...stri
 	if err := cmd.Flags().Set("no-token", "true"); err != nil {
 		t.Fatalf("set no-token flag: %v", err)
 	}
-	cmd.SetOut(io.Discard)
-	cmd.SetErr(io.Discard)
+	cmd.SetOut(stdoutBuf)
+	cmd.SetErr(stdoutBuf)
 	cmd.SetArgs(args)
 	return cmd.Execute()
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
@@ -23,13 +22,13 @@ type bootParamsDeleteOptions struct {
 
 // runCoreBootParamsDelete contains the core logic for the bss boot params delete command.
 // It takes the parsed options and performs the actual work of deleting boot parameters.
-func runCoreBootParamsDelete(cmd *cobra.Command, opts *bootParamsDeleteOptions) error {
+func runCoreBootParamsDelete(cmd *cobra.Command, opts *bootParamsDeleteOptions, rt *cli.Runtime) error {
 	// The BSS BootParams struct we will send
 	var bp bssTypes.BootParams
 
 	// Read payload from file first, allowing overwrites from flags
 	if cmd.Flag("data").Changed {
-		if err := cli.HandlePayload(cmd, &bp); err != nil {
+		if err := rt.HandlePayload(cmd, &bp); err != nil {
 			return err
 		}
 	}
@@ -44,30 +43,30 @@ func runCoreBootParamsDelete(cmd *cobra.Command, opts *bootParamsDeleteOptions) 
 
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
-		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 		} else if !respDelete {
 			return cli.Errorf(cli.CodeDeclined, "user aborted boot parameter deletion")
 		} else {
-			log.Logger.Debug().Msg("User answered affirmatively to delete boot parameters")
+			rt.Logger.Debug().Msg("User answered affirmatively to delete boot parameters")
 		}
 	}
 
-	// Create client to use for requests
-	bssClient, err := bss_lib.GetClient(cmd)
+	// Create client to use for requests with runtime
+	bssClient, err := bss_lib.GetClient(cmd, rt)
 	if err != nil {
 		return err
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Send 'em off
-	_, err = bssClient.DeleteBootParams(cmd.Context(), bp, cli.Token)
+	_, err = bssClient.DeleteBootParams(cmd.Context(), bp, rt.Token)
 	if err != nil {
 		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to delete boot parameters from BSS")
 	}
@@ -124,7 +123,7 @@ See ochami-bss(1) for more details.`,
 			if cmd.Flag("data").Changed {
 				// -d/--data trumps all, ignore values of other flags if specified
 				if anyChanged("xname", "nid", "mac", "kernel", "initrd", "params") {
-					log.Logger.Warn().Msgf("raw data passed, ignoring CLI configuration")
+					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring CLI configuration")
 				}
 			} else {
 				// If -d/--data not passed, then at least one of --xname/--nid/--mac must
@@ -139,6 +138,12 @@ See ochami-bss(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Extract options from flags
 			opts := &bootParamsDeleteOptions{bootParamFields: readBootParamFlags(cmd)}
 			// --no-confirm is registered as a bool on this command, so GetBool
@@ -147,7 +152,7 @@ See ochami-bss(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm")
 			}
 
-			return runCoreBootParamsDelete(cmd, opts)
+			return runCoreBootParamsDelete(cmd, opts, rt)
 		},
 	}
 
@@ -159,7 +164,7 @@ See ochami-bss(1) for more details.`,
 	bootParamsDelete.Flags().StringSliceP("mac", "m", []string{}, "one or more MAC addresses whose boot parameters to delete")
 	bootParamsDelete.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to delete")
 	bootParamsDelete.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootParamsDelete.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
+	cli.AddFormatInputFlag(bootParamsDelete)
 	bootParamsDelete.Flags().Bool("no-confirm", false, "do not ask before attempting deletion")
 
 	return bootParamsDelete

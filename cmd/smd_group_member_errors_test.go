@@ -23,8 +23,8 @@ func TestSMDGroupMemberDelete_Abort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"smd", "group", "member", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithInputAndRuntime(t, "n\n",
+		"smd", "group", "member", "delete", "--uri", srv.URL, "--token", "t",
 		"compute", "x0c0s0b0n0")
 	if res.exitCode != cli.CodeDeclined {
 		t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
@@ -42,7 +42,7 @@ func TestSMDGroupMemberGet_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "member", "get", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "member", "get", "--uri", srv.URL, "--token", "t",
 		"compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -60,7 +60,7 @@ func TestSMDGroupMemberSet_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "member", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "member", "set", "--uri", srv.URL, "--token", "t",
 		"compute", "x0c0s0b0n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -76,19 +76,19 @@ func TestSMDGroupMember_NetworkErrors(t *testing.T) {
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	// add (per-item aggregation surfaces CodeNetwork)
-	res := runOchami(t, "smd", "group", "member", "add", "--ignore-config", "--uri", url, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "member", "add", "--uri", url, "--token", "t",
 		"compute", "x0c0s0b0n0")
 	if res.exitCode != cli.CodeNetwork {
 		t.Errorf("member add network: err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
 	}
 	// delete (per-item aggregation surfaces CodeNetwork)
-	res = runOchami(t, "smd", "group", "member", "delete", "--ignore-config", "--uri", url, "--token", "t",
+	res = runOchamiWithRuntime(t, "smd", "group", "member", "delete", "--uri", url, "--token", "t",
 		"--no-confirm", "compute", "x0c0s0b0n0")
 	if res.exitCode != cli.CodeNetwork {
 		t.Errorf("member delete network: err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
 	}
 	// get (single request maps transport failure to CodeNetwork)
-	res = runOchami(t, "smd", "group", "member", "get", "--ignore-config", "--uri", url, "--token", "t", "compute")
+	res = runOchamiWithRuntime(t, "smd", "group", "member", "get", "--uri", url, "--token", "t", "compute")
 	if res.err == nil || res.exitCode != cli.CodeNetwork {
 		t.Errorf("member get network: err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
 	}

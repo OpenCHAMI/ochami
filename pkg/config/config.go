@@ -182,8 +182,8 @@ type ClusterSMD struct {
 //
 // This merge is URI-only: per-service APIVersion (BootService, MetadataService)
 // is intentionally not carried into the result. API version precedence is
-// resolved separately (see internal/cli.GetAPIVersion), so it has no need of a
-// merged ClusterConfig.
+// resolved separately (see Runtime.GetAPIVersion in internal/cli), so it has
+// no need of a merged ClusterConfig.
 func (ccc *ClusterConfig) MergeURIConfig(c ClusterConfig) ClusterConfig {
 	compare := func(oldStr, newStr string) string {
 		if newStr != "" {
@@ -354,10 +354,21 @@ func DefaultTimeout() time.Duration {
 // uses $HOME/.config and finally falls back to the current user's home
 // directory.
 func UserConfigPath() (string, error) {
-	if configHome := os.Getenv("XDG_CONFIG_HOME"); filepath.IsAbs(configHome) {
+	return UserConfigPathWithEnv(os.LookupEnv)
+}
+
+// UserConfigPathWithEnv returns the per-user configuration path using lookupEnv
+// for environment access. It is useful to callers that own an invocation-local
+// environment. If XDG_CONFIG_HOME isn't set to an absolute path and HOME is
+// unset or empty, it falls back to the current user's home directory.
+func UserConfigPathWithEnv(lookupEnv func(string) (string, bool)) (string, error) {
+	if lookupEnv == nil {
+		lookupEnv = os.LookupEnv
+	}
+	if configHome, ok := lookupEnv("XDG_CONFIG_HOME"); ok && filepath.IsAbs(configHome) {
 		return filepath.Join(configHome, "ochami", "config.yaml"), nil
 	}
-	if home := os.Getenv("HOME"); home != "" {
+	if home, ok := lookupEnv("HOME"); ok && home != "" {
 		return filepath.Join(home, ".config", "ochami", "config.yaml"), nil
 	}
 	u, err := user.Current()

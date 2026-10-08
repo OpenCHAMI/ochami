@@ -21,20 +21,6 @@ import (
 	"github.com/openchami/ochami/internal/version"
 )
 
-var (
-	// Logger is the global logger used throughout the CLI. Until Init
-	// replaces it with a logger built from the resolved --log-level,
-	// --log-format, and --log-color, it writes plain "ochami: <message>"
-	// lines to os.Stderr at the default level (warning), so a failure that
-	// happens before or during Init (an unknown flag, an unreadable config
-	// file) is still reported in human-readable form.
-	Logger = NewDefault(os.Stderr)
-
-	// A BasicLogger that is turned off until turned on by the
-	// --verbose flag.
-	EarlyLogger = NewBasicLogger(os.Stderr, false, version.ProgName)
-)
-
 // NewDefault returns the logger used before logging is configured: plain
 // "<prog>: <message>" lines (plus any fields) written to w at warning level.
 func NewDefault(w io.Writer) zerolog.Logger {
@@ -49,9 +35,13 @@ func NewDefault(w io.Writer) zerolog.Logger {
 	return zerolog.New(cw).Level(zerolog.WarnLevel)
 }
 
-// Init() initializes the global logging object so it can be used for logging by
-// any package that imports this internal log package.
-func Init(ll, lf, lc string) error {
+// New constructs a logger that writes to writer. The returned logger is an
+// independent value and can safely be owned by a single CLI invocation.
+func New(writer io.Writer, ll, lf, lc string) (zerolog.Logger, error) {
+	if writer == nil {
+		writer = io.Discard
+	}
+
 	var loggerLevel zerolog.Level
 	switch ll {
 	case "error":
@@ -63,39 +53,38 @@ func Init(ll, lf, lc string) error {
 	case "debug":
 		loggerLevel = zerolog.DebugLevel
 	default:
-		return fmt.Errorf("unknown log level: %s", ll)
+		return zerolog.Logger{}, fmt.Errorf("unknown log level: %s", ll)
 	}
 
-	cw := zerolog.ConsoleWriter{Out: os.Stderr}
+	cw := zerolog.ConsoleWriter{Out: writer}
 
 	switch lc {
 	case "", "auto":
-		cw.NoColor = !term.IsTerminal(int(os.Stderr.Fd()))
+		file, ok := writer.(*os.File)
+		cw.NoColor = !ok || !term.IsTerminal(int(file.Fd()))
 	case "on":
 		cw.NoColor = false
 	case "off":
 		cw.NoColor = true
 	default:
-		return fmt.Errorf("invalid log-color: %s", lc)
+		return zerolog.Logger{}, fmt.Errorf("invalid log-color: %s", lc)
 	}
 
 	switch lf {
 	case "rfc3339":
 		cw.TimeFormat = time.RFC3339
 		cw.FormatCaller = getFormatCaller(cw.NoColor)
-		Logger = zerolog.New(cw).Level(loggerLevel).With().Timestamp().Caller().Logger()
+		return zerolog.New(cw).Level(loggerLevel).With().Timestamp().Caller().Logger(), nil
 	case "basic":
 		cw.FormatTimestamp = func(i interface{}) string { return "" }
 		cw.FormatLevel = func(i interface{}) string { return strings.ToUpper(fmt.Sprintf("%-6s|", i)) }
 		cw.FormatCaller = getFormatCaller(cw.NoColor)
-		Logger = zerolog.New(cw).Level(loggerLevel).With().Caller().Logger()
+		return zerolog.New(cw).Level(loggerLevel).With().Caller().Logger(), nil
 	case "json":
-		Logger = zerolog.New(cw).Level(loggerLevel).With().Timestamp().Logger()
+		return zerolog.New(cw).Level(loggerLevel).With().Timestamp().Logger(), nil
 	default:
-		return fmt.Errorf("unknown log format: %s", lf)
+		return zerolog.Logger{}, fmt.Errorf("unknown log format: %s", lf)
 	}
-
-	return nil
 }
 
 // getFormatCaller is a wrapper that generates a Formatter for the

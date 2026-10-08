@@ -10,6 +10,7 @@ package cmd
 // centralized WrapUsageErrors wiring in NewRootCmd.
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -17,7 +18,8 @@ import (
 
 // TestUsageError_UnknownFlag verifies that an unknown flag is a usage error.
 func TestUsageError_UnknownFlag(t *testing.T) {
-	res := runOchami(t, "smd", "component", "get", "--ignore-config", "--definitely-not-a-flag")
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--definitely-not-a-flag")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -29,7 +31,8 @@ func TestUsageError_UnknownFlag(t *testing.T) {
 // TestUsageError_BadFlagValue verifies that an invalid value for a typed flag
 // (here, a non-integer for the int32 --nid) is a usage error.
 func TestUsageError_BadFlagValue(t *testing.T) {
-	res := runOchami(t, "smd", "component", "get", "--ignore-config", "--nid", "not-a-number")
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "--nid", "not-a-number")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -41,7 +44,8 @@ func TestUsageError_BadFlagValue(t *testing.T) {
 // TestUsageError_TooManyArgs verifies that violating a command's Args validator
 // (cobra.NoArgs on "smd component get") is a usage error.
 func TestUsageError_TooManyArgs(t *testing.T) {
-	res := runOchami(t, "smd", "component", "get", "--ignore-config", "unexpected-arg")
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "component", "get", "unexpected-arg")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -54,11 +58,27 @@ func TestUsageError_TooManyArgs(t *testing.T) {
 // cobra.ExactArgs (here, "smd group member get" requires exactly 1) is a usage
 // error.
 func TestUsageError_ExactArgs(t *testing.T) {
-	res := runOchami(t, "smd", "group", "member", "get", "--ignore-config")
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "group", "member", "get")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
 	if res.exitCode != cli.CodeUsage {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestUsageError_PatchFormatInputWithKeyValFlags verifies that the patch
+// commands reject --format-input combined with a key-value flag (--set,
+// --unset, --add, or --remove), which builds the patch without reading a
+// payload.
+func TestUsageError_PatchFormatInputWithKeyValFlags(t *testing.T) {
+	for _, resource := range []string{"boot bmc", "boot config", "boot node", "metadata defaults", "metadata group", "metadata instance", "metadata peer"} {
+		args := append(strings.Fields(resource), "patch", "uid", "--set", "a=b", "-f", "yaml",
+			"--ignore-config", "--uri", "http://127.0.0.1:1", "--no-token")
+		res := runOchamiWithRuntime(t, args...)
+		if res.exitCode != cli.CodeUsage {
+			t.Errorf("%s patch: result = (err %v, exit %d), want %d (%s)", resource, res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+		}
 	}
 }

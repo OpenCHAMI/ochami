@@ -18,12 +18,13 @@ import (
 // TestRCSConsoleList_HTTPError verifies an unsuccessful HTTP response resolves
 // to CodeHTTP.
 func TestRCSConsoleList_HTTPError(t *testing.T) {
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "rcs", "console", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "rcs", "console", "list", "--ignore-config", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}

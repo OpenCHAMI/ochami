@@ -14,7 +14,8 @@ import (
 // TestConfigClusterSet_MutuallyExclusiveSources verifies that passing both
 // --user and --system is a usage error.
 func TestConfigClusterSet_MutuallyExclusiveSources(t *testing.T) {
-	res := runOchami(t, "config", "cluster", "set", "--user", "--system",
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "config", "cluster", "set", "--user", "--system",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -27,9 +28,10 @@ func TestConfigClusterSet_MutuallyExclusiveSources(t *testing.T) {
 // TestConfigClusterDelete_NotFound verifies that deleting a non-existent cluster
 // resolves to a config error.
 func TestConfigClusterDelete_NotFound(t *testing.T) {
+
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "delete", "does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "delete", "does-not-exist")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -47,7 +49,7 @@ func TestConfigClusterUnset_UnknownKey(t *testing.T) {
     uri: https://foobar.openchami.cluster
 `)
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "foobar", "cluster.smd.uri")
 	if res.err == nil || res.exitCode != cli.CodeConfig {
 		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
 	}
@@ -61,7 +63,7 @@ func TestConfigClusterUnset_UnknownKey(t *testing.T) {
 func TestConfigClusterShow_NonexistentCluster(t *testing.T) {
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
 	if res.exitCode != cli.CodeConfig {
 		t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
 	}
@@ -72,7 +74,7 @@ func TestConfigClusterShow_NonexistentCluster(t *testing.T) {
 func TestConfigClusterUnset_Nonexistent(t *testing.T) {
 	cfg := writeTempConfig(t, "clusters: []\n")
 
-	res := runOchami(t, "--config", cfg, "config", "cluster", "unset", "nope", "cluster.uri")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "nope", "cluster.uri")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}

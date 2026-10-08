@@ -37,10 +37,11 @@ func writeTempConfig(t *testing.T, contents string) string {
 // TestConfigSet_ThenShow verifies that "config set" persists a key to the given
 // config file and "config show" reads it back.
 func TestConfigSet_ThenShow(t *testing.T) {
+
 	cfg := writeTempConfig(t, "")
 
 	// Set a value.
-	setRes := runOchami(t, "--config", cfg, "config", "set", "log.format", "json")
+	setRes := runOchamiWithRuntime(t, "--config", cfg, "config", "set", "log.format", "json")
 	if setRes.err != nil {
 		t.Fatalf("config set: unexpected error: %v (exit %d)", setRes.err, setRes.exitCode)
 	}
@@ -55,7 +56,7 @@ func TestConfigSet_ThenShow(t *testing.T) {
 	}
 
 	// Show the specific key back.
-	showRes := runOchami(t, "--config", cfg, "config", "show", "log.format")
+	showRes := runOchamiWithRuntime(t, "--config", cfg, "config", "show", "log.format")
 	if showRes.err != nil {
 		t.Fatalf("config show: unexpected error: %v (exit %d)", showRes.err, showRes.exitCode)
 	}
@@ -66,9 +67,10 @@ func TestConfigSet_ThenShow(t *testing.T) {
 
 // TestConfigUnset_Success verifies that "config unset" removes a previously-set key.
 func TestConfigUnset_Success(t *testing.T) {
+
 	cfg := writeTempConfig(t, "log:\n  format: json\n")
 
-	res := runOchami(t, "--config", cfg, "config", "unset", "log.format")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.format")
 	if res.err != nil {
 		t.Fatalf("config unset: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -88,9 +90,10 @@ func TestConfigUnset_Success(t *testing.T) {
 // sets only log.level, so log.format should come back as its default rather
 // than empty.
 func TestConfigShow_DefaultedKey(t *testing.T) {
+
 	cfg := writeTempConfig(t, "log:\n  level: debug\n")
 
-	res := runOchami(t, "--config", cfg, "config", "show", "log.format")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show", "log.format")
 	if res.err != nil {
 		t.Fatalf("config show: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -104,9 +107,10 @@ func TestConfigShow_DefaultedKey(t *testing.T) {
 // TestConfigShow_WholeConfig verifies that "config show" with no key prints the
 // merged configuration, including defaulted values.
 func TestConfigShow_WholeConfig(t *testing.T) {
+
 	cfg := writeTempConfig(t, "log:\n  level: debug\n")
 
-	res := runOchami(t, "--config", cfg, "config", "show")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show")
 	if res.err != nil {
 		t.Fatalf("config show: unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -124,7 +128,7 @@ func TestConfigShow_WholeConfig(t *testing.T) {
 func TestConfigSet_CreatesFileOnConfirm(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
-	res := runOchamiWithInput(t, "y\n", "--config", path, "config", "set", "log.format", "json")
+	res := runOchamiWithInputAndRuntime(t, "y\n", "--config", path, "config", "set", "log.format", "json")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -145,7 +149,7 @@ func TestConfigSet_CreatesFileOnConfirm(t *testing.T) {
 func TestConfigSet_DeclineCreate(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
-	res := runOchamiWithInput(t, "n\n", "--config", path, "config", "set", "log.format", "json")
+	res := runOchamiWithInputAndRuntime(t, "n\n", "--config", path, "config", "set", "log.format", "json")
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Errorf("expected no config file to be created at %s", path)
 	}
@@ -159,7 +163,7 @@ func TestConfigSet_DeclineCreate(t *testing.T) {
 func TestConfigUnset_ViaConfigFlag(t *testing.T) {
 	cfg := writeTempConfig(t, "log:\n  format: json\n  level: warning\n")
 
-	res := runOchami(t, "--config", cfg, "config", "unset", "log.level")
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "unset", "log.level")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -197,7 +201,7 @@ clusters:
     enable-auth: false
 `)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -226,7 +230,7 @@ clusters:
     enable-auth: false
 `)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -257,7 +261,7 @@ clusters:
 	tok := validToken(t)
 	t.Setenv("DEMO_ACCESS_TOKEN", tok)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntimeEnv(t, cli.EnvironmentFunc(os.LookupEnv), "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
@@ -284,7 +288,7 @@ clusters:
     enable-auth: false
 `)
 
-	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}

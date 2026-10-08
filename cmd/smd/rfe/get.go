@@ -6,7 +6,6 @@
 package rfe
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/spf13/cobra"
@@ -30,9 +29,9 @@ type rfeGetOptions struct {
 
 // runCoreRfeGet contains the core logic for the smd rfe get command.
 // It takes the parsed options and performs the actual work of getting redfish endpoints.
-func runCoreRfeGet(cmd *cobra.Command, opts *rfeGetOptions, smdClient *smd.SMDClient) error {
+func runCoreRfeGet(cmd *cobra.Command, opts *rfeGetOptions, smdClient *smd.SMDClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
@@ -62,17 +61,19 @@ func runCoreRfeGet(cmd *cobra.Command, opts *rfeGetOptions, smdClient *smd.SMDCl
 		qstr = values.Encode()
 	}
 
-	httpEnv, err := smdClient.GetRedfishEndpoints(cmd.Context(), qstr, cli.Token)
+	httpEnv, err := smdClient.GetRedfishEndpoints(cmd.Context(), qstr, rt.Token)
 	if err != nil {
 		return cli.ClassifyClientError(err, "SMD redfish endpoint request yielded unsuccessful HTTP response", "failed to request redfish endpoints from SMD")
 	}
 
 	// Print output
-	outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+	outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
 	if err != nil {
 		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 	}
-	fmt.Fprint(cli.Ios.Out(), string(outBytes))
+	if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -90,8 +91,14 @@ endpoints returned.
 
 See ochami-smd(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -119,7 +126,7 @@ See ochami-smd(1) for more details.`,
 				opts.UUID, _ = cmd.Flags().GetStringSlice("uuid")
 			}
 
-			return runCoreRfeGet(cmd, opts, smdClient)
+			return runCoreRfeGet(cmd, opts, smdClient, rt)
 		},
 	}
 
@@ -130,8 +137,8 @@ See ochami-smd(1) for more details.`,
 	rfeGetCmd.Flags().StringSlice("uuid", []string{}, "filter redfish endpoints by UUID")
 	rfeGetCmd.Flags().StringSliceP("mac", "m", []string{}, "filter redfish endpoints by MAC address")
 	rfeGetCmd.Flags().StringSliceP("ip", "i", []string{}, "filter redfish endpoints by IP address")
-	rfeGetCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(rfeGetCmd)
 	rfeGetCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return rfeGetCmd

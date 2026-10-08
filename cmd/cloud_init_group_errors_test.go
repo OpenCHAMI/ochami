@@ -19,7 +19,7 @@ func TestCloudInitGroupGet_HTTPError(t *testing.T) {
 	srv := ciGroupServer(t, nil, http.StatusInternalServerError)
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "get", "raw", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", "raw",
 		"--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -36,7 +36,7 @@ func TestCloudInitGroupGet_ByIDHTTPError(t *testing.T) {
 	srv := ciGroupServer(t, nil, http.StatusNotFound)
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "get", "raw", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", "raw",
 		"--uri", srv.URL, "--token", "t", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -51,7 +51,7 @@ func TestCloudInitGroupGet_ByIDHTTPError(t *testing.T) {
 func TestCloudInitGroupGet_NetworkError(t *testing.T) {
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-	res := runOchami(t, "cloud-init", "group", "get", "raw", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", "raw",
 		"--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -69,7 +69,7 @@ func TestCloudInitGroupAdd_MalformedPayload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "add", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "add",
 		"--uri", srv.URL, "--token", "t", "-d", `not json`)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -87,7 +87,7 @@ func TestCloudInitGroupAdd_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "add", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "add",
 		"--uri", srv.URL, "--token", "t", "-d", `[{"name":"compute"}]`)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -104,7 +104,7 @@ func TestCloudInitGroupSet_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "set", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "set",
 		"--uri", srv.URL, "--token", "t", "-d", `[{"name":"compute"}]`)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -125,8 +125,8 @@ func TestCloudInitGroupDelete_Abort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"cloud-init", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "compute")
+	res := runOchamiWithInputAndRuntime(t, "n\n",
+		"--ignore-config", "cloud-init", "group", "delete", "--uri", srv.URL, "--token", "t", "compute")
 	if res.exitCode != cli.CodeDeclined {
 		t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
 	}
@@ -138,7 +138,7 @@ func TestCloudInitGroupDelete_Abort(t *testing.T) {
 // TestCloudInitGroupDelete_NoArgsUsage verifies delete with neither -d nor args
 // is a usage error.
 func TestCloudInitGroupDelete_NoArgsUsage(t *testing.T) {
-	res := runOchami(t, "cloud-init", "group", "delete", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "delete",
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -156,7 +156,7 @@ func TestCloudInitGroupDelete_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "delete", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "delete",
 		"--uri", srv.URL, "--token", "t", "--no-confirm", "compute")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -174,7 +174,7 @@ func TestCloudInitGroupRender_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "render", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "render",
 		"--uri", srv.URL, "--token", "t", "compute", "x0c0s0b0n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -199,7 +199,7 @@ func TestCloudInitGroupRender_MetadataHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "render", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "render",
 		"--uri", srv.URL, "--token", "t", "compute", "x0c0s0b0n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -214,7 +214,7 @@ func TestCloudInitGroupRender_MetadataHTTPError(t *testing.T) {
 func TestCloudInitGroupGet_ByIDNetworkError(t *testing.T) {
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-	res := runOchami(t, "cloud-init", "group", "get", "raw", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", "raw",
 		"--uri", url, "--token", "t", "compute")
 	if res.err == nil {
 		t.Fatal("expected a network error, got nil")
@@ -240,7 +240,7 @@ func TestCloudInitGroupRender_MalformedExtraVars(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "cloud-init", "group", "render", "--ignore-config",
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "render",
 		"--uri", srv.URL, "--token", "t", "--extra-vars", `not json`, "compute", "x0c0s0b0n0")
 	if res.err == nil {
 		t.Fatal("expected a payload error, got nil")

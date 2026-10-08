@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client/smd"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -25,21 +24,21 @@ type groupAddOptions struct {
 
 // runCoreGroupAdd contains the core logic for the smd group add command.
 // It takes the parsed options and performs the actual work of adding groups.
-func runCoreGroupAdd(cmd *cobra.Command, opts *groupAddOptions, args []string, smdClient *smd.SMDClient) error {
+func runCoreGroupAdd(cmd *cobra.Command, opts *groupAddOptions, args []string, smdClient *smd.SMDClient, rt *cli.Runtime) error {
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Check if a CA certificate was passed and load it into client if valid
-	if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+	if err := rt.UseCACert(smdClient.OchamiClient); err != nil {
 		return err
 	}
 
 	var groups []smd.Group
 	if cmd.Flag("data").Changed {
 		// Use payload file if passed
-		if err := cli.HandlePayload(cmd, &groups); err != nil {
+		if err := rt.HandlePayload(cmd, &groups); err != nil {
 			return err
 		}
 	} else {
@@ -53,8 +52,8 @@ func runCoreGroupAdd(cmd *cobra.Command, opts *groupAddOptions, args []string, s
 	}
 
 	// Send off request
-	results := smdClient.PostGroups(cmd.Context(), groups, cli.Token)
-	if err := cli.AggregateItemErrors(results.Errors(), "SMD group addition"); err != nil {
+	results := smdClient.PostGroups(cmd.Context(), groups, rt.Token)
+	if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "SMD group addition"); err != nil {
 		return err
 	}
 
@@ -119,15 +118,21 @@ See ochami-smd(1) for more details.`,
 				}
 			} else {
 				if len(args) > 0 {
-					log.Logger.Warn().Msgf("raw data passed, ignoring CLI configuration for passed group %v", args)
+					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring CLI configuration for passed group %v", args)
 				}
 			}
 
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			smdClient, err := smd_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -149,7 +154,7 @@ See ochami-smd(1) for more details.`,
 				opts.Members, _ = cmd.Flags().GetStringSlice("member")
 			}
 
-			return runCoreGroupAdd(cmd, opts, args, smdClient)
+			return runCoreGroupAdd(cmd, opts, args, smdClient, rt)
 		},
 	}
 
@@ -159,8 +164,8 @@ See ochami-smd(1) for more details.`,
 	groupAddCmd.Flags().StringP("exclusive-group", "e", "", "name of group that cannot share members with this one")
 	groupAddCmd.Flags().StringSliceP("member", "m", []string{}, "one or more component IDs to add to the new group")
 	groupAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	groupAddCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 
+	cli.AddFormatInputFlag(groupAddCmd)
 	groupAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	groupAddCmd.MarkFlagsMutuallyExclusive("description", "data")
 	groupAddCmd.MarkFlagsMutuallyExclusive("tag", "data")

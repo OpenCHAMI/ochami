@@ -23,7 +23,7 @@ func TestSMDDeprecatedStatus_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "service", "status", "--ignore-config", "--uri", srv.URL)
+	res := runOchamiWithRuntime(t, "smd", "service", "status", "--ignore-config", "--uri", srv.URL)
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}

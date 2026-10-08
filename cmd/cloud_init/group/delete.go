@@ -11,7 +11,6 @@ import (
 	"github.com/openchami/cloud-init/pkg/cistore"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 
 	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
@@ -23,34 +22,34 @@ type groupDeleteOptions struct {
 
 // runCoreGroupDelete contains the core logic for the cloud-init group delete command.
 // It takes the parsed options and performs the actual work of deleting cloud-init groups.
-func runCoreGroupDelete(cmd *cobra.Command, opts *groupDeleteOptions, groupsToDel []string) error {
+func runCoreGroupDelete(cmd *cobra.Command, opts *groupDeleteOptions, groupsToDel []string, rt *cli.Runtime) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
-		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 		} else if !respDelete {
 			return cli.Errorf(cli.CodeDeclined, "user aborted cloud-init group deletion")
 		} else {
-			log.Logger.Debug().Msg("User answered affirmatively to delete cloud-init groups")
+			rt.Logger.Debug().Msg("User answered affirmatively to delete cloud-init groups")
 		}
 	}
 
 	// Create client to use for requests
-	cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+	cloudInitClient, err := cloud_init_lib.GetClient(cmd, rt)
 	if err != nil {
 		return err
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Send data
-	results := cloudInitClient.DeleteGroups(cmd.Context(), cli.Token, groupsToDel...)
-	if err := cli.AggregateItemErrors(results.Errors(), "cloud-init group deletion"); err != nil {
+	results := cloudInitClient.DeleteGroups(cmd.Context(), rt.Token, groupsToDel...)
+	if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "cloud-init group deletion"); err != nil {
 		return err
 	}
 
@@ -100,13 +99,19 @@ See ochami-cloud-init(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// The group data we will send
 			ciGroups := []cistore.GroupData{}
 
 			// Read payload from file or stdin.
 			var groupsToDel []string
 			if cmd.Flag("data").Changed {
-				if err := cli.HandlePayload(cmd, &ciGroups); err != nil {
+				if err := rt.HandlePayload(cmd, &ciGroups); err != nil {
 					return err
 				}
 				for _, group := range ciGroups {
@@ -124,15 +129,15 @@ See ochami-cloud-init(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm")
 			}
 
-			return runCoreGroupDelete(cmd, opts, groupsToDel)
+			return runCoreGroupDelete(cmd, opts, groupsToDel, rt)
 		},
 	}
 
 	// Create flags
 	groupDeleteCmd.Flags().Bool("no-confirm", false, "do not ask before attempting deletion")
-	groupDeleteCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data (json,json-pretty,yaml)")
 	groupDeleteCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 
+	cli.AddFormatInputFlag(groupDeleteCmd)
 	groupDeleteCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return groupDeleteCmd
