@@ -15,6 +15,52 @@ import (
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
 
+// groupAddOptions holds the flag values for the smd group add command.
+type groupAddOptions struct {
+	Description    string
+	Tags           []string
+	ExclusiveGroup string
+	Members        []string
+}
+
+// runCoreGroupAdd contains the core logic for the smd group add command.
+// It takes the parsed options and performs the actual work of adding groups.
+func runCoreGroupAdd(cmd *cobra.Command, opts *groupAddOptions, args []string, smdClient *smd.SMDClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Check if a CA certificate was passed and load it into client if valid
+	if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
+		return err
+	}
+
+	var groups []smd.Group
+	if cmd.Flag("data").Changed {
+		// Use payload file if passed
+		if err := cli.HandlePayload(cmd, &groups); err != nil {
+			return err
+		}
+	} else {
+		// ...otherwise use CLI options/args
+		group := smd.Group{Label: args[0]}
+		group.Description = opts.Description
+		group.Tags = opts.Tags
+		group.ExclusiveGroup = opts.ExclusiveGroup
+		group.Members.IDs = opts.Members
+		groups = append(groups, group)
+	}
+
+	// Send off request
+	results := smdClient.PostGroups(cmd.Context(), groups, cli.Token)
+	if err := cli.AggregateItemErrors(results.Errors(), "SMD group addition"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func newCmdGroupAdd() *cobra.Command {
 	// groupAddCmd represents the "smd group add" command
 	var groupAddCmd = &cobra.Command{
@@ -86,47 +132,24 @@ See ochami-smd(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &groupAddOptions{}
+			if cmd.Flag("description").Changed {
+				opts.Description, _ = cmd.Flags().GetString("description")
+			}
+			if cmd.Flag("tag").Changed {
+				opts.Tags, _ = cmd.Flags().GetStringSlice("tag")
+			}
+			if cmd.Flag("exclusive-group").Changed {
+				opts.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group")
+			}
+			if cmd.Flag("member").Changed {
+				opts.Members, _ = cmd.Flags().GetStringSlice("member")
 			}
 
-			// Check if a CA certificate was passed and load it into client if valid
-			if err := cli.UseCACert(smdClient.OchamiClient); err != nil {
-				return err
-			}
-
-			var groups []smd.Group
-			if cmd.Flag("data").Changed {
-				// Use payload file if passed
-				if err := cli.HandlePayload(cmd, &groups); err != nil {
-					return err
-				}
-			} else {
-				// ...otherwise use CLI options/args
-				group := smd.Group{Label: args[0]}
-				if cmd.Flag("description").Changed {
-					group.Description, _ = cmd.Flags().GetString("description")
-				}
-				if cmd.Flag("tag").Changed {
-					group.Tags, _ = cmd.Flags().GetStringSlice("tag")
-				}
-				if cmd.Flag("exclusive-group").Changed {
-					group.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group")
-				}
-				if cmd.Flag("member").Changed {
-					group.Members.IDs, _ = cmd.Flags().GetStringSlice("member")
-				}
-				groups = append(groups, group)
-			}
-
-			// Send off request
-			results := smdClient.PostGroups(cmd.Context(), groups, cli.Token)
-			if err := cli.AggregateItemErrors(results.Errors(), "SMD group addition"); err != nil {
-				return err
-			}
-
-			return nil
+			return runCoreGroupAdd(cmd, opts, args, smdClient)
 		},
 	}
 

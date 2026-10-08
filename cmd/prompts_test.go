@@ -132,3 +132,37 @@ func TestDeleteConfirm_NoBSS(t *testing.T) {
 		t.Errorf("DELETE count = %d, want 0 (user declined)", deletes)
 	}
 }
+
+// TestDeleteConfirm_DeclineBeforeClient verifies that each listed delete
+// command asks for confirmation before it needs a base URI: with none
+// configured, answering "n" prints the prompt and exits with CodeDeclined.
+func TestDeleteConfirm_DeclineBeforeClient(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "boot bmc", args: []string{"boot", "bmc", "delete", "id1"}},
+		{name: "boot config", args: []string{"boot", "config", "delete", "id1"}},
+		{name: "boot node", args: []string{"boot", "node", "delete", "id1"}},
+		{name: "bss boot params", args: []string{"bss", "boot", "params", "delete", "--xname", "x0c0s0b0n0", "--kernel", "https://example.com/vmlinuz"}},
+		{name: "cloud-init group", args: []string{"cloud-init", "group", "delete", "compute"}},
+		{name: "smd compep", args: []string{"smd", "compep", "delete", "x0c0s0b0n0"}},
+		{name: "smd component", args: []string{"smd", "component", "delete", "x0c0s0b0n0"}},
+		{name: "smd group", args: []string{"smd", "group", "delete", "compute"}},
+		{name: "smd group member", args: []string{"smd", "group", "member", "delete", "compute", "x0c0s0b0n0"}},
+		{name: "smd iface", args: []string{"smd", "iface", "delete", "deadbeef0000"}},
+		{name: "smd rfe", args: []string{"smd", "rfe", "delete", "x0c0s0b0"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			res := runOchamiWithInput(t, "n\n", append(tc.args, "--ignore-config")...)
+
+			if res.exitCode != cli.CodeDeclined {
+				t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
+			}
+			if !strings.Contains(res.stdout, "Really delete?") {
+				t.Errorf("stdout = %q, want it to contain the confirmation question", res.stdout)
+			}
+		})
+	}
+}

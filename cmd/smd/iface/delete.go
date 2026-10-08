@@ -15,6 +15,86 @@ import (
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
 
+// ifaceDeleteOptions holds the flag values for the smd iface delete command.
+type ifaceDeleteOptions struct {
+	All       bool
+	NoConfirm bool
+}
+
+// runCoreIfaceDelete contains the core logic for the smd iface delete command.
+// It takes the parsed options and performs the actual work of deleting ethernet interfaces.
+func runCoreIfaceDelete(cmd *cobra.Command, opts *ifaceDeleteOptions, args []string) error {
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		var respDelete bool
+		var err error
+		if opts.All {
+			respDelete, err = cli.Ios.LoopYesNo("Really delete ALL ETHERNET INTERFACES?")
+		} else {
+			respDelete, err = cli.Ios.LoopYesNo("Really delete?")
+		}
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+		} else if !respDelete {
+			return cli.Errorf(cli.CodeDeclined, "user aborted ethernet interface deletion")
+		} else {
+			log.Logger.Debug().Msg("User answered affirmatively to delete ethernet interfaces")
+		}
+	}
+
+	// Create client to use for requests
+	smdClient, err := smd_lib.GetClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Create list of ethernet interface IDs to delete
+	var eiSlice []smd.EthernetInterface
+	var eIdSlice []string
+	if cmd.Flag("data").Changed {
+		// Use payload file if passed
+		if err := cli.HandlePayload(cmd, &eiSlice); err != nil {
+			return err
+		}
+		for _, ei := range eiSlice {
+			eIdSlice = append(eIdSlice, ei.ID)
+		}
+		if len(eIdSlice) == 0 {
+			return cli.Errorf(cli.CodeUsage, "payload contained no ethernet interfaces to delete")
+		}
+	} else {
+		// ...otherwise, use passed CLI arguments
+		eIdSlice = args
+	}
+
+	// Perform deletion
+	if opts.All {
+		// If --all passed, we don't care about any passed arguments
+		_, err := smdClient.DeleteEthernetInterfacesAll(cmd.Context(), cli.Token)
+		if err != nil {
+			return cli.ClassifyClientError(err,
+				"SMD ethernet interface deletion yielded unsuccessful HTTP response",
+				"failed to delete ethernet interfaces in SMD")
+		}
+	} else {
+		// If --all not passed, pass argument list to deletion logic
+		results := smdClient.DeleteEthernetInterfaces(cmd.Context(), cli.Token, eIdSlice...)
+		// Since smdClient.DeleteEthernetInterfaces does the deletion iteratively, we need to deal
+		// with each error that might have occurred.
+		if err := cli.AggregateItemErrors(results.Errors(), "SMD ethernet interface deletion"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func newCmdIfaceDelete() *cobra.Command {
 	// ifaceDeleteCmd represents the "smd iface delete" command
 	var ifaceDeleteCmd = &cobra.Command{
@@ -63,76 +143,18 @@ See ochami-smd(1) for more details.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
-			if !noConfirm {
-				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-				var respDelete bool
-				var err error
-				if cmd.Flag("all").Changed {
-					respDelete, err = cli.Ios.LoopYesNo("Really delete ALL ETHERNET INTERFACES?")
-				} else {
-					respDelete, err = cli.Ios.LoopYesNo("Really delete?")
-				}
-				if err != nil {
-					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
-				} else if !respDelete {
-					return cli.Errorf(cli.CodeDeclined, "user aborted ethernet interface deletion")
-				} else {
-					log.Logger.Debug().Msg("User answered affirmatively to delete ethernet interfaces")
-				}
-			}
-
-			// Create client to use for requests
-			smdClient, err := smd_lib.GetClient(cmd)
-			if err != nil {
-				return err
-			}
-
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
-			}
-
-			// Create list of ethernet interface IDs to delete
-			var eiSlice []smd.EthernetInterface
-			var eIdSlice []string
-			if cmd.Flag("data").Changed {
-				// Use payload file if passed
-				if err := cli.HandlePayload(cmd, &eiSlice); err != nil {
-					return err
-				}
-				for _, ei := range eiSlice {
-					eIdSlice = append(eIdSlice, ei.ID)
-				}
-				if len(eIdSlice) == 0 {
-					return cli.Errorf(cli.CodeUsage, "payload contained no ethernet interfaces to delete")
-				}
-			} else {
-				// ...otherwise, use passed CLI arguments
-				eIdSlice = args
-			}
-
-			// Perform deletion
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &ifaceDeleteOptions{}
 			if cmd.Flag("all").Changed {
-				// If --all passed, we don't care about any passed arguments
-				_, err := smdClient.DeleteEthernetInterfacesAll(cmd.Context(), cli.Token)
-				if err != nil {
-					return cli.ClassifyClientError(err,
-						"SMD ethernet interface deletion yielded unsuccessful HTTP response",
-						"failed to delete ethernet interfaces in SMD")
-				}
-			} else {
-				// If --all not passed, pass argument list to deletion logic
-				results := smdClient.DeleteEthernetInterfaces(cmd.Context(), cli.Token, eIdSlice...)
-				// Since smdClient.DeleteEthernetInterfaces does the deletion iteratively, we need to deal
-				// with each error that might have occurred.
-				if err := cli.AggregateItemErrors(results.Errors(), "SMD ethernet interface deletion"); err != nil {
-					return err
-				}
+				opts.All = true
+			}
+			if cmd.Flag("no-confirm").Changed {
+				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm")
 			}
 
-			return nil
+			return runCoreIfaceDelete(cmd, opts, args)
 		},
 	}
 

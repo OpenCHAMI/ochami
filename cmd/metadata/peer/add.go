@@ -11,11 +11,75 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
+
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 )
+
+// metadataPeerAddOptions holds the flag values for the metadata peer add command.
+type metadataPeerAddOptions struct {
+	Envelope bool
+}
+
+// runCoreMetadataPeerAdd contains the core logic for the metadata peer add command.
+// It takes the parsed options and performs the actual work of adding WireGuard peers.
+func runCoreMetadataPeerAdd(cmd *cobra.Command, opts *metadataPeerAddOptions, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var results client.BatchResult[api.WireGuardPeer]
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read peer data
+		peers := []metadata_service_client.CreateWireGuardPeerRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddWireGuardPeers(cmd.Context(), cli.Token, peers)
+	} else {
+		// Use simple API (spec)
+
+		// Read peer data
+		peers := []metadata_service.WireGuardPeerSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[metadata_service.WireGuardPeerSpec](cmd, &peers); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[metadata_service.WireGuardPeerSpec](cmd, &peers); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = metadataServiceClient.AddWireGuardPeerSpecs(cmd.Context(), cli.Token, peers)
+	}
+
+	var names []string
+	for _, peer := range results.Values() {
+		names = append(names, peer.Metadata.Name)
+	}
+	log.Logger.Info().Msgf("WireGuard peers created: %q", names)
+	if err := cli.AggregateItemErrors(results.Errors(), "WireGuard peer addition"); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func newCmdMetadataPeerAdd() *cobra.Command {
 	// metadataPeerAddCmd represents the "metadata peer add" command
@@ -99,63 +163,15 @@ See ochami-metadata(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &metadataPeerAddOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope")
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope")
-
-			var results client.BatchResult[api.WireGuardPeer]
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read peer data
-				peers := []metadata_service_client.CreateWireGuardPeerRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[metadata_service_client.CreateWireGuardPeerRequest](cmd, &peers); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = metadataServiceClient.AddWireGuardPeers(cmd.Context(), cli.Token, peers)
-			} else {
-				// Use simple API (spec)
-
-				// Read peer data
-				peers := []metadata_service.WireGuardPeerSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[metadata_service.WireGuardPeerSpec](cmd, &peers); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[metadata_service.WireGuardPeerSpec](cmd, &peers); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = metadataServiceClient.AddWireGuardPeerSpecs(cmd.Context(), cli.Token, peers)
-			}
-
-			// Print names of created items
-			var names []string
-			for _, peer := range results.Values() {
-				names = append(names, peer.Metadata.Name)
-			}
-			log.Logger.Info().Msgf("WireGuard peers created: %q", names)
-
-			if err := cli.AggregateItemErrors(results.Errors(), "WireGuard peer addition"); err != nil {
-				return err
-			}
-
-			return nil
+			return runCoreMetadataPeerAdd(cmd, opts, metadataServiceClient)
 		},
 	}
 

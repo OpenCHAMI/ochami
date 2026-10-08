@@ -16,6 +16,47 @@ import (
 	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
 
+// groupDeleteOptions holds the flag values for the cloud-init group delete command.
+type groupDeleteOptions struct {
+	NoConfirm bool
+}
+
+// runCoreGroupDelete contains the core logic for the cloud-init group delete command.
+// It takes the parsed options and performs the actual work of deleting cloud-init groups.
+func runCoreGroupDelete(cmd *cobra.Command, opts *groupDeleteOptions, groupsToDel []string) error {
+	// Ask before attempting deletion unless --no-confirm was passed
+	if !opts.NoConfirm {
+		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		if err != nil {
+			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
+		} else if !respDelete {
+			return cli.Errorf(cli.CodeDeclined, "user aborted cloud-init group deletion")
+		} else {
+			log.Logger.Debug().Msg("User answered affirmatively to delete cloud-init groups")
+		}
+	}
+
+	// Create client to use for requests
+	cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Send data
+	results := cloudInitClient.DeleteGroups(cmd.Context(), cli.Token, groupsToDel...)
+	if err := cli.AggregateItemErrors(results.Errors(), "cloud-init group deletion"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func newCmdGroupDelete() *cobra.Command {
 	// groupDeleteCmd represents the "cloud-init group delete" command
 	var groupDeleteCmd = &cobra.Command{
@@ -75,38 +116,15 @@ See ochami-cloud-init(1) for more details.`,
 				groupsToDel = args
 			}
 
-			// Ask before attempting deletion unless --no-confirm was passed
-			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
-			if !noConfirm {
-				log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-				respDelete, err := cli.Ios.LoopYesNo("Really delete?")
-				if err != nil {
-					return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
-				} else if !respDelete {
-					return cli.Errorf(cli.CodeDeclined, "user aborted cloud-init group deletion")
-				} else {
-					log.Logger.Debug().Msg("User answered affirmatively to delete cloud-init groups")
-				}
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &groupDeleteOptions{}
+			if cmd.Flag("no-confirm").Changed {
+				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm")
 			}
 
-			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
-			if err != nil {
-				return err
-			}
-
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
-			}
-
-			// Send data
-			results := cloudInitClient.DeleteGroups(cmd.Context(), cli.Token, groupsToDel...)
-			if err := cli.AggregateItemErrors(results.Errors(), "cloud-init group deletion"); err != nil {
-				return err
-			}
-
-			return nil
+			return runCoreGroupDelete(cmd, opts, groupsToDel)
 		},
 	}
 
