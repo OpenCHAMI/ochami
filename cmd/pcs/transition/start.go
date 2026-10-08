@@ -17,12 +17,12 @@ import (
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
 )
 
-// validOperations returns a list of valid PCS operations
+// validOperations returns a list of valid PCS operations.
 func validOperations() []string {
 	return []string{"force-off", "hard-restart", "off", "on", "reinit", "soft-off", "soft-restart"}
 }
 
-// isValidOperation checks if the given operation is a valid PCS operation
+// isValidOperation checks if the given operation is a valid PCS operation.
 func isValidOperation(operation string) bool {
 	for _, op := range validOperations() {
 		if operation == op {
@@ -38,7 +38,7 @@ type transitionStartOptions struct {
 	Xnames []string
 }
 
-// createOutput represents the output of the start transition command
+// createOutput represents the output of the start transition command.
 type createOutput struct {
 	TransitionID string
 	Operation    string

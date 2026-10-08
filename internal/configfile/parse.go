@@ -14,11 +14,7 @@ import (
 // returning as a string if failing to do so. For example, if the string is
 // "true" or "false", the value will be returned as a bool.
 //
-// Currently-supported type conversions are:
-//
-// - bool
-// - int
-// - float
+// The supported conversions are to bool, int, and float.
 func StringToType(s string) any {
 	// Try bool
 	if b, err := strconv.ParseBool(strings.ToLower(s)); err == nil {

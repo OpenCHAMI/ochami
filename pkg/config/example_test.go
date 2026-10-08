@@ -20,7 +20,7 @@ func ExampleLoad() {
 		fmt.Println("temp directory error:", err)
 		return
 	}
-	defer os.RemoveAll(dir) //nolint:errcheck // best-effort cleanup after the example exits
+	defer os.RemoveAll(dir) // best-effort cleanup after the example exits
 
 	path := filepath.Join(dir, "config.yaml")
 	if err := os.WriteFile(path, []byte(`default-cluster: foobar

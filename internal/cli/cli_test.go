@@ -79,7 +79,7 @@ func TestIOStreams_LoopYesNo(t *testing.T) {
 	}
 }
 
-// Helper function to generate a test JWT token
+// Helper function to generate a test JWT token.
 func generateTestToken(exp time.Time, nbf time.Time, iat time.Time) (string, error) {
 	// Generate RSA key for signing
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -281,8 +281,8 @@ func tokenTestCmd() *cobra.Command {
 	return cmd
 }
 
-// TestHandleToken_NoTokenFlag verifies that --no-token short-circuits token
-// handling entirely (no error even with no config).
+// TestHandleToken_NoTokenFlag verifies that with --no-token, HandleToken
+// succeeds even with no config or token.
 func TestHandleToken_NoTokenFlag(t *testing.T) {
 	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
 	cmd := tokenTestCmd()

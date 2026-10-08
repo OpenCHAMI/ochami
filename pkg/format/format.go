@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// DataType represents the supported data formats
+// DataType represents the supported data formats.
 type DataFormat string
 
 const (
@@ -58,7 +58,7 @@ func (df DataFormat) Type() string {
 // MarshalData marshals arbitrary data into a byte slice formatted as outFormat.
 // If a marshalling error occurs or outFormat is unknown, an error is returned.
 //
-// Supported values are: json, json-pretty, yaml
+// Supported values are: json, json-pretty, yaml.
 func MarshalData(data interface{}, outFormat DataFormat) ([]byte, error) {
 	switch outFormat {
 	case DataFormatJson:
@@ -88,7 +88,7 @@ func MarshalData(data interface{}, outFormat DataFormat) ([]byte, error) {
 // v. If an unmarshalling error occurs or inFormat is unknown, an error is
 // returned.
 //
-// Supported values are: json, json-pretty, yaml
+// Supported values are: json, json-pretty, yaml.
 func UnmarshalData(data []byte, v interface{}, inFormat DataFormat) error {
 	switch inFormat {
 	case DataFormatJson, DataFormatJsonPretty:
@@ -196,8 +196,10 @@ func unmarshalDataSliceYAML[T any](data []byte, v *[]T) error {
 	}
 }
 
-// SetNestedField sets a field in a nested map using dot notation
-// Example: SetNestedField(map, "status.health", "OK") sets map["status"]["health"] = "OK"
+// SetNestedField sets a field in a nested map using dot notation. For
+// example, this sets map["status"]["health"] to "OK":
+//
+//	SetNestedField(map, "status.health", "OK")
 func SetNestedField(target map[string]interface{}, path string, value interface{}) {
 	if target == nil {
 		return

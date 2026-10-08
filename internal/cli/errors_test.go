@@ -236,8 +236,8 @@ func TestWrapUsageErrors_ArgError(t *testing.T) {
 }
 
 // TestWrapUsageErrors_PreservesExplicitCode verifies that an Args validator
-// returning an explicit CodedError keeps its own code instead of being coerced
-// to CodeUsage.
+// returning an explicit CodedError keeps its own code (CodePayload) instead of
+// being coerced to CodeUsage.
 func TestWrapUsageErrors_PreservesExplicitCode(t *testing.T) {
 	root := &cobra.Command{
 		Use: "root",

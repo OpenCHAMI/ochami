@@ -82,9 +82,9 @@ func TestGetTransitions_Success(t *testing.T) {
 
 // TestGetTransition_ByID verifies GET /transitions/{id}.
 func TestGetTransition_ByID(t *testing.T) {
-	var gotPath string
+	var gotMethod, gotPath string
 	pc, srv := newTestPCS(t, func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
+		gotMethod, gotPath = r.Method, r.URL.Path
 		w.Write([]byte(`{}`))
 	})
 	defer srv.Close()
@@ -92,8 +92,8 @@ func TestGetTransition_ByID(t *testing.T) {
 	if _, err := pc.GetTransition(context.Background(), "abc-123", "tok"); err != nil {
 		t.Fatalf("GetTransition: %v", err)
 	}
-	if gotPath != "/transitions/abc-123" {
-		t.Errorf("path = %q, want /transitions/abc-123", gotPath)
+	if gotMethod != http.MethodGet || gotPath != "/transitions/abc-123" {
+		t.Errorf("request = %s %s, want GET /transitions/abc-123", gotMethod, gotPath)
 	}
 }
 
@@ -155,9 +155,9 @@ func TestCreateTransition(t *testing.T) {
 // TestGetStatus_Query verifies GET /power-status encodes xnames and filters into
 // the query string.
 func TestGetStatus_Query(t *testing.T) {
-	var gotPath, gotQuery string
+	var gotMethod, gotPath, gotQuery string
 	pc, srv := newTestPCS(t, func(w http.ResponseWriter, r *http.Request) {
-		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
+		gotMethod, gotPath, gotQuery = r.Method, r.URL.Path, r.URL.RawQuery
 		w.Write([]byte(`{}`))
 	})
 	defer srv.Close()
@@ -165,8 +165,8 @@ func TestGetStatus_Query(t *testing.T) {
 	if _, err := pc.GetStatus(context.Background(), []string{"x0c0s0b0"}, "on", "available", "tok"); err != nil {
 		t.Fatalf("GetStatus: %v", err)
 	}
-	if gotPath != "/power-status" {
-		t.Errorf("path = %q, want /power-status", gotPath)
+	if gotMethod != http.MethodGet || gotPath != "/power-status" {
+		t.Errorf("request = %s %s, want GET /power-status", gotMethod, gotPath)
 	}
 	for _, want := range []string{"xname=x0c0s0b0", "powerStateFilter=on", "managementStateFilter=available"} {
 		if !strings.Contains(gotQuery, want) {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 
-	// Subcomands
+	// Subcommands
 	static_cmd "github.com/openchami/ochami/cmd/discover/static"
 )
 
