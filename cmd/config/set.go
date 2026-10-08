@@ -11,7 +11,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/internal/configfile"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 func newCmdSet() *cobra.Command {
@@ -45,15 +46,7 @@ See ochami-config(5) for details on the configuration options.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// We must have a config file in order to write config
-			var fileToModify string
-			if cmd.Flags().Changed("config") {
-				fileToModify = cli.ConfigFile
-			} else if cmd.Parent().PersistentFlags().Lookup("system").Changed {
-				// Check if --system was passed to 'config' command
-				fileToModify = config.SystemConfigFile
-			} else {
-				fileToModify = config.UserConfigFile
-			}
+			fileToModify := cli.ConfigFileToModify(cmd)
 
 			// Refuse to modify config if user tries to modify cluster config
 			if strings.HasPrefix(args[0], "clusters") {
@@ -74,7 +67,11 @@ See ochami-config(5) for details on the configuration options.`,
 			}
 
 			// Perform modification
-			if err := config.ModifyConfig(fileToModify, args[0], config.StringToType(args[1])); err != nil {
+			f, err := config.OpenFile(fileToModify)
+			if err != nil {
+				return cli.Errorf(cli.CodeConfig, "failed to open config file: %w", err)
+			}
+			if err := f.SetKey(args[0], configfile.StringToType(args[1])); err != nil {
 				return cli.Errorf(cli.CodeConfig, "failed to modify config file: %w", err)
 			}
 
