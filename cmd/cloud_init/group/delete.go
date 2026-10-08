@@ -101,11 +101,8 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Send data
-			_, errs, err := cloudInitClient.DeleteGroups(cli.Token, groupsToDel...)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to delete groups", "failed to delete groups")
-			}
-			if err := cli.AggregateItemErrors(errs, "cloud-init group deletion"); err != nil {
+			results := cloudInitClient.DeleteGroups(cmd.Context(), cli.Token, groupsToDel...)
+			if err := cli.AggregateItemErrors(results.Errors(), "cloud-init group deletion"); err != nil {
 				return err
 			}
 

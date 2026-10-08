@@ -7,7 +7,6 @@ package group
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -108,31 +107,24 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Send 'em off
-			_, errs, err := smdClient.PatchGroups(groups, cli.Token)
-			if err != nil {
-				log.Logger.Info().Msg("Common causes:")
-				log.Logger.Info().Msg("  - SMD base URI misconfiguration (should include /hsm/v2)")
-				log.Logger.Info().Msg("  - Invalid payload format")
-				log.Logger.Info().Msg("  - Authentication/authorization failure (check token)")
-				return cli.ClassifyClientError(err, fmt.Sprintf("failed to patch %d group(s) in SMD", len(groups)), fmt.Sprintf("failed to patch %d group(s) in SMD", len(groups)))
-			}
+			results := smdClient.PatchGroups(cmd.Context(), groups, cli.Token)
 			// Since smdClient.PatchGroups does the edition iteratively, we need to deal with
 			// each error that might have occurred.
 			var itemErrs []error
-			for i, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).
+			for i, result := range results {
+				if result.Err != nil {
+					if errors.Is(result.Err, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(result.Err).
 							Str("group", groups[i].Label).
 							Msg("SMD group update request yielded unsuccessful HTTP response")
 						log.Logger.Info().Msg("  - Group may not exist")
 						log.Logger.Info().Msg("  - Invalid field values")
 					} else {
-						log.Logger.Error().Err(e).
+						log.Logger.Error().Err(result.Err).
 							Str("group", groups[i].Label).
 							Msg("failed to update group in SMD")
 					}
-					itemErrs = append(itemErrs, e)
+					itemErrs = append(itemErrs, result.Err)
 				}
 			}
 			if err := cli.CombineItemErrors(itemErrs, "SMD group update"); err != nil {

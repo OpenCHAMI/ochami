@@ -41,7 +41,7 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get data
-			henv, err := cloudInitClient.GetDefaults(cli.Token)
+			henv, err := cloudInitClient.GetDefaults(cmd.Context(), cli.Token)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get defaults", "failed to get defaults")
 			}

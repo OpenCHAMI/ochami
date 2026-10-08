@@ -168,6 +168,13 @@ Avoid generic, non-descriptive suffixes (`_more`, `_edge`, `_extra`,
 matches what the test actually asserts, or extend the subject's plain test
 file if it's more happy-path coverage of the same subject.
 
+The suffix taxonomy groups separate top-level `Test` functions, not the
+`t.Run` subtests within one. A single `TestSubject` that uses subtests to
+exercise several facets of one cohesive contract (e.g. an executor's
+ordering, cancellation, and deadline behavior) belongs together in the
+subject's plain `_test.go` file even when individual subtests cover error
+conditions (see `pkg/client/batch_test.go`).
+
 ### Test doc comments
 
 Give every `Test` function a doc comment that starts with the function's

@@ -53,11 +53,11 @@ See ochami-smd(1) for more details.`,
 			}
 
 			// Perform deletion from arguments
-			_, errs, err := smdClient.DeleteGroupMembers(cli.Token, args[0], args[1:]...)
+			results, err := smdClient.DeleteGroupMembers(cmd.Context(), cli.Token, args[0], args[1:]...)
 			if err != nil {
 				return cli.ClassifyClientError(err, fmt.Sprintf("failed to delete members from group %s in SMD", args[0]), fmt.Sprintf("failed to delete members from group %s in SMD", args[0]))
 			}
-			if err := cli.AggregateItemErrors(errs, "SMD group member deletion"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "SMD group member deletion"); err != nil {
 				return err
 			}
 

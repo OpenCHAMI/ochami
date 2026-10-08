@@ -5,6 +5,7 @@
 package boot_service
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -28,9 +29,8 @@ func encodeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
 	}
 }
 
-// TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras verifies that
-// AddBMCSpecs POSTs to /bmcs with an envelope built from the name and spec
-// only, without labels.
+// TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras verifies the simple API
+// omits envelope metadata.
 func TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -50,11 +50,8 @@ func TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 		},
 	}
 
-	_, errs, err := c.AddBMCSpecs("", bmcs)
-	if err != nil {
-		t.Fatalf("AddBMCSpecs returned func error: %v", err)
-	}
-	for _, e := range errs {
+	results := c.AddBMCSpecs(context.Background(), "", bmcs)
+	for _, e := range results.Errors() {
 		if e != nil {
 			t.Fatalf("AddBMCSpecs per-request error: %v", e)
 		}
@@ -77,8 +74,8 @@ func TestAddBMCSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	}
 }
 
-// TestAddBMCs_EnvelopeIncludesLabels verifies that AddBMCs sends a request's
-// labels in the envelope.
+// TestAddBMCs_EnvelopeIncludesLabels verifies the advanced API preserves
+// resource labels.
 func TestAddBMCs_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -96,9 +93,8 @@ func TestAddBMCs_EnvelopeIncludesLabels(t *testing.T) {
 		},
 	}
 
-	_, _, err := c.AddBMCs("", bmcs)
-	if err != nil {
-		t.Fatalf("AddBMCs returned func error: %v", err)
+	if results := c.AddBMCs(context.Background(), "", bmcs); results.HasErrors() {
+		t.Fatalf("AddBMCs results = %v, want success", results)
 	}
 
 	labels, ok := gotBody["labels"].(map[string]interface{})
@@ -107,8 +103,8 @@ func TestAddBMCs_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
-// TestAddBMCSpecs_ReturnsOnlyCreatedResources verifies that AddBMCSpecs returns
-// only the BMCs the service created and reports each failed request separately.
+// TestAddBMCSpecs_ReturnsOnlyCreatedResources verifies Values excludes failed
+// simple API requests.
 func TestAddBMCSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -122,16 +118,14 @@ func TestAddBMCSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	})
 	defer srv.Close()
 
-	created, errs, err := c.AddBMCSpecs("", []BMCSpec{
+	results := c.AddBMCSpecs(context.Background(), "", []BMCSpec{
 		{Name: "failed BMC"},
 		{Name: "created BMC"},
 	})
-	if err != nil {
-		t.Fatalf("AddBMCSpecs returned func error: %v", err)
+	if len(results.Errors()) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(results.Errors()))
 	}
-	if len(errs) != 1 {
-		t.Fatalf("got %d per-request errors, want 1", len(errs))
-	}
+	created := results.Values()
 	if len(created) != 1 {
 		t.Fatalf("got %d created BMCs, want 1", len(created))
 	}
@@ -140,8 +134,8 @@ func TestAddBMCSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
-// TestAddBMCs_ReturnsOnlyCreatedResources verifies that AddBMCs returns only
-// the BMCs the service created and reports each failed request separately.
+// TestAddBMCs_ReturnsOnlyCreatedResources verifies Values excludes failed
+// advanced API requests.
 func TestAddBMCs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -155,16 +149,14 @@ func TestAddBMCs_ReturnsOnlyCreatedResources(t *testing.T) {
 	})
 	defer srv.Close()
 
-	created, errs, err := c.AddBMCs("", []boot_service_client.CreateBMCRequest{
+	results := c.AddBMCs(context.Background(), "", []boot_service_client.CreateBMCRequest{
 		{Metadata: fabrica.Metadata{Name: "failed BMC"}},
 		{Metadata: fabrica.Metadata{Name: "created BMC"}},
 	})
-	if err != nil {
-		t.Fatalf("AddBMCs returned func error: %v", err)
+	if len(results.Errors()) != 1 {
+		t.Fatalf("got %d per-request errors, want 1", len(results.Errors()))
 	}
-	if len(errs) != 1 {
-		t.Fatalf("got %d per-request errors, want 1", len(errs))
-	}
+	created := results.Values()
 	if len(created) != 1 {
 		t.Fatalf("got %d created BMCs, want 1", len(created))
 	}
@@ -173,8 +165,8 @@ func TestAddBMCs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
-// TestSetBMCSpec_SendsSpecToUIDEndpoint verifies that SetBMCSpec PUTs the spec,
-// without labels, to the BMC's /bmcs/<uid> endpoint.
+// TestSetBMCSpec_SendsSpecToUIDEndpoint verifies simple updates target the
+// requested resource UID.
 func TestSetBMCSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}
@@ -189,7 +181,7 @@ func TestSetBMCSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 
 	spec := api.BMCSpec{XName: "x1000c0s0b0"}
 
-	_, err := c.SetBMCSpec("", "bmc-abc123", spec)
+	_, err := c.SetBMCSpec(context.Background(), "", "bmc-abc123", spec)
 	if err != nil {
 		t.Fatalf("SetBMCSpec returned error: %v", err)
 	}
@@ -214,15 +206,15 @@ func TestEnvelopeSetMethods(t *testing.T) {
 		call     func(*BootServiceClient) error
 	}{
 		{"bmc", "/bmcs/uid", func(c *BootServiceClient) error {
-			_, err := c.SetBMC("tok", "uid", boot_service_client.UpdateBMCRequest{})
+			_, err := c.SetBMC(context.Background(), "tok", "uid", boot_service_client.UpdateBMCRequest{})
 			return err
 		}},
 		{"config", "/bootconfigurations/uid", func(c *BootServiceClient) error {
-			_, err := c.SetBootConfig("tok", "uid", boot_service_client.UpdateBootConfigurationRequest{})
+			_, err := c.SetBootConfig(context.Background(), "tok", "uid", boot_service_client.UpdateBootConfigurationRequest{})
 			return err
 		}},
 		{"node", "/nodes/uid", func(c *BootServiceClient) error {
-			_, err := c.SetNode("tok", "uid", boot_service_client.UpdateNodeRequest{})
+			_, err := c.SetNode(context.Background(), "tok", "uid", boot_service_client.UpdateNodeRequest{})
 			return err
 		}},
 	}

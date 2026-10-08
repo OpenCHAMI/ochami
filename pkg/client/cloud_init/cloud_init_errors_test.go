@@ -7,11 +7,12 @@ package cloud_init
 // cloud_init_errors_test.go unit-tests the CloudInitClient wrapper methods'
 // error arms: input rejected before a request is made, a non-2XX response
 // surfacing as an UnsuccessfulHTTPError, and the per-item edge cases of the
-// mutating helpers (blank names/IDs, empty lists, and per-item HTTP
-// failures). It also covers DecodeCloudConfig's own rejection case (see
-// cloud_init_test.go for its success cases).
+// mutating helpers (blank names/IDs, empty lists, mixed batch results, and
+// per-item HTTP failures). It also covers DecodeCloudConfig's own rejection
+// case (see cloud_init_test.go for its success cases).
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -29,7 +30,7 @@ func TestGetNodeData_RequiresID(t *testing.T) {
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) { requestMade = true })
 	defer srv.Close()
 
-	if _, _, err := cic.GetNodeData(CloudInitMetaData, "tok"); !errors.Is(err, client.InvalidArgumentError) {
+	if _, err := cic.GetNodeData(context.Background(), CloudInitMetaData, "tok"); !errors.Is(err, client.InvalidArgumentError) {
 		t.Fatalf("GetNodeData() error = %v, want client.InvalidArgumentError", err)
 	}
 	if requestMade {
@@ -45,7 +46,7 @@ func TestGetDefaults_UnsuccessfulHTTP(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, err := cic.GetDefaults("tok")
+	_, err := cic.GetDefaults(context.Background(), "tok")
 	if err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -83,12 +84,9 @@ func TestPutGroups_EdgeCases(t *testing.T) {
 			})
 			defer srv.Close()
 
-			_, errs, err := cic.PutGroups(tc.groups, "tok")
-			if err != nil {
-				t.Fatalf("PutGroups: control-flow error = %v", err)
-			}
-			if len(errs) != 1 || (errs[0] != nil) != tc.wantErr {
-				t.Errorf("per-item errors = %v, wantErr %v", errs, tc.wantErr)
+			results := cic.PutGroups(context.Background(), tc.groups, "tok")
+			if len(results) != 1 || (results[0].Err != nil) != tc.wantErr {
+				t.Errorf("results = %v, wantErr %v", results, tc.wantErr)
 			}
 		})
 	}
@@ -103,7 +101,7 @@ func TestPutInstanceInfo_EdgeCases(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 		defer srv.Close()
-		if _, _, err := cic.PutInstanceInfo(nil, "tok"); err == nil {
+		if _, err := cic.PutInstanceInfo(context.Background(), nil, "tok"); err == nil {
 			t.Fatal("expected control-flow error for empty list, got nil")
 		}
 	})
@@ -126,38 +124,38 @@ func TestPutInstanceInfo_EdgeCases(t *testing.T) {
 			})
 			defer srv.Close()
 
-			_, errs, err := cic.PutInstanceInfo(tc.infos, "tok")
+			results, err := cic.PutInstanceInfo(context.Background(), tc.infos, "tok")
 			if err != nil {
 				t.Fatalf("PutInstanceInfo: control-flow error = %v", err)
 			}
-			if len(errs) != 1 || (errs[0] != nil) != tc.wantErr {
-				t.Errorf("per-item errors = %v, wantErr %v", errs, tc.wantErr)
+			if len(results) != 1 || (results[0].Err != nil) != tc.wantErr {
+				t.Errorf("results = %v, wantErr %v", results, tc.wantErr)
 			}
 		})
 	}
 }
 
 // TestCloudInitIterative_MixedResults verifies that PostGroups, PutGroups,
-// PutInstanceInfo, and DeleteGroups each keep their envelopes and errors
-// aligned per item when the first request succeeds and the second gets an
+// PutInstanceInfo, and DeleteGroups each return a BatchResult aligned with
+// their inputs when the first request succeeds and the second gets an
 // unsuccessful HTTP response, sending the expected method and bearer token.
 func TestCloudInitIterative_MixedResults(t *testing.T) {
 	cases := []struct {
 		name       string
 		wantMethod string
-		call       func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error)
+		call       func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error)
 	}{
-		{"PostGroups", http.MethodPost, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.PostGroups([]cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		{"PostGroups", http.MethodPost, func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PostGroups(context.Background(), []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok"), nil
 		}},
-		{"PutGroups", http.MethodPut, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.PutGroups([]cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok")
+		{"PutGroups", http.MethodPut, func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PutGroups(context.Background(), []cistore.GroupData{{Name: "compute"}, {Name: "storage"}}, "tok"), nil
 		}},
-		{"PutInstanceInfo", http.MethodPut, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.PutInstanceInfo([]cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}, {ID: "x0c0s0b0n1"}}, "tok")
+		{"PutInstanceInfo", http.MethodPut, func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PutInstanceInfo(context.Background(), []cistore.OpenCHAMIInstanceInfo{{ID: "x0c0s0b0n0"}, {ID: "x0c0s0b0n1"}}, "tok")
 		}},
-		{"DeleteGroups", http.MethodDelete, func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.DeleteGroups("tok", "compute", "storage")
+		{"DeleteGroups", http.MethodDelete, func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.DeleteGroups(context.Background(), "tok", "compute", "storage"), nil
 		}},
 	}
 	for _, tc := range cases {
@@ -179,18 +177,18 @@ func TestCloudInitIterative_MixedResults(t *testing.T) {
 			})
 			defer srv.Close()
 
-			henvs, errs, err := tc.call(cic)
+			results, err := tc.call(cic)
 			if err != nil {
 				t.Fatalf("%s: control-flow error = %v", tc.name, err)
 			}
-			if len(henvs) != 2 || len(errs) != 2 {
-				t.Fatalf("%s: result lengths = (%d, %d), want (2, 2)", tc.name, len(henvs), len(errs))
+			if len(results) != 2 {
+				t.Fatalf("%s: results length = %d, want 2", tc.name, len(results))
 			}
-			if errs[0] != nil || henvs[0].StatusCode != http.StatusOK {
-				t.Errorf("%s: first result = (status %d, err %v), want success", tc.name, henvs[0].StatusCode, errs[0])
+			if results[0].Err != nil || results[0].Value.StatusCode != http.StatusOK {
+				t.Errorf("%s: first result = %+v, want success", tc.name, results[0])
 			}
-			if !errors.Is(errs[1], client.UnsuccessfulHTTPError) || henvs[1].StatusCode != http.StatusInternalServerError {
-				t.Errorf("%s: second result = (status %d, err %v), want HTTP failure", tc.name, henvs[1].StatusCode, errs[1])
+			if !errors.Is(results[1].Err, client.UnsuccessfulHTTPError) || results[1].Value.StatusCode != http.StatusInternalServerError {
+				t.Errorf("%s: second result = %+v, want HTTP failure", tc.name, results[1])
 			}
 		})
 	}
@@ -203,10 +201,10 @@ func TestGetNodeGroupData_Guards(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, _, err := cic.GetNodeGroupData("tok", "  "); err == nil {
+	if _, err := cic.GetNodeGroupData(context.Background(), "tok", "  "); err == nil {
 		t.Error("GetNodeGroupData with blank id = nil, want error")
 	}
-	if _, _, err := cic.GetNodeGroupData("tok", "x0c0s0b0n0"); err == nil {
+	if _, err := cic.GetNodeGroupData(context.Background(), "tok", "x0c0s0b0n0"); err == nil {
 		t.Error("GetNodeGroupData with no groups = nil, want error")
 	}
 }
@@ -219,7 +217,7 @@ func TestPostDefaults_HTTPError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if _, err := cic.PostDefaults(cistore.ClusterDefaults{}, "tok"); err == nil {
+	if _, err := cic.PostDefaults(context.Background(), cistore.ClusterDefaults{}, "tok"); err == nil {
 		t.Error("PostDefaults with HTTP error = nil, want error")
 	}
 }
@@ -231,13 +229,13 @@ func TestCloudConfigGetters_PreserveMalformedBodies(t *testing.T) {
 	const malformed = "not-base64!"
 	tests := []struct {
 		name string
-		call func(*CloudInitClient) ([]client.HTTPEnvelope, []error, error)
+		call func(*CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error)
 	}{
-		{name: "node data", call: func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.GetNodeData(CloudInitUserData, "tok", "x0c0s0b0n0")
+		{name: "node data", call: func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.GetNodeData(context.Background(), CloudInitUserData, "tok", "x0c0s0b0n0")
 		}},
-		{name: "node group data", call: func(cic *CloudInitClient) ([]client.HTTPEnvelope, []error, error) {
-			return cic.GetNodeGroupData("tok", "x0c0s0b0n0", "compute")
+		{name: "node group data", call: func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.GetNodeGroupData(context.Background(), "tok", "x0c0s0b0n0", "compute")
 		}},
 	}
 
@@ -251,14 +249,14 @@ func TestCloudConfigGetters_PreserveMalformedBodies(t *testing.T) {
 			})
 			defer srv.Close()
 
-			henvs, errs, err := tc.call(cic)
+			results, err := tc.call(cic)
 			if err != nil {
 				t.Fatalf("control-flow error = %v", err)
 			}
-			if len(henvs) != 1 || len(errs) != 1 || errs[0] != nil {
-				t.Fatalf("results = (%v, %v), want one successful response", henvs, errs)
+			if len(results) != 1 || results[0].Err != nil {
+				t.Fatalf("results = %v, want one successful response", results)
 			}
-			if got := string(henvs[0].Body); got != malformed {
+			if got := string(results[0].Value.Body); got != malformed {
 				t.Errorf("body = %q, want %q", got, malformed)
 			}
 			if _, err := DecodeCloudConfig(cistore.CloudConfigFile{Content: []byte(malformed), Encoding: "base64"}); err == nil || !strings.Contains(err.Error(), "base64 decode") {

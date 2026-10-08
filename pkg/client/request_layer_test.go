@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -85,5 +86,24 @@ func TestMakeRequest_PropagatesContextCancellation(t *testing.T) {
 	cancel()
 	if _, err := oc.MakeRequest(ctx, http.MethodGet, "https://example.com", nil, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("MakeRequest() error = %v, want context.Canceled", err)
+	}
+}
+
+// TestMakeRequest_PreservesCallerDeadline verifies that MakeRequest sends the
+// request with the caller's deadline, so an expired deadline fails the request
+// with context.DeadlineExceeded.
+func TestMakeRequest_PreservesCallerDeadline(t *testing.T) {
+	oc, err := NewOchamiClient("test", "https://example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oc.Client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	})}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
+	if _, err := oc.MakeRequest(ctx, http.MethodGet, "https://example.com", nil, nil); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("MakeRequest() error = %v, want context.DeadlineExceeded", err)
 	}
 }

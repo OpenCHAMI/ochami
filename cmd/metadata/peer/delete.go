@@ -56,15 +56,12 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Send off requests
-			peersDeleted, errs, err := metadataServiceClient.DeleteWireGuardPeers(cli.Token, args)
-			if err != nil {
-				return cli.ClassifyClientError(err, "failed to delete WireGuard peers", "failed to delete WireGuard peers")
-			}
+			results := metadataServiceClient.DeleteWireGuardPeers(cmd.Context(), cli.Token, args)
 
 			// Print UIDs of deleted items
-			log.Logger.Info().Msgf("WireGuard peers deleted: %+v", peersDeleted)
+			log.Logger.Info().Msgf("WireGuard peers deleted: %+v", results.Values())
 
-			if err := cli.AggregateItemErrors(errs, "WireGuard peer deletion"); err != nil {
+			if err := cli.AggregateItemErrors(results.Errors(), "WireGuard peer deletion"); err != nil {
 				return err
 			}
 
