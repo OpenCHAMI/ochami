@@ -67,6 +67,10 @@ func (systemTerminal) Restore(fd int, state *term.State) error { return term.Res
 // so tests can substitute a fake connection for a real socket.
 type websocketDialFunc func(context.Context, string, http.Header) (messageConn, *http.Response, error)
 
+// afterFunc has time.After's signature; tests inject it to control how long
+// a session waits after an interrupt.
+type afterFunc func(time.Duration) <-chan time.Time
+
 // HealthResponse represents the response from the /health endpoint of the Remote Console Service.
 type HealthResponse struct {
 	NumberConsoles     string `json:"consoles" yaml:"consoles"`
@@ -232,7 +236,7 @@ func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool,
 			}
 			return err
 		}
-		if _, err := output.Write(message); err != nil {
+		if err := writeOutput(output, message); err != nil {
 			return err
 		}
 	}
@@ -246,6 +250,18 @@ func isNormalWebSocketClose(err error) bool {
 	}
 
 	return closeErr.Code == websocket.CloseNormalClosure
+}
+
+// writeOutput writes a complete console message or returns io.ErrShortWrite.
+func writeOutput(output io.Writer, message []byte) error {
+	n, err := output.Write(message)
+	if err != nil {
+		return err
+	}
+	if n != len(message) {
+		return io.ErrShortWrite
+	}
+	return nil
 }
 
 // terminalInputState restores stdin after raw terminal mode has been enabled.
@@ -292,7 +308,7 @@ func enableRawTerminalMode(stdinFile *os.File, controller terminalController) (*
 // It forwards bytes read before inspecting readErr, since io.Reader permits a
 // read to return n > 0 together with io.EOF in the same call, and some real
 // readers (pipes, files, sockets) do this on stream close.
-func forwardBytes(conn messageWriter, buf []byte, n int, readErr error, errChan chan error) (stop bool) {
+func forwardBytes(conn messageWriter, buf []byte, n int, readErr error, errChan chan<- error) (stop bool) {
 	if n > 0 {
 		if writeErr := conn.WriteMessage(websocket.TextMessage, buf[:n]); writeErr != nil {
 			errChan <- writeErr
@@ -308,8 +324,9 @@ func forwardBytes(conn messageWriter, buf []byte, n int, readErr error, errChan 
 	return false
 }
 
-// streamRawConsoleInput reads from stdin in raw mode and forwards keystrokes to the websocket connection, translating Ctrl+C into an interrupt signal.
-func streamRawConsoleInput(stdin io.Reader, conn messageWriter, interrupt chan os.Signal, errChan chan error) {
+// streamRawConsoleInput reads from stdin in raw mode and forwards keystrokes
+// to the websocket connection, translating Ctrl+C into a local interrupt.
+func streamRawConsoleInput(stdin io.Reader, conn messageWriter, localInterrupt chan<- struct{}, errChan chan<- error) {
 	buf := make([]byte, 1)
 	for {
 		bytesRead, err := stdin.Read(buf)
@@ -323,7 +340,7 @@ func streamRawConsoleInput(stdin io.Reader, conn messageWriter, interrupt chan o
 		// Ctrl+C instead of surfacing that error is an acceptable, intentional
 		// tradeoff rather than an oversight.
 		if bytesRead > 0 && buf[0] == ctrlCByte {
-			interrupt <- syscall.SIGINT
+			localInterrupt <- struct{}{}
 			return
 		}
 
@@ -333,7 +350,7 @@ func streamRawConsoleInput(stdin io.Reader, conn messageWriter, interrupt chan o
 	}
 }
 
-func streamBufferedConsoleInput(stdin io.Reader, conn messageWriter, errChan chan error) {
+func streamBufferedConsoleInput(stdin io.Reader, conn messageWriter, errChan chan<- error) {
 	buf := make([]byte, 1024)
 	for {
 		bytesRead, err := stdin.Read(buf)
@@ -344,7 +361,7 @@ func streamBufferedConsoleInput(stdin io.Reader, conn messageWriter, errChan cha
 }
 
 // startConsoleInputStream starts stdin forwarding and returns terminal state for cleanup.
-func startConsoleInputStream(stdin io.Reader, conn messageWriter, controller terminalController, interrupt chan os.Signal, errChan chan error) (terminalInputState, error) {
+func startConsoleInputStream(stdin io.Reader, conn messageWriter, controller terminalController, localInterrupt chan<- struct{}, errChan chan<- error) (terminalInputState, error) {
 
 	// If stdin is a terminal, enable raw mode for immediate keystroke forwarding and interrupt handling. Otherwise, stream input in buffered mode.
 	stdinFile, ok := terminalInputFile(stdin, controller)
@@ -361,13 +378,12 @@ func startConsoleInputStream(stdin io.Reader, conn messageWriter, controller ter
 		return terminalInputState{}, err
 	}
 
-	go streamRawConsoleInput(stdin, conn, interrupt, errChan)
+	go streamRawConsoleInput(stdin, conn, localInterrupt, errChan)
 
 	return terminalInputState{file: stdinFile, state: oldState, controller: controller}, nil
 }
 
-func streamConsoleOutput(stdout io.Writer, conn messageReader, errChan chan error, done chan struct{}) {
-	defer close(done)
+func streamConsoleOutput(stdout io.Writer, conn messageReader, errChan chan<- error) {
 	for {
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
@@ -379,7 +395,7 @@ func streamConsoleOutput(stdout io.Writer, conn messageReader, errChan chan erro
 			return
 		}
 		if messageType == websocket.TextMessage || messageType == websocket.BinaryMessage {
-			if _, err := stdout.Write(message); err != nil {
+			if err := writeOutput(stdout, message); err != nil {
 				errChan <- err
 				return
 			}
@@ -388,58 +404,85 @@ func streamConsoleOutput(stdout io.Writer, conn messageReader, errChan chan erro
 }
 
 // startConsoleOutputStream starts websocket output forwarding to stdout.
-func startConsoleOutputStream(stdout io.Writer, conn messageReader, errChan chan error, done chan struct{}) {
-	go streamConsoleOutput(stdout, conn, errChan, done)
+func startConsoleOutputStream(stdout io.Writer, conn messageReader, errChan chan<- error) {
+	go streamConsoleOutput(stdout, conn, errChan)
 }
 
-// waitForConsoleExit waits for shutdown, an interrupt, or an I/O error.
-func waitForConsoleExit(ctx context.Context, conn messageWriter, interrupt chan os.Signal, done chan struct{}, errChan chan error) error {
+// waitAfterInterrupt sends a websocket close frame after an interrupt and
+// briefly waits for the read side to finish.
+func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-chan error, after afterFunc) error {
+	// Translate a local interrupt into a clean websocket close so the remote
+	// side can shut down cleanly.
+	if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+		return fmt.Errorf("failed to send websocket close message: %w", err)
+	}
+
+	// An interrupt is always a clean, user-initiated exit: give the read
+	// goroutine a moment to observe the close, but don't surface whatever it
+	// reports. The remote can tear down the connection without completing a
+	// clean close handshake (e.g. an abnormal websocket close code, or the
+	// TCP connection simply resetting), and that must not turn a Ctrl+C or
+	// SIGINT/SIGTERM into a reported failure.
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-outputErr:
+		return nil
+	case <-after(time.Second):
+		return nil
+	}
+}
+
+// waitForConsoleExit waits for shutdown, a local interrupt, or an I/O error.
+func waitForConsoleExit(ctx context.Context, conn messageWriter, interrupt <-chan os.Signal, localInterrupt <-chan struct{}, inputErr, outputErr <-chan error, after afterFunc) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-interrupt:
-		// Translate local interrupt into a clean websocket close so the remote side can shut down cleanly.
-		if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
-			return fmt.Errorf("failed to send websocket close message: %w", err)
-		}
-		// Give the read goroutine a moment to observe the close before returning.
-		select {
-		case <-done:
-		case <-time.After(time.Second):
-		}
-		return nil
-	case err := <-errChan:
+		return waitAfterInterrupt(ctx, conn, outputErr, after)
+	case <-localInterrupt:
+		return waitAfterInterrupt(ctx, conn, outputErr, after)
+	case err := <-inputErr:
+		return err
+	case err := <-outputErr:
 		return err
 	}
 }
 
-func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token string, stdin io.Reader, stdout io.Writer) (retErr error) {
+// runConsoleSession forwards stdin to conn and conn's output to stdout until
+// the session ends, then closes conn and restores the terminal.
+func runConsoleSession(ctx context.Context, conn messageConn, terminal terminalController, interrupt <-chan os.Signal, after afterFunc, stdin io.Reader, stdout io.Writer) (retErr error) {
+	defer func() { retErr = errors.Join(retErr, conn.Close()) }()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	inputErr := make(chan error, 1)
+	outputErr := make(chan error, 1)
+	localInterrupt := make(chan struct{}, 1)
+
+	restoreTerminal, err := startConsoleInputStream(stdin, conn, terminal, localInterrupt, inputErr)
+	if err != nil {
+		return err
+	}
+	defer func() { retErr = errors.Join(retErr, restoreTerminal.Restore()) }()
+
+	startConsoleOutputStream(stdout, conn, outputErr)
+	return waitForConsoleExit(ctx, conn, interrupt, localInterrupt, inputErr, outputErr, after)
+}
+
+func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token string, stdin io.Reader, stdout io.Writer) error {
 	headers := headersForToken(token)
 
 	conn, err := c.dialWebSocket(ctx, nodeID, "mode=interactive", headers)
 	if err != nil {
 		return err
 	}
-	defer func() { retErr = errors.Join(retErr, conn.Close()) }()
-
 	// Set up interrupt handling to allow Ctrl+C to cleanly close the console connection.
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
 
-	errChan := make(chan error, 2)
-	done := make(chan struct{})
-
-	restoreTerminal, err := startConsoleInputStream(stdin, conn, c.terminal, interrupt, errChan)
-	if err != nil {
-		return err
-	}
-
-	// Restore the terminal when the console session ends, even if there are errors or interrupts.
-	defer func() { retErr = errors.Join(retErr, restoreTerminal.Restore()) }()
-
-	startConsoleOutputStream(stdout, conn, errChan, done)
-
-	/// Wait for the console session to end due to shutdown, interrupt, or an I/O error.
-	return waitForConsoleExit(ctx, conn, interrupt, done, errChan)
+	return runConsoleSession(ctx, conn, c.terminal, interrupt, time.After, stdin, stdout)
 }

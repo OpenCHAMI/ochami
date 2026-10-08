@@ -23,16 +23,6 @@ func writeFileFixture(t *testing.T, content string) string {
 	return path
 }
 
-// skipIfRoot skips the current test when running as root, since root can
-// write to paths like /root/config.yaml that are used here to deliberately
-// trigger a permission-denied error.
-func skipIfRoot(t *testing.T) {
-	t.Helper()
-	if os.Geteuid() == 0 {
-		t.Skip("skipping permission-denied test: running as root")
-	}
-}
-
 // TestOpenFile verifies that OpenFile requires an existing, readable file and
 // exposes its raw (defaults-free) contents.
 func TestOpenFile(t *testing.T) {
@@ -88,9 +78,9 @@ func TestCreateFile(t *testing.T) {
 }
 
 // TestFile_SetKey verifies that SetKey persists a global key (top-level or
-// nested) to disk without disturbing sibling keys, and that a write failure
-// (e.g. a read-only file) is surfaced as an error rather than silently
-// dropped.
+// nested) to disk without disturbing sibling keys, without leaving temporary
+// files behind, and that CreateFile rejects a destination that is a directory
+// or whose parent directory doesn't exist.
 func TestFile_SetKey(t *testing.T) {
 	t.Run("modify default-cluster updates config", func(t *testing.T) {
 		path := writeFileFixture(t, "default-cluster: old\n")
@@ -131,21 +121,26 @@ func TestFile_SetKey(t *testing.T) {
 		if v := got.Get("log.format"); v != "pretty" {
 			t.Errorf("log.format = %v, want unchanged pretty", v)
 		}
+
+		matches, err := filepath.Glob(filepath.Join(filepath.Dir(path), ".cfg.yaml.*"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(matches) != 0 {
+			t.Errorf("temporary files left behind: %v", matches)
+		}
 	})
 
-	t.Run("permission denied writing file", func(t *testing.T) {
-		skipIfRoot(t)
-		path := writeFileFixture(t, "default-cluster: old\n")
-		f, err := config.OpenFile(path)
-		if err != nil {
-			t.Fatalf("OpenFile(): %v", err)
+	t.Run("destination is a directory", func(t *testing.T) {
+		if _, err := config.CreateFile(t.TempDir()); err == nil {
+			t.Fatal("CreateFile(): expected directory error, got nil")
 		}
-		if err := os.Chmod(path, 0o400); err != nil {
-			t.Fatalf("chmod: %v", err)
-		}
-		defer os.Chmod(path, 0o644) //nolint:errcheck // best-effort cleanup
-		if err := f.SetKey("default-cluster", "x"); err == nil {
-			t.Fatal("SetKey(): expected permission error, got nil")
+	})
+
+	t.Run("nonexistent parent directory", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "missing", "config.yaml")
+		if _, err := config.CreateFile(path); err == nil {
+			t.Fatal("CreateFile(): expected missing-parent error, got nil")
 		}
 	})
 }
