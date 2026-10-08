@@ -49,6 +49,15 @@ Run tests:
 make test
 ```
 
+Tests run with Go's data race detector by default. Control test parallelism
+with `PARALLEL=<n>` (omit to use Go's own default), or disable the race
+detector for a faster local iteration loop with `RACE=0`:
+
+```bash
+make test PARALLEL=4
+make test RACE=0
+```
+
 Run linting:
 
 ```bash
@@ -195,6 +204,15 @@ if got := cli.ExitCode(err); got != cli.CodeNetwork {
 	t.Errorf("exit code = %d, want %d (%s)", got, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
 }
 ```
+
+### Command tests
+
+Commands read and write through the invocation runtime's streams
+(`rt.Ios.In()`, `rt.Ios.Out()`, `cli.WriteOutput`), never `os.Stdin` or
+`os.Stdout` directly. Command tests run a real command tree against an
+isolated `cli.NewTestRuntime` through the helpers in `cmd/testhelpers_test.go`
+(`runOchamiWithRuntime` and friends), and call `t.Parallel()` unless they use
+`t.Setenv`, which can't be combined with it.
 
 ## Submitting Pull Requests
 

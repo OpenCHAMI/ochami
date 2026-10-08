@@ -19,6 +19,8 @@ import (
 // TestSMDComponentGet_AllHTTPError verifies that an unsuccessful HTTP response
 // resolves to the CodeHTTP exit code.
 func TestSMDComponentGet_AllHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -37,6 +39,8 @@ func TestSMDComponentGet_AllHTTPError(t *testing.T) {
 // TestSMDComponentGet_NetworkError verifies that a transport-level failure
 // (server closed, connection refused) resolves to the CodeNetwork exit code.
 func TestSMDComponentGet_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "smd", "component", "get", "--ignore-config", "--uri", url)
@@ -52,6 +56,8 @@ func TestSMDComponentGet_NetworkError(t *testing.T) {
 // TestSMDComponentAdd_BadPayload verifies that malformed -d payload data
 // resolves to the CodePayload exit code before any request is made.
 func TestSMDComponentAdd_BadPayload(t *testing.T) {
+	t.Parallel()
+
 	requestMade := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestMade = true
@@ -77,6 +83,8 @@ func TestSMDComponentAdd_BadPayload(t *testing.T) {
 // TestSMDComponentAdd_MissingArgs verifies that invoking add without -d and
 // without the required positional arguments is a usage error (CodeUsage).
 func TestSMDComponentAdd_MissingArgs(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "smd", "component", "add", "--ignore-config", "--uri", "http://127.0.0.1:0")
 
 	if res.err == nil {
@@ -91,6 +99,8 @@ func TestSMDComponentAdd_MissingArgs(t *testing.T) {
 // HTTP response during multi-item deletion resolves to CodeHTTP (the
 // "completed with errors" aggregate).
 func TestSMDComponentDelete_PartialFailure(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Fail every delete so the aggregate reports errors.
 		http.Error(w, "not found", http.StatusNotFound)
@@ -113,6 +123,8 @@ func TestSMDComponentDelete_PartialFailure(t *testing.T) {
 
 // TestSMDComponentDelete_Abort verifies answering "n" aborts without a request.
 func TestSMDComponentDelete_Abort(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {

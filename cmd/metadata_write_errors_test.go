@@ -16,6 +16,8 @@ import (
 // TestMetadataAdd_HTTPError verifies that "metadata <type> add" fails with
 // CodeHTTP for an unsuccessful HTTP response, for every metadata resource type.
 func TestMetadataAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -23,6 +25,7 @@ func TestMetadataAdd_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
+			t.Parallel()
 			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "add",
 				"--uri", srv.URL, "--token", "t",
 				"-d", addPayloadFor(typ))
@@ -40,6 +43,8 @@ func TestMetadataAdd_HTTPError(t *testing.T) {
 // prompt aborts deletion without contacting the server, for every metadata
 // resource type.
 func TestMetadataDelete_AbortsOnNo(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			var contacted bool
@@ -71,6 +76,8 @@ func TestMetadataDelete_AbortsOnNo(t *testing.T) {
 // TestMetadataDelete_HTTPError verifies that an unsuccessful HTTP response to
 // a delete fails the command for every metadata resource type.
 func TestMetadataDelete_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -24,6 +24,8 @@ import (
 // TestSMDComponentGet_All verifies that "smd component get" with no selectors
 // issues GET /State/Components and prints the server's body on success.
 func TestSMDComponentGet_All(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -55,6 +57,8 @@ func TestSMDComponentGet_All(t *testing.T) {
 // TestSMDComponentAdd_ViaFlags verifies that "smd component add <xname> <nid>"
 // issues POST /State/Components with the component encoded in the body.
 func TestSMDComponentAdd_ViaFlags(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	var gotBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +105,8 @@ func TestSMDComponentAdd_ViaFlags(t *testing.T) {
 // TestSMDComponentDelete_NoConfirm verifies that "smd component delete --no-confirm <xname>"
 // issues DELETE /State/Components/<xname> without prompting.
 func TestSMDComponentDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -128,6 +134,8 @@ func TestSMDComponentDelete_NoConfirm(t *testing.T) {
 
 // TestSMDComponentDelete_ByData verifies IDs in a payload drive DELETE requests.
 func TestSMDComponentDelete_ByData(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -150,6 +158,8 @@ func TestSMDComponentDelete_ByData(t *testing.T) {
 // TestSMDComponentGet_ByXname verifies that "smd component get --xname"
 // requests the component by its xname.
 func TestSMDComponentGet_ByXname(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -169,6 +179,8 @@ func TestSMDComponentGet_ByXname(t *testing.T) {
 
 // TestSMDComponentGet_ByNID verifies "get --nid" targets the ByNID endpoint.
 func TestSMDComponentGet_ByNID(t *testing.T) {
+	t.Parallel()
+
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -188,6 +200,8 @@ func TestSMDComponentGet_ByNID(t *testing.T) {
 
 // TestSMDComponentGet_Formats verifies output-format variants of get-all.
 func TestSMDComponentGet_Formats(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"Components":[{"ID":"x0c0s0b0n0"}]}`))
 	}))
@@ -205,6 +219,8 @@ func TestSMDComponentGet_Formats(t *testing.T) {
 // TestSMDComponentDelete_AllConfirm verifies "delete --all" prompts and, on "y",
 // issues a DELETE to the collection endpoint.
 func TestSMDComponentDelete_AllConfirm(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {

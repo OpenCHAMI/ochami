@@ -23,6 +23,7 @@ import (
 // TestConfigClusterSet_Default verifies "config cluster set --default" marks the
 // cluster as the default in the config file.
 func TestConfigClusterSet_Default(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
@@ -50,6 +51,7 @@ func TestConfigClusterSet_Default(t *testing.T) {
 
 // TestConfigClusterSet_ServiceKey verifies setting a per-service URI key.
 func TestConfigClusterSet_ServiceKey(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
@@ -82,6 +84,7 @@ func TestConfigClusterSet_ServiceKey(t *testing.T) {
 // TestConfigClusterShow_All verifies "config cluster show" with no args shows all
 // clusters.
 func TestConfigClusterShow_All(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
@@ -104,6 +107,7 @@ func TestConfigClusterShow_All(t *testing.T) {
 // TestConfigClusterSet_CreatesFile verifies "config cluster set" creates a
 // missing config file when the user confirms.
 func TestConfigClusterSet_CreatesFile(t *testing.T) {
+	t.Parallel()
 
 	dir := t.TempDir()
 	path := dir + "/sub/config.yaml"
@@ -121,6 +125,7 @@ func TestConfigClusterSet_CreatesFile(t *testing.T) {
 // TestConfigClusterShow_KeyOfCluster verifies "config cluster show <name> <key>"
 // returns the value for a nested key.
 func TestConfigClusterShow_KeyOfCluster(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
@@ -140,6 +145,7 @@ func TestConfigClusterShow_KeyOfCluster(t *testing.T) {
 // TestConfigClusterSet_ThenShow verifies that "config cluster set" adds a cluster
 // entry and "config cluster show" reads it back.
 func TestConfigClusterSet_ThenShow(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "")
 
@@ -169,6 +175,7 @@ func TestConfigClusterSet_ThenShow(t *testing.T) {
 // TestConfigClusterUnset_Success verifies that "config cluster unset" removes a key from
 // an existing cluster entry in the config file.
 func TestConfigClusterUnset_Success(t *testing.T) {
+	t.Parallel()
 
 	// Seed a config file with a cluster that has a uri and a smd uri.
 	cfg := writeTempConfig(t, `clusters:
@@ -200,6 +207,7 @@ func TestConfigClusterUnset_Success(t *testing.T) {
 // TestConfigClusterDelete_Success verifies that "config cluster delete" removes
 // the named cluster's entry from the config file and keeps the other clusters.
 func TestConfigClusterDelete_Success(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, `clusters:
   - name: foobar
@@ -230,6 +238,8 @@ func TestConfigClusterDelete_Success(t *testing.T) {
 // TestConfigClusterSet_DeclineCreate verifies that declining to create a
 // missing config file exits with CodeDeclined and leaves no file behind.
 func TestConfigClusterSet_DeclineCreate(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "new", "config.yaml")
 
 	res := runOchamiWithInputAndRuntime(t, "n\n", "--config", path, "config", "cluster", "set",

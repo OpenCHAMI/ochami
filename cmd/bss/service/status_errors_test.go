@@ -16,6 +16,8 @@ import (
 // TestServiceStatus_ClientConstructionError verifies client setup failures are
 // returned unchanged.
 func TestServiceStatus_ClientConstructionError(t *testing.T) {
+	t.Parallel()
+
 	wantErr := errors.New("boom")
 	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdServiceStatusWithClient(providerFor(nil, wantErr))
@@ -33,6 +35,8 @@ func TestServiceStatus_ClientConstructionError(t *testing.T) {
 // TestServiceStatus_HTTPErrorMapping verifies service response failures map to
 // the HTTP exit code.
 func TestServiceStatus_HTTPErrorMapping(t *testing.T) {
+	t.Parallel()
+
 	fake := &fakeBSSStatusClient{err: client.UnsuccessfulHTTPError}
 	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))
@@ -53,6 +57,8 @@ func TestServiceStatus_HTTPErrorMapping(t *testing.T) {
 // TestServiceStatus_NetworkErrorMapping verifies transport failures map to the
 // network exit code.
 func TestServiceStatus_NetworkErrorMapping(t *testing.T) {
+	t.Parallel()
+
 	fake := &fakeBSSStatusClient{err: errors.New("connection refused")}
 	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdServiceStatusWithClient(providerFor(fake, nil))

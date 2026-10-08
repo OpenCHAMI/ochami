@@ -19,6 +19,8 @@ import (
 // TestSMDGroupMemberAdd_Multiple verifies "group member add <label> <comp>..."
 // issues a POST per component.
 func TestSMDGroupMemberAdd_Multiple(t *testing.T) {
+	t.Parallel()
+
 	var posts int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
@@ -41,6 +43,8 @@ func TestSMDGroupMemberAdd_Multiple(t *testing.T) {
 // TestSMDGroupMemberDelete_Confirm verifies "group member delete" prompts and, on
 // "y", issues DELETEs.
 func TestSMDGroupMemberDelete_Confirm(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -67,6 +71,8 @@ func TestSMDGroupMemberDelete_Confirm(t *testing.T) {
 // TestSMDGroupMemberDelete_Multiple verifies "member delete --no-confirm" issues
 // a DELETE per component.
 func TestSMDGroupMemberDelete_Multiple(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {

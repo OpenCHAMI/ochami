@@ -19,6 +19,8 @@ import (
 // TestMetadataList_HTTPError verifies that an unsuccessful HTTP response
 // resolves to CodeHTTP for each metadata resource type's "list".
 func TestMetadataList_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 	}))
@@ -40,6 +42,8 @@ func TestMetadataList_HTTPError(t *testing.T) {
 // TestMetadataGet_HTTPError verifies that an unsuccessful HTTP response from a
 // "<type> get" resolves to CodeHTTP for each resource type.
 func TestMetadataGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -61,6 +65,8 @@ func TestMetadataGet_HTTPError(t *testing.T) {
 // TestMetadataList_NetworkError verifies a closed port resolves to a network
 // error (CodeNetwork) for each type's list.
 func TestMetadataList_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
@@ -78,6 +84,8 @@ func TestMetadataList_NetworkError(t *testing.T) {
 
 // TestMetadataSet_HTTPError verifies a failing set resolves to CodeHTTP.
 func TestMetadataSet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +107,8 @@ func TestMetadataSet_HTTPError(t *testing.T) {
 
 // TestMetadataPatch_HTTPError verifies a failing patch resolves to CodeHTTP.
 func TestMetadataPatch_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +131,8 @@ func TestMetadataPatch_HTTPError(t *testing.T) {
 // TestMetadataAdd_MalformedPayload verifies malformed inline payload resolves to
 // a non-success exit code across metadata types.
 func TestMetadataAdd_MalformedPayload(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -143,6 +155,8 @@ func TestMetadataAdd_MalformedPayload(t *testing.T) {
 // TestMetadataAdd_MultiItemAggregate verifies a multi-item add against a
 // failing server aggregates per-item errors into CodeHTTP.
 func TestMetadataAdd_MultiItemAggregate(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -15,6 +15,8 @@ import (
 // TestBSSBootImageSet_GetHTTPError verifies a failing GET of boot params resolves
 // to CodeHTTP.
 func TestBSSBootImageSet_GetHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -33,6 +35,8 @@ func TestBSSBootImageSet_GetHTTPError(t *testing.T) {
 // TestBSSBootImageSet_PutHTTPError verifies a failing PUT resolves to CodeHTTP
 // via the per-item aggregate.
 func TestBSSBootImageSet_PutHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"kernel":"http://s3/vmlinuz","params":"root=live:old"}]`))

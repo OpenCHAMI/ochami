@@ -15,6 +15,8 @@ import (
 // TestSMDCompepGet_AllHTTPError verifies an unsuccessful HTTP response on get-all
 // resolves to CodeHTTP.
 func TestSMDCompepGet_AllHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -32,6 +34,8 @@ func TestSMDCompepGet_AllHTTPError(t *testing.T) {
 // TestSMDCompepGet_ByXnameHTTPError verifies a failing per-xname get resolves to
 // CodeHTTP via the aggregate.
 func TestSMDCompepGet_ByXnameHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -49,6 +53,8 @@ func TestSMDCompepGet_ByXnameHTTPError(t *testing.T) {
 
 // TestSMDCompepGet_NetworkError verifies a closed port resolves to CodeNetwork.
 func TestSMDCompepGet_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", url, "--token", "t")
@@ -62,6 +68,8 @@ func TestSMDCompepGet_NetworkError(t *testing.T) {
 
 // TestSMDCompepDelete_Abort verifies answering "n" aborts without a request.
 func TestSMDCompepDelete_Abort(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -84,6 +92,8 @@ func TestSMDCompepDelete_Abort(t *testing.T) {
 // TestSMDCompepDelete_NoSelector verifies delete with neither -d, --all, nor args
 // is a usage error.
 func TestSMDCompepDelete_NoSelector(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--no-confirm")
 	if res.err == nil {
@@ -97,6 +107,8 @@ func TestSMDCompepDelete_NoSelector(t *testing.T) {
 // TestSMDCompepDelete_AllHTTPError verifies a failing "delete --all" resolves to
 // CodeHTTP.
 func TestSMDCompepDelete_AllHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
