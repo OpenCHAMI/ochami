@@ -316,3 +316,17 @@ func TestDiscoverStatic_DeprecatedFormat(t *testing.T) {
 		t.Error("expected a POST for deprecated-format discovery, got none")
 	}
 }
+
+// TestDiscoverStatic_Help verifies "discover static --help" succeeds and
+// documents the command without requiring a payload or base URI.
+func TestDiscoverStatic_Help(t *testing.T) {
+	t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "discover", "static", "--help")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "Populate SMD") {
+		t.Errorf("expected help to describe the command, got: %s", res.stdout)
+	}
+}

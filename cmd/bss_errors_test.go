@@ -342,3 +342,66 @@ func TestBSSBootParamsDelete_NetworkError(t *testing.T) {
 		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
 	}
 }
+
+// TestBSSBootParamsGet_MalformedResponse verifies that "bss boot params get
+// --xname" fails with CodePayload when the response can't be decoded.
+func TestBSSBootParamsGet_MalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{"BootParameters":[{"ID":"`)); err != nil {
+			t.Errorf("writing response: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
+		"bss", "boot", "params", "get", "--xname", "x0c0s1b0n0")
+
+	if res.err == nil {
+		t.Fatal("expected error for malformed JSON, got nil")
+	}
+	if res.exitCode != cli.CodePayload {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+	}
+}
+
+// TestBSSBootParamsGetByXname_HTTPError verifies that "bss boot params get
+// --xname" fails with CodeHTTP for an HTTP 503 response.
+func TestBSSBootParamsGetByXname_HTTPError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
+		"bss", "boot", "params", "get", "--xname", "x0c0s1b0n0")
+
+	if res.err == nil {
+		t.Fatal("expected error for HTTP 503, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
+// TestBSSBootParamsGetByXname_NetworkError verifies that "bss boot params get
+// --xname" fails with CodeNetwork when BSS can't be reached.
+func TestBSSBootParamsGetByXname_NetworkError(t *testing.T) {
+	t.Parallel()
+
+	// Nothing listens on port 1, so the connection is refused.
+	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", "http://127.0.0.1:1", "--token", "t",
+		"bss", "boot", "params", "get", "--xname", "x0c0s1b0n0")
+
+	if res.err == nil {
+		t.Fatal("expected network error, got nil")
+	}
+	if res.exitCode != cli.CodeNetwork {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+}

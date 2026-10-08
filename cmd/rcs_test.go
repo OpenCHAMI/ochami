@@ -109,3 +109,20 @@ func TestRCSConsoleConnect_NormalClose(t *testing.T) {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 	}
 }
+
+// TestRCSConsoleConnect_Help verifies that "rcs console connect --help"
+// succeeds and prints the command's help.
+func TestRCSConsoleConnect_Help(t *testing.T) {
+	t.Parallel()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "rcs", "console", "connect", "--help")
+
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+
+	// Help should contain usage information
+	if !strings.Contains(res.stdout, "connect") {
+		t.Errorf("expected help to contain 'connect', got: %s", res.stdout)
+	}
+}
