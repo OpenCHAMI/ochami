@@ -6,14 +6,12 @@
 package script
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/pkg/client"
 
 	bss_lib "github.com/openchami/ochami/internal/cli/bss"
 )
@@ -44,28 +42,19 @@ See ochami-bss(1) for more details.`,
 
 			// At least one of these required
 			if cmd.Flag("xname").Changed {
-				s, err := cmd.Flags().GetStringSlice("xname")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch xname list: %w", err)
-				}
+				s, _ := cmd.Flags().GetStringSlice("xname")
 				for _, x := range s {
 					values.Add("name", x)
 				}
 			}
 			if cmd.Flag("mac").Changed {
-				s, err := cmd.Flags().GetStringSlice("mac")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch mac list: %w", err)
-				}
+				s, _ := cmd.Flags().GetStringSlice("mac")
 				for _, m := range s {
 					values.Add("mac", m)
 				}
 			}
 			if cmd.Flag("nid").Changed {
-				s, err := cmd.Flags().GetInt32Slice("nid")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch nid list: %w", err)
-				}
+				s, _ := cmd.Flags().GetInt32Slice("nid")
 				for _, n := range s {
 					values.Add("nid", fmt.Sprintf("%d", n))
 				}
@@ -73,34 +62,22 @@ See ochami-bss(1) for more details.`,
 
 			// These are optional
 			if cmd.Flag("retry").Changed {
-				s, err := cmd.Flags().GetInt("retry")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch number of retries: %w", err)
-				}
+				s, _ := cmd.Flags().GetInt("retry")
 				values.Add("retry", fmt.Sprintf("%d", s))
 			}
 			if cmd.Flag("arch").Changed {
-				s, err := cmd.Flags().GetString("arch")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch arch: %w", err)
-				}
+				s, _ := cmd.Flags().GetString("arch")
 				values.Add("arch", s)
 			}
 			if cmd.Flag("timestamp").Changed {
-				s, err := cmd.Flags().GetInt("timestamp")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "unable to fetch timestamp: %w", err)
-				}
+				s, _ := cmd.Flags().GetInt("timestamp")
 				values.Add("timestamp", fmt.Sprintf("%d", s))
 			}
 			qstr := values.Encode()
 
 			httpEnv, err := bssClient.GetBootScript(qstr)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS boot script request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request boot script from BSS: %w", err)
+				return cli.ClassifyClientError(err, "BSS boot script request yielded unsuccessful HTTP response", "failed to request boot script from BSS")
 			}
 			fmt.Println(string(httpEnv.Body))
 

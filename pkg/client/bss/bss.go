@@ -64,9 +64,7 @@ func (bc *BSSClient) PostBootParams(bp bssTypes.BootParams, token string) (clien
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err = headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("PostBootParams(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	henv, err = bc.PostData(BSSRelpathBootParams, "", headers, body)
 	if err != nil {
@@ -92,9 +90,7 @@ func (bc *BSSClient) PutBootParams(bp bssTypes.BootParams, token string) (client
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err = headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("PutBootParams(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	henv, err = bc.PutData(BSSRelpathBootParams, "", headers, body)
 	if err != nil {
@@ -120,9 +116,7 @@ func (bc *BSSClient) PatchBootParams(bp bssTypes.BootParams, token string) (clie
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err = headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("PatchBootParams(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	henv, err = bc.PatchData(BSSRelpathBootParams, "", headers, body)
 	if err != nil {
@@ -148,9 +142,7 @@ func (bc *BSSClient) DeleteBootParams(bp bssTypes.BootParams, token string) (cli
 	}
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err = headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("DeleteBootParams(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	henv, err = bc.DeleteData(BSSRelpathBootParams, "", headers, body)
 	if err != nil {
@@ -172,9 +164,7 @@ func (bc *BSSClient) GetBootParams(query, token string) (client.HTTPEnvelope, er
 	)
 	headers = client.NewHTTPHeaders()
 	if token != "" {
-		if err = headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("GetBootParams(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 	henv, err = bc.GetData(BSSRelpathBootParams, query, headers)
 	if err != nil {

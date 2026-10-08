@@ -18,6 +18,10 @@ import (
 var (
 	UnsuccessfulHTTPError = fmt.Errorf("unsuccessful HTTP status")
 	NilMapPointerError    = fmt.Errorf("nil map pointer")
+
+	// InvalidArgumentError is wrapped by the errors a client returns for an
+	// argument it rejects before sending any request.
+	InvalidArgumentError = fmt.Errorf("invalid argument")
 )
 
 type HTTPHeaders map[string][]string

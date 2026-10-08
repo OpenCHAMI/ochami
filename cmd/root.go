@@ -122,26 +122,38 @@ See ochami-config(5) for more details on configuring the ochami config file(s).`
 func Execute() {
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
-	if err != nil {
-		code := cli.ExitCode(err)
-		if code == cli.CodeDeclined {
-			// Declining a prompt is a deliberate choice rather than a
-			// failure, so report it without suggesting --help.
-			log.Logger.Warn().Msg(err.Error())
-			os.Exit(code)
-		}
-		log.Logger.Error().Err(err).Msg("failed to execute command")
-		if cmd, _, ferr := rootCmd.Find(os.Args[1:]); ferr != nil {
-			// Error looking up invoked command, default to printing
-			// help suggestion for root command, printing debug
-			// message only for debugging (most users don't need to
-			// know an error occurred).
-			log.Logger.Debug().Err(ferr).Msg("failed to lookup invoked command")
-			cli.LogHelpHint(rootCmd)
-		} else {
-			// Print help suggestion for invoked command
-			cli.LogHelpHint(cmd)
-		}
+	if code := handleExecuteError(rootCmd, err); code != cli.CodeSuccess {
 		os.Exit(code)
 	}
+}
+
+// handleExecuteError centralizes the post-Execute error handling: it logs the
+// failure, emits the appropriate "--help" hint for the invoked (or root)
+// command, and returns the process exit code the error resolves to. It is
+// separated from Execute so the logic can be exercised without terminating the
+// test binary via os.Exit. A nil error yields CodeSuccess.
+func handleExecuteError(rootCmd *cobra.Command, err error) int {
+	if err == nil {
+		return cli.CodeSuccess
+	}
+	code := cli.ExitCode(err)
+	if code == cli.CodeDeclined {
+		// Declining a prompt is a deliberate choice rather than a failure,
+		// so report it without suggesting --help.
+		log.Logger.Warn().Msg(err.Error())
+		return code
+	}
+	log.Logger.Error().Err(err).Msg("failed to execute command")
+	if cmd, _, ferr := rootCmd.Find(os.Args[1:]); ferr != nil {
+		// Error looking up invoked command, default to printing
+		// help suggestion for root command, printing debug
+		// message only for debugging (most users don't need to
+		// know an error occurred).
+		log.Logger.Debug().Err(ferr).Msg("failed to lookup invoked command")
+		cli.LogHelpHint(rootCmd)
+	} else {
+		// Print help suggestion for invoked command
+		cli.LogHelpHint(cmd)
+	}
+	return code
 }

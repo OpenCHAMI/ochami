@@ -13,9 +13,8 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestMetadataAdd_HTTPError verifies that "metadata <type> add" fails with a
-// non-success exit code for an unsuccessful HTTP response, for every metadata
-// resource type.
+// TestMetadataAdd_HTTPError verifies that "metadata <type> add" fails with
+// CodeHTTP for an unsuccessful HTTP response, for every metadata resource type.
 func TestMetadataAdd_HTTPError(t *testing.T) {
 	for _, typ := range metadataTypes {
 		t.Run(typ, func(t *testing.T) {
@@ -30,8 +29,8 @@ func TestMetadataAdd_HTTPError(t *testing.T) {
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
-			if res.exitCode == cli.CodeSuccess {
-				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 			}
 		})
 	}
@@ -84,8 +83,8 @@ func TestMetadataDelete_HTTPError(t *testing.T) {
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
-			if res.exitCode == cli.CodeSuccess {
-				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 			}
 		})
 	}

@@ -5,8 +5,6 @@
 package bmc
 
 import (
-	"errors"
-
 	boot_service_client "github.com/openchami/boot-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	boot_service_lib "github.com/openchami/ochami/internal/cli/boot_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
@@ -102,10 +99,7 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Determine how to read payload (simple versus advanced API)
-			envelope, flagErr := cmd.Flags().GetBool("envelope")
-			if flagErr != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to read --envelope flag: %w", flagErr)
-			}
+			envelope, _ := cmd.Flags().GetBool("envelope")
 
 			var bmcsCreated []*api.BMC
 			var reqErrs []error
@@ -148,27 +142,16 @@ See ochami-boot(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to add BMCs: %w", reqErr)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to add BMCs: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to add BMCs", "failed to add BMCs")
 			}
 
-			// Deal with per-request errors
-			var reqErrorsOccurred = false
-			for _, err := range reqErrs {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to add BMC")
-					reqErrorsOccurred = true
-				}
-			}
 			var names []string
 			for _, bmc := range bmcsCreated {
 				names = append(names, bmc.Metadata.Name)
 			}
 			log.Logger.Debug().Msgf("BMCs created: %q", names)
-			if reqErrorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "BMC addition completed with errors")
+			if err := cli.AggregateItemErrors(reqErrs, "BMC addition"); err != nil {
+				return err
 			}
 
 			return nil

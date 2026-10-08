@@ -6,13 +6,10 @@
 package group
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -109,24 +106,16 @@ See ochami-smd(1) for more details.`,
 				// ...otherwise use CLI options/args
 				group := smd.Group{Label: args[0]}
 				if cmd.Flag("description").Changed {
-					if group.Description, err = cmd.Flags().GetString("description"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch description: %w", err)
-					}
+					group.Description, _ = cmd.Flags().GetString("description")
 				}
 				if cmd.Flag("tag").Changed {
-					if group.Tags, err = cmd.Flags().GetStringSlice("tag"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch tags: %w", err)
-					}
+					group.Tags, _ = cmd.Flags().GetStringSlice("tag")
 				}
 				if cmd.Flag("exclusive-group").Changed {
-					if group.ExclusiveGroup, err = cmd.Flags().GetString("exclusive-group"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch exclusive group name: %w", err)
-					}
+					group.ExclusiveGroup, _ = cmd.Flags().GetString("exclusive-group")
 				}
 				if cmd.Flag("member").Changed {
-					if group.Members.IDs, err = cmd.Flags().GetStringSlice("member"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch members: %w", err)
-					}
+					group.Members.IDs, _ = cmd.Flags().GetStringSlice("member")
 				}
 				groups = append(groups, group)
 			}
@@ -134,23 +123,10 @@ See ochami-smd(1) for more details.`,
 			// Send off request
 			_, errs, err := smdClient.PostGroups(groups, cli.Token)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add group to SMD: %w", err)
+				return cli.ClassifyClientError(err, "failed to add group to SMD", "failed to add group to SMD")
 			}
-			// Since smdClient.PostGroups does the addition iteratively, we need to deal with
-			// each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("SMD group request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to add group(s) to SMD")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "SMD group addition completed with errors")
+			if err := cli.AggregateItemErrors(errs, "SMD group addition"); err != nil {
+				return err
 			}
 
 			return nil

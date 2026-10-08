@@ -12,9 +12,8 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestBootAdd_HTTPError verifies that "boot <type> add" fails with a
-// non-success exit code for an unsuccessful HTTP response, for every boot
-// resource type.
+// TestBootAdd_HTTPError verifies that "boot <type> add" fails with CodeHTTP for
+// an unsuccessful HTTP response, for every boot resource type.
 func TestBootAdd_HTTPError(t *testing.T) {
 	for _, typ := range []string{"config", "node", "bmc"} {
 		t.Run(typ, func(t *testing.T) {
@@ -29,8 +28,8 @@ func TestBootAdd_HTTPError(t *testing.T) {
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
-			if res.exitCode == cli.CodeSuccess {
-				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 			}
 		})
 	}

@@ -9,6 +9,7 @@ package cli
 // rules, and the WrapUsageErrors command-tree wiring.
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -42,6 +43,82 @@ func TestErrorf_CodeAndMessage(t *testing.T) {
 	}
 	if !errors.Is(err, sentinel) {
 		t.Error("errors.Is could not find the wrapped sentinel")
+	}
+}
+
+// TestClassifyClientError verifies the exit code ClassifyClientError assigns to
+// HTTP, invalid-argument, network, and undecodable-body errors, and that it
+// keeps the original error in the chain.
+func TestClassifyClientError(t *testing.T) {
+	var target map[string]any
+	syntaxErr := json.Unmarshal([]byte(`{`), &target)
+	typeErr := json.Unmarshal([]byte(`[]`), &target)
+
+	tests := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{name: "nil", err: nil, want: CodeSuccess},
+		{name: "http", err: fmt.Errorf("request: %w", client.UnsuccessfulHTTPError), want: CodeHTTP},
+		{name: "invalid argument", err: fmt.Errorf("GetGroupMembers(): %w: group label cannot be empty", client.InvalidArgumentError), want: CodeUsage},
+		{name: "network", err: errors.New("connection refused"), want: CodeNetwork},
+		{name: "malformed body", err: fmt.Errorf("failed to unmarshal response: %w", syntaxErr), want: CodePayload},
+		{name: "mistyped body", err: fmt.Errorf("failed to unmarshal response: %w", typeErr), want: CodePayload},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ClassifyClientError(tc.err, "HTTP failed", "network failed")
+			if code := ExitCode(got); code != tc.want {
+				t.Errorf("ExitCode() = %d, want %d (%s)", code, tc.want, CodeName(tc.want))
+			}
+			if tc.err != nil && !errors.Is(got, tc.err) {
+				t.Errorf("ClassifyClientError() did not preserve %v", tc.err)
+			}
+		})
+	}
+}
+
+// TestAggregateItemErrors verifies that AggregateItemErrors returns nil when no
+// item failed, wraps every item error, and codes the result with the code the
+// failures share or with CodeMixed when they differ.
+func TestAggregateItemErrors(t *testing.T) {
+	httpErr := fmt.Errorf("item: %w", client.UnsuccessfulHTTPError)
+	netErr := errors.New("connection refused")
+	authErr := Errorf(CodeAuth, "token expired")
+
+	tests := []struct {
+		name     string
+		errs     []error
+		wantCode int
+	}{
+		{name: "no failures", errs: []error{nil, nil}, wantCode: CodeSuccess},
+		{name: "all http", errs: []error{nil, httpErr, httpErr}, wantCode: CodeHTTP},
+		{name: "all network", errs: []error{netErr, nil, netErr}, wantCode: CodeNetwork},
+		{name: "coded item keeps its code", errs: []error{authErr, authErr}, wantCode: CodeAuth},
+		{name: "http and network", errs: []error{httpErr, nil, netErr}, wantCode: CodeMixed},
+		{name: "coded and http", errs: []error{authErr, httpErr}, wantCode: CodeMixed},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := AggregateItemErrors(tc.errs, "resource update")
+			if code := ExitCode(err); code != tc.wantCode {
+				t.Errorf("ExitCode() = %d, want %d (%s)", code, tc.wantCode, CodeName(tc.wantCode))
+			}
+			if tc.wantCode == CodeSuccess {
+				return
+			}
+			if err.Error() != "resource update completed with errors" {
+				t.Errorf("AggregateItemErrors() = %q, want aggregate message", err)
+			}
+			for _, itemErr := range tc.errs {
+				if itemErr != nil && !errors.Is(err, itemErr) {
+					t.Errorf("AggregateItemErrors() does not wrap %v", itemErr)
+				}
+			}
+		})
 	}
 }
 
@@ -200,6 +277,18 @@ func TestWrapUsageErrors_Recurses(t *testing.T) {
 	}
 	if ExitCode(err) != CodeUsage {
 		t.Errorf("ExitCode = %d, want %d (%s)", ExitCode(err), CodeUsage, CodeName(CodeUsage))
+	}
+}
+
+// TestCombineItemErrors verifies CombineItemErrors classifies without
+// requiring the caller's logger.
+func TestCombineItemErrors(t *testing.T) {
+	if err := CombineItemErrors(nil, "resource update"); err != nil {
+		t.Fatalf("CombineItemErrors(nil) = %v, want nil", err)
+	}
+	err := CombineItemErrors([]error{errors.New("connection refused")}, "resource update")
+	if code := ExitCode(err); code != CodeNetwork {
+		t.Errorf("ExitCode() = %d, want %d (%s)", code, CodeNetwork, CodeName(CodeNetwork))
 	}
 }
 

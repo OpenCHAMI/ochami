@@ -6,15 +6,12 @@
 package rfe
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/schemas/schemas/csm"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/smd"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -108,24 +105,16 @@ See ochami-smd(1) for more details.`,
 					MACAddr:   args[3],
 				}
 				if cmd.Flag("domain").Changed {
-					if rfe.Domain, err = cmd.Flags().GetString("domain"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch domain: %w", err)
-					}
+					rfe.Domain, _ = cmd.Flags().GetString("domain")
 				}
 				if cmd.Flag("hostname").Changed {
-					if rfe.Hostname, err = cmd.Flags().GetString("hostname"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch hostname: %w", err)
-					}
+					rfe.Hostname, _ = cmd.Flags().GetString("hostname")
 				}
 				if cmd.Flag("username").Changed {
-					if rfe.User, err = cmd.Flags().GetString("username"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch username: %w", err)
-					}
+					rfe.User, _ = cmd.Flags().GetString("username")
 				}
 				if cmd.Flag("password").Changed {
-					if rfe.Password, err = cmd.Flags().GetString("password"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch password: %w", err)
-					}
+					rfe.Password, _ = cmd.Flags().GetString("password")
 				}
 				rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
 			}
@@ -133,23 +122,10 @@ See ochami-smd(1) for more details.`,
 			// Send off request
 			_, errs, err := smdClient.PostRedfishEndpoints(rfes, cli.Token)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add redfish endpoint in SMD: %w", err)
+				return cli.ClassifyClientError(err, "failed to add redfish endpoint in SMD", "failed to add redfish endpoint in SMD")
 			}
-			// Since smdClient.PostRedfishEndpoints does the addition iteratively, we need to deal with
-			// each error that might have occurred.
-			var errorsOccurred = false
-			for _, e := range errs {
-				if e != nil {
-					if errors.Is(e, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(e).Msg("SMD redfish endpoint request yielded unsuccessful HTTP response")
-					} else {
-						log.Logger.Error().Err(e).Msg("failed to add redfish endpoint(s) to SMD")
-					}
-					errorsOccurred = true
-				}
-			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "SMD redfish endpoint addition completed with errors")
+			if err := cli.AggregateItemErrors(errs, "SMD redfish endpoint addition"); err != nil {
+				return err
 			}
 
 			return nil

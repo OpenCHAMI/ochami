@@ -5,14 +5,12 @@
 package defaults
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
-	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataDefaultsGet() *cobra.Command {
@@ -43,10 +41,7 @@ See ochami-metadata(1) for more details.`,
 			// Make request
 			outBytes, err := metadataServiceClient.GetDefaults(cli.Token, cli.FormatOutput, uid)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to get cluster defaults info for %s: %w", uid, err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get cluster defaults info for %s: %w", uid, err)
+				return cli.ClassifyClientError(err, fmt.Sprintf("failed to get cluster defaults info for %s", uid), fmt.Sprintf("failed to get cluster defaults info for %s", uid))
 			}
 
 			// Print output

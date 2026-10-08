@@ -9,6 +9,10 @@ package cmd
 // the success paths these mirror.
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -42,5 +46,47 @@ func TestConfigShow_RejectsClusterKey(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeConfig {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
+	}
+}
+
+// TestEnableAuth_MissingTokenFails verifies that with enable-auth true and no
+// token available, the command fails with CodeAuth.
+func TestEnableAuth_MissingTokenFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	cfg := writeTempConfig(t, `default-cluster: demo
+clusters:
+- name: demo
+  cluster:
+    uri: `+srv.URL+`
+    enable-auth: true
+`)
+
+	// Ensure the env var is not set.
+	os.Unsetenv("DEMO_ACCESS_TOKEN")
+
+	res := runOchami(t, "--config", cfg, "smd", "group", "get")
+	if res.err == nil {
+		t.Fatal("expected an auth error, got nil")
+	}
+	if res.exitCode != cli.CodeAuth {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeAuth, cli.CodeName(cli.CodeAuth))
+	}
+}
+
+// TestConfigUnset_UnknownKey verifies "config unset" rejects a key that does
+// not exist in the config file.
+func TestConfigUnset_UnknownKey(t *testing.T) {
+	cfg := writeTempConfig(t, "log:\n  format: json\n")
+
+	res := runOchami(t, "--config", cfg, "config", "unset", "log.does-not-exist")
+	if res.err == nil || res.exitCode != cli.CodeConfig {
+		t.Fatalf("result = (err %v, exit %d), want config error", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.err.Error(), "does not exist") {
+		t.Errorf("error = %q, want missing-key context", res.err)
 	}
 }

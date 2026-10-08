@@ -432,3 +432,30 @@ func TestNewDefault(t *testing.T) {
 		t.Errorf("output = %q, want non-JSON output", got)
 	}
 }
+
+// TestInit_AllCombos verifies that Init accepts every valid combination of log
+// level, format, and color and rejects an invalid level, format, or color.
+func TestInit_AllCombos(t *testing.T) {
+	levels := []string{"error", "warning", "info", "debug"}
+	colors := []string{"", "auto", "on", "off"}
+	formats := []string{"rfc3339", "basic", "json"}
+	for _, ll := range levels {
+		for _, lc := range colors {
+			for _, lf := range formats {
+				if err := Init(ll, lf, lc); err != nil {
+					t.Errorf("Init(%q,%q,%q) = %v, want nil", ll, lf, lc, err)
+				}
+			}
+		}
+	}
+	// Invalid values exercise the error arms.
+	if err := Init("bogus", "json", "off"); err == nil {
+		t.Error("Init(bogus level) = nil, want error")
+	}
+	if err := Init("info", "bogus", "off"); err == nil {
+		t.Error("Init(bogus format) = nil, want error")
+	}
+	if err := Init("info", "json", "bogus"); err == nil {
+		t.Error("Init(bogus color) = nil, want error")
+	}
+}

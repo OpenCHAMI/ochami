@@ -14,16 +14,10 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-var (
-	formatPatch client.PatchMethod = client.PatchMethodRFC7386
-
-	setList    []string
-	unsetList  []string
-	addList    []string
-	removeList []string
-)
-
 func newCmdBootBmcPatch() *cobra.Command {
+	formatPatch := client.PatchMethodRFC7386
+	var setList, unsetList, addList, removeList []string
+
 	// bootBmcPatchCmd represents the "boot bmc patch" command
 	var bootBmcPatchCmd = &cobra.Command{
 		Use:   "patch <uid>",
@@ -107,7 +101,7 @@ See ochami-boot(1) for more details.`,
 
 			bmcPatched, err := bootServiceClient.PatchBMC(cli.Token, patchMethod, args[0], patchData)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to patch BMC: %w", err)
+				return cli.ClassifyClientError(err, "failed to patch BMC", "failed to patch BMC")
 			}
 
 			log.Logger.Debug().Msgf("BMC patched: %+v", bmcPatched)

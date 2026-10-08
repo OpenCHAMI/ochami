@@ -118,10 +118,7 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Determine how to read payload (simple versus advanced API)
-			envelope, flagErr := cmd.Flags().GetBool("envelope")
-			if flagErr != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to read --envelope flag: %w", flagErr)
-			}
+			envelope, _ := cmd.Flags().GetBool("envelope")
 
 			var nodesCreated []*api.Node
 			var reqErrs []error
@@ -164,24 +161,16 @@ See ochami-boot(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add nodes: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to add nodes", "failed to add nodes")
 			}
 
-			// Deal with per-request errors
-			var reqErrorsOccurred = false
-			for _, e := range reqErrs {
-				if e != nil {
-					log.Logger.Error().Err(e).Msg("failed to add node")
-					reqErrorsOccurred = true
-				}
-			}
 			var names []string
 			for _, node := range nodesCreated {
 				names = append(names, node.Metadata.Name)
 			}
 			log.Logger.Debug().Msgf("nodes created: %q", names)
-			if reqErrorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "node addition completed with errors")
+			if err := cli.AggregateItemErrors(reqErrs, "node addition"); err != nil {
+				return err
 			}
 
 			return nil

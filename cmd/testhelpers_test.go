@@ -13,6 +13,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -99,14 +100,6 @@ func runOchamiWithStdin(t *testing.T, stdin io.Reader, args ...string) cmdResult
 	cli.FormatInput = format.DataFormatJson
 	cli.FormatOutput = format.DataFormatJson
 
-	// Known limitation: some commands bind other pflag.Value-typed flags the
-	// same VarP way to a var scoped to their own subpackage rather than to
-	// internal/cli (e.g. cmd/pcs/status's powerFilter/mgmtFilter), which is
-	// unexported and so cannot be reset from here. No test in this package
-	// currently exercises one of those flags with a non-default value, so
-	// this is dormant, not observed; the general fix is to move those
-	// variables into their command constructors.
-
 	// Redirect the interactive I/O stream to the same capture pipe so output
 	// written via cli.Ios.Out() (e.g. "rcs console show") and any interactive
 	// prompt text are captured in the returned stdout.
@@ -176,5 +169,25 @@ func TestRunOchami_ResetsFormatFlagsBetweenCalls(t *testing.T) {
 	}
 	if !strings.Contains(res.stdout, `"version":"1.0.0"`) {
 		t.Errorf("stdout = %q, want plain JSON (a leaked --format-output yaml from the setup call would render this as YAML instead)", res.stdout)
+	}
+}
+
+// assertFormattedOutput checks that out shows the key/value pair in the given
+// output format: compact JSON, indented JSON, or YAML.
+func assertFormattedOutput(t *testing.T, format, out, key, value string) {
+	t.Helper()
+	var want string
+	switch format {
+	case "json":
+		want = fmt.Sprintf("%q:%q", key, value)
+	case "json-pretty":
+		want = fmt.Sprintf("%q: %q", key, value)
+	case "yaml":
+		want = key + ": " + value
+	default:
+		t.Fatalf("unknown output format %q", format)
+	}
+	if !strings.Contains(out, want) {
+		t.Errorf("format %s: output = %q, want it to contain %q", format, out, want)
 	}
 }

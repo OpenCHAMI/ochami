@@ -6,6 +6,10 @@ package config
 
 import (
 	"testing"
+
+	kyaml "github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/rawbytes"
+	"github.com/knadh/koanf/v2"
 )
 
 // TestCoerceBool verifies which bool and string values coerceBool accepts as
@@ -35,5 +39,29 @@ func TestCoerceBool(t *testing.T) {
 				t.Fatalf("coerceBool(%v) = (%v, %v), want (%v, %v)", tt.in, got, ok, tt.want, tt.wantOK)
 			}
 		})
+	}
+}
+
+func loadKoanfYAML(t *testing.T, yaml string) *koanf.Koanf {
+	t.Helper()
+	ko := koanf.NewWithConf(koanfConf)
+	if err := ko.Load(rawbytes.Provider([]byte(yaml)), kyaml.Parser()); err != nil {
+		t.Fatalf("ko.Load: %v", err)
+	}
+	return ko
+}
+
+// TestValidateConfig_Valid verifies that validateConfig accepts a well-formed
+// configuration with a timeout and a cluster.
+func TestValidateConfig_Valid(t *testing.T) {
+	valid := `timeout: 30s
+clusters:
+- name: demo
+  cluster:
+    uri: https://demo.example.com
+    enable-auth: true
+`
+	if err := validateConfig(loadKoanfYAML(t, valid)); err != nil {
+		t.Errorf("validateConfig(valid) = %v, want nil", err)
 	}
 }

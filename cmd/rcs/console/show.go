@@ -47,7 +47,7 @@ See ochami-rcs(1) for more details.`,
 			}
 			err = rcsClient.ShowConsole(cmd.Context(), nodeID, follow, lines, cli.Token, cli.Ios.Out())
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to show console: %w", err)
+				return cli.ClassifyClientError(err, "failed to show console", "failed to show console")
 			}
 
 			return nil

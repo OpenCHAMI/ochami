@@ -4,11 +4,32 @@
 
 package cmd
 
+// pcs_transition_test.go exercises the "pcs transition" verbs (list, show,
+// abort, start, monitor) end-to-end against an httptest.Server, including
+// output-format variants. Error arms are covered in
+// pcs_transition_errors_test.go.
+
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+// TestPCSTransitionList_Formats verifies list output-format variants.
+func TestPCSTransitionList_Formats(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"transitions":[{"transitionID":"t1"}]}`))
+	}))
+	defer srv.Close()
+
+	for _, f := range []string{"json", "json-pretty", "yaml"} {
+		res := runOchami(t, "pcs", "transition", "list", "--ignore-config", "--uri", srv.URL, "-F", f)
+		if res.err != nil {
+			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
+		}
+		assertFormattedOutput(t, f, res.stdout, "transitionID", "t1")
+	}
+}
 
 // TestPCSTransitionList_Success verifies "pcs transition list" issues GET /transitions.
 func TestPCSTransitionList_Success(t *testing.T) {

@@ -108,6 +108,27 @@ func TestPCSServiceStatus_Health(t *testing.T) {
 	}
 }
 
+// TestPCSServiceStatus_LivenessFallback verifies that "pcs service status"
+// succeeds when PCS isn't ready but its liveness endpoint reports it alive.
+func TestPCSServiceStatus_LivenessFallback(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/readiness":
+			w.WriteHeader(http.StatusOK) // not "ready"
+		case "/liveness":
+			w.WriteHeader(http.StatusNoContent) // "live"
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "service", "status", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+}
+
 // TestPCSStatusShow_Success verifies "pcs status show <xname>" issues GET /power-status
 // and prints the first status entry.
 func TestPCSStatusShow_Success(t *testing.T) {
