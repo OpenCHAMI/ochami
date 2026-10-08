@@ -25,6 +25,61 @@ var (
 	discoveryVersion = discover.DiscoveryMethodV2
 )
 
+// nodeCommon keeps basic node information that is common between the deprecated
+// discovery format and the new format. It exists so that group-building logic
+// does not have to be duplicated per format. Once the deprecated format is
+// removed, the Group field can go away.
+type nodeCommon struct {
+	Name   string
+	Xname  string
+	Group  string
+	Groups []string
+}
+
+// buildGroupList constructs the deduplicated list of SMD groups (with their
+// members) from a slice of nodeCommon. It merges the deprecated per-node
+// "group" field with the "groups" slice, deduplicating members. This is a pure
+// function extracted from the static discovery command to make the
+// group-assembly logic independently testable.
+func buildGroupList(nodesCommon []nodeCommon) []smd.Group {
+	groupsToAdd := make(map[string]smd.Group)
+	addToGroup := func(label, xname string) {
+		if g, ok := groupsToAdd[label]; !ok {
+			newGroup := smd.Group{
+				Label:       label,
+				Description: fmt.Sprintf("The %s group", label),
+			}
+			groupsToAdd[label] = discover.AddMemberToGroup(newGroup, xname)
+		} else {
+			groupsToAdd[label] = discover.AddMemberToGroup(g, xname)
+		}
+	}
+	for _, node := range nodesCommon {
+		// node.Group IS DEPRECATED IN FAVOR OF node.Groups. This block
+		// should be deleted when node.Group is removed. For now, we merge
+		// node.Group with node.Groups; since a map is used for
+		// deduplication, this is trivial.
+		if node.Group != "" {
+			if len(strings.Trim(node.Name, " \t")) == 0 {
+				log.Logger.Warn().Msgf("node %s contains 'group', which is deprecated; use 'groups' instead", node.Xname)
+			} else {
+				log.Logger.Warn().Msgf("node %s (%s) contains 'group', which is deprecated; use 'groups' instead", node.Xname, node.Name)
+			}
+			addToGroup(node.Group, node.Xname)
+		}
+		for _, group := range node.Groups {
+			addToGroup(group, node.Xname)
+		}
+	}
+	groupList := make([]smd.Group, len(groupsToAdd))
+	var idx = 0
+	for _, g := range groupsToAdd {
+		groupList[idx] = g
+		idx++
+	}
+	return groupList
+}
+
 func NewCmd() *cobra.Command {
 	// staticCmd represents the "discover static" command
 	var staticCmd = &cobra.Command{
@@ -102,18 +157,12 @@ See ochami-discover(1) for more details.`,
 				ifaces []smd.EthernetInterface
 			)
 
-			// This is a temporary structure that keeps basic node
-			// information that is common between the deprecated format and
-			// the new format for discovery. It's here so that we don't have
-			// to duplicate loops due to the differing formats. Once the
-			// deprecated format is removed, this can go away.
-			type NodeCommon struct {
-				Name   string
-				Xname  string
-				Group  string
-				Groups []string
-			}
-			var nodesCommon []NodeCommon
+			// nodeCommon (package scope) keeps basic node information that
+			// is common between the deprecated format and the new format for
+			// discovery. It's here so that we don't have to duplicate loops
+			// due to the differing formats. Once the deprecated format is
+			// removed, this can go away.
+			var nodesCommon []nodeCommon
 
 			// Read data from file or stdin into map to determine which
 			// discovery method to use.
@@ -148,7 +197,7 @@ See ochami-discover(1) for more details.`,
 
 				// Add nodes to node list in common format
 				for _, n := range nodes.Nodes {
-					commonNode := NodeCommon{
+					commonNode := nodeCommon{
 						Name:   n.Name,
 						Xname:  n.Xname,
 						Group:  n.Group,
@@ -183,7 +232,7 @@ See ochami-discover(1) for more details.`,
 
 				// Add nodes to node list in common format
 				for _, n := range items.Nodes {
-					commonNode := NodeCommon{
+					commonNode := nodeCommon{
 						Name:   n.Name,
 						Xname:  n.Xname,
 						Groups: n.Groups,
@@ -426,56 +475,9 @@ See ochami-discover(1) for more details.`,
 				}
 			}
 
-			// Put together list of groups to add and which components to add to those groups
-			groupsToAdd := make(map[string]smd.Group)
-			for _, node := range nodesCommon {
-				// nodesCommon is temporary. Once the deprecated
-				// discovery format is removed, this can be switched to
-				// items.Nodes.
-
-				// node.Group IS DEPRECATED IN FAVOR OF node.groups. This block should be
-				// deleted when node.Group is removed.
-				//
-				// For now, we merge node.Group with node.Groups. Since we use a dictionary for
-				// deduplication, this is trivial.
-				if node.Group != "" {
-					if len(strings.Trim(node.Name, " \t")) == 0 {
-						log.Logger.Warn().Msgf("node %s contains 'group', which is deprecated; use 'groups' instead", node.Xname)
-					} else {
-						log.Logger.Warn().Msgf("node %s (%s) contains 'group', which is deprecated; use 'groups' instead", node.Xname, node.Name)
-					}
-					if g, ok := groupsToAdd[node.Group]; !ok {
-						// Group doesn't exist yet, populate groupsToAdd with it
-						newGroup := smd.Group{
-							Label:       node.Group,
-							Description: fmt.Sprintf("The %s group", node.Group),
-						}
-						groupsToAdd[node.Group] = discover.AddMemberToGroup(newGroup, node.Xname)
-					} else {
-						// Update group membership with new node in groupsToAdd map
-						groupsToAdd[node.Group] = discover.AddMemberToGroup(g, node.Xname)
-					}
-				}
-				for _, group := range node.Groups {
-					if g, ok := groupsToAdd[group]; !ok {
-						// Group doesn't exist yet, populate groupsToAdd with it
-						newGroup := smd.Group{
-							Label:       group,
-							Description: fmt.Sprintf("The %s group", group),
-						}
-						groupsToAdd[group] = discover.AddMemberToGroup(newGroup, node.Xname)
-					} else {
-						// Update group membership with new node in groupsToAdd map
-						groupsToAdd[group] = discover.AddMemberToGroup(g, node.Xname)
-					}
-				}
-			}
-			groupList := make([]smd.Group, len(groupsToAdd))
-			var idx = 0
-			for _, g := range groupsToAdd {
-				groupList[idx] = g
-				idx++
-			}
+			// Put together list of groups to add and which components to
+			// add to those groups.
+			groupList := buildGroupList(nodesCommon)
 
 			// Add groups and components to those groups
 			var (

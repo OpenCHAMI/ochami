@@ -121,7 +121,7 @@ func (msc *MetadataServiceClient) ListDefaults(token string, outFormat format.Da
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the cluster defaults identified by uid. It returns the
 // modified ClusterDefaults resource returned by metadata-service and any error.
-func (msc *MetadataServiceClient) PatchDefaults(token string, patchFormat client.PatchMethod, uid string, data map[string]interface{}) (*api.ClusterDefaults, error) {
+func (msc *MetadataServiceClient) PatchDefaults(token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.ClusterDefaults, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), msc.Timeout)
 	defer cancel()
 
