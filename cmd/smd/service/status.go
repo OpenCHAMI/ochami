@@ -8,12 +8,10 @@ package service
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
@@ -28,13 +26,15 @@ func newCmdServiceStatus() *cobra.Command {
 		Long: `Display status of the State Management Database (SMD).
 
 See ochami-smd(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Determine which component to get status for and send request
 			var httpEnv client.HTTPEnvelope
-			var err error
 			if cmd.Flag("all").Changed {
 				httpEnv, err = smdClient.GetStatus("all")
 			} else {
@@ -42,22 +42,19 @@ See ochami-smd(1) for more details.`,
 			}
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("SMD status request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to get SMD status")
+					return cli.Errorf(cli.CodeHTTP, "SMD status request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to get SMD status: %w", err)
 			}
 
 			// Print output
-			if outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Print(string(outBytes))
+			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Print(string(outBytes))
+
+			return nil
 		},
 	}
 

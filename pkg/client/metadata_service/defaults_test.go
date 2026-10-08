@@ -14,6 +14,9 @@ import (
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 )
 
+// TestAddDefaultsSpecs_OmitsLabels verifies that AddDefaultsSpecs POSTs to
+// /clusterdefaultss with an envelope built from the name and spec only, without
+// labels.
 func TestAddDefaultsSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -58,6 +61,8 @@ func TestAddDefaultsSpecs_OmitsLabels(t *testing.T) {
 	}
 }
 
+// TestAddDefaults_EnvelopeIncludesLabels verifies that AddDefaults sends a
+// request's labels in the envelope.
 func TestAddDefaults_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +91,8 @@ func TestAddDefaults_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestSetDefaultsSpec_UsesUIDEndpoint verifies that SetDefaultsSpec PUTs the
+// spec to the cluster defaults' /clusterdefaultss/<uid> endpoint.
 func TestSetDefaultsSpec_UsesUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {

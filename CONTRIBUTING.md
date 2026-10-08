@@ -122,6 +122,56 @@ docker run ghcr.io/openchami/ochami:latest ochami --version
 podman run ghcr.io/openchami/ochami:latest ochami --version
 ```
 
+## Testing Conventions
+
+To keep the test suite navigable as it grows, follow these conventions when
+adding or modifying tests.
+
+### Test function names
+
+Use `TestSubject_Case`: `Subject` names the function, type, or command under
+test; `Case` names the specific scenario or condition being exercised (e.g.
+`TestExitCode_CodedBeatsSentinel`, `TestEnsureCode_NoDoubleWrap`). Omit the
+`_Case` suffix only when a file has exactly one test for that subject and
+there is no competing scenario to distinguish it from (e.g.
+`TestFabricaWrapHTTPError`).
+
+### Test file names
+
+Group tests for a subject into files using this suffix taxonomy:
+
+- **`<subject>_test.go`** — happy-path / correctness tests.
+- **`<subject>_errors_test.go`** — error-arm / rejection-path tests (invalid
+  input, HTTP/network failures, malformed responses, etc).
+- **`<subject>_boundary_test.go`** — edge-value or platform-boundary tests
+  (empty/nil inputs, OS-specific behavior, filesystem/process boundaries).
+
+Avoid generic, non-descriptive suffixes (`_more`, `_edge`, `_extra`,
+`_coverage`, `_regressions`, `_branches`) — pick the bucket above that
+matches what the test actually asserts, or extend the subject's plain test
+file if it's more happy-path coverage of the same subject.
+
+### Test doc comments
+
+Give every `Test` function a doc comment that starts with the function's
+name and states the behavior it verifies, the same way exported Go
+identifiers are documented (e.g. `// TestEnsureCode_NoDoubleWrap verifies
+EnsureCode preserves an already-coded error's original code`). For a
+table-driven test, summarize what the cases cover rather than describing
+each row.
+
+### Exit code assertions
+
+Describe an expected exit code in a failure message with `cli.CodeName`
+instead of hard-coding the constant's name, so the message stays accurate if
+the constant is renamed:
+
+```go
+if got := cli.ExitCode(err); got != cli.CodeNetwork {
+	t.Errorf("exit code = %d, want %d (%s)", got, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+}
+```
+
 ## Submitting Pull Requests
 
 ### Container Builds on PRs

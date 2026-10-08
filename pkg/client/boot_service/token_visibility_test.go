@@ -18,12 +18,15 @@ import (
 	"github.com/openchami/ochami/pkg/format"
 )
 
+// TestNewClientPropagatesShowToken verifies that a client built with
+// WithShowToken logs the full token, and that one built without it logs only a
+// truncated prefix.
 func TestNewClientPropagatesShowToken(t *testing.T) {
 	const token = "eyJhbGciOiJIUzI1NiJ9.payload.sig"
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte("[]"))
+		w.Write([]byte("[]"))
 	}))
 	defer srv.Close()
 

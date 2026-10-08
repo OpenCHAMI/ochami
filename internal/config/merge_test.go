@@ -10,6 +10,9 @@ import (
 	"testing"
 )
 
+// TestMergeMaps verifies that MergeMaps copies keys missing from the
+// destination, keeps the destination's scalars, merges nested maps and slices
+// (by key for slices of maps), and rejects mismatched types.
 func TestMergeMaps(t *testing.T) {
 	type args struct {
 		srcMap   map[string]interface{}
@@ -121,6 +124,9 @@ func TestMergeMaps(t *testing.T) {
 	}
 }
 
+// Test_MergeSlices verifies that MergeSlices appends source scalars missing
+// from the destination once, merges slices of maps by key with the
+// destination's entries winning, and treats nil slices as no-ops.
 func Test_MergeSlices(t *testing.T) {
 	type args struct {
 		srcSlice *[]interface{}

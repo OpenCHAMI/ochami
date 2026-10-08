@@ -7,7 +7,6 @@ package group
 
 import (
 	"errors"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -58,48 +57,55 @@ See ochami-cloud-init(1) for more details.`,
   echo '<json_data>' | ochami cloud-init group add -d @-
   echo '<yaml_data>' | ochami cloud-init group add -f yaml
   echo '<yaml_data>' | ochami cloud-init group add -d @- -f yaml`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			cloudInitClient := cloud_init_lib.GetClient(cmd)
+			cloudInitClient, err := cloud_init_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// The group data we will send
 			ciGroups := []cistore.GroupData{}
 
 			// Read payload from file or stdin.
 			if cmd.Flag("data").Changed {
-				cli.HandlePayload(cmd, &ciGroups)
+				if err := cli.HandlePayload(cmd, &ciGroups); err != nil {
+					return err
+				}
 			} else {
-				cli.HandlePayloadStdin(cmd, &ciGroups)
+				if err := cli.HandlePayloadStdin(cmd, &ciGroups); err != nil {
+					return err
+				}
 			}
 
 			// Send data
 			_, errs, err := cloudInitClient.PostGroups(ciGroups, cli.Token)
 			if err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to add groups")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to add groups: %w", err)
 			}
 			// Since the requests are done iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msg("cloud-init group request yielded unsuccessful HTTP response")
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msg("cloud-init group request yielded unsuccessful HTTP response")
 					} else {
-						log.Logger.Error().Err(err).Msg("failed to add new group to cloud-init")
+						log.Logger.Error().Err(e).Msg("failed to add new group to cloud-init")
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				log.Logger.Warn().Msg("cloud-init group addition completed with errors")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "cloud-init group addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 

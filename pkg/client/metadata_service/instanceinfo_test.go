@@ -14,6 +14,9 @@ import (
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 )
 
+// TestAddInstanceInfoSpecs_OmitsLabels verifies that AddInstanceInfoSpecs POSTs
+// to /instanceinfos with an envelope built from the name and spec only, without
+// labels.
 func TestAddInstanceInfoSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -58,6 +61,8 @@ func TestAddInstanceInfoSpecs_OmitsLabels(t *testing.T) {
 	}
 }
 
+// TestAddInstanceInfos_EnvelopeIncludesLabels verifies that AddInstanceInfos
+// sends a request's labels in the envelope.
 func TestAddInstanceInfos_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +91,8 @@ func TestAddInstanceInfos_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestSetInstanceInfoSpec_UsesUIDEndpoint verifies that SetInstanceInfoSpec
+// PUTs the spec to the instance info's /instanceinfos/<uid> endpoint.
 func TestSetInstanceInfoSpec_UsesUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {

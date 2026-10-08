@@ -12,6 +12,8 @@ import (
 	"github.com/openchami/schemas/schemas/csm"
 )
 
+// TestXNameComponentsToString verifies that XNameComponentsToString formats
+// node and BMC xname components.
 func TestXNameComponentsToString(t *testing.T) {
 	type args struct {
 		x csm.XNameComponents
@@ -58,6 +60,8 @@ func TestXNameComponentsToString(t *testing.T) {
 	}
 }
 
+// TestStringToXname verifies the components StringToXname parses from valid and
+// malformed node and BMC xnames.
 func TestStringToXname(t *testing.T) {
 	type args struct {
 		xname string
@@ -132,6 +136,8 @@ func TestStringToXname(t *testing.T) {
 	}
 }
 
+// TestNodeXnameToBMCXname verifies that NodeXnameToBMCXname returns the BMC
+// xname of a node xname.
 func TestNodeXnameToBMCXname(t *testing.T) {
 	type args struct {
 		xname string

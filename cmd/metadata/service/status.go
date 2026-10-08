@@ -5,14 +5,14 @@
 package service
 
 import (
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
-	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdServiceStatus() *cobra.Command {
@@ -24,20 +24,26 @@ func newCmdServiceStatus() *cobra.Command {
 		Long: `Display status of the metadata service.
 
 See ochami-metadata(1) for more details.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			metadataServiceClient := metadata_service_lib.GetClient(cmd)
+			metadataServiceClient, err := metadata_service_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Make request
 			outbytes, err := metadataServiceClient.GetHealth(cli.FormatOutput)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to get metadata-service health")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				if errors.Is(err, client.UnsuccessfulHTTPError) {
+					return cli.Errorf(cli.CodeHTTP, "failed to get metadata-service health: %w", err)
+				}
+				return cli.Errorf(cli.CodeNetwork, "failed to get metadata-service health: %w", err)
 			}
 
 			// Print output
 			fmt.Print(string(outbytes))
+
+			return nil
 		},
 	}
 

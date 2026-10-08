@@ -29,6 +29,8 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) (*MetadataServiceClie
 	return c, srv
 }
 
+// TestAddGroupSpecs_OmitsLabels verifies that AddGroupSpecs POSTs to /groups
+// with an envelope built from the name and spec only, without labels.
 func TestAddGroupSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -73,6 +75,8 @@ func TestAddGroupSpecs_OmitsLabels(t *testing.T) {
 	}
 }
 
+// TestAddGroups_EnvelopeIncludesLabels verifies that AddGroups sends a
+// request's labels in the envelope.
 func TestAddGroups_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +105,8 @@ func TestAddGroups_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestSetGroupSpec_UsesUIDEndpoint verifies that SetGroupSpec PUTs the spec to
+// the group's /groups/<uid> endpoint.
 func TestSetGroupSpec_UsesUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {

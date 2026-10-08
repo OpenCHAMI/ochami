@@ -24,6 +24,9 @@ func approxEqual(a, b float64) bool {
 	return diff/scale < eps || diff < eps
 }
 
+// TestStringToType verifies that StringToType parses booleans, integers, and
+// floats (falling back to float64 for out-of-range integers) and returns any
+// other string unchanged.
 func TestStringToType(t *testing.T) {
 	tests := []struct {
 		in       string
