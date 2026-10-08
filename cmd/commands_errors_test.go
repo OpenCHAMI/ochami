@@ -496,6 +496,7 @@ func TestBatchDelete_MixedFailures(t *testing.T) {
 func TestCommands_RejectInvalidArguments(t *testing.T) {
 	cases := [][]string{
 		{"smd", "group", "member", "add", "", "x0c0s0b0n0"},
+		{"smd", "group", "member", "delete", "--no-confirm", "", "x0c0s0b0n0"},
 		{"smd", "group", "member", "get", ""},
 		{"smd", "group", "member", "set", "", "x0c0s0b0n0"},
 		{"cloud-init", "node", "get", "group", "", "compute"},
