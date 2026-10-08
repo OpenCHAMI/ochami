@@ -649,3 +649,71 @@ func TestBSSBootParamsUpdate_DataWithFlags(t *testing.T) {
 		t.Errorf("macs = %v, want the --mac value [de:ad:be:ef:00:01]", bp.Macs)
 	}
 }
+
+// TestBSSBootScriptGet_Query verifies the boot-script query builder emits the
+// xname (as name) and the retry, arch, and timestamp parameters.
+func TestBSSBootScriptGet_Query(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Write([]byte(`#!ipxe`))
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "bss", "boot", "script", "get", "--ignore-config", "--uri", srv.URL,
+		"--xname", "x0c0s0b0n0", "--retry", "3", "--arch", "x86_64", "--timestamp", "12345")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	for key, want := range map[string]string{"name": "x0c0s0b0n0", "retry": "3", "arch": "x86_64", "timestamp": "12345"} {
+		if got := gotQuery.Get(key); got != want {
+			t.Errorf("query %s = %q, want %q", key, got, want)
+		}
+	}
+}
+
+// TestBSSHostsGet_QueryAndFormats verifies the hosts query builder and
+// output-format variants.
+func TestBSSHostsGet_QueryAndFormats(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Write([]byte(`[{"ID":"x0c0s0b0n0"}]`))
+	}))
+	defer srv.Close()
+
+	for _, f := range []string{"json", "yaml"} {
+		res := runOchami(t, "bss", "hosts", "get", "--ignore-config", "--uri", srv.URL,
+			"--xname", "x0c0s0b0n0", "-F", f)
+		if res.err != nil {
+			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
+		}
+		assertFormattedOutput(t, f, res.stdout, "ID", "x0c0s0b0n0")
+	}
+	if len(gotQuery) == 0 {
+		t.Error("expected a non-empty query for --xname")
+	}
+}
+
+// TestBSSHistoryGet_QueryAndFormats verifies the history query builder and
+// output-format variants.
+func TestBSSHistoryGet_QueryAndFormats(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Write([]byte(`[{"ID":"x0c0s0b0n0"}]`))
+	}))
+	defer srv.Close()
+
+	for _, f := range []string{"json", "yaml"} {
+		res := runOchami(t, "bss", "history", "--ignore-config", "--uri", srv.URL,
+			"--xname", "x0c0s0b0n0", "-F", f)
+		if res.err != nil {
+			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
+		}
+		assertFormattedOutput(t, f, res.stdout, "ID", "x0c0s0b0n0")
+	}
+	if len(gotQuery) == 0 {
+		t.Error("expected a non-empty query for --xname")
+	}
+}

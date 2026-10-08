@@ -13,7 +13,8 @@ import (
 )
 
 // TestXNameComponentsToString verifies that XNameComponentsToString formats
-// node and BMC xname components.
+// node and BMC xname components and returns an empty string for an unknown
+// component type.
 func TestXNameComponentsToString(t *testing.T) {
 	type args struct {
 		x csm.XNameComponents
@@ -49,6 +50,11 @@ func TestXNameComponentsToString(t *testing.T) {
 				},
 			},
 			want: "x1000c0s0b0",
+		},
+		{
+			name: "unknown component type",
+			args: args{x: csm.XNameComponents{Type: "cabinet"}},
+			want: "",
 		},
 	}
 	for _, tt := range tests {
@@ -137,7 +143,7 @@ func TestStringToXname(t *testing.T) {
 }
 
 // TestNodeXnameToBMCXname verifies that NodeXnameToBMCXname returns the BMC
-// xname of a node xname.
+// xname of a node xname and rejects a string that isn't an xname.
 func TestNodeXnameToBMCXname(t *testing.T) {
 	type args struct {
 		xname string
@@ -155,6 +161,12 @@ func TestNodeXnameToBMCXname(t *testing.T) {
 			},
 			want:    "x1000c0s0b0",
 			wantErr: false,
+		},
+		{
+			name:    "invalid xname",
+			args:    args{xname: "not-an-xname"},
+			want:    "",
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
