@@ -5,7 +5,7 @@
 
 module github.com/openchami/ochami
 
-go 1.27.1
+go 1.27.2
 
 require (
 	github.com/elliotchance/pie/v2 v2.9.1
@@ -16,7 +16,7 @@ require (
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/providers/rawbytes v1.0.1
 	github.com/knadh/koanf/providers/structs v1.0.1
-	github.com/knadh/koanf/v2 v2.3.7
+	github.com/knadh/koanf/v2 v2.3.8
 	github.com/lestrrat-go/jwx/v3 v3.3.0
 	github.com/nikolalohinski/gonja/v2 v2.9.1
 	github.com/openchami/boot-service v0.3.2
@@ -30,7 +30,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/synackd/go-kargs v0.0.1
 	github.com/vbauerster/mpb/v8 v8.16.2
-	golang.org/x/term v0.46.0
+	golang.org/x/term v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -95,7 +95,7 @@ require (
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 )
