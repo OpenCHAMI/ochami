@@ -3,6 +3,18 @@
   "extends": [
     "github>OpenCHAMI/.github//renovate-config/default",
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Update Go in go.mod and Dockerfile together",
+      "matchManagers": ["gomod", "dockerfile"],
+      "matchDepNames": ["go", "golang"],
+      "groupName": "Go toolchain",
+      "groupSlug": "go-toolchain",
+      "rangeStrategy": "bump",
+      "minimumReleaseAge": "7 days",
+      "minimumGroupSize": 2
+    }
   ]
 }
 
