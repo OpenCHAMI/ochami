@@ -9,6 +9,7 @@ GORELEASER     ?= $(shell command -v goreleaser 2>/dev/null)
 GIT            ?= $(shell command -v git 2>/dev/null)
 AWK            ?= $(shell command -v awk 2>/dev/null)
 REUSE          ?= $(shell command -v reuse 2>/dev/null)
+NPX            ?= $(shell command -v npx 2>/dev/null)
 # Use HOSTCMD to not conflict with Make's $(HOSTNAME)
 HOSTCMD        ?= $(shell command -v hostname 2>/dev/null)
 INSTALL        ?= $(shell command -v install 2>/dev/null)
@@ -16,6 +17,7 @@ SCDOC          ?= $(shell command -v scdoc 2>/dev/null)
 SHELL          ?= /bin/sh
 CONTAINER_PROG ?= $(shell command -v docker 2>/dev/null)
 GO_TOOLCHAIN_VERSION ?= $(shell awk '/^go / {print $$2; exit}' go.mod)
+RENOVATE_VERSION ?= 44.154.1
 
 # Allow override for PR builds in goreleaser
 IS_PR_BUILD ?= false
@@ -160,6 +162,12 @@ reuse: ## Check REUSE compliance
 lint:
 	$(call require-command-shell,$(GOLANGCI_LINT),golangci-lint)
 	GOTOOLCHAIN=go$(GO_TOOLCHAIN_VERSION) $(GOLANGCI_LINT) run
+
+.PHONY: renovate-check
+renovate-check: ## Validate Renovate configuration
+	$(call require-command-shell,$(NPX),npx)
+	$(NPX) --yes --package renovate@$(RENOVATE_VERSION) -- \
+		renovate-config-validator --no-global renovate.json
 
 .PHONY: mod
 mod: ## Download and prune Go modules

@@ -61,6 +61,24 @@ Check REUSE compliance:
 make reuse
 ```
 
+### Renovate Configuration Validation
+
+When modifying `renovate.json`, run the configuration check before submitting
+a PR:
+
+```bash
+make renovate-check
+```
+
+This check requires Node.js 24 and `npx` (included with npm). It downloads and
+runs the pinned Renovate validator with the same version and flags as CI.
+Also run it when changing the validator recipe in `Makefile` or the validation
+workflow in `.github/workflows/renovate.yml`.
+
+Renovate updates the Makefile's `RENOVATE_VERSION` variable and the workflow's
+version pin together. The CI check runs on PRs that change `renovate.json`,
+`Makefile`, or `.github/workflows/renovate.yml`.
+
 ### Local Container Builds
 
 **This is the recommended approach for testing container changes before
@@ -188,6 +206,8 @@ at `ghcr.io/openchami/ochami:pr-<pr_number>`.
    make lint
    make reuse
    ```
+   When changing Renovate configuration or validation tooling, also run
+   `make renovate-check` as described above.
 4. **Commit with DCO sign-off** (see [OpenCHAMI Contributing
    Guidelines](https://github.com/OpenCHAMI/.github/blob/main/CONTRIBUTING.md#developer-certificate-of-origin-dco))
 5. **Open a Pull Request** and ensure it passes CI checks

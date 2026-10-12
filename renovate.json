@@ -4,6 +4,21 @@
     "github>OpenCHAMI/.github//renovate-config/default",
     "config:recommended"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/",
+        "/^\\.github/workflows/renovate\\.yml$/"
+      ],
+      "matchStrings": [
+        "RENOVATE_VERSION\\s*\\?=\\s*(?<currentValue>\\d+\\.\\d+\\.\\d+)\\s",
+        "--package renovate@(?<currentValue>\\d+\\.\\d+\\.\\d+)\\s"
+      ],
+      "depNameTemplate": "renovate",
+      "datasourceTemplate": "npm"
+    }
+  ],
   "packageRules": [
     {
       "description": "Update Go in go.mod and Dockerfile together",
@@ -14,6 +29,14 @@
       "rangeStrategy": "bump",
       "minimumReleaseAge": "7 days",
       "minimumGroupSize": 2
+    },
+    {
+      "description": "Update the local and CI Renovate validators together",
+      "matchManagers": ["custom.regex"],
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["renovate"],
+      "groupName": "Renovate validator",
+      "groupSlug": "renovate-validator"
     }
   ]
 }
