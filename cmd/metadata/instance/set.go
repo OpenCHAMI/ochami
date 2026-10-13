@@ -11,9 +11,76 @@ import (
 	api "github.com/openchami/metadata-service/apis/cloud-init.openchami.io/v1"
 
 	"github.com/openchami/ochami/internal/cli"
-	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
+	"github.com/openchami/ochami/pkg/client/metadata_service"
+
+	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 )
+
+// metadataInstanceSetOptions holds the flag values for the metadata instance set command.
+type metadataInstanceSetOptions struct {
+	Envelope bool
+}
+
+// runCoreMetadataInstanceSet contains the core logic for the metadata instance set command.
+// It takes the parsed options and performs the actual work of setting instance details.
+func runCoreMetadataInstanceSet(cmd *cobra.Command, opts *metadataInstanceSetOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var instanceSet *api.InstanceInfo
+	var reqErr error
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read instance data
+		instance := metadata_service_client.UpdateInstanceInfoRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &instance); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &instance); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		instanceSet, reqErr = metadataServiceClient.SetInstanceInfo(cmd.Context(), cli.Token, args[0], instance)
+	} else {
+		// Use simple API (spec)
+
+		// Read instance data
+		spec := api.InstanceInfoSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayload(cmd, &spec); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
+				return err
+			}
+		}
+
+		// Send off request
+		instanceSet, reqErr = metadataServiceClient.SetInstanceInfoSpec(cmd.Context(), cli.Token, args[0], spec)
+	}
+	if reqErr != nil {
+		return cli.ClassifyClientError(reqErr, "failed to set instance info", "failed to set instance info")
+	}
+
+	// Check that a modified item was returned
+	if instanceSet == nil {
+		return cli.Errorf(cli.CodeGeneric, "instance info set returned no resource")
+	}
+
+	log.Logger.Info().Msgf("Instance infos set: %+v", []string{instanceSet.Metadata.UID})
+
+	return nil
+}
 
 func newCmdMetadataInstanceSet() *cobra.Command {
 	// metadataInstanceSetCmd represents the "metadata instance set" command
@@ -61,64 +128,15 @@ See ochami-metadata(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &metadataInstanceSetOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope")
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope")
-
-			var instanceSet *api.InstanceInfo
-			var reqErr error
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read instance data
-				instance := metadata_service_client.UpdateInstanceInfoRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &instance); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &instance); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				instanceSet, reqErr = metadataServiceClient.SetInstanceInfo(cmd.Context(), cli.Token, args[0], instance)
-			} else {
-				// Use simple API (spec)
-
-				// Read instance data
-				spec := api.InstanceInfoSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayload(cmd, &spec); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdin(cmd, &spec); err != nil {
-						return err
-					}
-				}
-
-				// Send off request
-				instanceSet, reqErr = metadataServiceClient.SetInstanceInfoSpec(cmd.Context(), cli.Token, args[0], spec)
-			}
-			if reqErr != nil {
-				return cli.ClassifyClientError(reqErr, "failed to set instance info", "failed to set instance info")
-			}
-
-			// Check that a modified item was returned
-			if instanceSet == nil {
-				return cli.Errorf(cli.CodeGeneric, "instance info set returned no resource")
-			}
-
-			// Print UIDs of modified items
-			log.Logger.Info().Msgf("Instance infos set: %+v", []string{instanceSet.Metadata.UID})
-
-			return nil
+			return runCoreMetadataInstanceSet(cmd, opts, args, metadataServiceClient)
 		},
 	}
 

@@ -15,7 +15,88 @@ import (
 	"github.com/openchami/ochami/pkg/client"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
+	"github.com/openchami/ochami/pkg/client/smd"
 )
+
+// ifaceGetOptions holds the flag values for the smd iface get command.
+type ifaceGetOptions struct {
+	ID        string
+	ByIP      bool
+	Mac       []string
+	IP        []string
+	Net       []string
+	CompID    []string
+	Type      []string
+	OlderThan string
+	NewerThan string
+}
+
+// runCoreIfaceGet contains the core logic for the smd iface get command.
+// It takes the parsed options and performs the actual work of getting ethernet interfaces.
+func runCoreIfaceGet(cmd *cobra.Command, opts *ifaceGetOptions, smdClient *smd.SMDClient) error {
+	// Deal with --id
+	if opts.ID != "" {
+		// This endpoint requires authentication, so a token is needed
+		if err := cli.SetToken(cmd); err != nil {
+			return err
+		}
+		if err := cli.CheckToken(cmd); err != nil {
+			return err
+		}
+
+		httpEnv, err := smdClient.GetEthernetInterfaceByID(cmd.Context(), opts.ID, cli.Token, opts.ByIP)
+		if err != nil {
+			return cli.ClassifyClientError(err, "SMD ethernet interface request by ID yielded unsuccessful HTTP response", "failed to request ethernet interfaces by ID from SMD")
+		}
+		fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
+		return nil
+	} else if opts.ByIP {
+		return cli.Errorf(cli.CodeUsage, "--by-ip can only be used with --id")
+	}
+
+	// All other cases
+	qstr := ""
+	if len(opts.Mac) > 0 || len(opts.IP) > 0 || len(opts.Net) > 0 || len(opts.CompID) > 0 ||
+		len(opts.Type) > 0 || opts.OlderThan != "" || opts.NewerThan != "" {
+		values := url.Values{}
+		for _, m := range opts.Mac {
+			values.Add("MACAddress", m)
+		}
+		for _, i := range opts.IP {
+			values.Add("IPAddress", i)
+		}
+		for _, n := range opts.Net {
+			values.Add("Network", n)
+		}
+		for _, c := range opts.CompID {
+			values.Add("ComponentID", c)
+		}
+		for _, t := range opts.Type {
+			values.Add("Type", t)
+		}
+		if opts.OlderThan != "" {
+			values.Add("OlderThan", opts.OlderThan)
+		}
+		if opts.NewerThan != "" {
+			values.Add("NewerThan", opts.NewerThan)
+		}
+		qstr = values.Encode()
+	}
+
+	httpEnv, err := smdClient.GetEthernetInterfaces(cmd.Context(), qstr)
+	if err != nil {
+		return cli.ClassifyClientError(err, "SMD ethernet interface request yielded unsuccessful HTTP response", "failed to request ethernet interfaces from SMD")
+	}
+
+	// Print output
+	outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+	if err != nil {
+		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
+	}
+	fmt.Fprint(cli.Ios.Out(), string(outBytes))
+
+	return nil
+}
 
 func newCmdIfaceGet() *cobra.Command {
 	// ifaceGetCmd represents the "smd iface get" command
@@ -36,92 +117,39 @@ See ochami-smd(1) for more details.`,
 				return err
 			}
 
-			// Deal with --id
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &ifaceGetOptions{}
 			if cmd.Flag("id").Changed {
-				// This endpoint requires authentication, so a token is needed
-				if err := cli.SetToken(cmd); err != nil {
-					return err
-				}
-				if err := cli.CheckToken(cmd); err != nil {
-					return err
-				}
-
-				id, err := cmd.Flags().GetString("id")
-				if err != nil {
-					return cli.Errorf(cli.CodeUsage, "failed to get id: %w", err)
-				}
-				byIP := false
-				if cmd.Flag("by-ip").Changed {
-					byIP = true
-				}
-				httpEnv, err := smdClient.GetEthernetInterfaceByID(cmd.Context(), id, cli.Token, byIP)
-				if err != nil {
-					return cli.ClassifyClientError(err, "SMD ethernet interface request by ID yielded unsuccessful HTTP response", "failed to request ethernet interfaces by ID from SMD")
-				}
-				fmt.Fprintln(cli.Ios.Out(), string(httpEnv.Body))
-				return nil
-			} else if cmd.Flag("by-ip").Changed {
-				return cli.Errorf(cli.CodeUsage, "--by-ip can only be used with --id")
+				opts.ID, _ = cmd.Flags().GetString("id")
+			}
+			if cmd.Flag("by-ip").Changed {
+				opts.ByIP = true
+			}
+			if cmd.Flag("mac").Changed {
+				opts.Mac, _ = cmd.Flags().GetStringSlice("mac")
+			}
+			if cmd.Flag("ip").Changed {
+				opts.IP, _ = cmd.Flags().GetStringSlice("ip")
+			}
+			if cmd.Flag("net").Changed {
+				opts.Net, _ = cmd.Flags().GetStringSlice("net")
+			}
+			if cmd.Flag("comp-id").Changed {
+				opts.CompID, _ = cmd.Flags().GetStringSlice("comp-id")
+			}
+			if cmd.Flag("type").Changed {
+				opts.Type, _ = cmd.Flags().GetStringSlice("type")
+			}
+			if cmd.Flag("older-than").Changed {
+				opts.OlderThan, _ = cmd.Flags().GetString("older-than")
+			}
+			if cmd.Flag("newer-than").Changed {
+				opts.NewerThan, _ = cmd.Flags().GetString("newer-than")
 			}
 
-			// All other cases
-			qstr := ""
-			if cmd.Flag("mac").Changed || cmd.Flag("ip").Changed || cmd.Flag("net").Changed || cmd.Flag("comp-id").Changed ||
-				cmd.Flag("type").Changed || cmd.Flag("older-than").Changed || cmd.Flag("newer-than").Changed {
-				values := url.Values{}
-				if cmd.Flag("mac").Changed {
-					s, _ := cmd.Flags().GetStringSlice("mac")
-					for _, m := range s {
-						values.Add("MACAddress", m)
-					}
-				}
-				if cmd.Flag("ip").Changed {
-					s, _ := cmd.Flags().GetStringSlice("ip")
-					for _, i := range s {
-						values.Add("IPAddress", i)
-					}
-				}
-				if cmd.Flag("net").Changed {
-					s, _ := cmd.Flags().GetStringSlice("net")
-					for _, n := range s {
-						values.Add("Network", n)
-					}
-				}
-				if cmd.Flag("comp-id").Changed {
-					s, _ := cmd.Flags().GetStringSlice("comp-id")
-					for _, c := range s {
-						values.Add("ComponentID", c)
-					}
-				}
-				if cmd.Flag("type").Changed {
-					s, _ := cmd.Flags().GetStringSlice("type")
-					for _, t := range s {
-						values.Add("Type", t)
-					}
-				}
-				if cmd.Flag("older-than").Changed {
-					s, _ := cmd.Flags().GetString("older-than")
-					values.Add("OlderThan", s)
-				}
-				if cmd.Flag("newer-than").Changed {
-					s, _ := cmd.Flags().GetString("newer-than")
-					values.Add("NewerThan", s)
-				}
-				qstr = values.Encode()
-			}
-			httpEnv, err := smdClient.GetEthernetInterfaces(cmd.Context(), qstr)
-			if err != nil {
-				return cli.ClassifyClientError(err, "SMD ethernet interface request yielded unsuccessful HTTP response", "failed to request ethernet interfaces from SMD")
-			}
-
-			// Print output
-			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
-			if err != nil {
-				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
-			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
-
-			return nil
+			return runCoreIfaceGet(cmd, opts, smdClient)
 		},
 	}
 

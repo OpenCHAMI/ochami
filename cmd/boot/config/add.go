@@ -17,6 +17,69 @@ import (
 	"github.com/openchami/ochami/pkg/client/boot_service"
 )
 
+// bootConfigAddOptions holds the flag values for the boot config add command.
+type bootConfigAddOptions struct {
+	Envelope bool
+}
+
+// runCoreBootConfigAdd contains the core logic for the boot config add command.
+// It takes the parsed options and performs the actual work of adding boot configurations.
+func runCoreBootConfigAdd(cmd *cobra.Command, opts *bootConfigAddOptions, bootServiceClient *boot_service.BootServiceClient) error {
+	// Handle token for this command
+	if err := cli.HandleToken(cmd); err != nil {
+		return err
+	}
+
+	// Determine how to read payload (simple versus advanced API)
+	var results client.BatchResult[*api.BootConfiguration]
+	if opts.Envelope {
+		// Use advanced API (spec, metadata, annotations)
+
+		// Read boot configuration data
+		bcs := []boot_service_client.CreateBootConfigurationRequest{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = bootServiceClient.AddBootConfigs(cmd.Context(), cli.Token, bcs)
+	} else {
+		// Use simple API (spec)
+
+		// Read boot configuration data
+		bcs := []boot_service.BootConfigSpec{}
+		if cmd.Flag("data").Changed {
+			if err := cli.HandlePayloadSlice[boot_service.BootConfigSpec](cmd, &bcs); err != nil {
+				return err
+			}
+		} else {
+			if err := cli.HandlePayloadStdinSlice[boot_service.BootConfigSpec](cmd, &bcs); err != nil {
+				return err
+			}
+		}
+
+		// Send off requests
+		results = bootServiceClient.AddBootConfigSpecs(cmd.Context(), cli.Token, bcs)
+	}
+
+	var names []string
+	for _, bc := range results.Values() {
+		names = append(names, bc.Metadata.Name)
+	}
+	log.Logger.Debug().Msgf("boot configs created: %q", names)
+	if err := cli.AggregateItemErrors(results.Errors(), "boot configuration addition"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func newCmdBootConfigAdd() *cobra.Command {
 	// bootConfigAddCmd represents the "boot config add" command
 	var bootConfigAddCmd = &cobra.Command{
@@ -104,61 +167,15 @@ See ochami-boot(1) for more details.`,
 				return err
 			}
 
-			// Handle token for this command
-			if err := cli.HandleToken(cmd); err != nil {
-				return err
+			// Extract options from flags
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			opts := &bootConfigAddOptions{}
+			if cmd.Flag("envelope").Changed {
+				opts.Envelope, _ = cmd.Flags().GetBool("envelope")
 			}
 
-			// Determine how to read payload (simple versus advanced API)
-			envelope, _ := cmd.Flags().GetBool("envelope")
-
-			var results client.BatchResult[*api.BootConfiguration]
-			if envelope {
-				// Use advanced API (spec, metadata, annotations)
-
-				// Read boot configuration data
-				bcs := []boot_service_client.CreateBootConfigurationRequest{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[boot_service_client.CreateBootConfigurationRequest](cmd, &bcs); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = bootServiceClient.AddBootConfigs(cmd.Context(), cli.Token, bcs)
-			} else {
-				// Use simple API (spec)
-
-				// Read boot configuration data
-				bcs := []boot_service.BootConfigSpec{}
-				if cmd.Flag("data").Changed {
-					if err := cli.HandlePayloadSlice[boot_service.BootConfigSpec](cmd, &bcs); err != nil {
-						return err
-					}
-				} else {
-					if err := cli.HandlePayloadStdinSlice[boot_service.BootConfigSpec](cmd, &bcs); err != nil {
-						return err
-					}
-				}
-
-				// Send off requests
-				results = bootServiceClient.AddBootConfigSpecs(cmd.Context(), cli.Token, bcs)
-			}
-
-			var names []string
-			for _, cfg := range results.Values() {
-				names = append(names, cfg.Metadata.Name)
-			}
-			log.Logger.Debug().Msgf("boot configs created: %q", names)
-			if err := cli.AggregateItemErrors(results.Errors(), "boot configuration addition"); err != nil {
-				return err
-			}
-
-			return nil
+			return runCoreBootConfigAdd(cmd, opts, bootServiceClient)
 		},
 	}
 
