@@ -10,21 +10,21 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openchami/ochami/internal/config"
+	"github.com/openchami/ochami/pkg/config"
 )
 
 // TestSetToken_NoTokenNoCluster verifies that SetToken returns a CodeAuth
 // error when neither --token nor --cluster/default-cluster is available to
 // resolve a token from.
 func TestSetToken_NoTokenNoCluster(t *testing.T) {
-	// Save original token/default-cluster and restore after test
+	// Save original token/active config and restore after test
 	originalToken := Token
-	originalDefaultCluster := config.GlobalConfig.DefaultCluster
+	originalConfig := ActiveConfig()
 	defer func() {
 		Token = originalToken
-		config.GlobalConfig.DefaultCluster = originalDefaultCluster
+		SetActiveConfig(originalConfig)
 	}()
-	config.GlobalConfig.DefaultCluster = ""
+	SetActiveConfig(config.Config{})
 
 	cmd := &cobra.Command{}
 	cmd.Flags().String("token", "", "token flag")

@@ -66,14 +66,14 @@ Subcommands for this command are as follows:
 *set* [-d] _cluster_name_ _key_ _value_
 	Add or set configuration for a cluster.
 
-	If _cluster_name_ does not exist in the configuration file, it is created.
+	If _cluster_name_ does not exist in the configuration file, it is created,
+	unless _key_ is *name*: renaming a cluster requires the cluster to exist.
 	_key_ can be a top-level cluster key (e.g. *name*) or a cluster config
 	option (e.g. *cluster.uri*). When changing a cluster's name, if that cluster
 	is the default cluster, then *default-cluster* will be changed to the
 	cluster's new name. Changing a cluster's name to an existing cluster name is
-	not allowed.
-
-	This command has some key-setting caveats. See *WARNINGS* below.
+	not allowed. A cluster name must be non-empty and must not contain a period
+	(*.*).
 
 	This command accepts the following options:
 
@@ -91,8 +91,6 @@ Subcommands for this command are as follows:
 *unset* _cluster_name_ _key_
 	Unset the _key_ configuration option from _cluster_name_
 
-	This command has some key-setting caveats. See *WARNINGS* below.
-
 ## set
 
 Set configuration option for ochami CLI.
@@ -103,8 +101,6 @@ The format of this command is:
 
 This command sets global configuration values for *ochami*. It sets the _key_ in
 the file to _value_.
-
-This command has some key-setting caveats. See *WARNINGS* below.
 
 ## show
 
@@ -133,16 +129,6 @@ Unset global configuration option.
 The format of this command is:
 
 *unset* _key_
-
-This command has some key-setting caveats. See *WARNINGS* below.
-
-# WARNINGS
-
-For *set*, *unset*, *cluster set*, and *cluster unset* invocations, some keys
-that are unset in the config file will be explicitly set in the config file with
-their default value. For instance, if *cluster.enable-auth* is unset for a given
-cluster and one of these commands is run, it will be explicitly be set to
-_true_, its default value.
 
 # FILES
 
