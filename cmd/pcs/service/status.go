@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/pcs"
 	"github.com/openchami/ochami/pkg/format"
 
@@ -42,10 +41,7 @@ type commandOutput struct {
 func getStatus(pcsClient *pcs.PCSClient) (string, error) {
 	httpEnv, err := pcsClient.GetReadiness()
 	if err != nil {
-		if errors.Is(err, client.UnsuccessfulHTTPError) {
-			return "", cli.Errorf(cli.CodeHTTP, "PCS status (readiness) request yielded unsuccessful HTTP response: %w", err)
-		}
-		return "", cli.Errorf(cli.CodeNetwork, "failed to get PCS status (readiness): %w", err)
+		return "", cli.ClassifyClientError(err, "PCS status (readiness) request yielded unsuccessful HTTP response", "failed to get PCS status (readiness)")
 	}
 
 	// We are in the "ready" state
@@ -56,10 +52,7 @@ func getStatus(pcsClient *pcs.PCSClient) (string, error) {
 	// If we are not "ready" then check our "liveness"
 	httpEnv, err = pcsClient.GetLiveness()
 	if err != nil {
-		if errors.Is(err, client.UnsuccessfulHTTPError) {
-			return "", cli.Errorf(cli.CodeHTTP, "PCS status (liveness) request yielded unsuccessful HTTP response: %w", err)
-		}
-		return "", cli.Errorf(cli.CodeNetwork, "failed to get PCS status (liveness): %w", err)
+		return "", cli.ClassifyClientError(err, "PCS status (liveness) request yielded unsuccessful HTTP response", "failed to get PCS status (liveness)")
 	}
 
 	// We are in the "live" status
@@ -112,10 +105,7 @@ See ochami-pcs(1) for more details.`,
 			if flagsProvided {
 				healthHttpEnv, err := pcsClient.GetHealth()
 				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						return cli.Errorf(cli.CodeHTTP, "PCS status (health) request yielded unsuccessful HTTP response: %w", err)
-					}
-					return cli.Errorf(cli.CodeNetwork, "failed to get PCS status (health): %w", err)
+					return cli.ClassifyClientError(err, "PCS status (health) request yielded unsuccessful HTTP response", "failed to get PCS status (health)")
 				}
 
 				// Unmarshall the health

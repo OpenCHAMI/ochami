@@ -12,6 +12,71 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
+// TestPCSTransitionList_HTTPError verifies a failing list resolves to CodeHTTP.
+func TestPCSTransitionList_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "transition", "list", "--ignore-config", "--uri", srv.URL)
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
+// TestPCSTransitionShow_HTTPError verifies a failing show resolves to CodeHTTP.
+func TestPCSTransitionShow_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "transition", "show", "--ignore-config", "--uri", srv.URL, "abcd-1234")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
+// TestPCSTransitionAbort_HTTPError verifies a failing abort resolves to CodeHTTP.
+func TestPCSTransitionAbort_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "transition", "abort", "--ignore-config", "--uri", srv.URL, "abcd-1234")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
+// TestPCSTransitionStart_HTTPError verifies a failing start resolves to CodeHTTP.
+func TestPCSTransitionStart_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "bad", http.StatusBadRequest)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "pcs", "transition", "start", "--ignore-config", "--uri", srv.URL,
+		"--xname", "x0c0s0b0n0", "on")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
 // TestPCSTransitionStart_InvalidOp verifies that an invalid operation argument
 // is a usage error and no request is made.
 func TestPCSTransitionStart_InvalidOp(t *testing.T) {

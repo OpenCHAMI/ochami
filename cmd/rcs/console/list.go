@@ -5,14 +5,12 @@
 package console
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/cli/rcs"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -36,10 +34,7 @@ See ochami-rcs(1) for more details.`,
 			}
 			consoles, err := rcsClient.ListConsoles(cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to list consoles: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to list consoles: %w", err)
+				return cli.ClassifyClientError(err, "failed to list consoles", "failed to list consoles")
 			}
 			outBytes, err := format.MarshalData(consoles, cli.FormatOutput)
 			if err != nil {

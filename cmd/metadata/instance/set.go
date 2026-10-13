@@ -5,8 +5,6 @@
 package instance
 
 import (
-	"errors"
-
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 )
 
 func newCmdMetadataInstanceSet() *cobra.Command {
@@ -70,10 +67,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Determine how to read payload (simple versus advanced API)
-			envelope, flagErr := cmd.Flags().GetBool("envelope")
-			if flagErr != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to read --envelope flag: %w", flagErr)
-			}
+			envelope, _ := cmd.Flags().GetBool("envelope")
 
 			var instanceSet *api.InstanceInfo
 			var reqErr error
@@ -113,10 +107,7 @@ See ochami-metadata(1) for more details.`,
 				instanceSet, reqErr = metadataServiceClient.SetInstanceInfoSpec(cli.Token, args[0], spec)
 			}
 			if reqErr != nil {
-				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to set instance info: %w", reqErr)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to set instance info: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to set instance info", "failed to set instance info")
 			}
 
 			// Check that a modified item was returned

@@ -33,7 +33,7 @@ See ochami-rcs(1) for more details.`,
 			}
 			err = rcsClient.ConnectConsole(cmd.Context(), nodeID, cli.Token, cli.Ios.In(), cli.Ios.Out())
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to connect to console: %w", err)
+				return cli.ClassifyClientError(err, "failed to connect to console", "failed to connect to console")
 			}
 
 			return nil

@@ -7,6 +7,7 @@ package group
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -98,14 +99,10 @@ See ochami-smd(1) for more details.`,
 				// ...otherwise use CLI options/args
 				group := smd.Group{Label: args[0]}
 				if cmd.Flag("description").Changed {
-					if group.Description, err = cmd.Flags().GetString("description"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch description: %w", err)
-					}
+					group.Description, _ = cmd.Flags().GetString("description")
 				}
 				if cmd.Flag("tag").Changed {
-					if group.Tags, err = cmd.Flags().GetStringSlice("tag"); err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch tags: %w", err)
-					}
+					group.Tags, _ = cmd.Flags().GetStringSlice("tag")
 				}
 				groups = append(groups, group)
 			}
@@ -117,11 +114,11 @@ See ochami-smd(1) for more details.`,
 				log.Logger.Info().Msg("  - SMD base URI misconfiguration (should include /hsm/v2)")
 				log.Logger.Info().Msg("  - Invalid payload format")
 				log.Logger.Info().Msg("  - Authentication/authorization failure (check token)")
-				return cli.Errorf(cli.CodeNetwork, "failed to patch %d group(s) in SMD: %w", len(groups), err)
+				return cli.ClassifyClientError(err, fmt.Sprintf("failed to patch %d group(s) in SMD", len(groups)), fmt.Sprintf("failed to patch %d group(s) in SMD", len(groups)))
 			}
 			// Since smdClient.PatchGroups does the edition iteratively, we need to deal with
 			// each error that might have occurred.
-			var errorsOccurred = false
+			var itemErrs []error
 			for i, e := range errs {
 				if e != nil {
 					if errors.Is(e, client.UnsuccessfulHTTPError) {
@@ -135,11 +132,11 @@ See ochami-smd(1) for more details.`,
 							Str("group", groups[i].Label).
 							Msg("failed to update group in SMD")
 					}
-					errorsOccurred = true
+					itemErrs = append(itemErrs, e)
 				}
 			}
-			if errorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "SMD group update completed with errors")
+			if err := cli.CombineItemErrors(itemErrs, "SMD group update"); err != nil {
+				return err
 			}
 
 			// Success, log confirmation

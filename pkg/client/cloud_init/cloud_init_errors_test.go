@@ -28,8 +28,8 @@ func TestGetNodeData_RequiresID(t *testing.T) {
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) { requestMade = true })
 	defer srv.Close()
 
-	if _, _, err := cic.GetNodeData(CloudInitMetaData, "tok"); err == nil {
-		t.Fatal("expected an error when no IDs are supplied, got nil")
+	if _, _, err := cic.GetNodeData(CloudInitMetaData, "tok"); !errors.Is(err, client.InvalidArgumentError) {
+		t.Fatalf("GetNodeData() error = %v, want client.InvalidArgumentError", err)
 	}
 	if requestMade {
 		t.Error("a request was made despite no IDs being supplied")
@@ -168,5 +168,33 @@ func TestCloudInitIterative_HTTPErrors(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestGetNodeGroupData_Guards verifies the blank-id and empty-groups guards.
+func TestGetNodeGroupData_Guards(t *testing.T) {
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	defer srv.Close()
+
+	if _, _, err := cic.GetNodeGroupData("tok", "  "); err == nil {
+		t.Error("GetNodeGroupData with blank id = nil, want error")
+	}
+	if _, _, err := cic.GetNodeGroupData("tok", "x0c0s0b0n0"); err == nil {
+		t.Error("GetNodeGroupData with no groups = nil, want error")
+	}
+}
+
+// TestPostDefaults_HTTPError verifies that PostDefaults returns an error for an
+// unsuccessful response.
+func TestPostDefaults_HTTPError(t *testing.T) {
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	})
+	defer srv.Close()
+
+	if _, err := cic.PostDefaults(cistore.ClusterDefaults{}, "tok"); err == nil {
+		t.Error("PostDefaults with HTTP error = nil, want error")
 	}
 }

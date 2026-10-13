@@ -16,7 +16,7 @@ import (
 )
 
 // TestBootList_HTTPError verifies that an unsuccessful HTTP response from the
-// boot service resolves to a non-success exit code for the "list" subcommands.
+// boot service resolves to CodeHTTP for the "list" subcommands.
 func TestBootList_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
@@ -30,15 +30,15 @@ func TestBootList_HTTPError(t *testing.T) {
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
-			if res.exitCode == cli.CodeSuccess {
-				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 			}
 		})
 	}
 }
 
 // TestBootGet_HTTPError verifies that an unsuccessful HTTP response from a
-// "<type> get" resolves to a non-success exit code for each resource type.
+// "<type> get" resolves to CodeHTTP for each resource type.
 func TestBootGet_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -51,8 +51,8 @@ func TestBootGet_HTTPError(t *testing.T) {
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
-			if res.exitCode == cli.CodeSuccess {
-				t.Errorf("exit code = %d, want a non-success code", res.exitCode)
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 			}
 		})
 	}
@@ -67,5 +67,160 @@ func TestBootConfigDelete_NoArgs(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeUsage {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestBootList_NetworkError verifies a closed port resolves to CodeNetwork for
+// each boot type's list.
+func TestBootList_NetworkError(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
+
+			res := runOchami(t, "boot", typ, "list", "--ignore-config", "--uri", url, "--token", "t")
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode != cli.CodeNetwork {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+			}
+		})
+	}
+}
+
+// TestBootSet_HTTPError verifies a failing set resolves to CodeHTTP across boot
+// types.
+func TestBootSet_HTTPError(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "bad", http.StatusBadRequest)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "boot", typ, "set", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootAddPayload(typ))
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+			}
+		})
+	}
+}
+
+// TestBootPatch_HTTPError verifies a failing patch resolves to CodeHTTP across
+// boot types.
+func TestBootPatch_HTTPError(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "bad", http.StatusBadRequest)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "boot", typ, "patch", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootAddPayload(typ))
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+			}
+		})
+	}
+}
+
+// TestBootDelete_Abort verifies answering "n" aborts deletion without contacting
+// the server across boot types.
+func TestBootDelete_Abort(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			var deleted bool
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodDelete {
+					deleted = true
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithInput(t, "n\n", "boot", typ, "delete", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t")
+			if res.exitCode != cli.CodeDeclined {
+				t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
+			}
+			if deleted {
+				t.Error("server received a DELETE despite user declining confirmation")
+			}
+		})
+	}
+}
+
+// TestBootAdd_MalformedPayload verifies malformed inline payload resolves to a
+// non-success exit code across boot types.
+func TestBootAdd_MalformedPayload(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusCreated)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "boot", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+				"-d", `not json`)
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode != cli.CodePayload {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+			}
+		})
+	}
+}
+
+// TestBootAdd_MultiItemAggregate verifies a multi-item add against a failing
+// server aggregates per-item errors into CodeHTTP.
+func TestBootAdd_MultiItemAggregate(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "bad", http.StatusBadRequest)
+			}))
+			defer srv.Close()
+
+			payload := "[" + bootAddPayload(typ) + "," + bootAddPayload(typ) + "]"
+			res := runOchami(t, "boot", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+				"-d", payload)
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+			}
+		})
+	}
+}
+
+// TestBootDelete_HTTPError verifies a failing delete resolves to CodeHTTP
+// across boot types (per-item aggregation).
+func TestBootDelete_HTTPError(t *testing.T) {
+	for _, typ := range bootResourceTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "not found", http.StatusNotFound)
+			}))
+			defer srv.Close()
+
+			res := runOchami(t, "boot", typ, "delete", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+			}
+		})
 	}
 }

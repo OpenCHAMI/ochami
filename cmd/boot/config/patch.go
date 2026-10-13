@@ -14,16 +14,10 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-var (
-	formatPatch client.PatchMethod = client.PatchMethodRFC7386
-
-	setList    []string
-	unsetList  []string
-	addList    []string
-	removeList []string
-)
-
 func newCmdBootConfigPatch() *cobra.Command {
+	formatPatch := client.PatchMethodRFC7386
+	var setList, unsetList, addList, removeList []string
+
 	// bootConfigPatchCmd represents the "boot config patch" command
 	var bootConfigPatchCmd = &cobra.Command{
 		Use:   "patch <uid>",
@@ -108,7 +102,7 @@ See ochami-boot(1) for more details.`,
 
 			cfgPatched, err := bootServiceClient.PatchBootConfig(cli.Token, patchMethod, args[0], patchData)
 			if err != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to patch boot configuration: %w", err)
+				return cli.ClassifyClientError(err, "failed to patch boot configuration", "failed to patch boot configuration")
 			}
 
 			log.Logger.Debug().Msgf("boot config patched: %+v", cfgPatched)

@@ -5,8 +5,6 @@
 package instance
 
 import (
-	"errors"
-
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 	"github.com/spf13/cobra"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 	"github.com/openchami/ochami/internal/log"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/client/metadata_service"
 )
 
@@ -93,10 +90,7 @@ See ochami-metadata(1) for more details.`,
 			}
 
 			// Determine how to read payload (simple versus advanced API)
-			envelope, flagErr := cmd.Flags().GetBool("envelope")
-			if flagErr != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to read --envelope flag: %w", flagErr)
-			}
+			envelope, _ := cmd.Flags().GetBool("envelope")
 
 			var instancesCreated []api.InstanceInfo
 			var reqErrs []error
@@ -139,19 +133,7 @@ See ochami-metadata(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				if errors.Is(reqErr, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to add instance infos: %w", reqErr)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to add instance infos: %w", reqErr)
-			}
-
-			// Deal with per-request errors
-			var reqErrorsOccurred = false
-			for _, err := range reqErrs {
-				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to add instance info")
-					reqErrorsOccurred = true
-				}
+				return cli.ClassifyClientError(reqErr, "failed to add instance infos", "failed to add instance infos")
 			}
 
 			// Print names of created items
@@ -161,9 +143,8 @@ See ochami-metadata(1) for more details.`,
 			}
 			log.Logger.Info().Msgf("Instance infos created: %q", names)
 
-			// Warn if any request errors occurred
-			if reqErrorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "Instance info addition completed with errors")
+			if err := cli.AggregateItemErrors(reqErrs, "Instance info addition"); err != nil {
+				return err
 			}
 
 			return nil

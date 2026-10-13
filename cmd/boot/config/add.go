@@ -109,10 +109,7 @@ See ochami-boot(1) for more details.`,
 			}
 
 			// Determine how to read payload (simple versus advanced API)
-			envelope, flagErr := cmd.Flags().GetBool("envelope")
-			if flagErr != nil {
-				return cli.Errorf(cli.CodeUsage, "failed to read --envelope flag: %w", flagErr)
-			}
+			envelope, _ := cmd.Flags().GetBool("envelope")
 
 			var cfgsCreated []*api.BootConfiguration
 			var reqErrs []error
@@ -155,24 +152,16 @@ See ochami-boot(1) for more details.`,
 
 			// Handle any non-request error
 			if reqErr != nil {
-				return cli.Errorf(cli.CodeNetwork, "failed to add boot configurations: %w", reqErr)
+				return cli.ClassifyClientError(reqErr, "failed to add boot configurations", "failed to add boot configurations")
 			}
 
-			// Deal with per-request errors
-			var reqErrorsOccurred = false
-			for _, e := range reqErrs {
-				if e != nil {
-					log.Logger.Error().Err(e).Msg("failed to add boot configuration")
-					reqErrorsOccurred = true
-				}
-			}
 			var names []string
 			for _, cfg := range cfgsCreated {
 				names = append(names, cfg.Metadata.Name)
 			}
 			log.Logger.Debug().Msgf("boot configs created: %q", names)
-			if reqErrorsOccurred {
-				return cli.Errorf(cli.CodeHTTP, "boot configuration addition completed with errors")
+			if err := cli.AggregateItemErrors(reqErrs, "boot configuration addition"); err != nil {
+				return err
 			}
 
 			return nil

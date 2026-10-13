@@ -5,14 +5,12 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/cli/rcs"
-	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
 
@@ -37,10 +35,7 @@ See ochami-rcs(1) for more details.`,
 
 			status, err := rcsClient.GetStatus(cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "failed to get console service status: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to get console service status: %w", err)
+				return cli.ClassifyClientError(err, "failed to get console service status", "failed to get console service status")
 			}
 
 			outBytes, err := format.MarshalData(status, cli.FormatOutput)

@@ -6,7 +6,6 @@
 package params
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -55,28 +54,19 @@ See ochami-bss(1) for more details.`,
 				cmd.Flag("nid").Changed {
 				values := url.Values{}
 				if cmd.Flag("xname").Changed {
-					s, err := cmd.Flags().GetStringSlice("xname")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch xname list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("xname")
 					for _, x := range s {
 						values.Add("name", x)
 					}
 				}
 				if cmd.Flag("mac").Changed {
-					s, err := cmd.Flags().GetStringSlice("mac")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch mac list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("mac")
 					for _, m := range s {
 						values.Add("mac", m)
 					}
 				}
 				if cmd.Flag("nid").Changed {
-					s, err := cmd.Flags().GetInt32Slice("nid")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch nid list: %w", err)
-					}
+					s, _ := cmd.Flags().GetInt32Slice("nid")
 					for _, n := range s {
 						values.Add("nid", fmt.Sprintf("%d", n))
 					}
@@ -85,10 +75,7 @@ See ochami-bss(1) for more details.`,
 			}
 			httpEnv, err := bssClient.GetBootParams(qstr, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "BSS boot parameter request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request boot parameters from BSS: %w", err)
+				return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to request boot parameters from BSS")
 			}
 
 			// Print output

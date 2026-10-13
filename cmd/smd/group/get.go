@@ -6,7 +6,6 @@
 package group
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -52,19 +51,13 @@ See ochami-smd(1) for more details.`,
 			if cmd.Flag("name").Changed || cmd.Flag("tag").Changed {
 				values := url.Values{}
 				if cmd.Flag("name").Changed {
-					s, err := cmd.Flags().GetStringSlice("name")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch name list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("name")
 					for _, n := range s {
 						values.Add("group", n)
 					}
 				}
 				if cmd.Flag("tag").Changed {
-					s, err := cmd.Flags().GetStringSlice("tag")
-					if err != nil {
-						return cli.Errorf(cli.CodeUsage, "unable to fetch tag list: %w", err)
-					}
+					s, _ := cmd.Flags().GetStringSlice("tag")
 					for _, t := range s {
 						values.Add("tag", t)
 					}
@@ -73,10 +66,7 @@ See ochami-smd(1) for more details.`,
 			}
 			httpEnv, err := smdClient.GetGroups(qstr, cli.Token)
 			if err != nil {
-				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					return cli.Errorf(cli.CodeHTTP, "SMD group request yielded unsuccessful HTTP response: %w", err)
-				}
-				return cli.Errorf(cli.CodeNetwork, "failed to request groups from SMD: %w", err)
+				return cli.ClassifyClientError(err, "SMD group request yielded unsuccessful HTTP response", "failed to request groups from SMD")
 			}
 
 			// Print output

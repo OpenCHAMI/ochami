@@ -110,9 +110,7 @@ func (pc *PCSClient) CreateTransition(operation string, taskDeadline *int, xname
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("CreateTransition(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 
 	// Create the request body
@@ -157,9 +155,7 @@ func (pc *PCSClient) GetTransitions(token string) (client.HTTPEnvelope, error) {
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("GetTransitions(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 
 	henv, err = pc.GetData(PCSTransitions, "", headers)
@@ -181,9 +177,7 @@ func (pc *PCSClient) GetTransition(id string, token string) (client.HTTPEnvelope
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("GetTransition(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 
 	pcsTransitionsEndpoint, err = url.JoinPath(PCSTransitions, id)
@@ -211,9 +205,7 @@ func (pc *PCSClient) DeleteTransition(id string, token string) (client.HTTPEnvel
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("DeleteTransition(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 
 	pcsTransitionEndpoint, err = url.JoinPath(PCSTransitions, id)
@@ -240,9 +232,7 @@ func (pc *PCSClient) GetStatus(xnames []string, powerStateFilter string, mgmtSta
 
 	headers := client.NewHTTPHeaders()
 	if token != "" {
-		if err := headers.SetAuthorization(token); err != nil {
-			return henv, fmt.Errorf("GetStatus(): error setting token in HTTP headers: %w", err)
-		}
+		_ = headers.SetAuthorization(token)
 	}
 
 	values := url.Values{}
