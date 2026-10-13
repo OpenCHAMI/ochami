@@ -28,7 +28,7 @@ require (
 	github.com/openchami/smd/v2 v2.20.5
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.10.2
-	github.com/synackd/go-kargs v0.0.1
+	github.com/synackd/go-kargs v0.0.2
 	github.com/vbauerster/mpb/v8 v8.16.2
 	golang.org/x/term v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
