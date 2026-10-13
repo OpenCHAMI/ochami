@@ -31,6 +31,10 @@ func defaultConfigLoader() configLoader {
 	}
 }
 
+// TestLoadConfigSources_MergePrecedenceAndOrder verifies that later sources
+// override earlier ones key by key, that clusters keep the order they first
+// appear in, that cluster defaults and boolean coercion apply, and that the
+// koanf and Config views agree.
 func TestLoadConfigSources_MergePrecedenceAndOrder(t *testing.T) {
 	sources := []configLoader{
 		defaultConfigLoader(),
@@ -104,6 +108,8 @@ clusters:
 	}
 }
 
+// TestLoadConfigSources_MissingOptionalSources verifies that missing optional
+// config files are skipped and the result is the built-in defaults.
 func TestLoadConfigSources_MissingOptionalSources(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing.yaml")
 	ko, cfg, err := loadConfigSources([]configLoader{
@@ -125,6 +131,9 @@ func TestLoadConfigSources_MissingOptionalSources(t *testing.T) {
 	}
 }
 
+// TestLoadConfigSources_SourceErrors verifies that malformed YAML, a null
+// global value, a type mismatch, and an invalid cluster boolean each fail the
+// load with an error naming the source.
 func TestLoadConfigSources_SourceErrors(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -174,6 +183,9 @@ func TestLoadConfigSources_SourceErrors(t *testing.T) {
 	}
 }
 
+// TestLoadGlobalConfigDefaultOnly_ReplacesStaleGlobals verifies that
+// LoadGlobalConfigDefaultOnly replaces the previous global configuration with
+// the built-in defaults instead of merging into it.
 func TestLoadGlobalConfigDefaultOnly_ReplacesStaleGlobals(t *testing.T) {
 	originalConfig := GlobalConfig
 	originalKoanf := GlobalKoanf

@@ -23,6 +23,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TestIOStream_AskToCreate verifies that AskToCreate rejects an empty path,
+// reports an existing file with FileExistsError without prompting, and prompts
+// before creating a missing file, creating it only if the user agrees.
 func TestIOStream_AskToCreate(t *testing.T) {
 	t.Run("empty path", func(t *testing.T) {
 		t.Parallel()
@@ -127,6 +130,8 @@ func TestIOStream_AskToCreate(t *testing.T) {
 	})
 }
 
+// TestIOStream_LoopYesNo verifies that LoopYesNo returns the user's yes or no
+// answer and prompts again after an invalid one.
 func TestIOStream_LoopYesNo(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -181,6 +186,8 @@ func TestIOStream_LoopYesNo(t *testing.T) {
 	}
 }
 
+// Test_CreateIfNotExists verifies that CreateIfNotExists rejects an empty path
+// and succeeds for both a missing and an existing file.
 func Test_CreateIfNotExists(t *testing.T) {
 	type args struct {
 		path string
@@ -256,6 +263,8 @@ func generateTestToken(exp time.Time, nbf time.Time, iat time.Time) (string, err
 	return string(signed), nil
 }
 
+// TestCheckToken_ValidToken verifies that CheckToken accepts a token that is
+// currently valid.
 func TestCheckToken_ValidToken(t *testing.T) {
 	now := time.Now()
 	exp := now.Add(1 * time.Hour)
@@ -267,12 +276,14 @@ func TestCheckToken_ValidToken(t *testing.T) {
 		t.Fatalf("failed to generate test token: %v", err)
 	}
 
-	// Set global Token variable
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
 	Token = tokenStr
 
-	// Note: We can't actually call CheckToken() here because it calls os.Exit()
-	// In a real test harness, CheckToken should be refactored to return errors
-	t.Log("Testing valid token - CheckToken would succeed without calling os.Exit()")
+	if err := CheckToken(&cobra.Command{}); err != nil {
+		t.Errorf("CheckToken returned unexpected error: %v", err)
+	}
 
 	// We'll just verify the token was generated correctly by parsing it
 	// Use WithVerify(false) since we're testing parsing, not signature verification
@@ -292,6 +303,8 @@ func TestCheckToken_ValidToken(t *testing.T) {
 	}
 }
 
+// TestCheckToken_ExpiredToken verifies that CheckToken rejects an expired token
+// with CodeAuth.
 func TestCheckToken_ExpiredToken(t *testing.T) {
 	now := time.Now()
 	exp := now.Add(-1 * time.Hour) // Expired 1 hour ago
@@ -313,11 +326,22 @@ func TestCheckToken_ExpiredToken(t *testing.T) {
 		t.Errorf("Expected TokenExpiredError, got: %v", err)
 	}
 
-	// Note: We can't call CheckToken(cmd) because it calls os.Exit(1)
-	// In a production test environment, we would refactor CheckToken to return errors
-	t.Log("Verified expired token is detected - CheckToken would call os.Exit(1)")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+	Token = tokenStr
+
+	ctErr := CheckToken(&cobra.Command{})
+	if ctErr == nil {
+		t.Fatal("CheckToken should have returned an error for an expired token")
+	}
+	if ExitCode(ctErr) != CodeAuth {
+		t.Errorf("ExitCode = %d, want %d (%s)", ExitCode(ctErr), CodeAuth, CodeName(CodeAuth))
+	}
 }
 
+// TestCheckToken_NotYetValid verifies that CheckToken rejects a token whose
+// not-before time is in the future with CodeAuth.
 func TestCheckToken_NotYetValid(t *testing.T) {
 	now := time.Now()
 	exp := now.Add(2 * time.Hour)
@@ -339,9 +363,22 @@ func TestCheckToken_NotYetValid(t *testing.T) {
 		t.Errorf("Expected TokenNotYetValidError, got: %v", err)
 	}
 
-	t.Log("Verified not-yet-valid token is detected - CheckToken would call os.Exit(1)")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+	Token = tokenStr
+
+	ctErr := CheckToken(&cobra.Command{})
+	if ctErr == nil {
+		t.Fatal("CheckToken should have returned an error for a not-yet-valid token")
+	}
+	if ExitCode(ctErr) != CodeAuth {
+		t.Errorf("ExitCode = %d, want %d (%s)", ExitCode(ctErr), CodeAuth, CodeName(CodeAuth))
+	}
 }
 
+// TestCheckToken_ExpiringSoon verifies that CheckToken accepts a token that
+// expires within the warning window.
 func TestCheckToken_ExpiringSoon(t *testing.T) {
 	now := time.Now()
 	exp := now.Add(10 * time.Minute) // Expires in 10 minutes (< 15 min threshold)
@@ -369,9 +406,20 @@ func TestCheckToken_ExpiringSoon(t *testing.T) {
 		t.Errorf("Token should expire in less than 15 minutes, got: %v", timeUntilExpiry)
 	}
 
-	t.Log("Verified token expiring soon - CheckToken would log a warning but not exit")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+	Token = tokenStr
+
+	// A token expiring soon is still valid, so CheckToken should only warn,
+	// not return an error.
+	if err := CheckToken(&cobra.Command{}); err != nil {
+		t.Errorf("CheckToken returned unexpected error for a token expiring soon: %v", err)
+	}
 }
 
+// TestCheckToken_EmptyToken verifies that CheckToken rejects an empty token
+// with CodeAuth.
 func TestCheckToken_EmptyToken(t *testing.T) {
 	// Save original token and restore after test
 	originalToken := Token
@@ -379,15 +427,17 @@ func TestCheckToken_EmptyToken(t *testing.T) {
 
 	Token = ""
 
-	// We can't actually call CheckToken because it calls os.Exit(1)
-	// But we can verify the logic
-	if Token != "" {
-		t.Error("Token should be empty for this test")
+	err := CheckToken(&cobra.Command{})
+	if err == nil {
+		t.Fatal("CheckToken should have returned an error for an empty token")
 	}
-
-	t.Log("Verified empty token case - CheckToken would log error and call os.Exit(1)")
+	if ExitCode(err) != CodeAuth {
+		t.Errorf("ExitCode = %d, want %d (%s)", ExitCode(err), CodeAuth, CodeName(CodeAuth))
+	}
 }
 
+// TestCheckToken_MalformedToken verifies that CheckToken rejects a token that
+// isn't a valid JWT with CodeAuth.
 func TestCheckToken_MalformedToken(t *testing.T) {
 	malformedToken := "not.a.valid.jwt.token.at.all"
 
@@ -398,9 +448,21 @@ func TestCheckToken_MalformedToken(t *testing.T) {
 		t.Error("Expected malformed token to fail parsing")
 	}
 
-	t.Log("Verified malformed token is detected - CheckToken would call os.Exit(1)")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+	Token = malformedToken
+
+	ctErr := CheckToken(&cobra.Command{})
+	if ctErr == nil {
+		t.Fatal("CheckToken should have returned an error for a malformed token")
+	}
+	if ExitCode(ctErr) != CodeAuth {
+		t.Errorf("ExitCode = %d, want %d (%s)", ExitCode(ctErr), CodeAuth, CodeName(CodeAuth))
+	}
 }
 
+// TestSetToken_FromFlag verifies that SetToken uses the value of --token.
 func TestSetToken_FromFlag(t *testing.T) {
 	// Save original token and restore after test
 	originalToken := Token
@@ -412,15 +474,57 @@ func TestSetToken_FromFlag(t *testing.T) {
 		t.Fatalf("Failed to set flag: %v", err)
 	}
 
-	SetToken(cmd)
+	if err := SetToken(cmd); err != nil {
+		t.Fatalf("SetToken returned unexpected error: %v", err)
+	}
 
 	if Token != "test-token-from-flag" {
 		t.Errorf("Token = %q, want %q", Token, "test-token-from-flag")
 	}
 }
 
+// TestSetToken_FromEnvironment verifies that SetToken reads the token from the
+// selected cluster's <CLUSTER>_ACCESS_TOKEN environment variable.
 func TestSetToken_FromEnvironment(t *testing.T) {
-	// This test is skipped because SetToken calls os.Exit() on errors
-	// To properly test this, SetToken should be refactored to return errors
-	t.Skip("Skipping test that may call os.Exit() - SetToken needs refactoring for testability")
+	// Save original token and restore after test
+	originalToken := Token
+	defer func() { Token = originalToken }()
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("token", "", "token flag")
+	cmd.Flags().String("cluster", "", "cluster flag")
+	if err := cmd.Flags().Set("cluster", "test-cluster"); err != nil {
+		t.Fatalf("Failed to set flag: %v", err)
+	}
+
+	t.Setenv("TEST_CLUSTER_ACCESS_TOKEN", "test-token-from-environment")
+
+	if err := SetToken(cmd); err != nil {
+		t.Fatalf("SetToken returned unexpected error: %v", err)
+	}
+
+	if Token != "test-token-from-environment" {
+		t.Errorf("Token = %q, want %q", Token, "test-token-from-environment")
+	}
+}
+
+// TestInitConfigAndLogging_DeclineCreate verifies that declining to create a
+// missing config file resolves to CodeDeclined and leaves the file uncreated.
+func TestInitConfigAndLogging_DeclineCreate(t *testing.T) {
+	origFile := ConfigFile
+	t.Cleanup(func() { ConfigFile = origFile })
+	ConfigFile = filepath.Join(t.TempDir(), "config.yaml")
+	restore := SetIOStream(strings.NewReader("n\n"), &bytes.Buffer{}, &bytes.Buffer{})
+	t.Cleanup(restore)
+
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("ignore-config", false, "")
+
+	err := InitConfigAndLogging(cmd, true)
+	if got := ExitCode(err); got != CodeDeclined {
+		t.Fatalf("ExitCode(%v) = %d, want %d (%s)", err, got, CodeDeclined, CodeName(CodeDeclined))
+	}
+	if _, statErr := os.Stat(ConfigFile); !os.IsNotExist(statErr) {
+		t.Errorf("stat %s = %v, want not-exist", ConfigFile, statErr)
+	}
 }

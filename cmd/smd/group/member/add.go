@@ -7,7 +7,6 @@ package member
 
 import (
 	"errors"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -28,38 +27,41 @@ func newCmdGroupMemberAdd() *cobra.Command {
 
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member add compute x3000c1s7b56n0`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			smdClient := smd_lib.GetClient(cmd)
+			smdClient, err := smd_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Send off request
 			_, errs, err := smdClient.PostGroupMembers(cli.Token, args[0], args[1:]...)
 			if err != nil {
-				log.Logger.Error().Err(err).Msgf("failed to add group member(s) to group %s in SMD", args[0])
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to add group member(s) to group %s in SMD: %w", args[0], err)
 			}
 			// Since smdClient.PostGroupMembers does the addition iteratively, we need to deal with
 			// each error that might have occurred.
 			var errorsOccurred = false
-			for _, err := range errs {
-				if err != nil {
-					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						log.Logger.Error().Err(err).Msgf("SMD group member request for group %s yielded unsuccessful HTTP response", args[0])
+			for _, e := range errs {
+				if e != nil {
+					if errors.Is(e, client.UnsuccessfulHTTPError) {
+						log.Logger.Error().Err(e).Msgf("SMD group member request for group %s yielded unsuccessful HTTP response", args[0])
 					} else {
-						log.Logger.Error().Err(err).Msgf("failed to add group member(s) to group %s in SMD", args[0])
+						log.Logger.Error().Err(e).Msgf("failed to add group member(s) to group %s in SMD", args[0])
 					}
 					errorsOccurred = true
 				}
 			}
 			if errorsOccurred {
-				cli.LogHelpError(cmd)
-				log.Logger.Warn().Msg("SMD group addition completed with errors")
-				os.Exit(1)
+				return cli.Errorf(cli.CodeHTTP, "SMD group member addition completed with errors")
 			}
+
+			return nil
 		},
 	}
 

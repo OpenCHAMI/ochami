@@ -5,7 +5,6 @@
 package boot_service
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -31,15 +30,18 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) (*BootServiceClient, 
 	return c, srv
 }
 
+// TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras verifies that
+// AddNodeSpecs POSTs to /nodes with an envelope built from the name and spec
+// only, without labels.
 func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{})
+		encodeJSONResponse(t, w, api.Node{})
 	})
 	defer srv.Close()
 
@@ -77,12 +79,14 @@ func TestAddNodeSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	}
 }
 
+// TestAddNodes_EnvelopeIncludesLabels verifies that AddNodes sends a request's
+// labels in the envelope.
 func TestAddNodes_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{})
+		encodeJSONResponse(t, w, api.Node{})
 	})
 	defer srv.Close()
 
@@ -105,6 +109,9 @@ func TestAddNodes_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestAddNodeSpecs_ReturnsOnlyCreatedResources verifies that AddNodeSpecs
+// returns only the nodes the service created and reports each failed request
+// separately.
 func TestAddNodeSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +121,7 @@ func TestAddNodeSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
+		encodeJSONResponse(t, w, api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
 	})
 	defer srv.Close()
 
@@ -136,6 +143,8 @@ func TestAddNodeSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
+// TestAddNodes_ReturnsOnlyCreatedResources verifies that AddNodes returns only
+// the nodes the service created and reports each failed request separately.
 func TestAddNodes_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +154,7 @@ func TestAddNodes_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
+		encodeJSONResponse(t, w, api.Node{Metadata: fabrica.Metadata{Name: "created node"}})
 	})
 	defer srv.Close()
 
@@ -167,15 +176,17 @@ func TestAddNodes_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
+// TestSetNodeSpec_SendsSpecToUIDEndpoint verifies that SetNodeSpec PUTs the
+// spec, without labels, to the node's /nodes/<uid> endpoint.
 func TestSetNodeSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.Node{})
+		encodeJSONResponse(t, w, api.Node{})
 	})
 	defer srv.Close()
 

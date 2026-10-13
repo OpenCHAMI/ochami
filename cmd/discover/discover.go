@@ -6,8 +6,6 @@
 package discover
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -22,12 +20,12 @@ func NewCmd() *cobra.Command {
 		Use:   "discover",
 		Args:  cobra.NoArgs,
 		Short: "Perform static or dynamic discovery of nodes",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Check that all required args are passed
 			if len(args) == 0 {
-				cli.PrintUsageHandleError(cmd)
-				os.Exit(0)
+				return cli.PrintUsageHandleError(cmd)
 			}
+			return nil
 		},
 	}
 

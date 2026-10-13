@@ -27,6 +27,14 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+    rules:
+      # Test response writes: the client under test observes the write
+      # (or its absence), so checking the httptest handler's own write
+      # error adds nothing. Writes outside tests are still checked.
+      - path: _test\.go
+        linters:
+          - errcheck
+        text: "Error return value of `(w\\.Write|io\\.WriteString)` is not checked"
 formatters:
   enable:
     - gofmt

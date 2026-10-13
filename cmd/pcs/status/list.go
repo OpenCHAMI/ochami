@@ -9,14 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	pcs_lib "github.com/openchami/ochami/internal/cli/pcs"
-	"github.com/openchami/ochami/internal/log"
 	"github.com/openchami/ochami/pkg/client"
 	"github.com/openchami/ochami/pkg/format"
 )
@@ -116,41 +114,41 @@ func newCmdStatusList() *cobra.Command {
 See ochami-pcs(1) for more details.`,
 		Example: `  # List status
   ochami pcs status list`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client to use for requests
-			pcsClient := pcs_lib.GetClient(cmd)
+			pcsClient, err := pcs_lib.GetClient(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Handle token for this command
-			cli.HandleToken(cmd)
+			if err := cli.HandleToken(cmd); err != nil {
+				return err
+			}
 
 			// Get status
 			statusHttpEnv, err := pcsClient.GetStatus(xnames, string(powerFilter), string(mgmtFilter), cli.Token)
 			if err != nil {
 				if errors.Is(err, client.UnsuccessfulHTTPError) {
-					log.Logger.Error().Err(err).Msg("PCS status request yielded unsuccessful HTTP response")
-				} else {
-					log.Logger.Error().Err(err).Msg("failed to list PCS transitions")
+					return cli.Errorf(cli.CodeHTTP, "PCS status request yielded unsuccessful HTTP response: %w", err)
 				}
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodeNetwork, "failed to list PCS transitions: %w", err)
 			}
 
 			var output interface{}
 			err = json.Unmarshal(statusHttpEnv.Body, &output)
 			if err != nil {
-				log.Logger.Error().Err(err).Msg("failed to unmarshal status response")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
+				return cli.Errorf(cli.CodePayload, "failed to unmarshal status response: %w", err)
 			}
 
 			// Print output
-			if outBytes, err := format.MarshalData(output, cli.FormatOutput); err != nil {
-				log.Logger.Error().Err(err).Msg("failed to format output")
-				cli.LogHelpError(cmd)
-				os.Exit(1)
-			} else {
-				fmt.Println(string(outBytes))
+			outBytes, err := format.MarshalData(output, cli.FormatOutput)
+			if err != nil {
+				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
+			fmt.Println(string(outBytes))
+
+			return nil
 		},
 	}
 

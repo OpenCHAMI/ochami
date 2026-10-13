@@ -14,6 +14,9 @@ import (
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 )
 
+// TestAddWireGuardPeerSpecs_OmitsLabels verifies that AddWireGuardPeerSpecs
+// POSTs to /wireguardpeers with an envelope built from the name and spec only,
+// without labels.
 func TestAddWireGuardPeerSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -58,6 +61,8 @@ func TestAddWireGuardPeerSpecs_OmitsLabels(t *testing.T) {
 	}
 }
 
+// TestAddWireGuardPeers_EnvelopeIncludesLabels verifies that AddWireGuardPeers
+// sends a request's labels in the envelope.
 func TestAddWireGuardPeers_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +91,8 @@ func TestAddWireGuardPeers_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestSetWireGuardPeerSpec_UsesUIDEndpoint verifies that SetWireGuardPeerSpec
+// PUTs the spec to the peer's /wireguardpeers/<uid> endpoint.
 func TestSetWireGuardPeerSpec_UsesUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {

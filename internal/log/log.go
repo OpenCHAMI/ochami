@@ -22,12 +22,32 @@ import (
 )
 
 var (
-	Logger zerolog.Logger
+	// Logger is the global logger used throughout the CLI. Until Init
+	// replaces it with a logger built from the resolved --log-level,
+	// --log-format, and --log-color, it writes plain "ochami: <message>"
+	// lines to os.Stderr at the default level (warning), so a failure that
+	// happens before or during Init (an unknown flag, an unreadable config
+	// file) is still reported in human-readable form.
+	Logger = NewDefault(os.Stderr)
 
 	// A BasicLogger that is turned off until turned on by the
 	// --verbose flag.
 	EarlyLogger = NewBasicLogger(os.Stderr, false, version.ProgName)
 )
+
+// NewDefault returns the logger used before logging is configured: plain
+// "<prog>: <message>" lines (plus any fields) written to w at warning level.
+func NewDefault(w io.Writer) zerolog.Logger {
+	cw := zerolog.ConsoleWriter{
+		Out:        w,
+		NoColor:    true,
+		PartsOrder: []string{zerolog.LevelFieldName, zerolog.MessageFieldName},
+		FormatLevel: func(interface{}) string {
+			return version.ProgName + ":"
+		},
+	}
+	return zerolog.New(cw).Level(zerolog.WarnLevel)
+}
 
 // Init() initializes the global logging object so it can be used for logging by
 // any package that imports this internal log package.

@@ -5,7 +5,6 @@
 package boot_service
 
 import (
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -14,15 +13,18 @@ import (
 	"github.com/openchami/fabrica/pkg/fabrica"
 )
 
+// TestAddBootConfigSpecs_SendsNameAndSpecWithoutEnvelopeExtras verifies that
+// AddBootConfigSpecs POSTs to /bootconfigurations with an envelope built from
+// the name and spec only, without labels.
 func TestAddBootConfigSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{})
+		encodeJSONResponse(t, w, api.BootConfiguration{})
 	})
 	defer srv.Close()
 
@@ -60,12 +62,14 @@ func TestAddBootConfigSpecs_SendsNameAndSpecWithoutEnvelopeExtras(t *testing.T) 
 	}
 }
 
+// TestAddBootConfigs_EnvelopeIncludesLabels verifies that AddBootConfigs sends
+// a request's labels in the envelope.
 func TestAddBootConfigs_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{})
+		encodeJSONResponse(t, w, api.BootConfiguration{})
 	})
 	defer srv.Close()
 
@@ -88,6 +92,9 @@ func TestAddBootConfigs_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
+// TestAddBootConfigSpecs_ReturnsOnlyCreatedResources verifies that
+// AddBootConfigSpecs returns only the boot configurations the service created
+// and reports each failed request separately.
 func TestAddBootConfigSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +104,7 @@ func TestAddBootConfigSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
+		encodeJSONResponse(t, w, api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
 	})
 	defer srv.Close()
 
@@ -119,6 +126,9 @@ func TestAddBootConfigSpecs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
+// TestAddBootConfigs_ReturnsOnlyCreatedResources verifies that AddBootConfigs
+// returns only the boot configurations the service created and reports each
+// failed request separately.
 func TestAddBootConfigs_ReturnsOnlyCreatedResources(t *testing.T) {
 	requests := 0
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +138,7 @@ func TestAddBootConfigs_ReturnsOnlyCreatedResources(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
+		encodeJSONResponse(t, w, api.BootConfiguration{Metadata: fabrica.Metadata{Name: "created config"}})
 	})
 	defer srv.Close()
 
@@ -150,15 +160,18 @@ func TestAddBootConfigs_ReturnsOnlyCreatedResources(t *testing.T) {
 	}
 }
 
+// TestSetBootConfigSpec_SendsSpecToUIDEndpoint verifies that SetBootConfigSpec
+// PUTs the spec, without labels, to the boot configuration's
+// /bootconfigurations/<uid> endpoint.
 func TestSetBootConfigSpec_SendsSpecToUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		decodeJSONBody(t, r, &gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.BootConfiguration{})
+		encodeJSONResponse(t, w, api.BootConfiguration{})
 	})
 	defer srv.Close()
 

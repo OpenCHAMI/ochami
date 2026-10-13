@@ -7,14 +7,12 @@ package cluster
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/knadh/koanf/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/internal/config"
-	"github.com/openchami/ochami/internal/log"
 )
 
 func newCmdClusterShow() *cobra.Command {
@@ -34,9 +32,7 @@ See ochami-config(5) for details on the configuration options.`,
 			// It doesn't make sense to show the config of a config file
 			// that doesn't exist, so err if the specified config file
 			// doesn't exist.
-			cli.InitConfigAndLogging(cmd, false)
-
-			return nil
+			return cli.InitConfigAndLogging(cmd, false)
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// To mark both persistent and regular flags mutually exclusive,
@@ -47,7 +43,7 @@ See ochami-config(5) for details on the configuration options.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get the config from the relevant file depending on the flag,
 			// or the merged config if none.
 			var ko *koanf.Koanf
@@ -55,23 +51,17 @@ See ochami-config(5) for details on the configuration options.`,
 			if cmd.Flags().Changed("system") {
 				ko, err = config.ReadConfigWithDefaults(config.SystemConfigFile)
 				if err != nil {
-					log.Logger.Error().Err(err).Msgf("failed to read system config file")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "failed to read system config file: %w", err)
 				}
 			} else if cmd.Flags().Changed("user") {
 				ko, err = config.ReadConfigWithDefaults(config.UserConfigFile)
 				if err != nil {
-					cli.LogHelpError(cmd)
-					log.Logger.Error().Err(err).Msgf("failed to read user config file")
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "failed to read user config file: %w", err)
 				}
 			} else if cmd.Flags().Changed("config") {
 				ko, err = config.ReadConfigWithDefaults(cmd.Flag("config").Value.String())
 				if err != nil {
-					log.Logger.Error().Err(err).Msgf("failed to read config file %s", cmd.Flag("config").Value.String())
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "failed to read config file %s: %w", cmd.Flag("config").Value.String(), err)
 				}
 			} else {
 				ko = config.GlobalKoanf
@@ -83,17 +73,13 @@ See ochami-config(5) for details on the configuration options.`,
 				// No cluster specified, get all of them.
 				val, err = config.GetConfigString(ko, "clusters")
 				if err != nil {
-					log.Logger.Error().Err(err).Msg("failed to fetch config for all clusters")
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "failed to fetch config for all clusters: %w", err)
 				}
 			} else {
 				var cfgCl *config.ConfigCluster
 				var clusters []config.ConfigCluster
-				err = ko.Unmarshal("clusters", &clusters)
-				if err != nil {
-					log.Logger.Error().Err(err).Msgf("failed to unmarshal clusters from %s", cmd.Flag("config").Value.String())
-					os.Exit(1)
+				if err := ko.Unmarshal("clusters", &clusters); err != nil {
+					return cli.Errorf(cli.CodeConfig, "failed to unmarshal clusters: %w", err)
 				}
 				for cidx, cl := range clusters {
 					if cl.Name == args[0] {
@@ -102,9 +88,7 @@ See ochami-config(5) for details on the configuration options.`,
 					}
 				}
 				if cfgCl == nil {
-					log.Logger.Error().Msgf("cluster %q not found", args[0])
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "cluster %q not found", args[0])
 				}
 
 				// Individual key was requested, print value directly
@@ -114,17 +98,16 @@ See ochami-config(5) for details on the configuration options.`,
 				val, err = config.GetConfigClusterString(*cfgCl, key)
 				if err != nil {
 					if key == "" {
-						log.Logger.Error().Err(err).Msgf("failed to get full cluster config")
-					} else {
-						log.Logger.Error().Err(err).Msgf("failed to get cluster config for key %q", key)
+						return cli.Errorf(cli.CodeConfig, "failed to get full cluster config: %w", err)
 					}
-					cli.LogHelpError(cmd)
-					os.Exit(1)
+					return cli.Errorf(cli.CodeConfig, "failed to get cluster config for key %q: %w", key, err)
 				}
 			}
 			if val != "" {
 				fmt.Print(val)
 			}
+
+			return nil
 		},
 	}
 
