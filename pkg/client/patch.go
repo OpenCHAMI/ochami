@@ -60,6 +60,18 @@ func (pm PatchMethod) Type() string {
 	return "PatchMethod"
 }
 
+// ContentType returns the media type required by the selected patch method.
+func (pm PatchMethod) ContentType() (string, error) {
+	switch pm {
+	case PatchMethodRFC6902:
+		return "application/json-patch+json", nil
+	case PatchMethodRFC7386, PatchMethodKeyVal:
+		return "application/merge-patch+json", nil
+	default:
+		return "", fmt.Errorf("unknown patch format: %s", pm)
+	}
+}
+
 // NewKeyValPatch takes slices of items to set/unset and returns a map that can
 // be marshaled and used as PatchMethodKeyVal/PatchMethodRFC7386 data. addList
 // and removeList are accepted for backward compatibility but are ignored here;

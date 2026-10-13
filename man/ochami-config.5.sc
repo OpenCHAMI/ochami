@@ -75,8 +75,8 @@ These configuration options are global configuration options.
 		- _off_
 
 *timeout:* _duration_
-	The timeout to use for HTTP requests. This is a duration string as accepted
-	by Go's duration parser (e.g. _30s_, _5m_, _1m30s_).
+	The timeout to use for HTTP requests. This is a positive duration string as
+	accepted by Go's duration parser (e.g. _30s_, _5m_, _1m30s_).
 
 	Default: *30s*
 
@@ -248,7 +248,15 @@ log:
 # FILES
 
 _/etc/ochami/config.yaml_
+	The system-wide configuration file.
+
+_$XDG_CONFIG_HOME/ochami/config.yaml_
+	The user-level configuration file if *XDG_CONFIG_HOME* is set to an absolute
+	path.
+
 _~/.config/ochami/config.yaml_
+	The user-level configuration file if *XDG_CONFIG_HOME* is unset or not an
+	absolute path.
 
 # AUTHOR
 
