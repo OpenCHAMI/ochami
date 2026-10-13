@@ -754,7 +754,10 @@ func TestUserConfigPath_UsesHomeConfigDir(t *testing.T) {
 // TestDefaultTimeout ensures DefaultTimeout returns the parsed default.
 func TestDefaultTimeout(t *testing.T) {
 	got := DefaultTimeout()
-	want, _ := time.ParseDuration(DefaultGlobalMap()["timeout"].(string))
+	want, err := time.ParseDuration(DefaultGlobalMap()["timeout"].(string))
+	if err != nil {
+		t.Fatalf("parse default timeout: %v", err)
+	}
 	if got != want {
 		t.Fatalf("DefaultTimeout() = %s, want %s", got, want)
 	}

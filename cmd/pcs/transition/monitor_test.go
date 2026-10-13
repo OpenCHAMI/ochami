@@ -47,13 +47,13 @@ func runMonitor(t *testing.T, provider pcsTransitionClientProvider, args ...stri
 	cmd := newCmdTransitionMonitorWithClient(provider)
 	// Speed up any polling that does occur.
 	if err := cmd.Flags().Set("poll-interval", "0"); err != nil {
-		t.Fatal(err)
+		t.Fatalf("set poll-interval flag: %v", err)
 	}
 	// The command relies on token handling, which inspects these flags.
 	cmd.Flags().Bool("no-token", true, "")
 	cmd.Flags().String("cluster", "", "")
 	if err := cmd.Flags().Set("no-token", "true"); err != nil {
-		t.Fatal(err)
+		t.Fatalf("set no-token flag: %v", err)
 	}
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)

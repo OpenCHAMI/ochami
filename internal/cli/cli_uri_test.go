@@ -300,14 +300,14 @@ func TestGetAPIVersion_Precedence(t *testing.T) {
 	})
 	cmd := newURICmd()
 	if err := cmd.Flags().Set("cluster", "chosen"); err != nil {
-		t.Fatalf("set cluster flag: %v", err)
+		t.Fatal(err)
 	}
 	got, err := GetAPIVersion(cmd, config.ServiceBoot)
 	if err != nil || got != "v2" {
 		t.Fatalf("GetAPIVersion explicit cluster = %q, %v; want v2", got, err)
 	}
 	if err := cmd.Flags().Set("api-version", "v3"); err != nil {
-		t.Fatalf("set api-version flag: %v", err)
+		t.Fatal(err)
 	}
 	got, err = GetAPIVersion(cmd, config.ServiceBoot)
 	if err != nil || got != "v3" {

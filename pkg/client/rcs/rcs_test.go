@@ -98,11 +98,19 @@ func TestShowConsole_StreamsOutput(t *testing.T) {
 			return
 		}
 		defer conn.Close()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("hello "))
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("console"))
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("hello ")); err != nil {
+			t.Errorf("write first websocket message: %v", err)
+			return
+		}
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("console")); err != nil {
+			t.Errorf("write second websocket message: %v", err)
+			return
+		}
 		// Close normally so ShowConsole returns nil.
-		_ = conn.WriteMessage(websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err := conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			t.Errorf("write websocket close message: %v", err)
+		}
 	}))
 	defer srv.Close()
 

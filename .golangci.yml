@@ -12,12 +12,22 @@ linters:
   settings:
     errcheck:
       check-type-assertions: false
-      check-blank: false
+      check-blank: true
       exclude-functions:
         - (*github.com/spf13/cobra.Command).RegisterFlagCompletionFunc
         - fmt.Fprint
         - fmt.Fprintf
         - fmt.Fprintln
+        # Flag values read back via Flags().GetX are always registered with
+        # the matching type on the same command, so the "flag not found" /
+        # "wrong type" error these return cannot occur.
+        - (*github.com/spf13/pflag.FlagSet).GetBool
+        - (*github.com/spf13/pflag.FlagSet).GetString
+        - (*github.com/spf13/pflag.FlagSet).GetStringSlice
+        - (*github.com/spf13/pflag.FlagSet).GetInt
+        - (*github.com/spf13/pflag.FlagSet).GetInt32
+        - (*github.com/spf13/pflag.FlagSet).GetInt32Slice
+        - (*github.com/spf13/pflag.FlagSet).GetDuration
     exhaustive:
       default-signifies-exhaustive: true
   exclusions:
