@@ -67,16 +67,16 @@ func TestSimpleGetters(t *testing.T) {
 // TestGetGroups_All verifies GetGroups with no IDs issues a single GET to the
 // groups collection and returns one nil per-item error.
 func TestGetGroups_All(t *testing.T) {
-	var gotPath string
+	var gotMethod, gotPath string
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
+		gotMethod, gotPath = r.Method, r.URL.Path
 		w.Write([]byte(`{}`))
 	})
 	defer srv.Close()
 
 	results := cic.GetGroups(context.Background(), "tok")
-	if gotPath != "/admin/groups" {
-		t.Errorf("path = %q, want /admin/groups", gotPath)
+	if gotMethod != http.MethodGet || gotPath != "/admin/groups" {
+		t.Errorf("request = %s %s, want GET /admin/groups", gotMethod, gotPath)
 	}
 	if len(results) != 1 || results[0].Err != nil {
 		t.Errorf("results = %v, want a single nil error", results)
@@ -86,9 +86,9 @@ func TestGetGroups_All(t *testing.T) {
 // TestGetGroups_ByID verifies GetGroups with IDs issues one GET per ID to
 // /admin/groups/{id}.
 func TestGetGroups_ByID(t *testing.T) {
-	var paths []string
+	var requests []string
 	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
-		paths = append(paths, r.URL.Path)
+		requests = append(requests, r.Method+" "+r.URL.Path)
 		w.Write([]byte(`{}`))
 	})
 	defer srv.Close()
@@ -97,9 +97,9 @@ func TestGetGroups_ByID(t *testing.T) {
 	if len(results) != 2 {
 		t.Fatalf("results length = %d, want 2", len(results))
 	}
-	want := []string{"/admin/groups/compute", "/admin/groups/storage"}
-	if len(paths) != 2 || paths[0] != want[0] || paths[1] != want[1] {
-		t.Errorf("paths = %v, want %v", paths, want)
+	want := []string{"GET /admin/groups/compute", "GET /admin/groups/storage"}
+	if len(requests) != 2 || requests[0] != want[0] || requests[1] != want[1] {
+		t.Errorf("requests = %v, want %v", requests, want)
 	}
 }
 
@@ -239,8 +239,7 @@ func TestCIGroupDataMapToSlice(t *testing.T) {
 }
 
 // TestDecodeCloudConfig_Encodings verifies plain content passes through and
-// base64 content is decoded. The unknown-encoding rejection case is covered by
-// TestDecodeCloudConfig_UnknownEncoding in cloud_init_errors_test.go.
+// base64 content is decoded.
 func TestDecodeCloudConfig_Encodings(t *testing.T) {
 	t.Run("plain", func(t *testing.T) {
 		out, err := DecodeCloudConfig(cistore.CloudConfigFile{Content: []byte("#cloud-config"), Encoding: "plain"})

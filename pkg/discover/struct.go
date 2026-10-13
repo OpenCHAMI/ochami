@@ -69,7 +69,7 @@ func (b BMC) String() string {
 		b.Name, b.Xname, b.MACAddr, b.IPAddr, b.FQDN)
 }
 
-// Node represents a computer object that posesses identification information,
+// Node represents a computer object that possesses identification information,
 // one or more network interfaces, optional membership to one or more groups,
 // and a linked BMC that is attached to. A Node must be linked to a BMC to be
 // known to SMD. A link can either be established by setting the BMC field to

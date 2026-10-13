@@ -111,7 +111,7 @@ func TestFabricaWrapHTTPError(t *testing.T) {
 				// A non-matching error must be returned unchanged (same
 				// value), not wrapped or altered, even if it already
 				// satisfies errors.Is via some other path.
-				if got != tt.err {
+				if got != tt.err { //nolint:errorlint // identity is the property under test
 					t.Errorf("FabricaWrapHTTPError(%q) = %v, want the original error returned unchanged", tt.err, got)
 				}
 			}

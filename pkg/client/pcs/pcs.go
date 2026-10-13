@@ -47,7 +47,7 @@ func NewClient(baseURI string, opts ...client.Option) (*PCSClient, error) {
 }
 
 // GetLiveness is a wrapper function around OchamiClient.GetData to
-// hit the /liveness endpoint
+// hit the /liveness endpoint.
 func (pc *PCSClient) GetLiveness(ctx context.Context) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
@@ -63,7 +63,7 @@ func (pc *PCSClient) GetLiveness(ctx context.Context) (client.HTTPEnvelope, erro
 }
 
 // GetReadiness is a wrapper function around OchamiClient.GetData to
-// hit the /readiness endpoint
+// hit the /readiness endpoint.
 func (pc *PCSClient) GetReadiness(ctx context.Context) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
@@ -79,7 +79,7 @@ func (pc *PCSClient) GetReadiness(ctx context.Context) (client.HTTPEnvelope, err
 }
 
 // GetHealth is a wrapper function around OchamiClient.GetData to
-// hit the /health endpoint
+// hit the /health endpoint.
 func (pc *PCSClient) GetHealth(ctx context.Context) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
@@ -105,7 +105,7 @@ type locationEntry struct {
 }
 
 // CreateTransition is a wrapper function around OchamiClient.PostData to
-// hit the /transitions endpoint
+// hit the /transitions endpoint.
 func (pc *PCSClient) CreateTransition(ctx context.Context, operation string, taskDeadline *int, xnames []string, token string) (client.HTTPEnvelope, error) {
 	var henv client.HTTPEnvelope
 
@@ -147,7 +147,7 @@ func (pc *PCSClient) CreateTransition(ctx context.Context, operation string, tas
 }
 
 // GetTransitions is a wrapper function around OchamiClient.GetData to
-// hit the /transitions endpoint
+// hit the /transitions endpoint.
 func (pc *PCSClient) GetTransitions(ctx context.Context, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope
@@ -168,7 +168,7 @@ func (pc *PCSClient) GetTransitions(ctx context.Context, token string) (client.H
 }
 
 // GetTransitions is a wrapper function around OchamiClient.GetData to
-// hit the /transitions/{transitionID} endpoint
+// hit the /transitions/{transitionID} endpoint.
 func (pc *PCSClient) GetTransition(ctx context.Context, id string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv                   client.HTTPEnvelope
@@ -196,7 +196,7 @@ func (pc *PCSClient) GetTransition(ctx context.Context, id string, token string)
 }
 
 // DeleteTransitions is a wrapper function around OchamiClient.DeleteData to
-// hit the /transitions/{transitionID} endpoint
+// hit the /transitions/{transitionID} endpoint.
 func (pc *PCSClient) DeleteTransition(ctx context.Context, id string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv                  client.HTTPEnvelope
@@ -224,7 +224,7 @@ func (pc *PCSClient) DeleteTransition(ctx context.Context, id string, token stri
 }
 
 // GetStatus is a wrapper function around OchamiClient.GetData to
-// hit the /power-status endpoint
+// hit the /power-status endpoint.
 func (pc *PCSClient) GetStatus(ctx context.Context, xnames []string, powerStateFilter string, mgmtStateFilter string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv client.HTTPEnvelope

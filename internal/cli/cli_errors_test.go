@@ -82,8 +82,8 @@ func TestSetTokenFromEnv_NoCluster(t *testing.T) {
 	}
 }
 
-// TestHandleToken_UnknownCluster verifies direct callers cannot silently skip
-// token handling for a cluster that does not exist.
+// TestHandleToken_UnknownCluster verifies HandleToken fails with CodeConfig
+// when the cluster does not exist, rather than skipping the token for it.
 func TestHandleToken_UnknownCluster(t *testing.T) {
 	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
 	rt.Config = config.Config{DefaultCluster: "missing"}

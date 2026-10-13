@@ -496,11 +496,13 @@ func TestSMDBatch_ExactOrderAndCardinality(t *testing.T) {
 	}
 }
 
-// TestPutRedfishEndpoints_BlankID verifies PUT batch rejects blank RFE IDs.
+// TestPutRedfishEndpoints_BlankID verifies PutRedfishEndpoints rejects an
+// endpoint with a blank ID as an InvalidArgumentError without sending it, and
+// still sends the endpoints around it.
 func TestPutRedfishEndpoints_BlankID(t *testing.T) {
-	requestMade := false
+	var requests []string
 	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
-		requestMade = true
+		requests = append(requests, r.Method+" "+r.URL.Path)
 	})
 	defer srv.Close()
 
@@ -528,10 +530,11 @@ func TestPutRedfishEndpoints_BlankID(t *testing.T) {
 		t.Errorf("result[2].Err = %v, want nil (executor continues past item-local failures)", results[2].Err)
 	}
 
-	// The first and third items should have reached the server; the second
-	// fails validation locally and never issues a request.
-	if !requestMade {
-		t.Error("no requests were made")
+	// Only the first and third items reach the server; the second fails
+	// validation locally and never issues a request.
+	want := []string{"PUT /Inventory/RedfishEndpoints/rfe0", "PUT /Inventory/RedfishEndpoints/rfe2"}
+	if len(requests) != len(want) || requests[0] != want[0] || requests[1] != want[1] {
+		t.Errorf("requests = %v, want %v", requests, want)
 	}
 }
 

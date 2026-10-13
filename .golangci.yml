@@ -5,11 +5,55 @@
 
 version: "2"
 linters:
-  enable: []
-  disable:
-    - staticcheck
-    - unused
+  # These run in addition to golangci-lint's standard linters.
+  enable:
+    # Keeps pkg/ free of imports from the command tree and CLI state (see
+    # settings).
+    - depguard
+    # Flags repeated words ("the the") in comments and strings.
+    - dupword
+    # Flags comparisons and type assertions on errors, which miss wrapped
+    # errors (use errors.Is and errors.As), and fmt.Errorf calls that format
+    # an error without %w.
+    - errorlint
+    # Forbids calls that bypass the invocation runtime (see settings).
+    - forbidigo
+    # Requires doc comments on declarations to end with a period.
+    - godot
+    # Flags commonly misspelled English words in comments and strings.
+    - misspell
+    # Requires every //nolint directive to name its linter and give a reason,
+    # and flags directives that no longer suppress anything.
+    - nolintlint
+    # Requires command tests to call t.Parallel() (scoped to cmd/ in the
+    # exclusions).
+    - paralleltest
+    # Requires test helpers that take a *testing.T to call t.Helper().
+    - thelper
+    # Requires tests to use t.TempDir, t.Setenv, and t.Chdir rather than
+    # os.MkdirTemp, os.Setenv, and os.Chdir, so the testing package cleans up.
+    - usetesting
   settings:
+    depguard:
+      rules:
+        # pkg/ is the import-safe public API, so it must not depend on the
+        # CLI's command tree, invocation state, or config formatting.
+        # pkg/client may still import internal/version for its User-Agent.
+        public-api:
+          files:
+            - "**/pkg/**/*.go"
+          deny:
+            - pkg: github.com/openchami/ochami/cmd
+              desc: pkg/ must not depend on the command tree
+            - pkg: github.com/openchami/ochami/internal/cli
+              desc: pkg/ must not depend on CLI invocation state
+            - pkg: github.com/openchami/ochami/internal/configfile
+              desc: pkg/ must not depend on CLI config formatting
+    dupword:
+      # Tests answer a run of confirmation prompts with "y\ny\n", which
+      # isn't a typo.
+      ignore:
+        - "y"
     errcheck:
       check-type-assertions: false
       check-blank: true
@@ -30,6 +74,50 @@ linters:
         - (*github.com/spf13/pflag.FlagSet).GetDuration
     exhaustive:
       default-signifies-exhaustive: true
+    forbidigo:
+      # Match calls by the package they resolve to, so importing a package
+      # under another name doesn't get past a pattern.
+      analyze-types: true
+      forbid:
+        # Commands read and write through the invocation runtime's streams,
+        # which tests replace. Applies to cmd/ only (see exclusions).
+        - pattern: ^os\.(Stdin|Stdout|Stderr)$
+          msg: commands use the runtime's streams (rt.Ios.In(), rt.Ios.Out(), rt.Ios.Err())
+        # Same reason, for printing to os.Stdout implicitly. Library code in
+        # pkg/ doesn't print either. Applies to non-test code (see
+        # exclusions).
+        - pattern: ^fmt\.Print(f|ln)?$
+          msg: write through the runtime's streams (rt.Ios.Out(), cli.WriteOutput)
+        # Commands return errors; Execute in cmd/root.go is the one place
+        # that exits, with the code cli.ExitCode assigns (see exclusions).
+        - pattern: ^os\.Exit$
+          msg: return an error; cmd/root.go's Execute is the only place that exits
+    godot:
+      # Check doc comments on top-level declarations and on the entries in
+      # import, const, and var blocks, but not comments inside functions.
+      # Labels inside blocks are exempt (see exclusions).
+      scope: declarations
+    nolintlint:
+      # Directives take the form //nolint:<linter> // <reason>.
+      require-explanation: true
+      require-specific: true
+    paralleltest:
+      # Require t.Parallel() in each command test, not in each of its t.Run
+      # subtests; some tables' subtests share state.
+      ignore-missing-subtests: true
+    staticcheck:
+      checks:
+        - all
+        # Names with underscores or lowercase initialisms (DataFormatJson,
+        # bmc_spec). Some are exported API, which renaming would break.
+        - -ST1003
+        # Sentinel error variables named ErrFoo. client.UnsuccessfulHTTPError
+        # and its siblings are exported API, which renaming would break.
+        - -ST1012
+        # Dropping an embedded field's name from a selector (oc.Client.Do to
+        # oc.Do). Naming the field shows which value a call or field
+        # belongs to.
+        - -QF1008
   exclusions:
     generated: lax
     presets:
@@ -45,6 +133,34 @@ linters:
         linters:
           - errcheck
         text: "Error return value of `(w\\.Write|io\\.WriteString)` is not checked"
+      # Only command tests are required to call t.Parallel(); elsewhere, many
+      # tests share package state.
+      - path-except: ^cmd/
+        linters:
+          - paralleltest
+      # Outside cmd/, the runtime itself (internal/cli) and library defaults
+      # (pkg/client's ReadPayload helpers) use the process's streams.
+      - path-except: ^cmd/
+        linters:
+          - forbidigo
+        text: "os\\.(Stdin|Stdout|Stderr)"
+      # Tests and examples print freely; examples must, for their Output
+      # comments.
+      - path: _test\.go
+        linters:
+          - forbidigo
+        text: "fmt\\.Print"
+      # Execute in cmd/root.go is where a command's exit code takes effect.
+      - path: ^cmd/root\.go$
+        linters:
+          - forbidigo
+        text: "os\\.Exit"
+      # A short label for a group of entries inside an import, const, or var
+      # block (// Subcommands) isn't a sentence, so it needs no period. Doc
+      # comments on top-level declarations still do.
+      - linters:
+          - godot
+        source: "^\\s+// [A-Z]\\w*( \\w+){0,3}$"
 formatters:
   enable:
     - gofmt

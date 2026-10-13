@@ -19,7 +19,7 @@ type JSONPatchOperation struct {
 	Value interface{} `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
-// PatchMethod represents the supported patch type
+// PatchMethod represents the supported patch type.
 type PatchMethod string
 
 const (

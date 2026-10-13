@@ -538,7 +538,7 @@ func TestNodeListDeprecated_String_MultipleNodes(t *testing.T) {
 	}
 	got := nl.String()
 
-	if !(strings.Contains(got, `nid1`) && strings.Contains(got, `nid2`)) {
+	if !strings.Contains(got, `nid1`) || !strings.Contains(got, `nid2`) {
 		t.Fatalf("NodeListDeprecated.String() should contain both nodes, got: %q", got)
 	}
 	if !strings.Contains(got, "node0={") || !strings.Contains(got, "node1={") {

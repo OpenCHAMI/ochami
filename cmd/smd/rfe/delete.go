@@ -113,7 +113,7 @@ This command sends a DELETE to SMD. An access token is required.
 See ochami-smd(1) for more details.`,
 		Example: `  # Delete a redfish endpoint using CLI flags
   ochami smd rfe delete x3000c1s7b56
-  ochami smd rfe delete x3000c1s7b56 x3000c1s7b56
+  ochami smd rfe delete x3000c1s7b56 x3000c1s7b57
   ochami smd rfe delete --all
 
   # Delete redfish endpoints using input payload file
