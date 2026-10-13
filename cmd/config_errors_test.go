@@ -96,3 +96,54 @@ func TestConfigUnset_UnknownKey(t *testing.T) {
 		t.Errorf("error = %q, want missing-key context", res.err)
 	}
 }
+
+// TestConfigShow_PropagatesOutputFailures verifies that "config show" and
+// "config cluster show" report a failure to write their output as
+// CodePayload.
+func TestConfigShow_PropagatesOutputFailures(t *testing.T) {
+	t.Parallel()
+
+	cfg := writeTempConfig(t, `log:
+  level: info
+clusters:
+- name: alpha
+  cluster:
+    uri: https://alpha.example
+`)
+	for _, args := range [][]string{
+		{"--config", cfg, "config", "show"},
+		{"--config", cfg, "config", "cluster", "show", "alpha"},
+	} {
+		res := runOchamiWithOutputWriter(t, commandErrorWriter{}, args...)
+		if res.err == nil || res.exitCode != cli.CodePayload {
+			t.Fatalf("args %v: result = (err %v, exit %d), want output failure", args, res.err, res.exitCode)
+		}
+		if !strings.Contains(res.err.Error(), "injected command output failure") {
+			t.Errorf("args %v: error = %q, want writer failure", args, res.err)
+		}
+	}
+}
+
+// TestConfig_MalformedYAML verifies that a syntactically broken YAML file
+// produces a clear parsing error with CodeConfig.
+func TestConfig_MalformedYAML(t *testing.T) {
+	t.Parallel()
+
+	cfg := writeTempConfig(t, `clusters: [
+  - name: test
+    cluster:
+      uri: http://localhost:8080
+  invalid yaml here`)
+
+	res := runOchamiWithRuntime(t, "--config", cfg, "config", "show")
+
+	if res.err == nil {
+		t.Fatal("expected a YAML parsing error, got nil")
+	}
+	if res.exitCode != cli.CodeConfig {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
+	}
+	if !strings.Contains(res.err.Error(), "yaml") {
+		t.Errorf("expected error to mention yaml parsing, got: %v", res.err)
+	}
+}

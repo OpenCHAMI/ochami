@@ -191,6 +191,33 @@ func TestTokenHelpers_AllowStandaloneCommands(t *testing.T) {
 	}
 }
 
+// TestInitConfig_LoadsMergedDefaults verifies InitConfig reads real process
+// environment variables (HOME, XDG_CONFIG_HOME) to resolve and load the
+// merged system+user configuration when explicitly opted in via
+// WithEnvironment, since NewTestRuntime is hermetic by default.
+func TestInitConfig_LoadsMergedDefaults(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{}).WithEnvironment(EnvironmentFunc(os.LookupEnv))
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("ignore-config", false, "")
+
+	if err := rt.InitConfig(cmd, false); err != nil {
+		t.Fatalf("InitConfig() error = %v", err)
+	}
+	if rt.Config.Log.Level == "" {
+		t.Error("InitConfig() did not load global defaults")
+	}
+	if rt.Effective == (config.Effective{}) {
+		t.Fatal("InitConfig() did not retain the effective view")
+	}
+	if rt.UserConfigFile == "" {
+		t.Error("InitConfig() did not resolve the user config path")
+	}
+}
+
 // TestInitConfig_IgnoreConfigResolvesUserConfigFile verifies that --ignore-config
 // still resolves rt.UserConfigFile (without reading it), so commands that
 // report or target the user config path (e.g. "config show --user") get a
@@ -279,5 +306,13 @@ func TestPayloadReader_Helpers(t *testing.T) {
 	cmd3.SetContext(ContextWithRuntime(context.Background(), rt))
 	if err := rt.HandlePayloadStdin(cmd3, &one); err == nil || ExitCode(err) != CodePayload {
 		t.Fatalf("invalid payload error = %v, want %d (%s)", err, CodePayload, CodeName(CodePayload))
+	}
+
+	// Test invalid slice payload
+	rt.Ios = NewIOStreams(strings.NewReader(`{`), &bytes.Buffer{}, &bytes.Buffer{})
+	cmd4 := &cobra.Command{}
+	cmd4.SetContext(ContextWithRuntime(context.Background(), rt))
+	if err := HandlePayloadStdinSlice(rt, cmd4, &many); err == nil || ExitCode(err) != CodePayload {
+		t.Fatalf("invalid slice payload error = %v, want %d (%s)", err, CodePayload, CodeName(CodePayload))
 	}
 }

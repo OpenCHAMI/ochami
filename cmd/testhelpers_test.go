@@ -19,13 +19,21 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
 )
+
+type commandErrorWriter struct{}
+
+func (commandErrorWriter) Write([]byte) (int, error) {
+	return 0, errors.New("injected command output failure")
+}
 
 func writeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
 	t.Helper()
@@ -123,6 +131,23 @@ func runOchamiWithInputAndRuntime(t *testing.T, input string, args ...string) cm
 		exitCode: cli.ExitCode(runErr),
 		stdout:   combinedBuf.String(),
 	}
+}
+
+// runOchamiWithOutputWriter runs the ochami root command with writer as its
+// output stream. Command output goes to writer, so the returned result's
+// stdout field holds what the command wrote to its error stream.
+func runOchamiWithOutputWriter(t *testing.T, writer io.Writer, args ...string) cmdResult {
+	t.Helper()
+
+	var stderr bytes.Buffer
+	rt := cli.NewTestRuntime(strings.NewReader(""), writer, &stderr)
+	rootCmd := NewRootCmd()
+	rootCmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	rootCmd.SetOut(writer)
+	rootCmd.SetErr(&stderr)
+	rootCmd.SetArgs(args)
+	err := rootCmd.Execute()
+	return cmdResult{err: err, exitCode: cli.ExitCode(err), stdout: stderr.String()}
 }
 
 // TestRunOchamiWithRuntime_Basic verifies that runOchamiWithRuntime runs a

@@ -13,10 +13,13 @@ package cmd
 
 import (
 	"encoding/base64"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/openchami/ochami/internal/cli"
 )
 
 // ciGroupServer builds an httptest.Server that serves cloud-init group data.
@@ -286,5 +289,35 @@ func TestCloudInitGroupRender_WithExtraVars(t *testing.T) {
 	}
 	if !strings.Contains(res.stdout, "hello") {
 		t.Errorf("stdout = %q, want rendered extra var", res.stdout)
+	}
+}
+
+// TestCloudInitGroupGet_ConfigEdgeCases verifies that "cloud-init group get
+// config" succeeds for a group with empty plain content and fails with
+// CodePayload for content that isn't valid base64.
+func TestCloudInitGroupGet_ConfigEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		group    string
+		wantCode int
+	}{
+		{name: "empty content", group: `{"name":"compute","file":{"content":"","encoding":"plain"}}`, wantCode: cli.CodeSuccess},
+		{name: "invalid base64", group: `{"name":"compute","file":{"content":"%%%","encoding":"base64"}}`, wantCode: cli.CodePayload},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				io.WriteString(w, tc.group)
+			}))
+			defer srv.Close()
+			res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "get", "config",
+				"compute", "--uri", srv.URL, "--token", "t")
+			if res.exitCode != tc.wantCode || (tc.wantCode == cli.CodeSuccess && res.err != nil) || (tc.wantCode != cli.CodeSuccess && res.err == nil) {
+				t.Fatalf("result = (err %v, exit %d), want exit %d (%s)", res.err, res.exitCode, tc.wantCode, cli.CodeName(tc.wantCode))
+			}
+		})
 	}
 }

@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -111,5 +112,60 @@ func TestCloudInitServiceStatus_NotRunning(t *testing.T) {
 	}
 	if !strings.Contains(res.stdout, "cloud-init is not running") {
 		t.Errorf("stdout = %q, want it to report not running", res.stdout)
+	}
+}
+
+// TestCloudInit_MalformedSuccessResponses verifies that the cloud-init group
+// and node get commands fail with CodePayload when a successful response can't
+// be decoded.
+func TestCloudInit_MalformedSuccessResponses(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		body string
+		args []string
+	}{
+		{name: "all groups", body: `{`, args: []string{"cloud-init", "group", "get", "raw"}},
+		{name: "single group", body: `{`, args: []string{"cloud-init", "group", "get", "raw", "compute"}},
+		{name: "node metadata", body: `: invalid`, args: []string{"cloud-init", "node", "get", "meta-data", "node01"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				io.WriteString(w, tc.body)
+			}))
+			defer srv.Close()
+			args := append([]string{"--ignore-config"}, tc.args...)
+			args = append(args, "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, args...)
+			if res.err == nil || res.exitCode != cli.CodePayload {
+				t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+			}
+		})
+	}
+}
+
+// TestCloudInitDefaults_GetMalformedResponse verifies that "cloud-init defaults
+// get" fails with CodePayload when the response can't be decoded.
+func TestCloudInitDefaults_GetMalformedResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"defaults":`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"cloud-init", "defaults", "get")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodePayload {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
 	}
 }

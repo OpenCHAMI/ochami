@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -273,5 +274,39 @@ func TestCloudInitGroupRender_MalformedExtraVars(t *testing.T) {
 	}
 	if res.exitCode != cli.CodePayload {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+	}
+}
+
+// TestCloudInitGroupRender_PayloadErrors verifies that "cloud-init group
+// render" fails with CodePayload for malformed node meta-data or a malformed
+// template.
+func TestCloudInitGroupRender_PayloadErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		template string
+		metadata string
+	}{
+		{name: "malformed metadata", template: `{{ ds.meta_data.hostname }}`, metadata: `: invalid`},
+		{name: "malformed template", template: `{% if`, metadata: `hostname: node01`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasSuffix(r.URL.Path, "compute.yaml") {
+					io.WriteString(w, tc.template)
+					return
+				}
+				io.WriteString(w, tc.metadata)
+			}))
+			defer srv.Close()
+			res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "render", "compute", "node01",
+				"--uri", srv.URL, "--token", "t")
+			if res.err == nil || res.exitCode != cli.CodePayload {
+				t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+			}
+		})
 	}
 }

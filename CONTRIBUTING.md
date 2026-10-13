@@ -58,6 +58,15 @@ make test PARALLEL=4
 make test RACE=0
 ```
 
+Measure coverage across all packages, then list the uncovered blocks grouped
+by risk and by file to find gaps worth testing:
+
+```bash
+make coverage
+scripts/cov-prioritize.py coverage.out                  # summary
+scripts/cov-prioritize.py coverage.out --inventory gaps.tsv  # every block
+```
+
 Run linting:
 
 ```bash

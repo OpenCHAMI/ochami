@@ -18,6 +18,53 @@ import (
 	"github.com/openchami/ochami/pkg/config"
 )
 
+type zeroWriter struct{}
+
+func (zeroWriter) Write([]byte) (int, error) { return 0, nil }
+
+type oversizedWriter struct{}
+
+func (oversizedWriter) Write(p []byte) (int, error) { return len(p) + 1, nil }
+
+type errorWriter struct{ err error }
+
+func (w errorWriter) Write([]byte) (int, error) { return 0, w.err }
+
+type errorReader struct{ err error }
+
+func (r errorReader) Read([]byte) (int, error) { return 0, r.err }
+
+// TestIOStreams_Errors verifies that LoopYesNo returns prompt-write and
+// input-read failures, and that WriteOutput reports a writer that writes too
+// few or too many bytes as io.ErrShortWrite.
+func TestIOStreams_Errors(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("stream failure")
+	t.Run("prompt writer", func(t *testing.T) {
+		ios := NewIOStreams(strings.NewReader("y\n"), io.Discard, errorWriter{sentinel})
+		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
+		}
+	})
+	t.Run("input reader", func(t *testing.T) {
+		ios := NewIOStreams(errorReader{sentinel}, io.Discard, io.Discard)
+		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
+		}
+	})
+	t.Run("zero write", func(t *testing.T) {
+		if err := WriteOutput(zeroWriter{}, []byte("data")); !errors.Is(err, io.ErrShortWrite) {
+			t.Fatalf("WriteOutput() error = %v, want io.ErrShortWrite", err)
+		}
+	})
+	t.Run("oversized write", func(t *testing.T) {
+		if err := WriteOutput(oversizedWriter{}, []byte("data")); !errors.Is(err, io.ErrShortWrite) {
+			t.Fatalf("WriteOutput() error = %v, want io.ErrShortWrite", err)
+		}
+	})
+}
+
 // TestSetTokenFromEnv_NoCluster verifies that SetTokenFromEnv returns a
 // CodeAuth error when neither --token nor --cluster/default-cluster is
 // available to resolve a token from.

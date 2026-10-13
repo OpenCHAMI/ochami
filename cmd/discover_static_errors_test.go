@@ -272,6 +272,32 @@ func TestDiscoverStatic_V1IfaceError(t *testing.T) {
 	}
 }
 
+// TestDiscoverStatic_RedfishEndpointError verifies a failing redfish endpoint
+// POST (non-overwrite) surfaces the CodeHTTP aggregate.
+func TestDiscoverStatic_RedfishEndpointError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "RedfishEndpoints") {
+			http.Error(w, "boom", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload,
+		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
 // TestDiscoverStatic_GroupError verifies a failing group POST (non-overwrite)
 // surfaces the CodeHTTP aggregate.
 func TestDiscoverStatic_GroupError(t *testing.T) {

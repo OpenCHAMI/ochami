@@ -5,10 +5,11 @@
 package smd
 
 // smd_errors_test.go unit-tests the SMDClient wrapper methods' error arms:
-// input rejected before a request is made, blank-ID/MAC edge cases and
-// per-item HTTP failures for the iterative POST/PUT/PATCH/DELETE helpers,
-// single-envelope HTTP failures, and batch semantics under cancellation
-// (order, cardinality, and alignment).
+// input rejected before a request is made, blank-ID/MAC edge cases and per-item
+// HTTP failures for the iterative POST/PUT/PATCH/DELETE helpers,
+// single-envelope HTTP failures, batch semantics under cancellation (order,
+// cardinality, and alignment), and the rejection of an ID or label that would
+// make a malformed URL.
 
 import (
 	"context"
@@ -716,5 +717,92 @@ func TestDeleteAllHelpers_HTTPError(t *testing.T) {
 	}
 	if _, err := c.DeleteComponentEndpointsAll(context.Background(), "tok"); err == nil {
 		t.Error("DeleteComponentEndpointsAll error arm = nil, want error")
+	}
+}
+
+// TestSMDWrappers_HTTPError verifies that the SMD wrappers no other test
+// checks this way (GetGroupMembership, PostComponents, and
+// PatchComponentsNID) surface a non-2XX response as an error wrapping
+// client.UnsuccessfulHTTPError.
+func TestSMDWrappers_HTTPError(t *testing.T) {
+	tests := []struct {
+		name string
+		call func(*SMDClient) error
+	}{
+		{name: "membership", call: func(c *SMDClient) error {
+			_, err := c.GetGroupMembership(context.Background(), "id=x0", "tok")
+			return err
+		}},
+		{name: "post components", call: func(c *SMDClient) error {
+			_, err := c.PostComponents(context.Background(), ComponentSlice{}, "tok")
+			return err
+		}},
+		{name: "patch component nid", call: func(c *SMDClient) error {
+			_, err := c.PatchComponentsNID(context.Background(), ComponentSlice{Components: []Component{{ID: "x0", NID: 7}}}, "tok")
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "boom", http.StatusBadGateway)
+			})
+			defer srv.Close()
+			err := tt.call(c)
+			if !errors.Is(err, client.UnsuccessfulHTTPError) {
+				t.Fatalf("call error = %v, want UnsuccessfulHTTPError", err)
+			}
+		})
+	}
+}
+
+// TestSMD_MalformedPathGuards verifies that the SMD client methods that build a
+// path from an ID or label reject one that makes a malformed URL, without
+// sending a request.
+func TestSMD_MalformedPathGuards(t *testing.T) {
+	c, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("unexpected request: %s", r.URL.Path)
+	})
+	defer srv.Close()
+
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "get interface", call: func() error { _, err := c.GetEthernetInterfaceByID(context.Background(), "%zz", "", false); return err }},
+		{name: "get interface IPs", call: func() error { _, err := c.GetEthernetInterfaceByID(context.Background(), "%zz", "", true); return err }},
+		{name: "get group members", call: func() error { _, err := c.GetGroupMembers(context.Background(), "%zz", ""); return err }},
+		{name: "put component", call: func() error {
+			return c.PutComponents(context.Background(), ComponentSlice{Components: []Component{{ID: "%zz"}}}, "")[0].Err
+		}},
+		{name: "put rfe", call: func() error {
+			return c.PutRedfishEndpoints(context.Background(), RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: "%zz"}}}, "")[0].Err
+		}},
+		{name: "put rfe v2", call: func() error {
+			return c.PutRedfishEndpointsV2(context.Background(), RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{ID: "%zz"}}}}, "")[0].Err
+		}},
+		{name: "patch interface", call: func() error {
+			return c.PatchEthernetInterfaces(context.Background(), []EthernetInterface{{ID: "%zz"}}, "")[0].Err
+		}},
+		{name: "patch group", call: func() error { return c.PatchGroups(context.Background(), []Group{{Label: "%zz"}}, "")[0].Err }},
+		{name: "delete component", call: func() error { return c.DeleteComponents(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete rfe", call: func() error { return c.DeleteRedfishEndpoints(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete interface", call: func() error { return c.DeleteEthernetInterfaces(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete component endpoint", call: func() error { return c.DeleteComponentEndpoints(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete group", call: func() error { return c.DeleteGroups(context.Background(), "", "%zz")[0].Err }},
+		{name: "delete group member", call: func() error {
+			results, err := c.DeleteGroupMembers(context.Background(), "", "%zz", "x0")
+			if err != nil {
+				return err
+			}
+			return results[0].Err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Fatal("call returned nil error for malformed path")
+			}
+		})
 	}
 }

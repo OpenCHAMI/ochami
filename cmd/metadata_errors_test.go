@@ -176,3 +176,24 @@ func TestMetadataAdd_MultiItemAggregate(t *testing.T) {
 		})
 	}
 }
+
+// TestMetadataServiceStatus_HTTPError verifies that "metadata service status"
+// fails with CodeHTTP for an HTTP 503 response.
+func TestMetadataServiceStatus_HTTPError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "service", "status",
+		"--uri", srv.URL, "--token", "t")
+
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
