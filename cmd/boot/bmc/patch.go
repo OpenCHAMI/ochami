@@ -131,6 +131,7 @@ See ochami-boot(1) for more details.`,
 	}
 
 	bootBmcPatchCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
+	bootBmcPatchCmd.RegisterFlagCompletionFunc("patch-method", cli.CompletionPatchMethod)
 
 	return bootBmcPatchCmd
 }

@@ -20,13 +20,7 @@ func NewCmd() *cobra.Command {
 		Use:   "discover",
 		Args:  cobra.NoArgs,
 		Short: "Perform static or dynamic discovery of nodes",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// Check that all required args are passed
-			if len(args) == 0 {
-				return cli.PrintUsageHandleError(cmd)
-			}
-			return nil
-		},
+		RunE:  cli.PrintUsage,
 	}
 
 	// Add subcommands

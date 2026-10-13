@@ -32,8 +32,7 @@ import (
 
 var (
 	// Errors
-	FileExistsError   = fmt.Errorf("file exists")
-	NoConfigFileError = fmt.Errorf("no config file to read")
+	FileExistsError = fmt.Errorf("file exists")
 
 	// el is an early logger that has verbosity turned on automatically.
 	// It is for printing log messages before logging has been initialized,
@@ -154,7 +153,7 @@ func (i ioStream) LoopYesNo(p string) (bool, error) {
 // config file if create is true, if it does not already exist.
 func InitConfig(cmd *cobra.Command, create bool) error {
 	// Do not read or write config file if --ignore-config passed
-	if cmd.Flags().Changed("ignore-config") {
+	if f := cmd.Flag("ignore-config"); f != nil && f.Value.String() == "true" {
 		err := loadDefaultConfig()
 		if err != nil {
 			return fmt.Errorf("unable to load default config: %w", err)
@@ -393,23 +392,8 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 		clusterConfig config.ClusterConfig
 		clusterList   = activeConfig.Clusters
 	)
-	if activeConfig.DefaultCluster != "" {
-		// 3. Check 'default-cluster'.
-		clusterName = activeConfig.DefaultCluster
-		clusterList = activeConfig.Clusters
-		log.Logger.Debug().Msgf("using base URI from default cluster %s", clusterName)
-		for _, c := range clusterList {
-			if c.Name == clusterName {
-				clusterToUse = c
-				break
-			}
-		}
-		if clusterToUse == (config.Cluster{}) {
-			return "", fmt.Errorf("default cluster %s not found", clusterName)
-		}
-		clusterConfig = clusterToUse.Cluster
-	} else if cmd.Flag("cluster").Changed {
-		// 2. Check --cluster (overrides "default-cluster").
+	if cmd.Flag("cluster").Changed {
+		// An explicit cluster overrides the configured default cluster.
 		clusterName = cmd.Flag("cluster").Value.String()
 		log.Logger.Debug().Msgf("reading URI from cluster %s passed from command line", clusterName)
 		for _, c := range clusterList {
@@ -423,8 +407,23 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 		}
 
 		clusterConfig = clusterToUse.Cluster
+	} else if activeConfig.DefaultCluster != "" {
+		// Check 'default-cluster' when --cluster was not passed.
+		clusterName = activeConfig.DefaultCluster
+		clusterList = activeConfig.Clusters
+		log.Logger.Debug().Msgf("using base URI from default cluster %s", clusterName)
+		for _, c := range clusterList {
+			if c.Name == clusterName {
+				clusterToUse = c
+				break
+			}
+		}
+		if clusterToUse == (config.Cluster{}) {
+			return "", fmt.Errorf("default cluster %s not found", clusterName)
+		}
+		clusterConfig = clusterToUse.Cluster
 	}
-	// 1. Check flags (--cluster-uri and/or --uri) and override any
+	// Check flags (--cluster-uri and/or --uri) and override any
 	// previously-set values while leaving unspecified ones alone.
 	if cmd.Flag("cluster-uri").Changed || (cmd.Flag("uri") != nil && cmd.Flag("uri").Changed) {
 		log.Logger.Debug().Msg("using base URI passed on command line")
@@ -484,23 +483,8 @@ func GetAPIVersion(cmd *cobra.Command, serviceName config.ServiceName) (string, 
 		clusterConfig config.ClusterConfig
 		clusterList   = activeConfig.Clusters
 	)
-	if activeConfig.DefaultCluster != "" {
-		// 3. Check 'default-cluster'
-		clusterName = activeConfig.DefaultCluster
-		clusterList = activeConfig.Clusters
-		log.Logger.Debug().Msgf("using API version from %s in default cluster %s", serviceName, clusterName)
-		for _, c := range clusterList {
-			if c.Name == clusterName {
-				clusterToUse = c
-				break
-			}
-		}
-		if clusterToUse == (config.Cluster{}) {
-			return "", fmt.Errorf("default cluster %s not found", clusterName)
-		}
-		clusterConfig = clusterToUse.Cluster
-	} else if cmd.Flag("cluster").Changed {
-		// 2. Check --cluster (overrides "default-cluster").
+	if cmd.Flag("cluster").Changed {
+		// An explicit cluster overrides the configured default cluster.
 		clusterName = cmd.Flag("cluster").Value.String()
 		log.Logger.Debug().Msgf("reading API version for %s from cluster %s passed from command line", serviceName, clusterName)
 		for _, c := range clusterList {
@@ -513,6 +497,21 @@ func GetAPIVersion(cmd *cobra.Command, serviceName config.ServiceName) (string, 
 			return "", fmt.Errorf("cluster %s not found", clusterName)
 		}
 
+		clusterConfig = clusterToUse.Cluster
+	} else if activeConfig.DefaultCluster != "" {
+		// Check 'default-cluster' when --cluster was not passed.
+		clusterName = activeConfig.DefaultCluster
+		clusterList = activeConfig.Clusters
+		log.Logger.Debug().Msgf("using API version from %s in default cluster %s", serviceName, clusterName)
+		for _, c := range clusterList {
+			if c.Name == clusterName {
+				clusterToUse = c
+				break
+			}
+		}
+		if clusterToUse == (config.Cluster{}) {
+			return "", fmt.Errorf("default cluster %s not found", clusterName)
+		}
 		clusterConfig = clusterToUse.Cluster
 	}
 
@@ -552,7 +551,7 @@ func GetTimeout(cmd *cobra.Command) time.Duration {
 // performs any other setup tasks for tokens. It is called by all commands that
 // require a token.
 func HandleToken(cmd *cobra.Command) error {
-	if cmd.Flag("no-token").Changed {
+	if f := cmd.Flag("no-token"); f != nil && f.Value.String() == "true" {
 		// --no-token overrides any cluster settings
 		log.Logger.Debug().Msg("--no-token passed, not reading or checking for token")
 	} else {
@@ -663,7 +662,7 @@ func HandlePayloadSlice[T any](cmd *cobra.Command, v *[]T) error {
 // HandlePayloadStdin is similar to HandlePayload except the data is read from
 // standard input.
 func HandlePayloadStdin(cmd *cobra.Command, v any) error {
-	if err := client.ReadPayloadStdin(FormatInput, v); err != nil {
+	if err := client.ReadPayloadReader(Ios.In(), FormatInput, v); err != nil {
 		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}
 	return nil
@@ -672,7 +671,7 @@ func HandlePayloadStdin(cmd *cobra.Command, v any) error {
 // HandlePayloadStdinSlice is similar to HandlePayloadStdin except that it
 // unmarshals the payload data into a typed slice.
 func HandlePayloadStdinSlice[T any](cmd *cobra.Command, v *[]T) error {
-	if err := client.ReadPayloadStdinSlice[T](FormatInput, v); err != nil {
+	if err := client.ReadPayloadReaderSlice[T](Ios.In(), FormatInput, v); err != nil {
 		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}
 	return nil
@@ -688,6 +687,12 @@ func PrintUsageHandleError(cmd *cobra.Command) error {
 	}
 	log.Logger.Warn().Msgf("see '%s --help' for long command help", cmd.CommandPath())
 	return nil
+}
+
+// PrintUsage is a Cobra RunE adapter for metacommands whose only direct action
+// is to display their usage.
+func PrintUsage(cmd *cobra.Command, args []string) error {
+	return PrintUsageHandleError(cmd)
 }
 
 // logHelpHint logs a message at error level telling the user to use the
