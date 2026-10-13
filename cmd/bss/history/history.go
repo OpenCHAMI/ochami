@@ -6,7 +6,6 @@
 package history
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/spf13/cobra"
@@ -27,8 +26,14 @@ func NewCmd() *cobra.Command {
 
 See ochami-bss(1) for more details.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			bssClient, err := bss_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			bssClient, err := bss_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -61,11 +66,13 @@ See ochami-bss(1) for more details.`,
 			}
 
 			// Print output
-			outBytes, err := client.FormatBody(httpEnv.Body, cli.FormatOutput)
+			outBytes, err := client.FormatBody(httpEnv.Body, rt.FormatOutput)
 			if err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 			}
-			fmt.Fprint(cli.Ios.Out(), string(outBytes))
+			if err := cli.WriteOutput(rt.Ios.Out(), outBytes); err != nil {
+				return err
+			}
 
 			return nil
 		},
@@ -74,8 +81,8 @@ See ochami-bss(1) for more details.`,
 	// Create flags
 	historyCmd.Flags().String("xname", "", "filter by xname")
 	historyCmd.Flags().String("endpoint", "", "filter by endpoint")
-	historyCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
 
+	cli.AddFormatOutputFlag(historyCmd)
 	historyCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return historyCmd

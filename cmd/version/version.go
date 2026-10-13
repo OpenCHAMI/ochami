@@ -22,17 +22,17 @@ func NewCmd() *cobra.Command {
 		Args:    cobra.NoArgs,
 		Short:   "Print detailed version to stdout and exit",
 		Example: `  ochami version`,
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Fprintf(cli.Ios.Out(), "Version:    %s\n", version.Version)
-			fmt.Fprintf(cli.Ios.Out(), "Tag:        %s\n", version.Tag)
-			fmt.Fprintf(cli.Ios.Out(), "Branch:     %s\n", version.Branch)
-			fmt.Fprintf(cli.Ios.Out(), "Commit:     %s\n", version.Commit)
-			fmt.Fprintf(cli.Ios.Out(), "Git State:  %s\n", version.GitState)
-			fmt.Fprintf(cli.Ios.Out(), "Date:       %s\n", version.Date)
-			fmt.Fprintf(cli.Ios.Out(), "Go:         %s\n", version.GoVersion)
-			fmt.Fprintf(cli.Ios.Out(), "Compiler:   %s\n", runtime.Compiler)
-			fmt.Fprintf(cli.Ios.Out(), "Build Host: %s\n", version.BuildHost)
-			fmt.Fprintf(cli.Ios.Out(), "Build User: %s\n", version.BuildUser)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+			return cli.WriteString(rt.Ios.Out(), fmt.Sprintf(
+				"Version:    %s\nTag:        %s\nBranch:     %s\nCommit:     %s\nGit State:  %s\nDate:       %s\nGo:         %s\nCompiler:   %s\nBuild Host: %s\nBuild User: %s\n",
+				version.Version, version.Tag, version.Branch, version.Commit, version.GitState,
+				version.Date, version.GoVersion, runtime.Compiler, version.BuildHost, version.BuildUser,
+			))
 		},
 	}
 

@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/internal/log"
 
 	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
@@ -23,37 +22,37 @@ type groupMemberDeleteOptions struct {
 
 // runCoreGroupMemberDelete contains the core logic for the smd group member delete command.
 // It takes the parsed options and performs the actual work of deleting group members.
-func runCoreGroupMemberDelete(cmd *cobra.Command, opts *groupMemberDeleteOptions, args []string) error {
+func runCoreGroupMemberDelete(cmd *cobra.Command, opts *groupMemberDeleteOptions, args []string, rt *cli.Runtime) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
-		log.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-		respDelete, err := cli.Ios.LoopYesNo("Really delete?")
+		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
+		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 		} else if !respDelete {
 			return cli.Errorf(cli.CodeDeclined, "user aborted group deletion")
 		} else {
-			log.Logger.Debug().Msg("User answered affirmatively to delete groups members")
+			rt.Logger.Debug().Msg("User answered affirmatively to delete groups members")
 		}
 	}
 
-	// Create client to use for requests
-	smdClient, err := smd_lib.GetClient(cmd)
+	// Create client to use for requests with runtime
+	smdClient, err := smd_lib.GetClient(cmd, rt)
 	if err != nil {
 		return err
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Perform deletion from arguments
-	results, err := smdClient.DeleteGroupMembers(cmd.Context(), cli.Token, args[0], args[1:]...)
+	results, err := smdClient.DeleteGroupMembers(cmd.Context(), rt.Token, args[0], args[1:]...)
 	if err != nil {
 		return cli.ClassifyClientError(err, fmt.Sprintf("failed to delete members from group %s in SMD", args[0]), fmt.Sprintf("failed to delete members from group %s in SMD", args[0]))
 	}
-	if err := cli.AggregateItemErrors(results.Errors(), "SMD group member deletion"); err != nil {
+	if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "SMD group member deletion"); err != nil {
 		return err
 	}
 
@@ -71,6 +70,12 @@ func newCmdGroupMemberDelete() *cobra.Command {
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member delete compute x3000c1s7b56n0`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
 			// Extract options from flags
 			// Since flags are registered with the correct types on this command,
 			// these Get* calls cannot fail, so their errors are ignored
@@ -79,7 +84,7 @@ See ochami-smd(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm")
 			}
 
-			return runCoreGroupMemberDelete(cmd, opts, args)
+			return runCoreGroupMemberDelete(cmd, opts, args, rt)
 		},
 	}
 

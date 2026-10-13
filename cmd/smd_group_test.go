@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -38,8 +39,8 @@ func TestSMDGroupGet_Filters(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			args := append([]string{"smd", "group", "get", "--ignore-config", "--uri", srv.URL, "--token", "t"}, tc.args...)
-			res := runOchami(t, args...)
+			args := append([]string{"--ignore-config", "smd", "group", "get", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
 			}
@@ -58,7 +59,7 @@ func TestSMDGroupGet_Formats(t *testing.T) {
 	defer srv.Close()
 
 	for _, f := range []string{"json", "json-pretty", "yaml"} {
-		res := runOchami(t, "smd", "group", "get", "--ignore-config", "--uri", srv.URL, "--token", "t", "-F", f)
+		res := runOchamiWithRuntime(t, "smd", "group", "get", "--uri", srv.URL, "--token", "t", "-F", f)
 		if res.err != nil {
 			t.Fatalf("format %s: unexpected error: %v (exit %d)", f, res.err, res.exitCode)
 		}
@@ -76,7 +77,7 @@ func TestSMDGroupAdd_WithOptionalFlags(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t",
 		"--description", "The compute group", "--tag", "prod", "--exclusive-group", "excl",
 		"--member", "x0c0s0b0n0", "compute")
 	if res.err != nil {
@@ -96,7 +97,7 @@ func TestSMDGroupAdd_ByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"label":"compute"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -116,7 +117,7 @@ func TestSMDGroupUpdate_ByFlags(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "update", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", srv.URL, "--token", "t",
 		"--description", "updated", "--tag", "new", "compute")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -138,7 +139,7 @@ func TestSMDGroupDelete_ByLabels(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "compute", "storage")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -159,7 +160,7 @@ func TestSMDGroupDelete_ByData(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `[{"label":"compute"}]`)
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -179,7 +180,7 @@ func TestSMDGroupMembership_Filters(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "membership", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "membership", "--uri", srv.URL, "--token", "t",
 		"--type", "Node", "--arch", "X86", "--nid-start", "1000", "--nid-end", "2000")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -193,7 +194,8 @@ func TestSMDGroupMembership_Filters(t *testing.T) {
 }
 
 // TestSMDGroupAdd_DataWithExtraArgs verifies that "smd group add -d <payload>
-// <label>" ignores the extra argument and sends a POST.
+// <label>" ignores the extra argument, logs a warning about it, and sends a
+// POST.
 func TestSMDGroupAdd_DataWithExtraArgs(t *testing.T) {
 	var gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -202,10 +204,13 @@ func TestSMDGroupAdd_DataWithExtraArgs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"label":"compute"}]`, "ignored-arg")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "raw data passed, ignoring CLI configuration") {
+		t.Errorf("output = %q, want a warning that the argument is ignored", res.stdout)
 	}
 	if gotMethod != http.MethodPost {
 		t.Errorf("method = %q, want POST", gotMethod)
@@ -223,7 +228,7 @@ func TestSMDGroupUpdate_DataWithExtraArgs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "update", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", srv.URL, "--token", "t",
 		"-d", `[{"label":"compute","description":"d"}]`, "ignored-arg")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
@@ -244,7 +249,7 @@ func TestSMDGroupDelete_DataWithExtraArgs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "-d", `[{"label":"compute"}]`, "ignored-arg")
 	if res.err != nil {
 		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)

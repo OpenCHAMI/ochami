@@ -15,7 +15,7 @@ import (
 // TestSMDIfaceGet_ByIPWithoutID verifies "--by-ip" without "--id" is a usage
 // error.
 func TestSMDIfaceGet_ByIPWithoutID(t *testing.T) {
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", "http://127.0.0.1:1",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--by-ip")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -33,7 +33,7 @@ func TestSMDIfaceGet_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -47,7 +47,7 @@ func TestSMDIfaceGet_HTTPError(t *testing.T) {
 func TestSMDIfaceGet_NetworkError(t *testing.T) {
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-	res := runOchami(t, "smd", "iface", "get", "--ignore-config", "--uri", url, "--token", "t")
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", url, "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -59,7 +59,7 @@ func TestSMDIfaceGet_NetworkError(t *testing.T) {
 // TestSMDIfaceAdd_InvalidIP verifies an invalid IP in the net,ip pair is a usage
 // error.
 func TestSMDIfaceAdd_InvalidIP(t *testing.T) {
-	res := runOchami(t, "smd", "iface", "add", "--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t",
 		"x3000c1s7b55n0", "de:ca:fc:0f:fe:ee", "NMN,not-an-ip")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -77,7 +77,7 @@ func TestSMDIfaceAdd_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 		"x3000c1s7b55n0", "de:ca:fc:0f:fe:ee", "NMN,172.16.0.55")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -98,8 +98,8 @@ func TestSMDIfaceDelete_Abort(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithInput(t, "n\n",
-		"smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t", "decafc0ffeee")
+	res := runOchamiWithInputAndRuntime(t, "n\n",
+		"smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t", "decafc0ffeee")
 	if res.exitCode != cli.CodeDeclined {
 		t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
 	}
@@ -111,7 +111,7 @@ func TestSMDIfaceDelete_Abort(t *testing.T) {
 // TestSMDIfaceDelete_NoSelector verifies delete with neither -d, --all, nor args
 // is a usage error.
 func TestSMDIfaceDelete_NoSelector(t *testing.T) {
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", "http://127.0.0.1:1",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
@@ -129,7 +129,7 @@ func TestSMDIfaceDelete_AllHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "--all")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -147,7 +147,7 @@ func TestSMDIfaceDelete_ByIDsHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
 		"--no-confirm", "decafc0ffeee")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")

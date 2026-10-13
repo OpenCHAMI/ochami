@@ -7,7 +7,6 @@ package transition
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -47,7 +46,7 @@ type createOutput struct {
 
 // runCoreTransitionStart contains the core logic for the pcs transition start command.
 // It takes the parsed options and performs the actual work of starting a transition.
-func runCoreTransitionStart(cmd *cobra.Command, opts *transitionStartOptions, args []string, pcsClient *pcs.PCSClient) error {
+func runCoreTransitionStart(cmd *cobra.Command, opts *transitionStartOptions, args []string, pcsClient *pcs.PCSClient, rt *cli.Runtime) error {
 	operation := args[0]
 
 	if !isValidOperation(operation) {
@@ -56,12 +55,12 @@ func runCoreTransitionStart(cmd *cobra.Command, opts *transitionStartOptions, ar
 	}
 
 	// Handle token for this command
-	if err := cli.HandleToken(cmd); err != nil {
+	if err := rt.HandleToken(cmd); err != nil {
 		return err
 	}
 
 	// Create transition
-	transitionHttpEnv, err := pcsClient.CreateTransition(cmd.Context(), operation, nil, opts.Xnames, cli.Token)
+	transitionHttpEnv, err := pcsClient.CreateTransition(cmd.Context(), operation, nil, opts.Xnames, rt.Token)
 	if err != nil {
 		return cli.ClassifyClientError(err, "PCS transition create request yielded unsuccessful HTTP response", "failed to create transition")
 	}
@@ -74,11 +73,13 @@ func runCoreTransitionStart(cmd *cobra.Command, opts *transitionStartOptions, ar
 	}
 
 	// Print output
-	outBytes, err := format.MarshalData(output, cli.FormatOutput)
+	outBytes, err := format.MarshalData(output, rt.FormatOutput)
 	if err != nil {
 		return cli.Errorf(cli.CodePayload, "failed to format output: %w", err)
 	}
-	fmt.Fprintln(cli.Ios.Out(), string(outBytes))
+	if err := cli.WriteString(rt.Ios.Out(), string(outBytes)+"\n"); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -95,8 +96,14 @@ See ochami-pcs(1) for more details.`,
 		Example: `  # Turn on a set of nodes
   ochami pcs transition start --xname "x0c0s7b0n1,x0c0s7b0n0,x0c0s4b0n1" on`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create client to use for requests
-			pcsClient, err := pcs_lib.GetClient(cmd)
+			// Get runtime from context (always available since cmd/root.go injects it)
+			rt, err := cli.RuntimeFromCommand(cmd)
+			if err != nil {
+				return err
+			}
+
+			// Create client to use for requests with runtime
+			pcsClient, err := pcs_lib.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -109,7 +116,7 @@ See ochami-pcs(1) for more details.`,
 				opts.Xnames, _ = cmd.Flags().GetStringSlice("xname")
 			}
 
-			return runCoreTransitionStart(cmd, opts, args, pcsClient)
+			return runCoreTransitionStart(cmd, opts, args, pcsClient, rt)
 		},
 	}
 
@@ -117,8 +124,8 @@ See ochami-pcs(1) for more details.`,
 	transitionStartCmd.Flags().StringSliceP("xname", "x", []string{}, "The list of target components")
 	_ = transitionStartCmd.MarkFlagRequired("xname") //nolint:errcheck // Flag registered immediately above, error impossible
 
-	transitionStartCmd.Flags().VarP(&cli.FormatOutput, "format-output", "F", "format of output printed to standard output (json,json-pretty,yaml)")
-
+	// Format flags are inherited from root command
+	cli.AddFormatOutputFlag(transitionStartCmd)
 	transitionStartCmd.RegisterFlagCompletionFunc("format-output", cli.CompletionFormatData)
 
 	return transitionStartCmd

@@ -18,6 +18,7 @@ import (
 // TestBootList_HTTPError verifies that an unsuccessful HTTP response from the
 // boot service resolves to CodeHTTP for the "list" subcommands.
 func TestBootList_HTTPError(t *testing.T) {
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -26,7 +27,7 @@ func TestBootList_HTTPError(t *testing.T) {
 	for _, tc := range bootListCases {
 		t.Run(tc.name, func(t *testing.T) {
 			args := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "faketoken")
-			res := runOchami(t, args...)
+			res := runOchamiWithRuntime(t, args...)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -40,6 +41,7 @@ func TestBootList_HTTPError(t *testing.T) {
 // TestBootGet_HTTPError verifies that an unsuccessful HTTP response from a
 // "<type> get" resolves to CodeHTTP for each resource type.
 func TestBootGet_HTTPError(t *testing.T) {
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
@@ -47,7 +49,7 @@ func TestBootGet_HTTPError(t *testing.T) {
 
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
-			res := runOchami(t, "boot", typ, "get", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, "--ignore-config", "boot", typ, "get", "some-uid", "--uri", srv.URL, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -61,7 +63,8 @@ func TestBootGet_HTTPError(t *testing.T) {
 // TestBootConfigDelete_NoArgs verifies that "boot config delete" with no UID
 // arguments is a usage error (MinimumNArgs(1)).
 func TestBootConfigDelete_NoArgs(t *testing.T) {
-	res := runOchami(t, "boot", "config", "delete", "--ignore-config", "--uri", "http://127.0.0.1:0", "--no-confirm")
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "boot", "config", "delete", "--uri", "http://127.0.0.1:0", "--no-confirm")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}
@@ -77,7 +80,7 @@ func TestBootList_NetworkError(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
-			res := runOchami(t, "boot", typ, "list", "--ignore-config", "--uri", url, "--token", "t")
+			res := runOchamiWithRuntime(t, "boot", typ, "list", "--ignore-config", "--uri", url, "--token", "t")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
 			}
@@ -98,7 +101,7 @@ func TestBootSet_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "set", "some-uid",
+			res := runOchamiWithRuntime(t, "boot", typ, "set", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootAddPayload(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -120,7 +123,7 @@ func TestBootPatch_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "patch", "some-uid",
+			res := runOchamiWithRuntime(t, "boot", typ, "patch", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "-d", bootAddPayload(typ))
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -146,7 +149,7 @@ func TestBootDelete_Abort(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchamiWithInput(t, "n\n", "boot", typ, "delete", "some-uid",
+			res := runOchamiWithInputAndRuntime(t, "n\n", "boot", typ, "delete", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.exitCode != cli.CodeDeclined {
 				t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
@@ -168,7 +171,7 @@ func TestBootAdd_MalformedPayload(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "boot", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"-d", `not json`)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -191,7 +194,7 @@ func TestBootAdd_MultiItemAggregate(t *testing.T) {
 			defer srv.Close()
 
 			payload := "[" + bootAddPayload(typ) + "," + bootAddPayload(typ) + "]"
-			res := runOchami(t, "boot", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+			res := runOchamiWithRuntime(t, "boot", typ, "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
 				"-d", payload)
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")
@@ -213,7 +216,7 @@ func TestBootDelete_HTTPError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			res := runOchami(t, "boot", typ, "delete", "some-uid",
+			res := runOchamiWithRuntime(t, "boot", typ, "delete", "some-uid",
 				"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm")
 			if res.err == nil {
 				t.Fatal("expected an error, got nil")

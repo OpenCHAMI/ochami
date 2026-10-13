@@ -20,7 +20,7 @@ func TestBSSBootImageSet_GetHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t",
 		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -42,7 +42,7 @@ func TestBSSBootImageSet_PutHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := runOchami(t, "--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t",
+	res := runOchamiWithRuntime(t, "--ignore-config", "bss", "boot", "image", "set", "--uri", srv.URL, "--token", "t",
 		"--mac", "de:ad:be:ef:00:00", "https://example.com/new-image")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
