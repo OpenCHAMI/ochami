@@ -21,6 +21,7 @@ import (
 // TestRCSConsoleList_Success verifies "rcs console list" issues GET /consoles and prints
 // the returned console list.
 func TestRCSConsoleList_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +46,7 @@ func TestRCSConsoleList_Success(t *testing.T) {
 // websocket at /consoles/<node>, streams server output to stdout, and returns
 // nil on a normal websocket close.
 func TestRCSConsoleShow_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotPath string
 	upgrader := websocket.Upgrader{}
@@ -82,6 +84,8 @@ func TestRCSConsoleShow_Success(t *testing.T) {
 // TestRCSConsoleConnect_NormalClose verifies that a normal websocket close during an
 // interactive console session is treated as a clean exit, not an error.
 func TestRCSConsoleConnect_NormalClose(t *testing.T) {
+	t.Parallel()
+
 	upgrader := websocket.Upgrader{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)

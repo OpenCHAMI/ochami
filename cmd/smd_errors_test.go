@@ -18,6 +18,8 @@ import (
 // TestSMDDeprecatedStatus_HTTPError verifies that an unsuccessful HTTP response from the
 // SMD service status endpoint resolves to CodeHTTP.
 func TestSMDDeprecatedStatus_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "down", http.StatusServiceUnavailable)
 	}))

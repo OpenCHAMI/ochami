@@ -15,6 +15,8 @@ import (
 // TestSMDGroupGet_HTTPError verifies an unsuccessful HTTP response resolves to
 // CodeHTTP.
 func TestSMDGroupGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -32,6 +34,8 @@ func TestSMDGroupGet_HTTPError(t *testing.T) {
 // TestSMDGroupGet_NetworkError verifies pointing at a closed port resolves to
 // CodeNetwork.
 func TestSMDGroupGet_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "smd", "group", "get", "--uri", url, "--token", "t")
@@ -45,6 +49,8 @@ func TestSMDGroupGet_NetworkError(t *testing.T) {
 
 // TestSMDGroupAdd_HTTPError verifies a failing POST resolves to CodeHTTP.
 func TestSMDGroupAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
@@ -62,6 +68,8 @@ func TestSMDGroupAdd_HTTPError(t *testing.T) {
 // TestSMDGroupUpdate_MissingFields verifies "update <label>" with no
 // description/tag is a usage error.
 func TestSMDGroupUpdate_MissingFields(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", "http://127.0.0.1:1", "--token", "t",
 		"compute")
 	if res.err == nil {
@@ -74,6 +82,8 @@ func TestSMDGroupUpdate_MissingFields(t *testing.T) {
 
 // TestSMDGroupUpdate_HTTPError verifies a failing PATCH resolves to CodeHTTP.
 func TestSMDGroupUpdate_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
@@ -92,6 +102,8 @@ func TestSMDGroupUpdate_HTTPError(t *testing.T) {
 // TestSMDGroupDelete_HTTPError verifies a failing DELETE resolves to CodeHTTP via
 // the aggregate.
 func TestSMDGroupDelete_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -110,6 +122,8 @@ func TestSMDGroupDelete_HTTPError(t *testing.T) {
 // TestSMDGroupMembership_HTTPError verifies an unsuccessful HTTP response
 // resolves to CodeHTTP.
 func TestSMDGroupMembership_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -126,6 +140,8 @@ func TestSMDGroupMembership_HTTPError(t *testing.T) {
 
 // TestSMDGroupAdd_BadData verifies "add -d <malformed>" resolves to CodePayload.
 func TestSMDGroupAdd_BadData(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	}))
@@ -144,6 +160,8 @@ func TestSMDGroupAdd_BadData(t *testing.T) {
 // TestSMDGroupAdd_NetworkError verifies a refused connection resolves to
 // CodeNetwork for group add.
 func TestSMDGroupAdd_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", url, "--token", "t", "compute")

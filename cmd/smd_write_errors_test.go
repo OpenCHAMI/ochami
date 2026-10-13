@@ -16,6 +16,8 @@ import (
 // TestSMDGroupMemberAdd_HTTPError verifies an unsuccessful HTTP response
 // resolves to CodeHTTP.
 func TestSMDGroupMemberAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "conflict", http.StatusConflict)
 	}))
@@ -34,6 +36,8 @@ func TestSMDGroupMemberAdd_HTTPError(t *testing.T) {
 // TestSMDDelete_RejectsEmptyData verifies an explicit empty payload cannot
 // turn a requested deletion into a silent no-op.
 func TestSMDDelete_RejectsEmptyData(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		command string
@@ -49,6 +53,7 @@ func TestSMDDelete_RejectsEmptyData(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var deletes int
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodDelete {

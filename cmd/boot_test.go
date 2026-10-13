@@ -42,6 +42,7 @@ var bootListCases = func() []bootListCase {
 // TestBootList_Success verifies that each "boot <type> list" command exits with
 // CodeSuccess when the service returns an empty list.
 func TestBootList_Success(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -66,6 +67,7 @@ func TestBootList_Success(t *testing.T) {
 // TestBootServiceStatus verifies "boot service status" exits successfully when
 // the health endpoint responds OK.
 func TestBootServiceStatus(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -85,6 +87,7 @@ func TestBootServiceStatus(t *testing.T) {
 // TestBootGet_Success verifies "<type> get <uid>" exits successfully for each
 // boot-service resource type.
 func TestBootGet_Success(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -108,6 +111,7 @@ func TestBootGet_Success(t *testing.T) {
 // TestBootDelete_NoConfirm verifies "<type> delete --no-confirm <uid>" exits
 // successfully for each boot-service resource type.
 func TestBootDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -146,6 +150,8 @@ func bootEnvelopePayload(typ string) string {
 
 // TestBootList_Formats verifies list output-format variants across boot types.
 func TestBootList_Formats(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		for _, f := range []string{"json", "json-pretty", "yaml"} {
 			t.Run(typ+"/"+f, func(t *testing.T) {
@@ -167,6 +173,8 @@ func TestBootList_Formats(t *testing.T) {
 
 // TestBootGet_Formats verifies get output-format variants across boot types.
 func TestBootGet_Formats(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		for _, f := range []string{"json", "json-pretty", "yaml"} {
 			t.Run(typ+"/"+f, func(t *testing.T) {
@@ -189,6 +197,8 @@ func TestBootGet_Formats(t *testing.T) {
 // TestBootAdd_Envelope verifies the envelope (advanced) API path of "add -e"
 // across boot types.
 func TestBootAdd_Envelope(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -210,6 +220,8 @@ func TestBootAdd_Envelope(t *testing.T) {
 // TestBootAdd_Stdin verifies add reads payload from stdin when -d is not supplied
 // (simple API path) across boot types.
 func TestBootAdd_Stdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -231,6 +243,8 @@ func TestBootAdd_Stdin(t *testing.T) {
 // TestBootSet_Envelope verifies the envelope API path of "set -e" across boot
 // types.
 func TestBootSet_Envelope(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -251,6 +265,8 @@ func TestBootSet_Envelope(t *testing.T) {
 // TestBootDelete_ConfirmYes verifies that "boot <type> delete" prompts for
 // confirmation and, on "y", sends the DELETE, for every boot resource type.
 func TestBootDelete_ConfirmYes(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			var deleted bool
@@ -281,6 +297,8 @@ func TestBootDelete_ConfirmYes(t *testing.T) {
 // TestBootSet_Stdin verifies "set <uid>" reads payload from stdin when -d is not
 // supplied across boot types.
 func TestBootSet_Stdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -301,6 +319,8 @@ func TestBootSet_Stdin(t *testing.T) {
 // TestBootPatch_Stdin verifies "patch <uid>" reads payload from stdin when -d is
 // not supplied across boot types.
 func TestBootPatch_Stdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -321,6 +341,8 @@ func TestBootPatch_Stdin(t *testing.T) {
 // TestBootAdd_EnvelopeStdin verifies the envelope API path reads from stdin when
 // -d is not supplied across boot types.
 func TestBootAdd_EnvelopeStdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -342,6 +364,8 @@ func TestBootAdd_EnvelopeStdin(t *testing.T) {
 // TestBootSet_EnvelopeStdin verifies the envelope set path reads from stdin when
 // -d is not supplied across boot types.
 func TestBootSet_EnvelopeStdin(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -362,6 +386,8 @@ func TestBootSet_EnvelopeStdin(t *testing.T) {
 // TestBootPatch_Keyval verifies the key-value patch path (--set/--unset) across
 // boot types.
 func TestBootPatch_Keyval(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -381,6 +407,8 @@ func TestBootPatch_Keyval(t *testing.T) {
 
 // TestBootPatch_RFC6902 verifies the rfc6902 patch-method path across boot types.
 func TestBootPatch_RFC6902(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -401,6 +429,8 @@ func TestBootPatch_RFC6902(t *testing.T) {
 // TestBootPatch_StdinData verifies patch reads from stdin when -d is not given
 // across boot types.
 func TestBootPatch_StdinData(t *testing.T) {
+	t.Parallel()
+
 	for _, typ := range bootResourceTypes {
 		t.Run(typ, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -15,6 +15,8 @@ import (
 // TestSMDRFEGet_HTTPError verifies an unsuccessful HTTP response resolves to
 // CodeHTTP.
 func TestSMDRFEGet_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -32,6 +34,8 @@ func TestSMDRFEGet_HTTPError(t *testing.T) {
 // TestSMDRFEGet_NetworkError verifies pointing at a closed port resolves to
 // CodeNetwork.
 func TestSMDRFEGet_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "smd", "rfe", "get", "--uri", url, "--token", "t")
@@ -46,6 +50,8 @@ func TestSMDRFEGet_NetworkError(t *testing.T) {
 // TestSMDRFEAdd_WrongArgs verifies that fewer than 4 args without -d is a usage
 // error.
 func TestSMDRFEAdd_WrongArgs(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "smd", "rfe", "add", "--uri", "http://127.0.0.1:1", "--token", "t",
 		"x3000c1s7b56", "bmc-node56")
 	if res.err == nil {
@@ -58,6 +64,8 @@ func TestSMDRFEAdd_WrongArgs(t *testing.T) {
 
 // TestSMDRFEAdd_HTTPError verifies a failing POST resolves to CodeHTTP.
 func TestSMDRFEAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
@@ -75,6 +83,8 @@ func TestSMDRFEAdd_HTTPError(t *testing.T) {
 
 // TestSMDRFEDelete_Abort verifies answering "n" aborts without a request.
 func TestSMDRFEDelete_Abort(t *testing.T) {
+	t.Parallel()
+
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
@@ -97,6 +107,8 @@ func TestSMDRFEDelete_Abort(t *testing.T) {
 // TestSMDRFEDelete_NoSelector verifies delete with neither -d, --all, nor args is
 // a usage error.
 func TestSMDRFEDelete_NoSelector(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "smd", "rfe", "delete", "--uri", "http://127.0.0.1:1",
 		"--token", "t", "--no-confirm")
 	if res.err == nil {
@@ -110,6 +122,8 @@ func TestSMDRFEDelete_NoSelector(t *testing.T) {
 // TestSMDRFEDelete_ByXnamesHTTPError verifies a failing per-item DELETE resolves
 // to CodeHTTP via the aggregate.
 func TestSMDRFEDelete_ByXnamesHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))

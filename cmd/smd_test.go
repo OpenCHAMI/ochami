@@ -21,6 +21,7 @@ import (
 
 // TestSMDGroupGet_Success verifies "smd group get" issues GET /groups.
 func TestSMDGroupGet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -40,6 +41,7 @@ func TestSMDGroupGet_Success(t *testing.T) {
 
 // TestSMDGroupAdd_ViaFlags verifies "smd group add <label>" issues POST /groups.
 func TestSMDGroupAdd_ViaFlags(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +63,7 @@ func TestSMDGroupAdd_ViaFlags(t *testing.T) {
 // TestSMDGroupDelete_NoConfirm verifies "smd group delete --no-confirm <label>"
 // issues DELETE /groups/<label>.
 func TestSMDGroupDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -82,6 +85,7 @@ func TestSMDGroupDelete_NoConfirm(t *testing.T) {
 // TestSMDGroupMembership_Get verifies "smd group membership" issues GET
 // /memberships.
 func TestSMDGroupMembership_Get(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +112,7 @@ func TestSMDGroupMembership_Get(t *testing.T) {
 // TestSMDGroupMemberGet_Success verifies "smd group member get <label>" issues GET
 // /groups/<label>/members.
 func TestSMDGroupMemberGet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -132,6 +137,7 @@ func TestSMDGroupMemberGet_Success(t *testing.T) {
 // TestSMDGroupMemberSet_Success verifies "smd group member set <label> <comp>..." issues
 // PUT /groups/<label>/members.
 func TestSMDGroupMemberSet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -155,6 +161,7 @@ func TestSMDGroupMemberSet_Success(t *testing.T) {
 // TestSMDIfaceGet_Success verifies "smd iface get" issues GET
 // /Inventory/EthernetInterfaces.
 func TestSMDIfaceGet_Success(t *testing.T) {
+	t.Parallel()
 
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -179,6 +186,8 @@ func TestSMDIfaceGet_Success(t *testing.T) {
 // TestSMDIfaceAdd_ViaArgs verifies "smd iface add <comp> <mac> <net,ip>" issues
 // POST /Inventory/EthernetInterfaces.
 func TestSMDIfaceAdd_ViaArgs(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -199,6 +208,8 @@ func TestSMDIfaceAdd_ViaArgs(t *testing.T) {
 // TestSMDIfaceDelete_NoConfirm verifies "smd iface delete --no-confirm <id>"
 // issues DELETE under /Inventory/EthernetInterfaces.
 func TestSMDIfaceDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -224,6 +235,8 @@ func TestSMDIfaceDelete_NoConfirm(t *testing.T) {
 
 // TestSMDRFEGet_Success verifies "smd rfe get" issues GET /Inventory/RedfishEndpoints.
 func TestSMDRFEGet_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -247,6 +260,8 @@ func TestSMDRFEGet_Success(t *testing.T) {
 // TestSMDRFEAdd_ViaArgs verifies "smd rfe add <xname> <name> <ip> <mac>" issues
 // POST /Inventory/RedfishEndpoints.
 func TestSMDRFEAdd_ViaArgs(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod, gotPath = r.Method, r.URL.Path
@@ -269,6 +284,8 @@ func TestSMDRFEAdd_ViaArgs(t *testing.T) {
 // TestSMDCompepGet_Success verifies "smd compep get" issues GET
 // /Inventory/ComponentEndpoints.
 func TestSMDCompepGet_Success(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -292,6 +309,8 @@ func TestSMDCompepGet_Success(t *testing.T) {
 // TestSMDCompepDelete_NoConfirm verifies "smd compep delete --no-confirm <xname>"
 // issues DELETE under /Inventory/ComponentEndpoints.
 func TestSMDCompepDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotMethod = r.Method
@@ -317,6 +336,8 @@ func TestSMDCompepDelete_NoConfirm(t *testing.T) {
 
 // TestSMDServiceStatus verifies "smd service status" issues a GET under /service.
 func TestSMDServiceStatus(t *testing.T) {
+	t.Parallel()
+
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path

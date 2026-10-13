@@ -20,6 +20,8 @@ import (
 // command (xnames, powerFilter, and mgmtFilter are command-local variables,
 // not package-level ones, for this reason).
 func TestPCSStatusList_FlagStateIsLocal(t *testing.T) {
+	t.Parallel()
+
 	first := pcs_status.NewCmd()
 	firstList, _, err := first.Find([]string{"list"})
 	if err != nil {

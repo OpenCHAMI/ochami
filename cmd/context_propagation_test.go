@@ -26,6 +26,8 @@ import (
 // before command execution prevents the request from completing
 // successfully, proving cancellation is wired through to the client.
 func TestContextPropagation_CancellationWiring(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{}`))

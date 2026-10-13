@@ -24,6 +24,8 @@ import (
 // writes, "discover static" resolves to the CodeHTTP exit code (the "completed
 // with errors" aggregate).
 func TestDiscoverStatic_HTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
@@ -42,6 +44,8 @@ func TestDiscoverStatic_HTTPError(t *testing.T) {
 // TestDiscoverStatic_MalformedPayload verifies malformed inline payload resolves
 // to CodePayload.
 func TestDiscoverStatic_MalformedPayload(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "discover", "static", "-d", `not json`,
 		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t")
 	if res.err == nil {
@@ -55,6 +59,8 @@ func TestDiscoverStatic_MalformedPayload(t *testing.T) {
 // TestDiscoverStatic_NoConfig verifies that without a resolvable base URI the
 // command fails with CodeConfig.
 func TestDiscoverStatic_NoConfig(t *testing.T) {
+	t.Parallel()
+
 	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload, "--ignore-config", "--token", "t")
 	if res.err == nil {
 		t.Fatal("expected a config error, got nil")
@@ -67,6 +73,8 @@ func TestDiscoverStatic_NoConfig(t *testing.T) {
 // TestDiscoverStatic_OverwriteHTTPError verifies that with --overwrite, a
 // non-409 HTTP error on the redfish POST resolves to the CodeHTTP aggregate.
 func TestDiscoverStatic_OverwriteHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "RedfishEndpoints") && r.Method == http.MethodPost {
@@ -92,6 +100,8 @@ func TestDiscoverStatic_OverwriteHTTPError(t *testing.T) {
 // redfish POST returns 409 but the fallback PUT also fails, the command reports
 // the CodeHTTP aggregate.
 func TestDiscoverStatic_OverwritePutFails(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "RedfishEndpoints") {
@@ -123,6 +133,8 @@ func TestDiscoverStatic_OverwritePutFails(t *testing.T) {
 // discovery-version v1, when the ethernet-interface POST returns 409 but the
 // fallback PATCH also fails, the command reports the CodeHTTP aggregate.
 func TestDiscoverStatic_V1OverwritePatchFails(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "EthernetInterfaces") {
@@ -154,6 +166,8 @@ func TestDiscoverStatic_V1OverwritePatchFails(t *testing.T) {
 // when the group POST returns 409 but the fallback PATCH also fails, the
 // command reports the CodeHTTP aggregate.
 func TestDiscoverStatic_OverwriteGroupPatchFails(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "groups") {
@@ -183,6 +197,8 @@ func TestDiscoverStatic_OverwriteGroupPatchFails(t *testing.T) {
 // TestDiscoverStatic_ComponentHTTPError verifies that a failing component POST
 // (non-overwrite) surfaces the CodeHTTP aggregate.
 func TestDiscoverStatic_ComponentHTTPError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "State/Components") {
@@ -207,6 +223,8 @@ func TestDiscoverStatic_ComponentHTTPError(t *testing.T) {
 // TestDiscoverStatic_OverwriteComponentError verifies that with --overwrite, a
 // failing component PUT surfaces the CodeHTTP aggregate.
 func TestDiscoverStatic_OverwriteComponentError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "State/Components") {
@@ -231,6 +249,8 @@ func TestDiscoverStatic_OverwriteComponentError(t *testing.T) {
 // TestDiscoverStatic_V1IfaceError verifies the discovery-version v1 non-overwrite
 // path surfaces an ethernet-interface POST error as the CodeHTTP aggregate.
 func TestDiscoverStatic_V1IfaceError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "EthernetInterfaces") {
@@ -255,6 +275,8 @@ func TestDiscoverStatic_V1IfaceError(t *testing.T) {
 // TestDiscoverStatic_GroupError verifies a failing group POST (non-overwrite)
 // surfaces the CodeHTTP aggregate.
 func TestDiscoverStatic_GroupError(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "groups") {
@@ -279,6 +301,8 @@ func TestDiscoverStatic_GroupError(t *testing.T) {
 // TestDiscoverStatic_NetworkError verifies that "discover static" fails with
 // CodeNetwork when SMD can't be reached.
 func TestDiscoverStatic_NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload,
@@ -294,6 +318,8 @@ func TestDiscoverStatic_NetworkError(t *testing.T) {
 // TestDiscoverStatic_V1NetworkError verifies that "discover static
 // --discovery-version 1" fails with CodeNetwork when SMD can't be reached.
 func TestDiscoverStatic_V1NetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload, "--discovery-version", "1",
@@ -310,6 +336,8 @@ func TestDiscoverStatic_V1NetworkError(t *testing.T) {
 // --overwrite --discovery-version 1" fails with CodeNetwork when SMD can't be
 // reached.
 func TestDiscoverStatic_OverwriteNetworkError(t *testing.T) {
+	t.Parallel()
+
 	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
 
 	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload, "--overwrite",

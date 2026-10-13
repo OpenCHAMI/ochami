@@ -14,6 +14,7 @@ import (
 // TestConfigClusterSet_MutuallyExclusiveSources verifies that passing both
 // --user and --system is a usage error.
 func TestConfigClusterSet_MutuallyExclusiveSources(t *testing.T) {
+	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "--ignore-config", "config", "cluster", "set", "--user", "--system",
 		"foobar", "cluster.uri", "https://foobar.openchami.cluster")
@@ -28,6 +29,7 @@ func TestConfigClusterSet_MutuallyExclusiveSources(t *testing.T) {
 // TestConfigClusterDelete_NotFound verifies that deleting a non-existent cluster
 // resolves to a config error.
 func TestConfigClusterDelete_NotFound(t *testing.T) {
+	t.Parallel()
 
 	cfg := writeTempConfig(t, "clusters: []\n")
 
@@ -43,6 +45,8 @@ func TestConfigClusterDelete_NotFound(t *testing.T) {
 // TestConfigClusterUnset_UnknownKey verifies "config cluster unset" rejects a
 // key that does not exist for the named cluster.
 func TestConfigClusterUnset_UnknownKey(t *testing.T) {
+	t.Parallel()
+
 	cfg := writeTempConfig(t, `clusters:
 - name: foobar
   cluster:
@@ -61,6 +65,8 @@ func TestConfigClusterUnset_UnknownKey(t *testing.T) {
 // TestConfigClusterShow_NonexistentCluster verifies showing a cluster that does
 // not exist in the config.
 func TestConfigClusterShow_NonexistentCluster(t *testing.T) {
+	t.Parallel()
+
 	cfg := writeTempConfig(t, "clusters: []\n")
 
 	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "show", "does-not-exist")
@@ -72,6 +78,8 @@ func TestConfigClusterShow_NonexistentCluster(t *testing.T) {
 // TestConfigClusterUnset_Nonexistent verifies unsetting a key on a nonexistent
 // cluster fails with CodeConfig.
 func TestConfigClusterUnset_Nonexistent(t *testing.T) {
+	t.Parallel()
+
 	cfg := writeTempConfig(t, "clusters: []\n")
 
 	res := runOchamiWithRuntime(t, "--config", cfg, "config", "cluster", "unset", "nope", "cluster.uri")
