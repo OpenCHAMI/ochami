@@ -5,6 +5,7 @@
 package metadata_service
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -13,9 +14,8 @@ import (
 	metadata_service_client "github.com/openchami/metadata-service/pkg/client"
 )
 
-// TestAddWireGuardPeerSpecs_OmitsLabels verifies that AddWireGuardPeerSpecs
-// POSTs to /wireguardpeers with an envelope built from the name and spec only,
-// without labels.
+// TestAddWireGuardPeerSpecs_OmitsLabels verifies the simple API omits envelope
+// labels.
 func TestAddWireGuardPeerSpecs_OmitsLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	var gotPath, gotMethod string
@@ -35,11 +35,8 @@ func TestAddWireGuardPeerSpecs_OmitsLabels(t *testing.T) {
 		},
 	}
 
-	_, errs, err := c.AddWireGuardPeerSpecs("", peers)
-	if err != nil {
-		t.Fatalf("AddWireGuardPeerSpecs func error: %v", err)
-	}
-	for _, e := range errs {
+	results := c.AddWireGuardPeerSpecs(context.Background(), "", peers)
+	for _, e := range results.Errors() {
 		if e != nil {
 			t.Fatalf("AddWireGuardPeerSpecs per-request error: %v", e)
 		}
@@ -60,8 +57,8 @@ func TestAddWireGuardPeerSpecs_OmitsLabels(t *testing.T) {
 	}
 }
 
-// TestAddWireGuardPeers_EnvelopeIncludesLabels verifies that AddWireGuardPeers
-// sends a request's labels in the envelope.
+// TestAddWireGuardPeers_EnvelopeIncludesLabels verifies the advanced API
+// preserves resource labels.
 func TestAddWireGuardPeers_EnvelopeIncludesLabels(t *testing.T) {
 	var gotBody map[string]interface{}
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -79,9 +76,8 @@ func TestAddWireGuardPeers_EnvelopeIncludesLabels(t *testing.T) {
 		},
 	}
 
-	_, _, err := c.AddWireGuardPeers("", peers)
-	if err != nil {
-		t.Fatalf("AddWireGuardPeers func error: %v", err)
+	if results := c.AddWireGuardPeers(context.Background(), "", peers); results.HasErrors() {
+		t.Fatalf("AddWireGuardPeers errors: %v", results.Errors())
 	}
 
 	labels, ok := gotBody["labels"].(map[string]interface{})
@@ -90,8 +86,8 @@ func TestAddWireGuardPeers_EnvelopeIncludesLabels(t *testing.T) {
 	}
 }
 
-// TestSetWireGuardPeerSpec_UsesUIDEndpoint verifies that SetWireGuardPeerSpec
-// PUTs the spec to the peer's /wireguardpeers/<uid> endpoint.
+// TestSetWireGuardPeerSpec_UsesUIDEndpoint verifies simple updates target the
+// requested resource UID.
 func TestSetWireGuardPeerSpec_UsesUIDEndpoint(t *testing.T) {
 	var gotPath, gotMethod string
 	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +100,7 @@ func TestSetWireGuardPeerSpec_UsesUIDEndpoint(t *testing.T) {
 
 	spec := api.WireGuardPeerSpec{PublicKey: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=", AllowedIP: "10.42.1.1/32"}
 
-	_, err := c.SetWireGuardPeerSpec("", "wireguardpeer-abc", spec)
+	_, err := c.SetWireGuardPeerSpec(context.Background(), "", "wireguardpeer-abc", spec)
 	if err != nil {
 		t.Fatalf("SetWireGuardPeerSpec error: %v", err)
 	}

@@ -100,7 +100,7 @@ See ochami-boot(1) for more details.`,
 				}
 			}
 
-			nodePatched, err := bootServiceClient.PatchNode(cli.Token, patchMethod, args[0], patchData)
+			nodePatched, err := bootServiceClient.PatchNode(cmd.Context(), cli.Token, patchMethod, args[0], patchData)
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to patch node", "failed to patch node")
 			}
