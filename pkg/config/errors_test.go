@@ -6,6 +6,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -212,6 +213,45 @@ func TestErrUnknownService_Error(t *testing.T) {
 			}
 			if got := eus.Error(); got != tt.want {
 				t.Errorf("ErrUnknownService.Error() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestErrDuplicateCluster_Error verifies that ErrDuplicateCluster's message
+// names the cluster, how many times it is defined, where (the file path, or
+// else the source name), and the positions of its entries, and that it is a
+// config Error.
+func TestErrDuplicateCluster_Error(t *testing.T) {
+	tests := []struct {
+		name string
+		err  ErrDuplicateCluster
+		want string
+	}{
+		{
+			name: "path",
+			err:  ErrDuplicateCluster{Source: "user", Path: "/home/u/.config/ochami/config.yaml", Name: "demo", Indices: []int{0, 2}},
+			want: `cluster "demo" is defined 2 times in /home/u/.config/ochami/config.yaml (clusters[0], clusters[2]); edit the file to remove or merge the duplicates`,
+		},
+		{
+			name: "source without path",
+			err:  ErrDuplicateCluster{Source: "inline", Name: "demo", Indices: []int{1, 3, 4}},
+			want: `cluster "demo" is defined 3 times in config 'inline' (clusters[1], clusters[3], clusters[4]); edit the file to remove or merge the duplicates`,
+		},
+		{
+			name: "no location",
+			err:  ErrDuplicateCluster{Name: "demo", Indices: []int{0, 1}},
+			want: `cluster "demo" is defined 2 times (clusters[0], clusters[1]); edit the file to remove or merge the duplicates`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.err.Error(); got != tt.want {
+				t.Errorf("ErrDuplicateCluster.Error() = %q, want %q", got, tt.want)
+			}
+			var cfgErr Error
+			if !errors.As(error(tt.err), &cfgErr) {
+				t.Error("ErrDuplicateCluster does not implement Error")
 			}
 		})
 	}

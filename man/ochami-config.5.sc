@@ -26,6 +26,15 @@ These configuration options are global configuration options.
 
 	See *CLUSTER CONFIGURATION* below for details on cluster configuration.
 
+	A cluster name must be unique within a configuration file. (The same name
+	may appear once in each of the system-wide and user-level files, see
+	*ochami*(1) for how they are merged.) If a file defines a cluster more than
+	once, for example after a manual edit, the *ochami config cluster* commands
+	will not choose between the definitions: setting, unsetting, renaming,
+	deleting, or making default that cluster fails with exit status 3 and
+	leaves the file unchanged. Remove or merge the duplicate entries by editing
+	the file.
+
 	The format is:
 
 	```

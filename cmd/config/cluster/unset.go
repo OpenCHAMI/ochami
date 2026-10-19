@@ -18,7 +18,8 @@ func newCmdClusterUnset() *cobra.Command {
 		Use:   "unset [--user | --system | --config <path>] <cluster_name> <key>",
 		Args:  cobra.ExactArgs(2),
 		Short: "Unset parameter for a cluster",
-		Long: `Unset parameter for a cluster.
+		Long: `Unset parameter for a cluster. Fails without changing the config file
+if the file defines the cluster more than once.
 
 See ochami-config(1) for details on the config commands.
 See ochami-config(5) for details on the configuration options.`,

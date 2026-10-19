@@ -7,6 +7,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Error is implemented by every typed error this package defines. Callers
@@ -63,6 +64,37 @@ func (ece ErrClusterExists) Error() string {
 }
 
 func (ErrClusterExists) ochamiConfigError() {}
+
+// ErrDuplicateCluster represents an error that occurs when an operation
+// names a cluster that is defined more than once in a single config source,
+// so which definition the operation should use is ambiguous. Path is the
+// config file, if known, and Source is the name of the config source (see
+// Source.Name), if known. Indices are the zero-based positions of the
+// cluster's entries in the source's clusters list.
+type ErrDuplicateCluster struct {
+	Source  string
+	Path    string
+	Name    string
+	Indices []int
+}
+
+func (edc ErrDuplicateCluster) Error() string {
+	var where string
+	switch {
+	case edc.Path != "":
+		where = " in " + edc.Path
+	case edc.Source != "":
+		where = fmt.Sprintf(" in config '%s'", edc.Source)
+	}
+	entries := make([]string, len(edc.Indices))
+	for i, idx := range edc.Indices {
+		entries[i] = fmt.Sprintf("clusters[%d]", idx)
+	}
+	return fmt.Sprintf("cluster %q is defined %d times%s (%s); edit the file to remove or merge the duplicates",
+		edc.Name, len(edc.Indices), where, strings.Join(entries, ", "))
+}
+
+func (ErrDuplicateCluster) ochamiConfigError() {}
 
 // ErrUnknownKey represents an error that occurs when a requested config key
 // is not set in the file.

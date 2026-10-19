@@ -39,7 +39,8 @@ default-cluster is used to determine which cluster in the list should be used fo
 This same command can be used to modify existing cluster information. Running the same command above
 with a different base URI will change the cluster base URI for the 'foobar' cluster. Setting the
 'name' key renames an existing cluster; it fails if the cluster does not exist. A cluster
-name must be non-empty and must not contain a period ('.').
+name must be non-empty and must not contain a period ('.'). If the config file
+defines the cluster more than once, the command fails without changing the file.
 
 See ochami-config(1) for details on the config commands.
 See ochami-config(5) for details on the configuration options.`,

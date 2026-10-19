@@ -40,6 +40,13 @@ var fileConf = koanf.Conf{Delim: ".", StrictMerge: false}
 // copy to disk, and only then adopts it as f's state. A mutation that rejects
 // its input or fails to write therefore leaves f's in-memory state exactly as
 // it was.
+//
+// A cluster name must be unique within a file. If a file defines a cluster
+// more than once (e.g. after a manual edit), any method that would have to
+// pick one of its definitions (Cluster, SetClusterKey, UnsetClusterKey,
+// RenameCluster for the old name, SetDefaultCluster, DeleteCluster) returns
+// ErrDuplicateCluster and leaves the file unchanged. Methods that don't name
+// that cluster work as usual. Use DuplicateClusters to find duplicates.
 type File struct {
 	path string
 	ko   *koanf.Koanf
@@ -236,12 +243,66 @@ func clusterIndex(clusters []map[string]any, name string) int {
 	return -1
 }
 
-// rawClusters returns the staged "clusters" list as raw maps, in file order.
-// It reads the working copy of the Update in progress, so mutations
+// findDuplicateClusters returns an ErrDuplicateCluster (with only Name and
+// Indices set) for each cluster name that appears more than once in
+// clusters, ordered by each name's first appearance. Entries whose name is
+// not a string are ignored.
+func findDuplicateClusters(clusters []map[string]any) []ErrDuplicateCluster {
+	var order []string
+	indices := map[string][]int{}
+	for i, cl := range clusters {
+		name, ok := cl["name"].(string)
+		if !ok {
+			continue
+		}
+		if _, seen := indices[name]; !seen {
+			order = append(order, name)
+		}
+		indices[name] = append(indices[name], i)
+	}
+	var dups []ErrDuplicateCluster
+	for _, name := range order {
+		if len(indices[name]) > 1 {
+			dups = append(dups, ErrDuplicateCluster{Name: name, Indices: indices[name]})
+		}
+	}
+	return dups
+}
+
+// checkNotDuplicated returns an ErrDuplicateCluster for f if the cluster
+// named name appears more than once in clusters, or nil otherwise.
+func (f *File) checkNotDuplicated(clusters []map[string]any, name string) error {
+	for _, dup := range findDuplicateClusters(clusters) {
+		if dup.Name == name {
+			dup.Path = f.path
+			return dup
+		}
+	}
+	return nil
+}
+
+// DuplicateClusters returns an ErrDuplicateCluster for each cluster name
+// defined more than once in the file, ordered by each name's first
+// appearance, or nil if every name is unique. Inside Update it reflects the
+// changes made so far.
+func (f *File) DuplicateClusters() ([]ErrDuplicateCluster, error) {
+	clusters, err := rawClusters(f.current())
+	if err != nil {
+		return nil, err
+	}
+	dups := findDuplicateClusters(clusters)
+	for i := range dups {
+		dups[i].Path = f.path
+	}
+	return dups, nil
+}
+
+// rawClusters returns ko's "clusters" list as raw maps, in file order.
+// Mutations pass the working copy of the Update in progress, so mutations
 // batched under Update observe each other's changes.
-func (f *File) rawClusters() ([]map[string]any, error) {
+func rawClusters(ko *koanf.Koanf) ([]map[string]any, error) {
 	var clusters []map[string]any
-	if err := f.staging.Unmarshal("clusters", &clusters); err != nil {
+	if err := ko.Unmarshal("clusters", &clusters); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal clusters: %w", err)
 	}
 	return clusters, nil
@@ -256,9 +317,17 @@ func (f *File) setClusters(clusters []map[string]any) error {
 }
 
 // Cluster returns the named cluster's configuration, with no defaults
-// applied. It returns ErrUnknownCluster if no such cluster exists. Inside
-// Update it reflects the changes made so far.
+// applied. It returns ErrUnknownCluster if no such cluster exists, or
+// ErrDuplicateCluster if the file defines it more than once. Inside Update it
+// reflects the changes made so far.
 func (f *File) Cluster(name string) (Cluster, error) {
+	raw, err := rawClusters(f.current())
+	if err != nil {
+		return Cluster{}, err
+	}
+	if err := f.checkNotDuplicated(raw, name); err != nil {
+		return Cluster{}, err
+	}
 	clusters, err := f.Clusters()
 	if err != nil {
 		return Cluster{}, err
@@ -271,8 +340,9 @@ func (f *File) Cluster(name string) (Cluster, error) {
 	return Cluster{}, ErrUnknownCluster{ClusterName: name}
 }
 
-// Clusters returns every cluster in the file, with no defaults applied, in
-// file order. Inside Update it reflects the changes made so far.
+// Clusters returns every cluster entry in the file as written, with no
+// defaults applied, in file order. A cluster defined more than once appears
+// once per definition. Inside Update it reflects the changes made so far.
 func (f *File) Clusters() ([]Cluster, error) {
 	var clusters []Cluster
 	if err := f.current().Unmarshal("clusters", &clusters); err != nil {
@@ -295,7 +365,7 @@ func (f *File) AddCluster(name string, cfg ClusterConfig) error {
 		if err := checkClusterName(f.staging, name); err != nil {
 			return err
 		}
-		clusters, err := f.rawClusters()
+		clusters, err := rawClusters(f.staging)
 		if err != nil {
 			return err
 		}
@@ -321,7 +391,8 @@ func (f *File) AddCluster(name string, cfg ClusterConfig) error {
 
 // SetClusterKey sets key within the named cluster's configuration to value,
 // creating the cluster if it doesn't already exist, and saves the file. key
-// must not be "name"; use RenameCluster to rename a cluster.
+// must not be "name"; use RenameCluster to rename a cluster. It returns
+// ErrDuplicateCluster if the file defines the cluster more than once.
 func (f *File) SetClusterKey(name, key string, value any) error {
 	return f.Update(func(*File) error {
 		if key == "name" {
@@ -334,8 +405,11 @@ func (f *File) SetClusterKey(name, key string, value any) error {
 		if err := checkClusterName(f.staging, name); err != nil {
 			return err
 		}
-		clusters, err := f.rawClusters()
+		clusters, err := rawClusters(f.staging)
 		if err != nil {
+			return err
+		}
+		if err := f.checkNotDuplicated(clusters, name); err != nil {
 			return err
 		}
 
@@ -363,7 +437,8 @@ func (f *File) SetClusterKey(name, key string, value any) error {
 
 // UnsetClusterKey removes key from the named cluster's configuration and
 // saves the file. key must not be "name". It returns ErrUnknownCluster if the
-// cluster doesn't exist, or ErrUnknownKey if the key within it doesn't exist.
+// cluster doesn't exist, ErrDuplicateCluster if the file defines it more than
+// once, or ErrUnknownKey if the key within it doesn't exist.
 func (f *File) UnsetClusterKey(name, key string) error {
 	return f.Update(func(*File) error {
 		if key == "name" {
@@ -376,8 +451,11 @@ func (f *File) UnsetClusterKey(name, key string) error {
 		if err := checkClusterName(f.staging, name); err != nil {
 			return err
 		}
-		clusters, err := f.rawClusters()
+		clusters, err := rawClusters(f.staging)
 		if err != nil {
+			return err
+		}
+		if err := f.checkNotDuplicated(clusters, name); err != nil {
 			return err
 		}
 
@@ -406,19 +484,23 @@ func (f *File) UnsetClusterKey(name, key string) error {
 // RenameCluster renames the cluster named oldName to newName and saves the
 // file. If the renamed cluster was the default cluster, default-cluster is
 // updated to newName. It returns ErrUnknownCluster if oldName doesn't exist,
-// or ErrClusterExists if newName is already taken.
+// ErrDuplicateCluster if the file defines oldName more than once, or
+// ErrClusterExists if newName is already taken.
 func (f *File) RenameCluster(oldName, newName string) error {
 	return f.Update(func(*File) error {
 		if err := checkClusterName(f.staging, newName); err != nil {
 			return err
 		}
-		clusters, err := f.rawClusters()
+		clusters, err := rawClusters(f.staging)
 		if err != nil {
 			return err
 		}
 
 		if clusterIndex(clusters, newName) != -1 {
 			return ErrClusterExists{ClusterName: newName}
+		}
+		if err := f.checkNotDuplicated(clusters, oldName); err != nil {
+			return err
 		}
 		cidx := clusterIndex(clusters, oldName)
 		if cidx == -1 {
@@ -442,11 +524,15 @@ func (f *File) RenameCluster(oldName, newName string) error {
 }
 
 // SetDefaultCluster sets default-cluster to name and saves the file. It
-// returns ErrUnknownCluster if no such cluster exists.
+// returns ErrUnknownCluster if no such cluster exists, or ErrDuplicateCluster
+// if the file defines it more than once.
 func (f *File) SetDefaultCluster(name string) error {
 	return f.Update(func(*File) error {
-		clusters, err := f.rawClusters()
+		clusters, err := rawClusters(f.staging)
 		if err != nil {
+			return err
+		}
+		if err := f.checkNotDuplicated(clusters, name); err != nil {
 			return err
 		}
 		if clusterIndex(clusters, name) == -1 {
@@ -461,11 +547,15 @@ func (f *File) SetDefaultCluster(name string) error {
 
 // DeleteCluster removes the named cluster entirely and saves the file,
 // clearing default-cluster if it pointed at the deleted cluster. It returns
-// ErrUnknownCluster if the cluster does not exist.
+// ErrUnknownCluster if the cluster does not exist, or ErrDuplicateCluster if
+// the file defines it more than once.
 func (f *File) DeleteCluster(name string) error {
 	return f.Update(func(*File) error {
-		clusters, err := f.rawClusters()
+		clusters, err := rawClusters(f.staging)
 		if err != nil {
+			return err
+		}
+		if err := f.checkNotDuplicated(clusters, name); err != nil {
 			return err
 		}
 

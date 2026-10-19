@@ -52,6 +52,13 @@ For *cluster* commands, only cluster-specific keys are allowed to be referenced.
 For example, *cluster.uri* or *name* are allowed, but *log.format* is not. See
 *ochami-config*(5) for details on available keys.
 
+A cluster name must be unique within a configuration file. If the file being
+modified defines the cluster named by a *cluster delete*, *cluster set*, or
+*cluster unset* command more than once (for example, after a manual edit), the
+command does not choose between the definitions: it exits with status 3 and
+leaves the file unchanged. Remove or merge the duplicate entries by editing the
+file. Commands that do not name the duplicated cluster work as usual.
+
 # COMMANDS
 
 ## cluster
@@ -61,7 +68,8 @@ Manage cluster configurations.
 Subcommands for this command are as follows:
 
 *delete* _cluster_name_
-	Delete _cluster_name_ configuration from config file.
+	Delete _cluster_name_ configuration from config file. Fails without
+	changing the file if _cluster_name_ is defined more than once in it.
 
 *set* [-d] _cluster_name_ _key_ _value_
 	Add or set configuration for a cluster.
@@ -73,7 +81,9 @@ Subcommands for this command are as follows:
 	is the default cluster, then *default-cluster* will be changed to the
 	cluster's new name. Changing a cluster's name to an existing cluster name is
 	not allowed. A cluster name must be non-empty and must not contain a period
-	(*.*).
+	(*.*). If _cluster_name_ is defined more than once in the configuration
+	file, the command fails without changing the file, including when
+	renaming the cluster or passing *-d*.
 
 	This command accepts the following options:
 
@@ -89,7 +99,8 @@ Subcommands for this command are as follows:
 	as YAML.
 
 *unset* _cluster_name_ _key_
-	Unset the _key_ configuration option from _cluster_name_
+	Unset the _key_ configuration option from _cluster_name_. Fails without
+	changing the file if _cluster_name_ is defined more than once in it.
 
 ## set
 

@@ -19,7 +19,8 @@ func newCmdClusterDelete() *cobra.Command {
 		Use:   "delete <cluster_name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Delete a cluster from the configuration file",
-		Long: `Delete a cluster from the configuration file.
+		Long: `Delete a cluster from the configuration file. Fails without changing
+the file if it defines the cluster more than once.
 
 See ochami-config(1) for details on the config commands.
 See ochami-config(5) for details on configuration options.`,

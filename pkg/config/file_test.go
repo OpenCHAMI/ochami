@@ -550,3 +550,100 @@ clusters:
 		}
 	})
 }
+
+// TestFile_DuplicateClusters verifies that DuplicateClusters reports each
+// cluster name defined more than once in the file, with the file's path and
+// the positions of the name's entries, ordered by each name's first
+// appearance, and reports nothing when every name is unique.
+func TestFile_DuplicateClusters(t *testing.T) {
+	t.Run("unique names report nothing", func(t *testing.T) {
+		path := writeFileFixture(t, "clusters:\n  - name: a\n  - name: b\n")
+		f, err := config.OpenFile(path)
+		if err != nil {
+			t.Fatalf("OpenFile(): %v", err)
+		}
+		dups, err := f.DuplicateClusters()
+		if err != nil {
+			t.Fatalf("DuplicateClusters(): unexpected error: %v", err)
+		}
+		if len(dups) != 0 {
+			t.Errorf("DuplicateClusters() = %+v, want none", dups)
+		}
+	})
+
+	t.Run("reports each duplicated name in first-appearance order", func(t *testing.T) {
+		path := writeFileFixture(t, `clusters:
+  - name: b
+  - name: a
+  - name: c
+  - name: a
+  - name: 42
+  - cluster:
+      uri: https://unnamed.example
+  - name: b
+  - name: b
+`)
+		f, err := config.OpenFile(path)
+		if err != nil {
+			t.Fatalf("OpenFile(): %v", err)
+		}
+		dups, err := f.DuplicateClusters()
+		if err != nil {
+			t.Fatalf("DuplicateClusters(): unexpected error: %v", err)
+		}
+		want := []config.ErrDuplicateCluster{
+			{Path: path, Name: "b", Indices: []int{0, 6, 7}},
+			{Path: path, Name: "a", Indices: []int{1, 3}},
+		}
+		if !reflect.DeepEqual(dups, want) {
+			t.Errorf("DuplicateClusters() = %+v, want %+v", dups, want)
+		}
+	})
+}
+
+// TestFile_UnrelatedEditsWithDuplicateClusters verifies that, in a file that
+// defines a cluster more than once, edits that don't name that cluster
+// succeed and leave its entries as written, and that Clusters returns every
+// entry of the duplicated cluster.
+func TestFile_UnrelatedEditsWithDuplicateClusters(t *testing.T) {
+	path := writeFileFixture(t, duplicateClusterFixture)
+	f, err := config.OpenFile(path)
+	if err != nil {
+		t.Fatalf("OpenFile(): %v", err)
+	}
+
+	if err := f.SetKey("log.level", "debug"); err != nil {
+		t.Fatalf("SetKey(): unexpected error: %v", err)
+	}
+	if err := f.SetClusterKey("other", "cluster.uri", "https://changed.example"); err != nil {
+		t.Fatalf("SetClusterKey(other): unexpected error: %v", err)
+	}
+	if err := f.AddCluster("new", config.ClusterConfig{URI: "https://new.example"}); err != nil {
+		t.Fatalf("AddCluster(new): unexpected error: %v", err)
+	}
+
+	got, err := config.OpenFile(path)
+	if err != nil {
+		t.Fatalf("read back failed: %v", err)
+	}
+	clusters, err := got.Clusters()
+	if err != nil {
+		t.Fatalf("Clusters(): unexpected error: %v", err)
+	}
+	var uris []string
+	for _, c := range clusters {
+		uris = append(uris, c.Name+"="+c.Cluster.URI)
+	}
+	want := []string{
+		"demo=https://first.example",
+		"other=https://changed.example",
+		"demo=https://second.example",
+		"new=https://new.example",
+	}
+	if !reflect.DeepEqual(uris, want) {
+		t.Errorf("clusters = %v, want %v", uris, want)
+	}
+	if got.Get("log.level") != "debug" {
+		t.Errorf("log.level = %v, want debug", got.Get("log.level"))
+	}
+}
