@@ -19,6 +19,23 @@ type JSONPatchOperation struct {
 	Value interface{} `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
+// MarshalJSON encodes op as JSON. RFC 6902 requires a "value" member for the
+// add, replace, and test operations, so it is written for those operations
+// even when Value is nil (JSON null) and omitted for the others.
+func (op JSONPatchOperation) MarshalJSON() ([]byte, error) {
+	switch op.Op {
+	case "add", "replace", "test":
+		return json.Marshal(struct {
+			Op    string      `json:"op"`
+			Path  string      `json:"path"`
+			Value interface{} `json:"value"`
+		}{op.Op, op.Path, op.Value})
+	}
+	// Convert to a type without methods so json.Marshal does not recurse.
+	type operation JSONPatchOperation
+	return json.Marshal(operation(op))
+}
+
 // PatchMethod represents the supported patch type
 type PatchMethod string
 

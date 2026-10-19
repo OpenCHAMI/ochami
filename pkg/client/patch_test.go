@@ -5,6 +5,7 @@
 package client
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -72,6 +73,54 @@ func TestNewKeyValPatchData_RFC6902(t *testing.T) {
 	}
 	if !reflect.DeepEqual(data, want) {
 		t.Fatalf("data = %#v, want %#v", data, want)
+	}
+}
+
+// TestNewKeyValPatchData_RFC6902NullValues verifies that a null value passed
+// to set or add stays in the encoded RFC 6902 operation as "value": null.
+func TestNewKeyValPatchData_RFC6902NullValues(t *testing.T) {
+	_, data, err := NewKeyValPatchData([]string{"description=null"}, nil, []string{"tags=null"}, nil)
+	if err != nil {
+		t.Fatalf("NewKeyValPatchData returned error: %v", err)
+	}
+	got, err := json.Marshal(data)
+	if err != nil {
+		t.Fatalf("json.Marshal returned error: %v", err)
+	}
+	want := `[{"op":"add","path":"/description","value":null},{"op":"add","path":"/tags/-","value":null}]`
+	if string(got) != want {
+		t.Fatalf("patch = %s, want %s", got, want)
+	}
+}
+
+// TestJSONPatchOperation_MarshalJSON verifies that the "value" member is
+// always encoded for add, replace, and test operations, including a null
+// value, and omitted for remove, move, and copy operations.
+func TestJSONPatchOperation_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		op   JSONPatchOperation
+		want string
+	}{
+		{name: "add string", op: JSONPatchOperation{Op: "add", Path: "/a", Value: "x"}, want: `{"op":"add","path":"/a","value":"x"}`},
+		{name: "add null", op: JSONPatchOperation{Op: "add", Path: "/a"}, want: `{"op":"add","path":"/a","value":null}`},
+		{name: "replace null", op: JSONPatchOperation{Op: "replace", Path: "/a"}, want: `{"op":"replace","path":"/a","value":null}`},
+		{name: "test null", op: JSONPatchOperation{Op: "test", Path: "/a"}, want: `{"op":"test","path":"/a","value":null}`},
+		{name: "remove", op: JSONPatchOperation{Op: "remove", Path: "/a"}, want: `{"op":"remove","path":"/a"}`},
+		{name: "move", op: JSONPatchOperation{Op: "move", Path: "/a"}, want: `{"op":"move","path":"/a"}`},
+		{name: "copy", op: JSONPatchOperation{Op: "copy", Path: "/a"}, want: `{"op":"copy","path":"/a"}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := json.Marshal(tt.op)
+			if err != nil {
+				t.Fatalf("json.Marshal returned error: %v", err)
+			}
+			if string(got) != tt.want {
+				t.Fatalf("json.Marshal(%#v) = %s, want %s", tt.op, got, tt.want)
+			}
+		})
 	}
 }
 

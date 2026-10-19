@@ -106,6 +106,34 @@ func TestMetadataPatch_PathsAndArrayOperations(t *testing.T) {
 	}
 }
 
+// TestMetadataPatch_SetNullWithAdd verifies that --set key=null combined with
+// --add on "metadata group patch" keeps "value": null in the RFC 6902 add
+// operation for that key.
+func TestMetadataPatch_SetNullWithAdd(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read request body: %v", err)
+		}
+		gotBody = string(body)
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"metadata":{"uid":"some-uid","name":"thing"},"spec":{}}`)
+	}))
+	defer srv.Close()
+
+	res := runOchami(t, "metadata", "group", "patch", "some-uid",
+		"--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--set", "description=null", "--add", "items=value")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	want := `[{"op":"add","path":"/description","value":null},{"op":"add","path":"/items/-","value":"value"}]`
+	if gotBody != want {
+		t.Errorf("body = %s, want %s", gotBody, want)
+	}
+}
+
 // TestMetadataGroupList_Success verifies that "metadata group list" exits
 // successfully when the service returns a valid list response.
 func TestMetadataGroupList_Success(t *testing.T) {
