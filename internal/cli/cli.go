@@ -261,6 +261,12 @@ func InitConfigAndLogging(cmd *cobra.Command, createCfg bool) error {
 	if err := InitLogging(cmd); err != nil {
 		return Errorf(CodeConfig, "failed to initialize logging: %w", err)
 	}
+	// Loading tolerates a cluster defined more than once in a config file
+	// (selecting it fails later), so warn about each one now that logging
+	// is up.
+	for _, dup := range activeConfig.DuplicateClusters() {
+		log.Logger.Warn().Msg(dup.Error())
+	}
 	return nil
 }
 
@@ -377,6 +383,22 @@ func GetBaseURIRCS(cmd *cobra.Command) (string, error) {
 	return GetBaseURI(cmd, config.ServiceRCS)
 }
 
+// lookupCluster returns the cluster named name from the active configuration.
+// If no such cluster exists, the error says whether name came from
+// default-cluster (isDefault) or --cluster. Other errors, such as
+// config.ErrDuplicateCluster for a cluster defined more than once in a config
+// file, are returned as is.
+func lookupCluster(name string, isDefault bool) (config.Cluster, error) {
+	cl, err := activeConfig.GetCluster(name)
+	if errors.As(err, &config.ErrUnknownCluster{}) {
+		if isDefault {
+			return config.Cluster{}, fmt.Errorf("default cluster %s not found", name)
+		}
+		return config.Cluster{}, fmt.Errorf("cluster %s not found", name)
+	}
+	return cl, err
+}
+
 func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, error) {
 	// Precedence of getting base URI for requests (higher numbers override
 	// all preceding numbers):
@@ -389,37 +411,24 @@ func GetBaseURI(cmd *cobra.Command, serviceName config.ServiceName) (string, err
 	//    --uri) are set, read details from them.
 	var (
 		clusterName   string
-		clusterToUse  config.Cluster
 		clusterConfig config.ClusterConfig
-		clusterList   = activeConfig.Clusters
 	)
 	if activeConfig.DefaultCluster != "" {
 		// 3. Check 'default-cluster'.
 		clusterName = activeConfig.DefaultCluster
-		clusterList = activeConfig.Clusters
 		log.Logger.Debug().Msgf("using base URI from default cluster %s", clusterName)
-		for _, c := range clusterList {
-			if c.Name == clusterName {
-				clusterToUse = c
-				break
-			}
-		}
-		if clusterToUse == (config.Cluster{}) {
-			return "", fmt.Errorf("default cluster %s not found", clusterName)
+		clusterToUse, err := lookupCluster(clusterName, true)
+		if err != nil {
+			return "", err
 		}
 		clusterConfig = clusterToUse.Cluster
 	} else if cmd.Flag("cluster").Changed {
 		// 2. Check --cluster (overrides "default-cluster").
 		clusterName = cmd.Flag("cluster").Value.String()
 		log.Logger.Debug().Msgf("reading URI from cluster %s passed from command line", clusterName)
-		for _, c := range clusterList {
-			if c.Name == clusterName {
-				clusterToUse = c
-				break
-			}
-		}
-		if clusterToUse == (config.Cluster{}) {
-			return "", fmt.Errorf("cluster %s not found", clusterName)
+		clusterToUse, err := lookupCluster(clusterName, false)
+		if err != nil {
+			return "", err
 		}
 
 		clusterConfig = clusterToUse.Cluster
@@ -480,37 +489,24 @@ func GetAPIVersion(cmd *cobra.Command, serviceName config.ServiceName) (string, 
 	var (
 		apiVersion    string
 		clusterName   string
-		clusterToUse  config.Cluster
 		clusterConfig config.ClusterConfig
-		clusterList   = activeConfig.Clusters
 	)
 	if activeConfig.DefaultCluster != "" {
 		// 3. Check 'default-cluster'
 		clusterName = activeConfig.DefaultCluster
-		clusterList = activeConfig.Clusters
 		log.Logger.Debug().Msgf("using API version from %s in default cluster %s", serviceName, clusterName)
-		for _, c := range clusterList {
-			if c.Name == clusterName {
-				clusterToUse = c
-				break
-			}
-		}
-		if clusterToUse == (config.Cluster{}) {
-			return "", fmt.Errorf("default cluster %s not found", clusterName)
+		clusterToUse, err := lookupCluster(clusterName, true)
+		if err != nil {
+			return "", err
 		}
 		clusterConfig = clusterToUse.Cluster
 	} else if cmd.Flag("cluster").Changed {
 		// 2. Check --cluster (overrides "default-cluster").
 		clusterName = cmd.Flag("cluster").Value.String()
 		log.Logger.Debug().Msgf("reading API version for %s from cluster %s passed from command line", serviceName, clusterName)
-		for _, c := range clusterList {
-			if c.Name == clusterName {
-				clusterToUse = c
-				break
-			}
-		}
-		if clusterToUse == (config.Cluster{}) {
-			return "", fmt.Errorf("cluster %s not found", clusterName)
+		clusterToUse, err := lookupCluster(clusterName, false)
+		if err != nil {
+			return "", err
 		}
 
 		clusterConfig = clusterToUse.Cluster

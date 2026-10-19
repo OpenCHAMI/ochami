@@ -22,6 +22,7 @@ func newCmdClusterShow() *cobra.Command {
 		Args:  cobra.MaximumNArgs(2),
 		Short: "View cluster configuration options the CLI sees from a config file",
 		Long: `View cluster configuration options the CLI sees from a config file.
+Showing a single cluster fails if a config file defines it more than once.
 
 See ochami-config(1) for details on the config commands.
 See ochami-config(5) for details on the configuration options.`,
@@ -60,6 +61,14 @@ See ochami-config(5) for details on the configuration options.`,
 					return cli.Errorf(cli.CodeConfig, "failed to fetch config for all clusters: %w", err)
 				}
 			} else {
+				// A cluster defined more than once in a config file has
+				// no single configuration to show.
+				for _, dup := range eff.DuplicateClusters() {
+					if dup.Name == args[0] {
+						return cli.Errorf(cli.CodeConfig, "cannot show cluster: %w", dup)
+					}
+				}
+
 				var cfgCl *config.Cluster
 				var clusters []config.Cluster
 				if err := eff.Unmarshal("clusters", &clusters); err != nil {

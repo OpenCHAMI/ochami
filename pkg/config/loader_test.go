@@ -232,3 +232,66 @@ func TestLoadEffective_TracesOnlyWithLogger(t *testing.T) {
 		}
 	})
 }
+
+// TestLoadEffective_DuplicateClusters verifies that a cluster defined more
+// than once within a single source is still merged in order, later
+// definitions taking precedence, and is reported by both
+// Config.DuplicateClusters and Effective.DuplicateClusters with its source,
+// path, and entry positions, in source order, while the same name in
+// different sources is not reported.
+func TestLoadEffective_DuplicateClusters(t *testing.T) {
+	system := writeSource(t, "system", `clusters:
+  - name: shared
+    cluster:
+      uri: https://system.example
+  - name: b
+    cluster:
+      uri: https://b1.example
+  - name: b
+    cluster:
+      uri: https://b2.example
+`)
+	user := writeSource(t, "user", `clusters:
+  - name: shared
+    cluster:
+      uri: https://user.example
+  - name: a
+    cluster:
+      uri: https://a1.example
+      smd:
+        uri: /a1
+  - name: a
+    cluster:
+      uri: https://a2.example
+`)
+	eff, cfg, err := config.LoadEffective([]config.Source{{Name: "default", Map: config.DefaultGlobalMap()}, system, user})
+	if err != nil {
+		t.Fatalf("LoadEffective(): unexpected error: %v", err)
+	}
+
+	want := []config.ErrDuplicateCluster{
+		{Source: "system", Path: system.Path, Name: "b", Indices: []int{1, 2}},
+		{Source: "user", Path: user.Path, Name: "a", Indices: []int{1, 2}},
+	}
+	if got := cfg.DuplicateClusters(); !reflect.DeepEqual(got, want) {
+		t.Errorf("Config.DuplicateClusters() = %+v, want %+v", got, want)
+	}
+	if got := eff.DuplicateClusters(); !reflect.DeepEqual(got, want) {
+		t.Errorf("Effective.DuplicateClusters() = %+v, want %+v", got, want)
+	}
+
+	var merged []string
+	for _, c := range cfg.Clusters {
+		merged = append(merged, c.Name+"="+c.Cluster.URI+c.Cluster.SMD.URI)
+	}
+	wantMerged := []string{"shared=https://user.example", "b=https://b2.example", "a=https://a2.example/a1"}
+	if !reflect.DeepEqual(merged, wantMerged) {
+		t.Errorf("merged clusters = %v, want %v", merged, wantMerged)
+	}
+
+	if _, cfg, err := config.LoadEffective([]config.Source{{Name: "default", Map: config.DefaultGlobalMap()}}); err != nil {
+		t.Fatalf("LoadEffective(defaults): unexpected error: %v", err)
+	} else if got := cfg.DuplicateClusters(); got != nil {
+		t.Errorf("DuplicateClusters() without duplicates = %+v, want nil", got)
+	}
+}

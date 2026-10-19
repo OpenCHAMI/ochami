@@ -57,7 +57,8 @@ modified defines the cluster named by a *cluster delete*, *cluster set*, or
 *cluster unset* command more than once (for example, after a manual edit), the
 command does not choose between the definitions: it exits with status 3 and
 leaves the file unchanged. Remove or merge the duplicate entries by editing the
-file. Commands that do not name the duplicated cluster work as usual.
+file. Commands that do not name the duplicated cluster work as usual. See
+*ochami-config*(5) for how other commands treat a duplicated cluster.
 
 # COMMANDS
 
@@ -96,7 +97,9 @@ Subcommands for this command are as follows:
 	Show the configuration for _cluster_name_ or all clusters if _cluster_name_
 	is unspecified. If _key_ is not specified, show the whole configuration for
 	_cluster_name_, otherwise show the value for _key_. Configuration is printed
-	as YAML.
+	as YAML. Fails if _cluster_name_ is defined more than once in a
+	configuration file being read; showing all clusters shows such a cluster's
+	definitions merged, later ones taking precedence.
 
 *unset* _cluster_name_ _key_
 	Unset the _key_ configuration option from _cluster_name_. Fails without

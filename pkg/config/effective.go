@@ -22,6 +22,22 @@ import (
 // configuration.
 type Effective struct {
 	ko *koanf.Koanf
+
+	// duplicates points to the clusters the loader found defined more than
+	// once within a single source. It is a pointer, not a slice, so that
+	// Effective stays comparable with ==.
+	duplicates *[]ErrDuplicateCluster
+}
+
+// DuplicateClusters returns an ErrDuplicateCluster for each cluster that the
+// loader that produced e found defined more than once within a single config
+// source, like Config.DuplicateClusters. The cluster list e holds contains
+// their merged definitions.
+func (e Effective) DuplicateClusters() []ErrDuplicateCluster {
+	if e.duplicates == nil {
+		return nil
+	}
+	return *e.duplicates
 }
 
 // Get returns the value at key, or nil if it isn't set. An empty key returns

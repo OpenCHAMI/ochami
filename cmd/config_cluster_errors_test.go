@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -95,4 +96,36 @@ func TestConfigClusterUnset_DuplicateCluster(t *testing.T) {
 // leaves the file unchanged.
 func TestConfigClusterDelete_DuplicateCluster(t *testing.T) {
 	requireDuplicateClusterRejected(t, "config", "cluster", "delete", "demo")
+}
+
+// TestConfigClusterShow_DuplicateCluster verifies that showing a single
+// cluster defined more than once in a config file fails with a config error,
+// whether reading the merged system and user configuration or a single file.
+func TestConfigClusterShow_DuplicateCluster(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	userDir := filepath.Join(home, ".config", "ochami")
+	if err := os.MkdirAll(userDir, 0o755); err != nil {
+		t.Fatalf("failed to create user config dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(userDir, "config.yaml"), []byte(duplicateClusterConfig), 0o644); err != nil {
+		t.Fatalf("failed to write user config: %v", err)
+	}
+	cfg := writeTempConfig(t, duplicateClusterConfig)
+
+	for _, args := range [][]string{
+		{"config", "cluster", "show", "demo"},
+		{"--config", cfg, "config", "cluster", "show", "demo", "cluster.uri"},
+	} {
+		res := runOchami(t, args...)
+		if !errors.As(res.err, &config.ErrDuplicateCluster{}) {
+			t.Errorf("%v: error = %v, want ErrDuplicateCluster", args, res.err)
+		}
+		if res.exitCode != cli.CodeConfig {
+			t.Errorf("%v: exit code = %d, want %d (%s)", args, res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
+		}
+		if res.stdout != "" {
+			t.Errorf("%v: stdout = %q, want nothing shown", args, res.stdout)
+		}
+	}
 }

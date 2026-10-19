@@ -90,11 +90,30 @@ type Config struct {
 	DefaultInputFormat  format.DataFormat `koanf:"default-input-format"`
 	DefaultOutputFormat format.DataFormat `koanf:"default-output-format"`
 	Clusters            []Cluster         `koanf:"clusters"`
+
+	// duplicates records the clusters a loader found defined more than once
+	// within a single source. Clusters holds their merged definitions.
+	duplicates []ErrDuplicateCluster
 }
 
+// DuplicateClusters returns an ErrDuplicateCluster for each cluster that the
+// loader that produced c found defined more than once within a single config
+// source (the same name in different sources is an override, not a
+// duplicate), in source order and then by each name's first appearance. It
+// returns nil if there are none or c was not produced by a loader.
+func (c Config) DuplicateClusters() []ErrDuplicateCluster { return c.duplicates }
+
 // GetCluster searches for a cluster by name and returns it if it exists in the
-// config. If not, an ErrUnknownCluster is returned.
+// config. If not, an ErrUnknownCluster is returned. If a config source defines
+// the cluster more than once (see DuplicateClusters), the first matching
+// ErrDuplicateCluster is returned instead, since which definition was meant
+// is ambiguous.
 func (c Config) GetCluster(name string) (Cluster, error) {
+	for _, dup := range c.duplicates {
+		if dup.Name == name {
+			return Cluster{}, dup
+		}
+	}
 	for _, cl := range c.Clusters {
 		if cl.Name == name {
 			return cl, nil
@@ -454,8 +473,10 @@ func LoadFile(path string, opts ...LoadOption) (Config, error) {
 // provided sources, in ascending order of priority (later sources win). Each
 // source may be a file or an in-memory map and may be marked optional. Cluster
 // configurations are merged by name with per-cluster defaults applied, and
-// cluster order is preserved by first appearance. The effective configuration
-// is validated before being returned.
+// cluster order is preserved by first appearance. A cluster defined more than
+// once within a single source is merged the same way but is also reported by
+// Config.DuplicateClusters, and GetCluster rejects it. The effective
+// configuration is validated before being returned.
 //
 // Load does not read or mutate any package-global state; each call is
 // independent, making it safe to build multiple independent configurations.
@@ -509,6 +530,7 @@ func LoadEffective(sources []Source, opts ...LoadOption) (Effective, Config, err
 	parser := kyaml.Parser()
 	merged := koanf.NewWithConf(koanfConf)
 	clusterAcc := newClusterAccumulator(koanfConf)
+	var duplicates []ErrDuplicateCluster
 
 	for _, src := range sources {
 		k2 := koanf.NewWithConf(koanfConf)
@@ -562,6 +584,11 @@ func LoadEffective(sources []Source, opts ...LoadOption) (Effective, Config, err
 				return Effective{}, Config{}, fmt.Errorf("unable to merge cluster '%s' from config '%s': value is not a map[string]any type", name, src.Name)
 			}
 		}
+		for _, dup := range findDuplicateClusters(clusters) {
+			dup.Source = src.Name
+			dup.Path = src.Path
+			duplicates = append(duplicates, dup)
+		}
 
 		if err := merged.Merge(k2); err != nil {
 			return Effective{}, Config{}, fmt.Errorf("unable to merge config '%s': %w", src.Name, err)
@@ -586,5 +613,6 @@ func LoadEffective(sources []Source, opts ...LoadOption) (Effective, Config, err
 	if err := merged.Unmarshal("", &cfg); err != nil {
 		return Effective{}, Config{}, fmt.Errorf("unable to unmarshal merged config: %w", err)
 	}
-	return Effective{ko: merged}, cfg, nil
+	cfg.duplicates = duplicates
+	return Effective{ko: merged, duplicates: &duplicates}, cfg, nil
 }

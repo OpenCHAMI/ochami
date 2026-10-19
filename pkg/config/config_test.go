@@ -27,7 +27,9 @@ func mustWriteFile(t *testing.T, path string, data []byte) {
 }
 
 // TestConfig_GetCluster verifies that GetCluster returns the cluster with the
-// exact name given and reports a missing cluster by name.
+// exact name given, reports a missing cluster by name, and returns
+// ErrDuplicateCluster for a cluster a config source defines more than once
+// while still finding the other clusters.
 func TestConfig_GetCluster(t *testing.T) {
 	type args struct {
 		name string
@@ -187,6 +189,34 @@ func TestConfig_GetCluster(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("Cluster defined more than once in a source", func(t *testing.T) {
+		dup := ErrDuplicateCluster{Source: "user", Path: "/u.yaml", Name: "demo", Indices: []int{0, 2}}
+		cfg := Config{
+			Clusters: []Cluster{
+				{Name: "demo", Cluster: ClusterConfig{URI: "http://example.com/merged"}},
+				{Name: "other", Cluster: ClusterConfig{URI: "http://example.com/other"}},
+			},
+			duplicates: []ErrDuplicateCluster{dup},
+		}
+
+		got, err := cfg.GetCluster("demo")
+		var gotDup ErrDuplicateCluster
+		if !errors.As(err, &gotDup) || !reflect.DeepEqual(gotDup, dup) {
+			t.Fatalf("GetCluster(demo) error = %v, want %+v", err, dup)
+		}
+		if !reflect.DeepEqual(got, Cluster{}) {
+			t.Errorf("GetCluster(demo) got = %#v, want zero Cluster", got)
+		}
+
+		other, err := cfg.GetCluster("other")
+		if err != nil {
+			t.Fatalf("GetCluster(other) unexpected error: %v", err)
+		}
+		if other.Cluster.URI != "http://example.com/other" {
+			t.Errorf("GetCluster(other) URI = %q, want http://example.com/other", other.Cluster.URI)
+		}
+	})
 }
 
 // TestClusterConfig_MergeURIConfig verifies that MergeURIConfig overrides

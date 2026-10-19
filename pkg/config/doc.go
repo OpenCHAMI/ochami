@@ -78,6 +78,17 @@
 //	}
 //	uri, err := cluster.Cluster.GetServiceBaseURI(config.ServiceSMD)
 //
+// # Duplicate cluster names
+//
+// A cluster name must be unique within a config source; the same name in
+// different sources is an override. The loaders still merge a cluster
+// defined more than once within a source, but report it through
+// [Config.DuplicateClusters] (and [Effective.DuplicateClusters]), and
+// [Config.GetCluster] returns [ErrDuplicateCluster] for it, since which
+// definition was meant is ambiguous. [File] likewise refuses to choose
+// between a cluster's definitions and reports them through
+// [File.DuplicateClusters].
+//
 // # Errors
 //
 // Loading and resolution return typed errors (for example [ErrUnknownCluster],

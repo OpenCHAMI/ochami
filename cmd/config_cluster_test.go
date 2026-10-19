@@ -96,3 +96,21 @@ func TestConfigClusterDelete_Success(t *testing.T) {
 		t.Errorf("config file = %q, want the other cluster kept", string(data))
 	}
 }
+
+// TestConfigClusterShow_AllWithDuplicateCluster verifies that showing every
+// cluster succeeds when a config file defines a cluster more than once, and
+// shows that cluster's definitions merged, later ones taking precedence.
+func TestConfigClusterShow_AllWithDuplicateCluster(t *testing.T) {
+	cfg := writeTempConfig(t, duplicateClusterConfig)
+
+	res := runOchami(t, "--config", cfg, "config", "cluster", "show")
+	if res.err != nil {
+		t.Fatalf("config cluster show: unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if strings.Count(res.stdout, "name: demo") != 1 {
+		t.Errorf("stdout = %q, want cluster demo shown once", res.stdout)
+	}
+	if !strings.Contains(res.stdout, "https://second.example") || strings.Contains(res.stdout, "https://first.example") {
+		t.Errorf("stdout = %q, want the later definition's URI to take precedence", res.stdout)
+	}
+}
