@@ -13,7 +13,7 @@ ochami-metadata - Communicate with the Metadata Service
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *get* [-F _format_] _uid_++
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *list* [-F _format_]++
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *patch* [-f _format_] [-p _patch_method_] [-d (_data_ | @_path_ | @-)] _uid_++
-*ochami metadata* (*defaults* | *group* | *instance* | *peer*) *patch* (--add _key_=_val_ | --remove _key_=_val_ | --set _key_=_val_ | --unset _key_)... _uid_++
+*ochami metadata* (*defaults* | *group* | *instance* | *peer*) *patch* (--add _key_=_val_ | --remove _key_=_index_ | --set _key_=_val_ | --unset _key_)... _uid_++
 *ochami metadata* (*defaults* | *group* | *instance* | *peer*) *set* [-e] [-f _format_] [-d (_data_ | @_path_)] _uid_++
 *ochami metadata service status* [-F _format_]
 
@@ -416,7 +416,7 @@ Subcommands for this command are as follows:
 		- _json-pretty_
 		- _yaml_
 
-*patch* ([--add _key_=_val_]... | [--remove _key_=_val_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
+*patch* ([--add _key_=_val_]... | [--remove _key_=_index_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
 *patch* [-f _format_] [-p _patch_method_] -d @_file_ _uid_++
 *patch* [-f _format_] [-p _patch_method_] -d @- _uid_ < _file_++
 *patch* [-f _format_] [-p _patch_method_] _uid_ < _file_
@@ -442,8 +442,8 @@ Subcommands for this command are as follows:
 	This command accepts the following options:
 
 	*--add* _key_[[._subkey_]...]=_val_
-		Add value to array field, creating the field if necessary. Only can be
-		used with _keyval_ patch method (automatic if any of
+		Append value to an existing array field using an RFC 6902 add operation.
+		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*-d, --data* (_data_ | @_path_ | @-)
@@ -466,18 +466,18 @@ Subcommands for this command are as follows:
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
-	*--remove* _key_[[._subkey_]...]=_val_
-		Remove value from array field. Only can be used with _keyval_ patch
-		method (automatic if any of
+	*--remove* _key_[[._subkey_]...]=_index_
+		Remove value at _index_ from array field using an RFC 6902 remove
+		operation. Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
 		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with _keyval_ patch method (automatic
+		key doesn't exist. Only can be used with key/value patch flags (automatic
 		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with _keyval_ patch method
+		Unset key (and its value). Only can be used with key/value patch flags
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
@@ -715,7 +715,7 @@ Subcommands for this command are as follows:
 	ochami metadata group list -F yaml
 	```
 
-*patch* ([--add _key_=_val_]... | [--remove _key_=_val_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
+*patch* ([--add _key_=_val_]... | [--remove _key_=_index_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
 *patch* [-f _format_] [-p _patch_method_] -d @_file_ _uid_++
 *patch* [-f _format_] [-p _patch_method_] -d @- _uid_ < _file_++
 *patch* [-f _format_] [-p _patch_method_] _uid_ < _file_
@@ -740,8 +740,8 @@ Subcommands for this command are as follows:
 	This command accepts the following options:
 
 	*--add* _key_[[._subkey_]...]=_val_
-		Add value to array field, creating the field if necessary. Only can be
-		used with _keyval_ patch method (automatic if any of
+		Append value to an existing array field using an RFC 6902 add operation.
+		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*-d, --data* (_data_ | @_path_ | @-)
@@ -764,18 +764,18 @@ Subcommands for this command are as follows:
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
-	*--remove* _key_[[._subkey_]...]=_val_
-		Remove value from array field. Only can be used with _keyval_ patch
-		method (automatic if any of
+	*--remove* _key_[[._subkey_]...]=_index_
+		Remove value at _index_ from array field using an RFC 6902 remove
+		operation. Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
 		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with _keyval_ patch method (automatic
+		key doesn't exist. Only can be used with key/value patch flags (automatic
 		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with _keyval_ patch method
+		Unset key (and its value). Only can be used with key/value patch flags
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
@@ -1028,7 +1028,7 @@ Subcommands for this command are as follows:
 	ochami metadata instance list -F yaml
 	```
 
-*patch* ([--add _key_=_val_]... | [--remove _key_=_val_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
+*patch* ([--add _key_=_val_]... | [--remove _key_=_index_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
 *patch* [-f _format_] [-p _patch_method_] -d @_file_ _uid_++
 *patch* [-f _format_] [-p _patch_method_] -d @- _uid_ < _file_++
 *patch* [-f _format_] [-p _patch_method_] _uid_ < _file_
@@ -1054,8 +1054,8 @@ Subcommands for this command are as follows:
 	This command accepts the following options:
 
 	*--add* _key_[[._subkey_]...]=_val_
-		Add value to array field, creating the field if necessary. Only can be
-		used with _keyval_ patch method (automatic if any of
+		Append value to an existing array field using an RFC 6902 add operation.
+		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*-d, --data* (_data_ | @_path_ | @-)
@@ -1078,18 +1078,18 @@ Subcommands for this command are as follows:
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
-	*--remove* _key_[[._subkey_]...]=_val_
-		Remove value from array field. Only can be used with _keyval_ patch
-		method (automatic if any of
+	*--remove* _key_[[._subkey_]...]=_index_
+		Remove value at _index_ from array field using an RFC 6902 remove
+		operation. Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
 		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with _keyval_ patch method (automatic
+		key doesn't exist. Only can be used with key/value patch flags (automatic
 		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with _keyval_ patch method
+		Unset key (and its value). Only can be used with key/value patch flags
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
@@ -1353,7 +1353,7 @@ Subcommands for this command are as follows:
 	ochami metadata peer list -F yaml
 	```
 
-*patch* ([--add _key_=_val_]... | [--remove _key_=_val_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
+*patch* ([--add _key_=_val_]... | [--remove _key_=_index_]... | [--set _key_=_val_]... | [--unset _key_]...) _uid_++
 *patch* [-f _format_] [-p _patch_method_] -d @_file_ _uid_++
 *patch* [-f _format_] [-p _patch_method_] -d @- _uid_ < _file_++
 *patch* [-f _format_] [-p _patch_method_] _uid_ < _file_
@@ -1379,8 +1379,8 @@ Subcommands for this command are as follows:
 	This command accepts the following options:
 
 	*--add* _key_[[._subkey_]...]=_val_
-		Add value to array field, creating the field if necessary. Only can be
-		used with _keyval_ patch method (automatic if any of
+		Append value to an existing array field using an RFC 6902 add operation.
+		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*-d, --data* (_data_ | @_path_ | @-)
@@ -1403,18 +1403,18 @@ Subcommands for this command are as follows:
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
-	*--remove* _key_[[._subkey_]...]=_val_
-		Remove value from array field. Only can be used with _keyval_ patch
-		method (automatic if any of
+	*--remove* _key_[[._subkey_]...]=_index_
+		Remove value at _index_ from array field using an RFC 6902 remove
+		operation. Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
 		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with _keyval_ patch method (automatic
+		key doesn't exist. Only can be used with key/value patch flags (automatic
 		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with _keyval_ patch method
+		Unset key (and its value). Only can be used with key/value patch flags
 		(automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 

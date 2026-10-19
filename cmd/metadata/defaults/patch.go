@@ -122,7 +122,7 @@ See ochami-metadata(1) for more details.`,
 	metadataDefaultsPatchCmd.Flags().StringArrayVar(&setList, "set", nil, "set field value using dot notation (field=value)")
 	metadataDefaultsPatchCmd.Flags().StringArrayVar(&unsetList, "unset", nil, "unset field using dot notation")
 	metadataDefaultsPatchCmd.Flags().StringArrayVar(&addList, "add", nil, "add value to array field (field=value)")
-	metadataDefaultsPatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field (field=value)")
+	metadataDefaultsPatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field by index (field=index)")
 	metadataDefaultsPatchCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	metadataDefaultsPatchCmd.Flags().VarP(&cli.FormatInput, "format-input", "f", "format of input payload data for JSON patch formats (json,json-pretty,yaml)")
 	metadataDefaultsPatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7386,keyval)")
