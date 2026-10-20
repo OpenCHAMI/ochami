@@ -17,6 +17,23 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `cloud-init render`, which renders a local template or a stored group template
+  with local, empty, or live node metadata. `cloud-init group render` remains as
+  its compatibility form.
+- `pkg/cloudinit`, a public Go API that renders a cloud-init template the way
+  cloud-init renders a template part on a node.
+
+### Changed
+
+- **BREAKING:** `cloud-init group render` renders templates the way cloud-init
+  26.2 does on a node, instead of with Gonja. Block tags trim the newline after
+  them, the final newline is kept, undefined variables print as
+  `CI_MISSING_JINJA_VAR/<name>`, `break` and `continue` are syntax errors, and
+  a leading `## template: jinja` line is removed. Warnings name undefined variables and flag templates that a node
+  would use without rendering.
+
 ## [0.11.0] - 2026-11-04
 
 ### Added
