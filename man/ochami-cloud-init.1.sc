@@ -13,7 +13,9 @@ ochami cloud-init group delete [OPTIONS] ([-d (_data_ | @_path_)] [-f _format_])
 ochami cloud-init group get [OPTIONS] raw [_id_...]++
 ochami cloud-init group get [OPTIONS] config [_id_...]++
 ochami cloud-init group get [OPTIONS] meta-data [_id_...]++
-ochami cloud-init group render ([-e (_extra-variables_ | @_path_)] [-f _format_]) _group_ _id_++
+ochami cloud-init group render [OPTIONS] _group_ _id_++
+ochami cloud-init render --template _file_ [--node _id_ | --metadata _file_] [OPTIONS]++
+ochami cloud-init render --group _group_ [--node _id_] [--metadata _file_] [OPTIONS]++
 ochami cloud-init group set [OPTIONS]++
 ochami cloud-init node get group [OPTIONS] _group_ _id_...++
 ochami cloud-init node get meta-data [OPTIONS] _id_...++
@@ -411,100 +413,14 @@ Subcommands for this command are as follows:
 			- _yaml_
 
 *render* _group_name_ _node_id_
-	Print the cloud-init group configuration for _group_name_, impersonating
-	node _node_id_, populating Jinja2 variables. _node_id_ must be a member of
-	group _group_name_. This command is similar to the *cloud-init get config*
-	command except that (1) Jinja2 variables are populated and (2) only one
-	config at a time can be printed.
-
-	This command works by fetching the group config for _group_name_ and
-	_node_id_ (*cloud-init node get group*), fetching the meta-data for
-	_node_id_ (*cloud-init node get meta-data*), then using the meta-data to
-	render the group config locally. Note that this command only renders the
-	group configuration for a node and does not go through cloud-init's full
-	render process.
-
-	This command is meant as a troubleshooting tool.
-
-	This command sends GET requests to the following cloud-init endpoints:
-
-	- */cloud-init/admin/impersonation/{id}/{group}.yaml*
-	- */cloud-init/admin/impersonation/{id}/meta-data*
-
-	This command accepts the following options:
-
-	*-e, --extra-vars* (_extra-vars_ | @_path_ | @-)
-		Specify _extra-vars_ to be passed to the template, the _path_ to a
-		file to read extra variables from, or to read the extra variables from
-		standard input (@-). The format of the extra variables read in any of
-		these forms is JSON by default unless *-f* is specified to change it.
-
-		For example, given the following cloud-init template and assuming that
-		node *x3000c0s0b100n0* belongs to a *test* SMD group:
-
-		```
-		## template: jinja
-		#cloud-config
-		# v1.variant={{ v1.variant }}
-		{%- if v1.variant == 'suse' %}
-		{%- set def_dir = '/foo' %}
-		{%- else %}
-		{%- set def_dir = '/bar' %}
-		{%- endif %}
-		write_files:
-		  - content: |
-			   my stuff
-			path: {{ def_dir }}/myfile
-			permissions: '0644'
-			owner: 'root:root'
-		```
-
-		Running
-
-		```
-		ochami cloud-init group render -e '{"v1":{"variant":"suse"}}' test x3000c0s0b100n0
-		```
-
-		will render:
-
-		```
-		## template: jinja
-		#cloud-config
-		# v1.variant=suse
-		write_files:
-		  - content: |
-			   my stuff
-			path: /foo/myfile
-			permissions: '0644'
-			owner: 'root:root'
-		```
-
-		while running
-
-		```
-		ochami cloud-init group render -e '{"v1":{"variant":"rhel"}}' test x3000c0s0b100n0
-		```
-
-		will render:
-
-		```
-		## template: jinja
-		#cloud-config
-		# v1.variant=rhel
-		write_files:
-		  - content: |
-			   my stuff
-			path: /bar/myfile
-			permissions: '0644'
-			owner: 'root:root'
-		```
-
-	*-f, --format-input* _format_
-		Format of the extra variables being used by *-e*. Supported formats are:
-
-		- _json_ (default)
-		- _json-pretty_
-		- _yaml_
+	Compatibility form of *ochami cloud-init render --group* _group_name_
+	*--node* _node_id_. Prefer the top-level *render* command for new usage.
+	Requires both positional arguments and fetches both the node-specific group
+	template and node metadata from the service. Retains the original
+	*--extra-vars* and *--format-input* options. New source-selection flags
+	(*--template*, *--metadata*, *--group*, and *--node*) belong only to
+	*ochami cloud-init render*. Both commands use the gojinja rendering profile
+	documented below.
 
 *set* [-f _format_] < _file_++
 *set* [-f _format_] -d @_file_++
@@ -693,6 +609,171 @@ Subcommands for this command are as follows:
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats
 		are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+## render
+
+*render* (--template _file_ | --group _group_ [--node _node_]) [OPTIONS]
+	Render one cloud-init template locally, using a file or service-provided
+	group template. This command is a troubleshooting tool and does not perform
+	cloud-init's complete processing pipeline. It accepts no positional arguments.
+
+	Select exactly one template source: *--template* or *--group*. A local
+	template can use *--metadata* _file_, *--node* _node_ for live metadata,
+	or empty metadata when both are omitted. With a local template, *--node*
+	and *--metadata* cannot be combined.
+
+	With *--group* and no *--node*, fetch the raw stored template through
+	*/cloud-init/admin/groups/{group}*. Its *file.content* is used directly for
+	*plain* encoding or decoded once for *base64*. Unsupported encodings and
+	malformed content return _CodePayload_. A group without template content
+	returns successfully with a warning. Rendering metadata comes from
+	*--metadata* or an empty mapping; stored group metadata is not merged.
+
+	With *--group* and *--node*, select the impersonated group configuration for
+	that node. By default, node metadata is also fetched. Specifying *--metadata*
+	replaces the rendering variables and skips that metadata request; the node
+	still selects the template. The node must be a member of the group.
+
+	Metadata files contain a YAML or JSON mapping without a *ds* wrapper. The
+	renderer exposes it as *ds.meta_data*. Entirely local mode does not construct
+	a service client, resolve service URIs, handle tokens, or send HTTP requests.
+	Global configuration and logging still apply; use *--ignore-config* for an
+	isolated test. An empty local template renders normally.
+
+	Raw group selection does not establish membership or applicability to a
+	node. Endpoint selection depends only on *--node*: metadata never infers a
+	node, and failed impersonation requests never fall back to stored content.
+
+	Only one template is rendered per invocation. Its directory does not become
+	a loader root for includes or imports.
+
+	Templates are rendered with gojinja using a regular Python Jinja2 reference
+	profile: HTML autoescaping and sandboxing are disabled, undefined values use
+	default Jinja2 behavior, block trimming is disabled, and newlines are LF.
+	One final source newline is removed, as with Jinja2's default settings.
+	The *do* and *loopcontrols* extensions are available. Templates must be
+	trusted; host environment access is disabled and no filesystem template
+	loader is configured. Compatibility is tested against the supported
+	cloud-init template corpus, rather than every Python Jinja2 feature.
+
+	Metadata mappings preserve source insertion order, including nested
+	mappings. JSON integer and floating-point values remain distinct. Extra
+	variables replace top-level values without deep merging; an extra variable
+	called *ds* replaces the complete metadata wrapper. Updating a key retains
+	its position; new keys append in input order.
+
+	Empty or null variable documents are empty mappings. Other documents must
+	be mappings with string keys. Duplicate YAML keys, cyclic aliases,
+	unsupported YAML tags, multiple documents, and integers outside signed
+	64-bit range are rejected. YAML aliases and merge keys are resolved, with
+	explicit keys overriding merged values.
+
+	Output is written verbatim after rendering succeeds. Template errors do
+	not print partial configuration. Compared with the former Gonja renderer,
+	dictionary order, whitespace, and Jinja2 operations can produce different
+	output. Template failures and output write errors return _CodePayload_.
+
+	Service inputs use GET requests to these endpoints as needed:
+
+	- */cloud-init/admin/groups/{group}* for raw stored template selection without *--node*.
+	- */cloud-init/admin/impersonation/{id}/{group}.yaml* for group selection with *--node*.
+	- */cloud-init/admin/impersonation/{id}/meta-data* when *--node* supplies live metadata.
+
+	This command accepts the following options:
+
+	*--template* (_path_ | -)
+		Read a local template verbatim, or stdin when _path_ is *-*. Mutually
+		exclusive with *--group*. Metadata defaults to an empty mapping.
+
+	*--group* _group_
+		Select the stored group template, or the node's impersonated template
+		when *--node* is supplied. Mutually exclusive with *--template*.
+
+	*--node* _node_
+		Select the node's group template and, unless *--metadata* replaces it,
+		fetch node metadata. With *--template*, fetch metadata only.
+
+	*--metadata* (_path_ | -)
+		Read rendering metadata from a local YAML or JSON file, or stdin when
+		_path_ is *-*. Accepted with either template source. Metadata is always
+		read as YAML (which accepts JSON), independently of *--format-input*.
+
+	At most one of *--template -*, *--metadata -*, and *--extra-vars @-* may
+	read stdin. Invalid combinations return _CodeUsage_; input file, decoding,
+	and template errors return _CodePayload_.
+
+	*-e, --extra-vars* (_extra-vars_ | @_path_ | @-)
+		Specify _extra-vars_ to be passed to the template, the _path_ to a
+		file to read extra variables from, or to read the extra variables from
+		standard input (@-). The format of the extra variables read in any of
+		these forms is JSON by default unless *-f* is specified to change it.
+
+		For example, given the following cloud-init template and assuming that
+		node *x3000c0s0b100n0* belongs to a *test* SMD group:
+
+		```
+		## template: jinja
+		#cloud-config
+		# v1.variant={{ v1.variant }}
+		{%- if v1.variant == 'suse' %}
+		{%- set def_dir = '/foo' %}
+		{%- else %}
+		{%- set def_dir = '/bar' %}
+		{%- endif %}
+		write_files:
+		  - content: |
+			   my stuff
+			path: {{ def_dir }}/myfile
+			permissions: '0644'
+			owner: 'root:root'
+		```
+
+		Running
+
+		```
+		ochami cloud-init render -e '{"v1":{"variant":"suse"}}' --group test --node x3000c0s0b100n0
+		```
+
+		will render:
+
+		```
+		## template: jinja
+		#cloud-config
+		# v1.variant=suse
+		write_files:
+		  - content: |
+			   my stuff
+			path: /foo/myfile
+			permissions: '0644'
+			owner: 'root:root'
+		```
+
+		while running
+
+		```
+		ochami cloud-init render -e '{"v1":{"variant":"rhel"}}' --group test --node x3000c0s0b100n0
+		```
+
+		will render:
+
+		```
+		## template: jinja
+		#cloud-config
+		# v1.variant=rhel
+		write_files:
+		  - content: |
+			   my stuff
+			path: /bar/myfile
+			permissions: '0644'
+			owner: 'root:root'
+		```
+
+	*-f, --format-input* _format_
+		Format of the extra variables being used by *-e*. Supported formats are:
 
 		- _json_ (default)
 		- _json-pretty_
