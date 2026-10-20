@@ -17,7 +17,7 @@ SCDOC          ?= $(shell command -v scdoc 2>/dev/null)
 SHELL          ?= /bin/sh
 CONTAINER_PROG ?= $(shell command -v docker 2>/dev/null)
 GO_TOOLCHAIN_VERSION ?= $(shell awk '/^go / {print $$2; exit}' go.mod)
-RENOVATE_VERSION ?= 44.154.1
+RENOVATE_VERSION ?= 44.166.0
 
 # Allow override for PR builds in goreleaser
 IS_PR_BUILD ?= false
