@@ -79,6 +79,7 @@ func caCertCommands() []caCertCommand {
 		{path: "cloud-init group add", args: []string{"-d", `[{"name":"compute"}]`}},
 		{path: "cloud-init group set", args: []string{"-d", `[{"name":"compute"}]`}},
 		{path: "cloud-init group delete", args: []string{"--no-confirm", "compute"}},
+		{path: "cloud-init render", args: []string{"--group", "compute", "--node", "x0"}, body: `{}`},
 		{path: "cloud-init group render", args: []string{"compute", "x0"}, body: `{}`},
 		{path: "cloud-init node get meta-data", args: []string{"x0"}},
 		{path: "cloud-init node get user-data", args: []string{"x0"}},
