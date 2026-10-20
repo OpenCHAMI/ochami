@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v3/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
@@ -364,19 +364,19 @@ func (rt *Runtime) CheckToken() error {
 	}
 
 	// Parse and validate token (jwt.Parse validates nbf, iat, exp automatically
-	// in v3). WithVerify(false) is used because the signature is not verified
+	// by default). WithVerify(false) is used because the signature is not verified
 	// here. Only the token's time-based claims (exp, nbf, iat) are checked.
 	// Signature verification would be done by the services themselves.
 	t, err := jwt.Parse([]byte(rt.Token), jwt.WithVerify(false))
 	if err != nil {
 		// Provide specific error messages based on error type
-		if errors.Is(err, jwt.TokenExpiredError()) {
+		if errors.Is(err, jwt.TokenExpiredError{}) {
 			return Errorf(CodeAuth, "token is expired: %w", err)
-		} else if errors.Is(err, jwt.TokenNotYetValidError()) {
+		} else if errors.Is(err, jwt.TokenNotYetValidError{}) {
 			return Errorf(CodeAuth, "token is not yet valid (nbf in future): %w", err)
-		} else if errors.Is(err, jwt.InvalidIssuerError()) {
+		} else if errors.Is(err, jwt.InvalidIssuerError{}) {
 			return Errorf(CodeAuth, "token has invalid issuer")
-		} else if errors.Is(err, jwt.InvalidAudienceError()) {
+		} else if errors.Is(err, jwt.InvalidAudienceError{}) {
 			return Errorf(CodeAuth, "token has invalid audience")
 		}
 		return Errorf(CodeAuth, "failed to parse token: %w", err)
