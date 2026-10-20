@@ -427,7 +427,7 @@ func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-cha
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-outputErr:
+	case <-outputErr: //nolint:errcheck // Read errors after a user interrupt must not turn a clean exit into a failure.
 		return nil
 	case <-after(time.Second):
 		return nil

@@ -14,6 +14,7 @@ package rcs
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -205,7 +206,9 @@ func TestConnectConsole_EchoesInput(t *testing.T) {
 	}
 
 	cancel()
-	<-errCh // ConnectConsole should return after context cancellation.
+	if err := <-errCh; !errors.Is(err, context.Canceled) {
+		t.Fatalf("ConnectConsole() = %v, want context.Canceled", err)
+	}
 
 	serverGotMu.Lock()
 	got := string(serverGot)
