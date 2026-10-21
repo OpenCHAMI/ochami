@@ -261,7 +261,7 @@ func (sc *SMDClient) GetEthernetInterfaces(ctx context.Context, query string) (c
 	return henv, err
 }
 
-// GetEthernetInterfacesByID is a wrapper around OchamiClient.GetData that takes
+// GetEthernetInterfaceByID is a wrapper around OchamiClient.GetData that takes
 // an ethernet interface ID, token, and a flag indicating if the ethernet
 // interface itself should be retrieved or a list of its IPs. It passes these to
 // OchamiClient.GetData, setting the token as the authorization bearer in the
@@ -637,7 +637,7 @@ func (sc *SMDClient) PutRedfishEndpointsV2(ctx context.Context, rfes RedfishEndp
 // PutGroupMembers is a wrapper function around OchamiClient.PutData that takes
 // a token, group name, and a list of one or more component IDs. It puts the
 // token in the request headers as an authorization bearer and calls
-// OchamiClient.PostData on the SMD group members API endpoint with the group
+// OchamiClient.PutData on the SMD group members API endpoint with the group
 // and member list.
 func (sc *SMDClient) PutGroupMembers(ctx context.Context, token, group string, members ...string) (client.HTTPEnvelope, error) {
 	var (

@@ -152,7 +152,7 @@ The format of this command is:
 *static* [--overwrite] [-d (_data_ | @_path_)] [-f _format_]
 
 The *static* subcommand provides a way to use structured data (from standard
-input or a file) to emulate the SMD discovery process in a reproducable way
+input or a file) to emulate the SMD discovery process in a reproducible way
 without performing dynamic discovery via Redfish. Sometimes, discovery via
 Redfish may not be possible or feasible using dynamic methods (e.g. no Redfish
 support), or storing node data in a user-friendly file that can be used to

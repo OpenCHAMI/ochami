@@ -167,7 +167,7 @@ func (pc *PCSClient) GetTransitions(ctx context.Context, token string) (client.H
 	return henv, err
 }
 
-// GetTransitions is a wrapper function around OchamiClient.GetData to
+// GetTransition is a wrapper function around OchamiClient.GetData to
 // hit the /transitions/{transitionID} endpoint.
 func (pc *PCSClient) GetTransition(ctx context.Context, id string, token string) (client.HTTPEnvelope, error) {
 	var (
@@ -195,7 +195,7 @@ func (pc *PCSClient) GetTransition(ctx context.Context, id string, token string)
 	return henv, err
 }
 
-// DeleteTransitions is a wrapper function around OchamiClient.DeleteData to
+// DeleteTransition is a wrapper function around OchamiClient.DeleteData to
 // hit the /transitions/{transitionID} endpoint.
 func (pc *PCSClient) DeleteTransition(ctx context.Context, id string, token string) (client.HTTPEnvelope, error) {
 	var (
