@@ -148,7 +148,9 @@ revealing its full value. Pass *--show-token* to log the full token instead.
 
 *--log-color* _color_
 	Enable/disable logging color. *auto* detects whether or not stderr is a
-	terminal and enables color accordingly. Defaults to _auto_.
+	terminal and enables color accordingly. Defaults to _auto_. This option
+	has no effect when *--log-format* is _json_, which always emits uncolored
+	JSON.
 
 	Supported:
 

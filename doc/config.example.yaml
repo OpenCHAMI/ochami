@@ -20,7 +20,9 @@ log:
   # basic   - Specifies log level but no timestamp data
   format: json
 
-  # Color output. Specify whether or not to color output. Available values are:
+  # Color output. Specify whether or not to color output. This has no effect
+  # when format is json, which always emits uncolored JSON. Available values
+  # are:
   #
   # on   - Logs are colored unconditionally
   # off  - Logs are uncolored unconditionally

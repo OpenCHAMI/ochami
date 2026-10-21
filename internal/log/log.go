@@ -81,7 +81,12 @@ func New(writer io.Writer, ll, lf, lc string) (zerolog.Logger, error) {
 		cw.FormatCaller = getFormatCaller(cw.NoColor)
 		return zerolog.New(cw).Level(loggerLevel).With().Caller().Logger(), nil
 	case "json":
-		return zerolog.New(cw).Level(loggerLevel).With().Timestamp().Logger(), nil
+		// JSON output is meant to be machine-readable, so write the raw JSON
+		// records straight to the writer instead of rendering them through the
+		// ConsoleWriter. This also means --log-color has no effect on JSON
+		// output: the option is still validated above, but no ANSI color codes
+		// are ever emitted in this format.
+		return zerolog.New(writer).Level(loggerLevel).With().Timestamp().Logger(), nil
 	default:
 		return zerolog.Logger{}, fmt.Errorf("unknown log format: %s", lf)
 	}

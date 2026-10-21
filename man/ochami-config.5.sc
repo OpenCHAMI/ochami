@@ -89,7 +89,8 @@ These configuration options are global configuration options.
 
 	*color:* _color_
 		Enable/disable logging color. *auto* detects whether or not stderr is a
-		terminal and enables color accordingly.
+		terminal and enables color accordingly. This option has no effect when
+		*format* is _json_, which always emits uncolored JSON.
 
 		Default: *auto*
 		Supported:

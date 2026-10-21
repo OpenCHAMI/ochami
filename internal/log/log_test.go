@@ -7,6 +7,7 @@ package log
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
@@ -359,6 +360,39 @@ func TestNew_UsesProvidedWriter(t *testing.T) {
 
 	if got := output.String(); !strings.Contains(got, "writer-owned message") {
 		t.Fatalf("logger output = %q, want provided writer to receive message", got)
+	}
+}
+
+// TestNew_JSONFormat verifies that the json log format emits a single,
+// uncolored JSON object per line with the expected level and message fields,
+// regardless of the log color setting.
+func TestNew_JSONFormat(t *testing.T) {
+	for _, color := range []string{"auto", "on", "off"} {
+		t.Run("color="+color, func(t *testing.T) {
+			t.Parallel()
+
+			var output bytes.Buffer
+			logger, err := New(&output, "debug", "json", color)
+			if err != nil {
+				t.Fatalf("New() error = %v", err)
+			}
+			logger.Debug().Msg("json message")
+
+			line := strings.TrimSpace(output.String())
+			if strings.Contains(line, "\x1b[") {
+				t.Fatalf("output = %q, want no ANSI color codes", line)
+			}
+			var entry map[string]any
+			if err := json.Unmarshal([]byte(line), &entry); err != nil {
+				t.Fatalf("output = %q, want valid JSON: %v", line, err)
+			}
+			if got := entry["level"]; got != "debug" {
+				t.Errorf("level = %v, want debug", got)
+			}
+			if got := entry["message"]; got != "json message" {
+				t.Errorf("message = %v, want %q", got, "json message")
+			}
+		})
 	}
 }
 
