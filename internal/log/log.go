@@ -81,7 +81,10 @@ func New(writer io.Writer, ll, lf, lc string) (zerolog.Logger, error) {
 		cw.FormatCaller = getFormatCaller(cw.NoColor)
 		return zerolog.New(cw).Level(loggerLevel).With().Caller().Logger(), nil
 	case "json":
-		return zerolog.New(cw).Level(loggerLevel).With().Timestamp().Logger(), nil
+		// Build the logger on the raw writer, not the ConsoleWriter: the
+		// console writer renders human-readable text, so routing JSON format
+		// through it produced console-style lines instead of JSON objects.
+		return zerolog.New(writer).Level(loggerLevel).With().Timestamp().Logger(), nil
 	default:
 		return zerolog.Logger{}, fmt.Errorf("unknown log format: %s", lf)
 	}

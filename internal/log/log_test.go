@@ -7,6 +7,7 @@ package log
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
@@ -359,6 +360,39 @@ func TestNew_UsesProvidedWriter(t *testing.T) {
 
 	if got := output.String(); !strings.Contains(got, "writer-owned message") {
 		t.Fatalf("logger output = %q, want provided writer to receive message", got)
+	}
+}
+
+// TestNew_JSONFormat verifies that the "json" log format emits valid JSON
+// objects to the provided writer, rather than console-formatted text. The
+// ConsoleWriter renders human-readable lines, so a JSON logger must be built
+// on the raw writer instead.
+func TestNew_JSONFormat(t *testing.T) {
+	t.Parallel()
+
+	var output bytes.Buffer
+	logger, err := New(&output, "debug", "json", "off")
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	logger.Debug().Msg("json format message")
+
+	got := strings.TrimSpace(output.String())
+
+	// Console output looks like "11:26AM DBG json format message"; JSON output
+	// is a single JSON object per line carrying level/message/time fields.
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &parsed); err != nil {
+		t.Fatalf("json log output %q is not valid JSON: %v", got, err)
+	}
+	if parsed["message"] != "json format message" {
+		t.Errorf("message = %v, want %q", parsed["message"], "json format message")
+	}
+	if parsed["level"] != "debug" {
+		t.Errorf("level = %v, want %q", parsed["level"], "debug")
+	}
+	if _, ok := parsed["time"]; !ok {
+		t.Errorf("output %q is missing the time field, want a timestamp", got)
 	}
 }
 
