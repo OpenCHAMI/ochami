@@ -5,7 +5,7 @@
 
 module github.com/openchami/ochami
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/elliotchance/pie/v2 v2.9.1
