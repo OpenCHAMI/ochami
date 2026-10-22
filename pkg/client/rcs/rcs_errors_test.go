@@ -6,18 +6,22 @@ package rcs
 
 // rcs_errors_test.go unit-tests the RCSClient's error arms: a non-2XX response
 // from the plain HTTP endpoints, a websocket dial failure for the
-// console-streaming endpoints, malformed response bodies, websocketDialError's
-// classification of failed dials, and the rejection of a malformed client URI.
+// console-streaming endpoints, a failure to close the console connection,
+// malformed response bodies, websocketDialError's classification of failed
+// dials, and the rejection of a malformed client URI.
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/openchami/ochami/pkg/client"
 )
@@ -162,5 +166,26 @@ func TestRCSNewClientAndDial_RejectMalformedURIs(t *testing.T) {
 	c := &RCSClient{OchamiClient: &client.OchamiClient{}}
 	if _, err := c.dialWebSocket(context.Background(), "x0", "", nil); err == nil {
 		t.Fatal("dialWebSocket() accepted nil base URI")
+	}
+}
+
+// TestShowConsole_ReturnsConnectionCloseError verifies that ShowConsole returns
+// a failure to close the websocket connection after a normal close from the
+// server.
+func TestShowConsole_ReturnsConnectionCloseError(t *testing.T) {
+	want := errors.New("close failed")
+	conn := &fakeMessageConn{
+		readErr:  &websocket.CloseError{Code: websocket.CloseNormalClosure},
+		closeErr: want,
+	}
+	c, err := NewClient("https://example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.dial = func(context.Context, string, http.Header) (messageConn, *http.Response, error) {
+		return conn, nil, nil
+	}
+	if err := c.ShowConsole(context.Background(), "x0", false, 1, "", io.Discard); !errors.Is(err, want) {
+		t.Fatalf("ShowConsole() error = %v, want close error", err)
 	}
 }
