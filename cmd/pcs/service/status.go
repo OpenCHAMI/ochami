@@ -100,11 +100,18 @@ See ochami-pcs(1) for more details.`,
 				return err
 			}
 
-			// Figure out if we need to hit the /health endpoint (only if a flag has been provided)
+			// Read flags by value so that --flag=false counts as not passed.
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			flagSet := make(map[string]bool)
+			for _, f := range flags() {
+				flagSet[f], _ = cmd.Flags().GetBool(f)
+			}
+
+			// Figure out if we need to hit the /health endpoint (only if a flag has been set)
 			flagsProvided := false
-			flags := flags()
-			for i := 0; i < len(flags); i++ {
-				flagsProvided = flagsProvided || cmd.Flag(flags[i]).Changed
+			for _, set := range flagSet {
+				flagsProvided = flagsProvided || set
 			}
 
 			var health healthOutput
@@ -126,7 +133,7 @@ See ochami-pcs(1) for more details.`,
 
 			// Process the flags and copy the parts we need from the /health
 			// endpoint response
-			if cmd.Flag("all").Changed {
+			if flagSet["all"] {
 				output = commandOutput{
 					KvStore:      health.KvStore,
 					StateManager: health.StateManager,
@@ -134,13 +141,13 @@ See ochami-pcs(1) for more details.`,
 				}
 				reportPCSState = true
 			}
-			if cmd.Flag("storage").Changed {
+			if flagSet["storage"] {
 				output.KvStore = health.KvStore
 			}
-			if cmd.Flag("smd").Changed {
+			if flagSet["smd"] {
 				output.StateManager = health.StateManager
 			}
-			if cmd.Flag("vault").Changed {
+			if flagSet["vault"] {
 				output.Vault = health.Vault
 			}
 

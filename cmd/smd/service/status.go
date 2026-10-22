@@ -38,7 +38,8 @@ See ochami-smd(1) for more details.`,
 
 			// Determine which component to get status for and send request
 			var httpEnv client.HTTPEnvelope
-			if cmd.Flag("all").Changed {
+			// Read --all by value so that --all=false counts as not passed
+			if all, _ := cmd.Flags().GetBool("all"); all {
 				httpEnv, err = smdClient.GetStatus(cmd.Context(), "all")
 			} else {
 				httpEnv, err = smdClient.GetStatus(cmd.Context(), "")

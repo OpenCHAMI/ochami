@@ -67,13 +67,20 @@ See ochami-bss(1) for more details.`,
 				return err
 			}
 
+			// Read flags by value so that --flag=false counts as not passed.
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			allFlag, _ := cmd.Flags().GetBool("all")
+			storageFlag, _ := cmd.Flags().GetBool("storage")
+			smdFlag, _ := cmd.Flags().GetBool("smd")
+
 			// Determine which component to get status for and send request
 			var httpEnv client.HTTPEnvelope
-			if cmd.Flag("all").Changed {
+			if allFlag {
 				httpEnv, err = bssClient.GetStatus(cmd.Context(), "all")
-			} else if cmd.Flag("storage").Changed {
+			} else if storageFlag {
 				httpEnv, err = bssClient.GetStatus(cmd.Context(), "storage")
-			} else if cmd.Flag("smd").Changed {
+			} else if smdFlag {
 				httpEnv, err = bssClient.GetStatus(cmd.Context(), "smd")
 			} else {
 				httpEnv, err = bssClient.GetStatus(cmd.Context(), "")

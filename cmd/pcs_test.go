@@ -167,3 +167,33 @@ func TestPCSStatusShow_Success(t *testing.T) {
 		t.Errorf("stdout = %q, want it to contain the xname", res.stdout)
 	}
 }
+
+// TestPCSServiceStatus_HealthFalseFlags verifies that health flags passed as
+// false are left out of the output while the ones passed as true are included.
+func TestPCSServiceStatus_HealthFalseFlags(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/health":
+			w.Write([]byte(`{"KvStore":"kv-ok","StateManager":"smd-ok","Vault":"vault-ok"}`))
+		default:
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "pcs", "service", "status", "--storage=false", "--smd", "--vault=false",
+		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if !strings.Contains(res.stdout, "smd-ok") {
+		t.Errorf("stdout = %q, want it to contain the smd status", res.stdout)
+	}
+	for _, unwanted := range []string{"kv-ok", "vault-ok"} {
+		if strings.Contains(res.stdout, unwanted) {
+			t.Errorf("stdout = %q, want it not to contain %q", res.stdout, unwanted)
+		}
+	}
+}

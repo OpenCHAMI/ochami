@@ -38,24 +38,30 @@ See ochami-cloud-init(1) for more details.`,
 				return err
 			}
 
-			if !cmd.Flag("api").Changed {
+			// Read flags by value so that --flag=false counts as not passed.
+			// Since flags are registered with the correct types on this command,
+			// these Get* calls cannot fail, so their errors are ignored
+			api, _ := cmd.Flags().GetBool("api")
+			quiet, _ := cmd.Flags().GetBool("quiet")
+
+			if !api {
 				if _, err := cloudInitClient.GetVersion(cmd.Context()); err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
-						if !cmd.Flag("quiet").Changed {
+						if !quiet {
 							if err := cli.WriteString(rt.Ios.Out(), "cloud-init is running, but not normally\n"); err != nil {
 								return err
 							}
 						}
 						return cli.Errorf(cli.CodeHTTP, "cloud-init status request yielded unsuccessful HTTP response: %w", err)
 					}
-					if !cmd.Flag("quiet").Changed {
+					if !quiet {
 						if err := cli.WriteString(rt.Ios.Out(), "cloud-init is not running\n"); err != nil {
 							return err
 						}
 					}
 					return cli.ClassifyClientError(err, "failed to get cloud-init status", "failed to get cloud-init status")
 				}
-				if !cmd.Flag("quiet").Changed {
+				if !quiet {
 					if err := cli.WriteString(rt.Ios.Out(), "cloud-init is running\n"); err != nil {
 						return err
 					}
@@ -65,7 +71,7 @@ See ochami-cloud-init(1) for more details.`,
 
 			var respArr []client.HTTPEnvelope
 			var itemErrs []error
-			if cmd.Flag("api").Changed {
+			if api {
 				if henv, err := cloudInitClient.GetAPI(cmd.Context()); err != nil {
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
 						rt.Logger.Error().Err(err).Msg("cloud-init API spec request yielded unsuccessful HTTP response")
