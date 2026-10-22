@@ -8,8 +8,8 @@ package cmd
 // four resource types (defaults, group, instance, peer). The metadata client
 // wraps an upstream library, so these tests assert exit-code behavior rather
 // than exact request routing (routing for the metadata client is covered by its
-// own package tests). HTTP-failure cases are covered in
-// metadata_errors_test.go.
+// own package tests). Tests of one resource type's commands live in
+// metadata_<type>_test.go, and HTTP-failure cases in metadata_errors_test.go.
 
 import (
 	"io"
@@ -477,23 +477,98 @@ func TestMetadataSet_NilResource(t *testing.T) {
 	}
 }
 
-// TestMetadataGroupList_Success verifies that "metadata group list" exits
-// successfully when the service returns a valid list response.
-func TestMetadataGroupList_Success(t *testing.T) {
+// metadataTypes are the four metadata resource types that share a common verb
+// surface.
+var metadataTypes = []string{"defaults", "group", "instance", "peer"}
+
+// addPayloadFor returns a minimal JSON payload accepted by "<type> add" for the
+// given resource type. All four accept a name plus type-appropriate fields.
+func addPayloadFor(typ string) string {
+	switch typ {
+	case "peer":
+		return `{"name":"peer-1","publicKey":"abc","allowedIP":"10.0.0.1/32"}`
+	default:
+		return `{"name":"thing-1"}`
+	}
+}
+
+// TestMetadataAdd_Success verifies that "metadata <type> add" succeeds for
+// every metadata resource type.
+func TestMetadataAdd_Success(t *testing.T) {
 	t.Parallel()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`[]`))
-	}))
-	defer srv.Close()
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
 
-	res := runOchamiWithRuntime(t, "--ignore-config", "metadata", "group", "list", "--uri", srv.URL, "--token", "faketoken")
-
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			t.Parallel()
+			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "add",
+				"--uri", srv.URL, "--token", "t",
+				"-d", addPayloadFor(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if res.exitCode != cli.CodeSuccess {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
+			}
+		})
 	}
-	if res.exitCode != cli.CodeSuccess {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
+}
+
+// TestMetadataSet_Success verifies that "metadata <type> set" succeeds for
+// every metadata resource type.
+func TestMetadataSet_Success(t *testing.T) {
+	t.Parallel()
+
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"metadata":{"name":"thing-1"}}`))
+			}))
+			defer srv.Close()
+
+			t.Parallel()
+			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "set", "some-uid",
+				"--uri", srv.URL, "--token", "t",
+				"-d", addPayloadFor(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if res.exitCode != cli.CodeSuccess {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
+			}
+		})
+	}
+}
+
+// TestMetadataDelete_NoConfirm verifies that "metadata <type> delete
+// --no-confirm" deletes without prompting, for every metadata resource type.
+func TestMetadataDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
+	for _, typ := range metadataTypes {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{}`))
+			}))
+			defer srv.Close()
+
+			t.Parallel()
+			res := runOchamiWithRuntime(t, "metadata", "--ignore-config", typ, "delete", "some-uid",
+				"--uri", srv.URL, "--token", "t", "--no-confirm")
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if res.exitCode != cli.CodeSuccess {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
+			}
+		})
 	}
 }
