@@ -21,9 +21,9 @@ func unwritablePath(t *testing.T) string {
 	return filepath.Join(notADir, "config.yaml")
 }
 
-// TestFile_UpdatePersistsAllChanges verifies that a successful Update writes
+// TestFileUpdate_PersistsAllChanges verifies that a successful Update writes
 // all of its batched mutations to disk.
-func TestFile_UpdatePersistsAllChanges(t *testing.T) {
+func TestFileUpdate_PersistsAllChanges(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "config.yaml")
@@ -53,10 +53,10 @@ func TestFile_UpdatePersistsAllChanges(t *testing.T) {
 	}
 }
 
-// TestFile_UpdateReadsSeeStagedChanges verifies that Get, Raw, Cluster, and
+// TestFileUpdate_ReadsSeeStagedChanges verifies that Get, Raw, Cluster, and
 // Clusters called inside Update observe the changes fn has made so far, before
 // they are written.
-func TestFile_UpdateReadsSeeStagedChanges(t *testing.T) {
+func TestFileUpdate_ReadsSeeStagedChanges(t *testing.T) {
 	t.Parallel()
 
 	f, err := CreateFile(filepath.Join(t.TempDir(), "config.yaml"))
