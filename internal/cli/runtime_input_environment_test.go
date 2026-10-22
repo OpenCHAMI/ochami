@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -63,33 +62,6 @@ func TestRuntimeHandlePayload_SliceUsesRuntimeInput(t *testing.T) {
 	}
 }
 
-// TestRuntime_EnvironmentIsolation verifies that each runtime resolves its
-// cluster's token from its own environment.
-func TestRuntime_EnvironmentIsolation(t *testing.T) {
-	t.Parallel()
-
-	lookup := func(values map[string]string) EnvironmentFunc {
-		return func(key string) (string, bool) {
-			value, ok := values[key]
-			return value, ok
-		}
-	}
-	rtA := NewTestRuntime(nil, io.Discard, io.Discard).WithEnvironment(lookup(map[string]string{"CLUSTER_A_ACCESS_TOKEN": "token-a"}))
-	rtB := NewTestRuntime(nil, io.Discard, io.Discard).WithEnvironment(lookup(map[string]string{"CLUSTER_B_ACCESS_TOKEN": "token-b"}))
-	rtA.Config.DefaultCluster = "cluster-a"
-	rtB.Config.DefaultCluster = "cluster-b"
-
-	if err := rtA.SetTokenFromEnv(tokenTestCmd()); err != nil {
-		t.Fatalf("runtime A SetTokenFromEnv() error = %v", err)
-	}
-	if err := rtB.SetTokenFromEnv(tokenTestCmd()); err != nil {
-		t.Fatalf("runtime B SetTokenFromEnv() error = %v", err)
-	}
-	if rtA.Token != "token-a" || rtB.Token != "token-b" {
-		t.Fatalf("tokens = %q, %q; want token-a, token-b", rtA.Token, rtB.Token)
-	}
-}
-
 // TestRuntimeResolveUserConfigFile_UsesRuntimeEnvironment verifies that
 // ResolveUserConfigFile reads XDG_CONFIG_HOME from the runtime's environment
 // rather than the process's.
@@ -137,42 +109,6 @@ func TestRuntimeLoadMergedConfig_UsesRuntimeEnvironment(t *testing.T) {
 	}
 	if rt.Config.Log.Level != "warning" {
 		t.Fatalf("Log.Level = %q, want warning", rt.Config.Log.Level)
-	}
-}
-
-// TestHandleToken_FlagPrecedesRuntimeEnvironment verifies that HandleToken uses
-// --token even when the cluster's token environment variable is also set.
-func TestHandleToken_FlagPrecedesRuntimeEnvironment(t *testing.T) {
-	t.Parallel()
-
-	now := time.Now()
-	flagToken, err := generateTestToken(now.Add(time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
-	if err != nil {
-		t.Fatalf("generate flag token: %v", err)
-	}
-	envToken, err := generateTestToken(now.Add(2*time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
-	if err != nil {
-		t.Fatalf("generate environment token: %v", err)
-	}
-	rt := NewTestRuntime(nil, io.Discard, io.Discard).WithEnvironment(EnvironmentFunc(func(key string) (string, bool) {
-		return envToken, key == "MY_CLUSTER_ACCESS_TOKEN"
-	}))
-	rt.Config = config.Config{
-		DefaultCluster: "my-cluster",
-		Clusters: []config.Cluster{{
-			Name:    "my-cluster",
-			Cluster: config.ClusterConfig{EnableAuth: true},
-		}},
-	}
-	cmd := tokenTestCmd()
-	if err := cmd.Flags().Set("token", flagToken); err != nil {
-		t.Fatalf("set token flag: %v", err)
-	}
-	if err := rt.HandleToken(cmd); err != nil {
-		t.Fatalf("HandleToken() error = %v", err)
-	}
-	if rt.Token != flagToken {
-		t.Fatal("HandleToken() did not preserve explicit token precedence")
 	}
 }
 

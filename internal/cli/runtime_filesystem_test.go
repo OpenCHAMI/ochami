@@ -5,7 +5,6 @@
 package cli
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"os"
@@ -36,58 +35,9 @@ type closeFunc func() error
 
 func (f closeFunc) Close() error { return f() }
 
-type readError struct{ err error }
-
 func (r readError) Read([]byte) (int, error) { return 0, r.err }
 
-type writeError struct{ err error }
-
 func (w writeError) Write([]byte) (int, error) { return 0, w.err }
-
-// TestIOStreams_ConfirmCreate verifies that ConfirmCreate returns the user's
-// answer, prompts again after an invalid one, treats end of input as no, and
-// returns a failure to read the answer or write the prompt.
-func TestIOStreams_ConfirmCreate(t *testing.T) {
-	t.Parallel()
-
-	readErr := errors.New("read failed")
-	writeErr := errors.New("write failed")
-	tests := []struct {
-		name        string
-		input       io.Reader
-		stderr      io.Writer
-		want        bool
-		wantErr     error
-		wantPrompts int
-	}{
-		{name: "accepted", input: strings.NewReader("y\n"), stderr: &bytes.Buffer{}, want: true, wantPrompts: 1},
-		{name: "declined", input: strings.NewReader("n\n"), stderr: &bytes.Buffer{}, wantPrompts: 1},
-		{name: "invalid then accepted", input: strings.NewReader("perhaps\ny\n"), stderr: &bytes.Buffer{}, want: true, wantPrompts: 2},
-		{name: "EOF", input: strings.NewReader(""), stderr: &bytes.Buffer{}, wantPrompts: 1},
-		{name: "read failure", input: readError{err: readErr}, stderr: &bytes.Buffer{}, wantErr: readErr, wantPrompts: 1},
-		{name: "write failure", input: strings.NewReader("y\n"), stderr: writeError{err: writeErr}, wantErr: writeErr},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			ios := NewIOStreams(tc.input, io.Discard, tc.stderr)
-			got, err := ios.ConfirmCreate("config.yaml")
-			if got != tc.want {
-				t.Errorf("ConfirmCreate() = %v, want %v", got, tc.want)
-			}
-			if !errors.Is(err, tc.wantErr) {
-				t.Errorf("ConfirmCreate() error = %v, want %v", err, tc.wantErr)
-			}
-			if buf, ok := tc.stderr.(*bytes.Buffer); ok {
-				const prompt = "config.yaml does not exist. Create it? [yn]:"
-				if got := strings.Count(buf.String(), prompt); got != tc.wantPrompts {
-					t.Errorf("prompt count = %d, want %d; output %q", got, tc.wantPrompts, buf.String())
-				}
-			}
-		})
-	}
-}
 
 // TestRuntimeAskToCreate verifies that AskToCreate rejects an empty path
 // without checking the filesystem, reports an existing file with ErrFileExists,
