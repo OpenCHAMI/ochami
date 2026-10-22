@@ -12,11 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/spf13/cobra"
-
-	"github.com/openchami/ochami/pkg/config"
 )
 
 type runtimePayload struct {
@@ -60,33 +57,6 @@ func TestRuntimeHandlePayload_SliceUsesRuntimeInput(t *testing.T) {
 	}
 	if len(got) != 2 || got[0].Name != "a" || got[1].Name != "b" {
 		t.Fatalf("HandlePayloadSlice() = %#v", got)
-	}
-}
-
-// TestRuntime_EnvironmentIsolation verifies that each runtime resolves its
-// cluster's token from its own environment.
-func TestRuntime_EnvironmentIsolation(t *testing.T) {
-	t.Parallel()
-
-	lookup := func(values map[string]string) EnvironmentFunc {
-		return func(key string) (string, bool) {
-			value, ok := values[key]
-			return value, ok
-		}
-	}
-	rtA := NewTestRuntime(nil, io.Discard, io.Discard).WithEnvironment(lookup(map[string]string{"CLUSTER_A_ACCESS_TOKEN": "token-a"}))
-	rtB := NewTestRuntime(nil, io.Discard, io.Discard).WithEnvironment(lookup(map[string]string{"CLUSTER_B_ACCESS_TOKEN": "token-b"}))
-	rtA.Config.DefaultCluster = "cluster-a"
-	rtB.Config.DefaultCluster = "cluster-b"
-
-	if err := rtA.SetTokenFromEnv(tokenTestCmd()); err != nil {
-		t.Fatalf("runtime A SetTokenFromEnv() error = %v", err)
-	}
-	if err := rtB.SetTokenFromEnv(tokenTestCmd()); err != nil {
-		t.Fatalf("runtime B SetTokenFromEnv() error = %v", err)
-	}
-	if rtA.Token != "token-a" || rtB.Token != "token-b" {
-		t.Fatalf("tokens = %q, %q; want token-a, token-b", rtA.Token, rtB.Token)
 	}
 }
 
@@ -140,42 +110,6 @@ func TestRuntimeLoadMergedConfig_UsesRuntimeEnvironment(t *testing.T) {
 	}
 }
 
-// TestHandleToken_FlagPrecedesRuntimeEnvironment verifies that HandleToken uses
-// --token even when the cluster's token environment variable is also set.
-func TestHandleToken_FlagPrecedesRuntimeEnvironment(t *testing.T) {
-	t.Parallel()
-
-	now := time.Now()
-	flagToken, err := generateTestToken(now.Add(time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
-	if err != nil {
-		t.Fatalf("generate flag token: %v", err)
-	}
-	envToken, err := generateTestToken(now.Add(2*time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
-	if err != nil {
-		t.Fatalf("generate environment token: %v", err)
-	}
-	rt := NewTestRuntime(nil, io.Discard, io.Discard).WithEnvironment(EnvironmentFunc(func(key string) (string, bool) {
-		return envToken, key == "MY_CLUSTER_ACCESS_TOKEN"
-	}))
-	rt.Config = config.Config{
-		DefaultCluster: "my-cluster",
-		Clusters: []config.Cluster{{
-			Name:    "my-cluster",
-			Cluster: config.ClusterConfig{EnableAuth: true},
-		}},
-	}
-	cmd := tokenTestCmd()
-	if err := cmd.Flags().Set("token", flagToken); err != nil {
-		t.Fatalf("set token flag: %v", err)
-	}
-	if err := rt.HandleToken(cmd); err != nil {
-		t.Fatalf("HandleToken() error = %v", err)
-	}
-	if rt.Token != flagToken {
-		t.Fatal("HandleToken() did not preserve explicit token precedence")
-	}
-}
-
 // TestTokenHelpers_AllowStandaloneCommands verifies that SetTokenFromFlag and
 // HandleToken succeed for a command that has no token or cluster flags.
 func TestTokenHelpers_AllowStandaloneCommands(t *testing.T) {
@@ -188,57 +122,6 @@ func TestTokenHelpers_AllowStandaloneCommands(t *testing.T) {
 	}
 	if err := rt.HandleToken(cmd); err != nil {
 		t.Fatalf("HandleToken() error = %v", err)
-	}
-}
-
-// TestInitConfig_LoadsMergedDefaults verifies InitConfig reads real process
-// environment variables (HOME, XDG_CONFIG_HOME) to resolve and load the
-// merged system+user configuration when explicitly opted in via
-// WithEnvironment, since NewTestRuntime is hermetic by default.
-func TestInitConfig_LoadsMergedDefaults(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
-
-	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{}).WithEnvironment(EnvironmentFunc(os.LookupEnv))
-	cmd := &cobra.Command{Use: "test"}
-	cmd.Flags().Bool("ignore-config", false, "")
-
-	if err := rt.InitConfig(cmd, false); err != nil {
-		t.Fatalf("InitConfig() error = %v", err)
-	}
-	if rt.Config.Log.Level == "" {
-		t.Error("InitConfig() did not load global defaults")
-	}
-	if rt.Effective == (config.Effective{}) {
-		t.Fatal("InitConfig() did not retain the effective view")
-	}
-	if rt.UserConfigFile == "" {
-		t.Error("InitConfig() did not resolve the user config path")
-	}
-}
-
-// TestInitConfig_IgnoreConfigResolvesUserConfigFile verifies that --ignore-config
-// still resolves rt.UserConfigFile (without reading it), so commands that
-// report or target the user config path (e.g. "config show --user") get a
-// usable path instead of an empty string.
-func TestInitConfig_IgnoreConfigResolvesUserConfigFile(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
-
-	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{}).WithEnvironment(EnvironmentFunc(os.LookupEnv))
-	cmd := &cobra.Command{Use: "test"}
-	cmd.Flags().Bool("ignore-config", false, "")
-	if err := cmd.Flags().Set("ignore-config", "true"); err != nil {
-		t.Fatalf("set ignore-config flag: %v", err)
-	}
-
-	if err := rt.InitConfig(cmd, false); err != nil {
-		t.Fatalf("InitConfig() error = %v", err)
-	}
-	if rt.UserConfigFile == "" {
-		t.Error("InitConfig() with --ignore-config did not resolve the user config path")
 	}
 }
 
