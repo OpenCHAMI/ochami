@@ -123,6 +123,50 @@ func TestSMDIfaceGet_ByIDWithByIP(t *testing.T) {
 	}
 }
 
+// TestSMDIfaceGet_ByIDWithByIPFalse verifies "get --id --by-ip=false" fetches
+// the interface itself, as if --by-ip were omitted, not its IP addresses.
+func TestSMDIfaceGet_ByIDWithByIPFalse(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL,
+		"--token", validToken(t), "--id", "decafc0ffeee", "--by-ip=false")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if want := "/Inventory/EthernetInterfaces/decafc0ffeee"; gotPath != want {
+		t.Errorf("path = %q, want %q", gotPath, want)
+	}
+}
+
+// TestSMDIfaceGet_ByIPFalse verifies "get --by-ip=false" without --id fetches
+// all interfaces instead of rejecting --by-ip as needing --id.
+func TestSMDIfaceGet_ByIPFalse(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL,
+		"--token", validToken(t), "--by-ip=false")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if want := "/Inventory/EthernetInterfaces"; gotPath != want {
+		t.Errorf("path = %q, want %q", gotPath, want)
+	}
+}
+
 // TestSMDIfaceAdd_ByFlags verifies "add <comp> <mac> <net,ip>" issues a POST.
 func TestSMDIfaceAdd_ByFlags(t *testing.T) {
 	t.Parallel()

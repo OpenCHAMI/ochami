@@ -130,9 +130,7 @@ See ochami-smd(1) for more details.`,
 			if cmd.Flag("id").Changed {
 				opts.ID, _ = cmd.Flags().GetString("id")
 			}
-			if cmd.Flag("by-ip").Changed {
-				opts.ByIP = true
-			}
+			opts.ByIP, _ = cmd.Flags().GetBool("by-ip")
 			if cmd.Flag("mac").Changed {
 				opts.Mac, _ = cmd.Flags().GetStringSlice("mac")
 			}
