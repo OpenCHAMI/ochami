@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
-	"github.com/openchami/ochami/pkg/client/metadata_service"
 
 	metadata_service_lib "github.com/openchami/ochami/internal/cli/metadata_service"
 )
@@ -20,12 +19,7 @@ type metadataPeerDeleteOptions struct {
 
 // runCoreMetadataPeerDelete contains the core logic for the metadata peer delete command.
 // It takes the parsed options and performs the actual work of deleting WireGuard peers.
-func runCoreMetadataPeerDelete(cmd *cobra.Command, opts *metadataPeerDeleteOptions, args []string, metadataServiceClient *metadata_service.MetadataServiceClient, rt *cli.Runtime) error {
-	// Handle token for this command
-	if err := rt.HandleToken(cmd); err != nil {
-		return err
-	}
-
+func runCoreMetadataPeerDelete(cmd *cobra.Command, opts *metadataPeerDeleteOptions, args []string, rt *cli.Runtime) error {
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
 		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
@@ -37,6 +31,17 @@ func runCoreMetadataPeerDelete(cmd *cobra.Command, opts *metadataPeerDeleteOptio
 		} else {
 			rt.Logger.Debug().Msg("user answered affirmatively to delete WireGuard peers")
 		}
+	}
+
+	// Create client to use for requests
+	metadataServiceClient, err := metadata_service_lib.GetClient(cmd, rt)
+	if err != nil {
+		return err
+	}
+
+	// Handle token for this command
+	if err := rt.HandleToken(cmd); err != nil {
+		return err
 	}
 
 	// Send off requests
@@ -76,12 +81,6 @@ See ochami-metadata(1) for more details.`,
 				return err
 			}
 
-			// Create client to use for requests
-			metadataServiceClient, err := metadata_service_lib.GetClient(cmd, rt)
-			if err != nil {
-				return err
-			}
-
 			// Extract options from flags
 			// Since flags are registered with the correct types on this command,
 			// these Get* calls cannot fail, so their errors are ignored
@@ -90,7 +89,7 @@ See ochami-metadata(1) for more details.`,
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm")
 			}
 
-			return runCoreMetadataPeerDelete(cmd, opts, args, metadataServiceClient, rt)
+			return runCoreMetadataPeerDelete(cmd, opts, args, rt)
 		},
 	}
 
