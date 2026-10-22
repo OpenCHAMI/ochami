@@ -203,6 +203,27 @@ Avoid generic, non-descriptive suffixes (`_more`, `_edge`, `_extra`,
 matches what the test actually asserts, or extend the subject's plain test
 file if it's more happy-path coverage of the same subject.
 
+Keep each subject's tests for a bucket in one file of its package, so the
+file name tells a reader where they are. The subject here is the part of the
+name before the first underscore (`TestFile` in `TestFile_SetKey`); if that
+is too broad to group by, name the tests after the specific function or
+method (`TestFileUpdate_PersistsAllChanges`). Files restricted to some
+platforms by a build constraint or a GOOS/GOARCH file name suffix (e.g.
+`pkg/config/sync_windows_test.go`) are the exception.
+
+Name command tests in `cmd` after the command path they cover, joined with
+underscores: `smd_group_test.go` holds every happy-path test of the `smd
+group` subcommands, whatever the verb, and `smd_group_errors_test.go` their
+error paths. Use a deeper path only for a resource with its own subcommand
+group (`smd_group_member_test.go`, `bss_boot_params_test.go`). The family
+file (`smd_test.go`) holds only the commands directly under the family, such
+as `smd service status` or `discover static`, and tables over every resource
+type of a family (`TestBootAdd_Success`). The root files (`root_test.go`)
+hold tests of the global flags and of how the root command loads config.
+Tests of one behavior across families go in a file named after that behavior
+(`prompts_test.go`, `tokenless_test.go`, `service_status_test.go`), and
+error tables across families in `commands_errors_test.go`.
+
 The suffix taxonomy groups separate top-level `Test` functions, not the
 `t.Run` subtests within one. A single `TestSubject` that uses subtests to
 check several facets of one cohesive contract (e.g. an executor's
@@ -247,8 +268,8 @@ isolated `cli.NewTestRuntime` through the helpers in `cmd/testhelpers_test.go`
 `make test` runs the tests in `internal/conventions`, which parse the
 module's sources and fail on:
 
-- test names that don't follow `TestSubject_Case`, and test files with a
-  generic suffix;
+- test names that don't follow `TestSubject_Case`, test files with a
+  generic suffix, and a subject's tests for one bucket split across files;
 - test doc comments that don't start with the test's name, use coverage
   jargon, or refer to other tests;
 - test doc comments that say the test issues, sends, or requests an HTTP
