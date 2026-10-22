@@ -4,12 +4,11 @@
 
 package cmd
 
-// discover_static_errors_test.go exercises the error-arm branches of "ochami
+// discover_errors_test.go exercises the error-arm branches of "ochami
 // discover static": HTTP failures (with and without --overwrite),
 // malformed/missing payload and config, 409-then-failing-fallback cases, and
 // transport-level (network) failures across the plain, discovery-version v1,
-// and --overwrite paths. The discoveryPayload fixture is in
-// discover_static_test.go.
+// and --overwrite paths. The discoveryPayload fixture is in discover_test.go.
 
 import (
 	"net/http"
