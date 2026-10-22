@@ -155,6 +155,44 @@ func TestNoDuplicateFlags(t *testing.T) {
 	}
 }
 
+// TestServiceURIFlagUsage verifies that the --uri flag of every service
+// command names the service that command talks to in its help text.
+func TestServiceURIFlagUsage(t *testing.T) {
+	t.Parallel()
+
+	services := map[string]string{
+		"boot":       "boot service",
+		"bss":        "BSS",
+		"cloud-init": "cloud-init",
+		"metadata":   "metadata service",
+		"pcs":        "PCS",
+		"rcs":        "remote-console",
+		"smd":        "SMD",
+	}
+
+	rootCmd := NewRootCmd()
+	for _, cmd := range rootCmd.Commands() {
+		flag := cmd.PersistentFlags().Lookup("uri")
+		if flag == nil {
+			continue
+		}
+		service, ok := services[cmd.Name()]
+		if !ok {
+			t.Errorf("command %q has a --uri flag but no expected service name in this test", cmd.Name())
+			continue
+		}
+		delete(services, cmd.Name())
+
+		want := "absolute base URI or relative base path of " + service
+		if flag.Usage != want {
+			t.Errorf("%s --uri usage = %q, want %q", cmd.CommandPath(), flag.Usage, want)
+		}
+	}
+	for name := range services {
+		t.Errorf("command %q not found or has no --uri flag", name)
+	}
+}
+
 // TestRootCommand_ConcurrentRuntimesStayIsolated verifies that command trees
 // run concurrently, each with its own runtime, all succeed, write only to
 // their own runtime's output stream, and leave each runtime's token

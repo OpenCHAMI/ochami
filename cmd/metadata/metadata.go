@@ -36,7 +36,7 @@ See ochami-metadata(1) for more details.`,
 	// Create flags
 	metadataCmd.PersistentFlags().String("api-version", "", "version of service API to use in request")
 	cli.AddPositiveDurationFlag(metadataCmd.PersistentFlags(), "timeout", config.DefaultTimeout(), "timeout duration when making requests")
-	metadataCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of boot service")
+	metadataCmd.PersistentFlags().String("uri", "", "absolute base URI or relative base path of metadata service")
 
 	// Add subcommands
 	metadataCmd.AddCommand(
