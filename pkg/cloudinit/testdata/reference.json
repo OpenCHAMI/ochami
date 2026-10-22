@@ -1,0 +1,42 @@
+{
+  "python": "3.15.0",
+  "jinja2": "3.1.6",
+  "markupsafe": "3.0.4",
+  "fixtures": [
+    {
+      "name": "cloud-init-original",
+      "template": "cloud-init-original.j2",
+      "metadata": "cloud-init-original.metadata.json",
+      "extra_vars": "cloud-init-original.extra-vars.json",
+      "expected": "cloud-init-original.yaml"
+    },
+    {
+      "name": "cloud-init-extend",
+      "template": "cloud-init-extend.j2",
+      "metadata": "cloud-init-extend.metadata.json",
+      "extra_vars": "cloud-init-extend.extra-vars.json",
+      "expected": "cloud-init-extend.yaml"
+    },
+    {
+      "name": "cloud-init-single-group",
+      "template": "cloud-init-single-group.j2",
+      "metadata": "cloud-init-single-group.metadata.json",
+      "extra_vars": "cloud-init-single-group.extra-vars.json",
+      "expected": "cloud-init-single-group.yaml"
+    },
+    {
+      "name": "cloud-init-extend-single-group",
+      "template": "cloud-init-extend-single-group.j2",
+      "metadata": "cloud-init-extend-single-group.metadata.json",
+      "extra_vars": "cloud-init-extend-single-group.extra-vars.json",
+      "expected": "cloud-init-extend-single-group.yaml"
+    },
+    {
+      "name": "cloud-init-items-filter",
+      "template": "cloud-init-items-filter.j2",
+      "metadata": "cloud-init-items-filter.metadata.json",
+      "extra_vars": "cloud-init-items-filter.extra-vars.json",
+      "expected": "cloud-init-items-filter.yaml"
+    }
+  ]
+}

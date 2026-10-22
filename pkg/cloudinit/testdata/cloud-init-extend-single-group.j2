@@ -1,0 +1,55 @@
+#cloud-config
+merge_how:
+- name: list
+  settings: [append]
+- name: dict
+  settings: [no_replace, recurse_list]
+
+
+{% set ns = namespace(mount_list = []) -%}
+{%- for g, gdata in ds.meta_data.instance_data.v1.vendor_data.groups.items() -%}
+  {%- if 'mounts' in gdata -%}
+    {%- do ns.mount_list.extend(gdata['mounts']) -%}
+  {%- endif -%}
+{%- endfor -%}
+write_files:
+{% for m in ns.mount_list %}
+  - content: |
+      [Unit]
+      Description=Mount {{ m.dst }}
+      {% if m.type == 'nfs' or m.type == 'vast' -%}
+      After=network-online.target cloud-final.service
+      Wants=network-online.target
+      {% endif -%}
+      ConditionPathIsMountPoint=!{{ m.dst }}
+
+      [Mount]
+      {%- if m.type == 'vast' -%}
+      {%- set ns.idx = m.range | random | string -%}
+      {%- set ns.src = m.src | replace("@@@IDX@@@", ns.idx, -1) -%}
+      {%- set ns.type = 'nfs' -%}
+      {%- else -%}
+      {%- set ns.src = m.src -%}
+      {%- set ns.type = m.type -%}
+      {%- endif %}
+
+      What={{ ns.src }}
+      Where={{ m.dst }}
+      Type={{ ns.type }}
+      Options={{ m.opts }}{% if m.type == 'nfs' or m.type == 'vast' %},_netdev{% endif %}
+
+
+      [Install]
+      WantedBy=multi-user.target
+    path: /etc/systemd/system/{{ m.dst.lstrip('/').replace('/', '-', -1) or 'root' }}.mount
+    permissions: '0644'
+    owner: 'root:root'
+{% endfor %}
+runcmd:
+{% for m in ns.mount_list %}
+  - mkdir -p {{ m.dst }}
+{% endfor %}
+  - systemctl daemon-reload
+{% for m in ns.mount_list %}
+  - systemctl enable --now --no-block {{ m.dst.lstrip('/').replace('/', '-', -1) or 'root' }}.mount
+{% endfor %}
