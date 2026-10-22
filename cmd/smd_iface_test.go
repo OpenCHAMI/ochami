@@ -306,3 +306,76 @@ func TestSMDIfaceDelete_AllFalse(t *testing.T) {
 		t.Errorf("DELETE paths = %v, want [%s]", gotPaths, want)
 	}
 }
+
+// TestSMDIfaceGet_Success verifies "smd iface get" issues GET
+// /Inventory/EthernetInterfaces.
+func TestSMDIfaceGet_Success(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotMethod = r.Method
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "iface", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/Inventory/EthernetInterfaces" {
+		t.Errorf("path = %q, want /Inventory/EthernetInterfaces", gotPath)
+	}
+	if gotMethod != http.MethodGet {
+		t.Errorf("method = %q, want GET", gotMethod)
+	}
+}
+
+// TestSMDIfaceAdd_ViaArgs verifies "smd iface add <comp> <mac> <net,ip>" issues
+// POST /Inventory/EthernetInterfaces.
+func TestSMDIfaceAdd_ViaArgs(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "iface", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"x0c0s0b0n0", "de:ad:be:ef:00:00", "internal,172.16.0.1")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/Inventory/EthernetInterfaces" {
+		t.Errorf("request = %s %s, want POST /Inventory/EthernetInterfaces", gotMethod, gotPath)
+	}
+}
+
+// TestSMDIfaceDelete_NoConfirm verifies "smd iface delete --no-confirm <id>"
+// issues DELETE under /Inventory/EthernetInterfaces.
+func TestSMDIfaceDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "iface", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--no-confirm", "deadbeef0000")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodDelete {
+		t.Errorf("method = %q, want DELETE", gotMethod)
+	}
+	if gotPath != "/Inventory/EthernetInterfaces/deadbeef0000" {
+		t.Errorf("path = %q, want /Inventory/EthernetInterfaces/deadbeef0000", gotPath)
+	}
+}

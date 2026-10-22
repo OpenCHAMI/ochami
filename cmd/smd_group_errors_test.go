@@ -7,6 +7,7 @@ package cmd
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -170,5 +171,31 @@ func TestSMDGroupAdd_NetworkError(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeNetwork {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+}
+
+// TestSMDGroupGet_TruncatedResponseBody verifies that a truncated HTTP response
+// body (a declared Content-Length the server doesn't deliver) is reported as
+// a network error, not silently swallowed.
+func TestSMDGroupGet_TruncatedResponseBody(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Declare a body longer than what's written, then close the
+		// connection without fulfilling Content-Length.
+		w.Header().Set("Content-Length", "100")
+		w.Write([]byte("partial"))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "smd", "group", "get", "--uri", srv.URL, "--token", "t")
+	if res.err == nil {
+		t.Fatal("expected an error for a truncated response body, got nil")
+	}
+	if res.exitCode != cli.CodeNetwork {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+	if !strings.Contains(res.err.Error(), "unexpected EOF") {
+		t.Errorf("error = %q, want it to report the truncated read", res.err.Error())
 	}
 }
