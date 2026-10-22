@@ -90,6 +90,39 @@ func TestDiscoverStatic_Overwrite(t *testing.T) {
 	}
 }
 
+// TestDiscoverStatic_OverwriteFalse verifies that "discover static
+// --overwrite=false" only POSTs to SMD, as if --overwrite were omitted, instead
+// of overwriting existing data with PUT or PATCH requests.
+func TestDiscoverStatic_OverwriteFalse(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	var overwrites []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut || r.Method == http.MethodPatch {
+			mu.Lock()
+			overwrites = append(overwrites, r.Method+" "+r.URL.Path)
+			mu.Unlock()
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "discover", "static", "-d", discoveryPayload, "--overwrite=false",
+		"--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if len(overwrites) != 0 {
+		t.Errorf("overwrite requests = %v, want none", overwrites)
+	}
+	if strings.Contains(res.stdout, "overwriting any existing data") {
+		t.Errorf("output = %q, want no overwrite warning", res.stdout)
+	}
+}
+
 // smdOverwriteRecorder records which overwrite fallbacks smdOverwriteServer
 // served.
 type smdOverwriteRecorder struct {
