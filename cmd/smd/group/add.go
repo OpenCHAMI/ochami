@@ -30,11 +30,6 @@ func runCoreGroupAdd(cmd *cobra.Command, opts *groupAddOptions, args []string, s
 		return err
 	}
 
-	// Check if a CA certificate was passed and load it into client if valid
-	if err := rt.UseCACert(smdClient.OchamiClient); err != nil {
-		return err
-	}
-
 	var groups []smd.Group
 	if cmd.Flag("data").Changed {
 		// Use payload file if passed

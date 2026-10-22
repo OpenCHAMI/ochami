@@ -32,11 +32,6 @@ func runCoreRfeAdd(cmd *cobra.Command, opts *rfeAddOptions, args []string, smdCl
 		return err
 	}
 
-	// Check if a CA certificate was passed and load it into client if valid
-	if err := rt.UseCACert(smdClient.OchamiClient); err != nil {
-		return err
-	}
-
 	var rfes smd.RedfishEndpointSlice
 	if cmd.Flag("data").Changed {
 		// Use payload file if passed
