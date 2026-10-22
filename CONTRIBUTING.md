@@ -259,7 +259,10 @@ module's sources and fail on:
   with integer literals;
 - an EXIT STATUS table in ochami(1) that differs from the exit codes in
   `internal/cli/errors.go`;
-- exported `pkg/config` API that exposes koanf.
+- exported `pkg/config` API that exposes koanf;
+- external actions and reusable workflows under `.github` that aren't pinned
+  to a full commit SHA with an exact release comment
+  (`owner/repo@<sha> # v1.2.3`).
 
 Run them alone with `go test ./internal/conventions`. `make lint` checks the
 rest: commands use the runtime's streams and return errors rather than

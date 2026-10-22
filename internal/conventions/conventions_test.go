@@ -658,6 +658,33 @@ func checkExitStatusTable(file, man string) []violation {
 	return vs
 }
 
+var (
+	usesLine   = regexp.MustCompile(`^\s*(?:-\s+)?uses:\s*['"]?([^'"\s#]+)['"]?\s*(.*)$`)
+	pinnedRef  = regexp.MustCompile(`^[\w.-]+/[\w.-]+(?:/[^@]+)?@[0-9a-f]{40}$`)
+	pinComment = regexp.MustCompile(`^#\s*v?\d+\.\d+\.\d+\S*$`)
+)
+
+// checkActionPins flags each uses: reference in a workflow or action file
+// that is neither local (./) nor pinned to a full commit SHA followed by an
+// exact release comment, such as "@<sha> # v1.2.3".
+func checkActionPins(file, yaml string) []violation {
+	var vs []violation
+	for i, line := range strings.Split(yaml, "\n") {
+		m := usesLine.FindStringSubmatch(line)
+		if m == nil || strings.HasPrefix(m[1], "./") {
+			continue
+		}
+		pos := token.Position{Filename: file, Line: i + 1}
+		switch {
+		case !pinnedRef.MatchString(m[1]):
+			vs = append(vs, violation{pos: pos, msg: fmt.Sprintf("%s is not pinned to a full commit SHA", m[1])})
+		case !pinComment.MatchString(m[2]):
+			vs = append(vs, violation{pos: pos, msg: fmt.Sprintf("%s has no exact release comment", m[1])})
+		}
+	}
+	return vs
+}
+
 // sourceChecks are the checks that read only Go sources, by name.
 var sourceChecks = map[string]func(*tree) []violation{
 	"names":          checkTestNames,
@@ -765,6 +792,36 @@ func TestConfigAPI_HidesKoanf(t *testing.T) {
 	report(t, checkHidesKoanf(tr, "pkg/config"), "Keep koanf behind config.Effective; see pkg/config/doc.go.")
 }
 
+// TestWorkflowActions_PinnedToCommits verifies every external action or
+// reusable workflow that a workflow or action file under .github uses is
+// pinned to a full commit SHA with an exact release comment.
+func TestWorkflowActions_PinnedToCommits(t *testing.T) {
+	_, root := loadModule(t)
+	var vs []violation
+	err := filepath.WalkDir(filepath.Join(root, ".github"), func(file string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		if ext := filepath.Ext(file); ext != ".yml" && ext != ".yaml" {
+			return nil
+		}
+		src, err := os.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, file)
+		if err != nil {
+			return err
+		}
+		vs = append(vs, checkActionPins(filepath.ToSlash(rel), string(src))...)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("failed to read workflows: %v", err)
+	}
+	report(t, vs, "Pin as owner/repo@<40-character commit SHA> # vX.Y.Z; Renovate keeps the pin and comment updated.")
+}
+
 // TestChecks_FlagFixtures verifies every check reports the deliberate
 // violations in testdata/violations, so a check that matches nothing fails
 // here rather than passing silently.
@@ -781,5 +838,15 @@ func TestChecks_FlagFixtures(t *testing.T) {
 	man := "# EXIT STATUS\n\n|  *0*\n:  _CodeSuccess_\n|  *1*\n:  _CodeWrong_\n"
 	if len(checkExitStatusTable("fixture", man)) == 0 {
 		t.Error("EXIT STATUS check reported nothing for a table with a misnamed and missing codes")
+	}
+	workflow := strings.Join([]string{
+		"      - uses: ./.github/actions/local",
+		"      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+		"      - uses: actions/checkout@v7",
+		"        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+		"    uses: org/repo/.github/workflows/ci.yml@main",
+	}, "\n")
+	if got := len(checkActionPins("fixture", workflow)); got != 3 {
+		t.Errorf("action pin check reported %d violations for a workflow with a tag, a branch, and an uncommented SHA; want 3", got)
 	}
 }
