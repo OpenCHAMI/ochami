@@ -6,8 +6,8 @@
 // sources and the ochami(1) man page and fail when they break a convention
 // from CONTRIBUTING.md or a documented API contract: test names, files, and
 // doc comments; exit code assertions and messages; the man page's exit code
-// table; the pkg/config API's independence from koanf; and the pinning of
-// GitHub Actions references to commit SHAs.
+// table; the public config and cloud-init APIs hiding their engine types;
+// and the pinning of GitHub Actions references to commit SHAs.
 //
 // The checks run with the rest of the tests (make test) or alone:
 //

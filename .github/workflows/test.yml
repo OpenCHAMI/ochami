@@ -14,6 +14,36 @@ on:
   pull_request:
 
 jobs:
+  jinja-reference:
+    name: cloud-init rendering reference
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pinned Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.15.0'
+
+      - name: Install pinned reference dependencies
+        run: python -m pip install -r scripts/jinja-reference-requirements.txt
+
+      - name: Fetch pinned cloud-init source
+        env:
+          CLOUD_INIT_VERSION: '26.2'
+          CLOUD_INIT_SHA256: 16274a4102426871cad84ad07db41f82aa8f4d43d95e5947a62e199c2df775c6
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/cloud-init.tar.gz" \
+            "https://github.com/canonical/cloud-init/archive/refs/tags/${CLOUD_INIT_VERSION}.tar.gz"
+          echo "${CLOUD_INIT_SHA256}  $RUNNER_TEMP/cloud-init.tar.gz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/cloud-init"
+          tar -xzf "$RUNNER_TEMP/cloud-init.tar.gz" -C "$RUNNER_TEMP/cloud-init" --strip-components=1
+
+      - name: Verify exact cloud-init output
+        run: python scripts/jinja-reference.py --cloud-init-src "$RUNNER_TEMP/cloud-init"
+
   test:
     name: test
     runs-on: ubuntu-slim

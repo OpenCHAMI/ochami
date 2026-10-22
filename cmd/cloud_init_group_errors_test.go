@@ -5,6 +5,8 @@
 package cmd
 
 import (
+	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
+	"github.com/openchami/ochami/pkg/cloudinit"
 )
 
 // TestCloudInitGroupGet_ByIDHTTPError verifies an unsuccessful HTTP response on a
@@ -268,6 +271,102 @@ func TestCloudInitGroupRender_PayloadErrors(t *testing.T) {
 				"--uri", srv.URL, "--token", "t")
 			if res.err == nil || res.exitCode != cli.CodePayload {
 				t.Fatalf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+			}
+		})
+	}
+}
+
+// TestCloudInitGroupRender_LegacyInputs verifies the original command rejects
+// new source-selection flags and missing or blank arguments as CodeUsage.
+func TestCloudInitGroupRender_LegacyInputs(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{name: "template flag", args: []string{"compute", "node01", "--template", "missing"}},
+		{name: "metadata flag", args: []string{"compute", "node01", "--metadata", "missing"}},
+		{name: "metadata stdin flag", args: []string{"compute", "node01", "--metadata", "-"}},
+		{name: "group flag", args: []string{"compute", "node01", "--group", "compute"}},
+		{name: "node flag", args: []string{"compute", "node01", "--node", "node01"}},
+		{name: "no arguments"},
+		{name: "missing node", args: []string{"compute"}},
+		{name: "empty node", args: []string{"compute", ""}},
+		{name: "blank node", args: []string{"compute", " "}},
+		{name: "empty group", args: []string{"", "node01"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			args := append([]string{"--ignore-config", "cloud-init", "group", "render"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.err == nil || res.exitCode != cli.CodeUsage {
+				t.Fatalf("error = %v, exit code = %d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+		})
+	}
+}
+
+// TestCloudInitGroupRender_TemplateFailures verifies compilation and execution
+// failures preserve their library error and return CodePayload without stdout.
+func TestCloudInitGroupRender_TemplateFailures(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, template string
+		stage          cloudinit.RenderStage
+	}{
+		{name: "compile", template: "prefix{% if", stage: cloudinit.StageCompile},
+		{name: "execute", template: "prefix{% include 'missing' %}", stage: cloudinit.StageExecute},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := cloudInitRenderServer(t, tc.template, "{}")
+			var stdout, stderr bytes.Buffer
+			rt := cli.NewTestRuntime(strings.NewReader(""), &stdout, &stderr)
+			root := NewRootCmd()
+			root.SetContext(cli.ContextWithRuntime(t.Context(), rt))
+			root.SetOut(&stdout)
+			root.SetErr(&stderr)
+			root.SetArgs([]string{"--ignore-config", "cloud-init", "group", "render", "compute", "node01", "--uri", srv.URL, "--token", "t"})
+			err := root.Execute()
+			var renderErr *cloudinit.RenderError
+			if !errors.As(err, &renderErr) || renderErr.Stage != tc.stage {
+				t.Fatalf("error = %v, want RenderError stage %s", err, tc.stage)
+			}
+			if code := cli.ExitCode(err); code != cli.CodePayload {
+				t.Fatalf("exit code = %d, want %d (%s)", code, cli.CodePayload, cli.CodeName(cli.CodePayload))
+			}
+			if stdout.Len() != 0 {
+				t.Fatalf("stdout = %q, want empty", stdout.String())
+			}
+		})
+	}
+}
+
+type renderShortWriter struct{}
+
+func (renderShortWriter) Write([]byte) (int, error) { return 0, nil }
+
+// TestCloudInitGroupRender_OutputFailures verifies writer errors and short
+// writes remain inspectable and resolve to CodePayload.
+func TestCloudInitGroupRender_OutputFailures(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		writer io.Writer
+		want   error
+	}{
+		{name: "failure", writer: &failingOutputWriter{}, want: errTestWriter},
+		{name: "short write", writer: renderShortWriter{}, want: io.ErrShortWrite},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := cloudInitRenderServer(t, "rendered", "{}")
+			res := runOchamiWithOutputWriter(t, tc.writer, "--ignore-config", "cloud-init", "group", "render", "compute", "node01", "--uri", srv.URL, "--token", "t")
+			if !errors.Is(res.err, tc.want) {
+				t.Fatalf("error = %v, want %v", res.err, tc.want)
+			}
+			if res.exitCode != cli.CodePayload {
+				t.Fatalf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
 			}
 		})
 	}
