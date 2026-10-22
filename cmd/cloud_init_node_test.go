@@ -5,8 +5,9 @@
 package cmd
 
 // cloud_init_node_test.go exercises the "cloud-init node get" subcommands
-// (meta-data, user-data, vendor-data, group) end-to-end against an
-// httptest.Server, asserting the impersonation path and exit codes.
+// (meta-data, user-data, vendor-data, group) and "cloud-init node set"
+// end-to-end against an httptest.Server, asserting the request paths and exit
+// codes. Error arms are covered in cloud_init_node_errors_test.go.
 
 import (
 	"net/http"
@@ -248,5 +249,27 @@ func TestCloudInitNodeGet_GroupSkipsEmptyGroup(t *testing.T) {
 	}
 	if !strings.Contains(res.stdout, "cloud-config for group empty was empty") {
 		t.Errorf("output = %q, want a warning about the empty group", res.stdout)
+	}
+}
+
+// TestCloudInitNodeSet_Success verifies "cloud-init node set -d <payload>" issues a PUT
+// under /admin/instance-info.
+func TestCloudInitNodeSet_Success(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "node", "set", "--uri", srv.URL, "--token", "t",
+		"-d", `[{"id":"x0c0s0b0n0"}]`)
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodPut || !strings.HasPrefix(gotPath, "/admin/instance-info") {
+		t.Errorf("request = %s %s, want PUT under /admin/instance-info", gotMethod, gotPath)
 	}
 }

@@ -4,197 +4,17 @@
 
 package cmd
 
-// cloud_init_test.go exercises representative "cloud-init" subcommands (group,
-// node, defaults, service) end-to-end against an httptest.Server, asserting
-// outbound request method/path and the resolved exit code.
+// cloud_init_test.go exercises the "cloud-init service" commands end-to-end
+// against an httptest.Server, asserting outbound request method/path and the
+// resolved exit code. The group, node, and defaults commands are covered in
+// their own cloud_init_<command>_test.go files.
 
 import (
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
-
-// TestCloudInitGroupGet_Success verifies "cloud-init group get raw" issues GET
-// /admin/groups.
-func TestCloudInitGroupGet_Success(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod, gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod, gotPath = r.Method, r.URL.Path
-		w.Write([]byte(`{}`))
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "get", "raw", "--uri", srv.URL, "--token", "t")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodGet || gotPath != "/admin/groups" {
-		t.Errorf("request = %s %s, want GET /admin/groups", gotMethod, gotPath)
-	}
-}
-
-// TestCloudInitGroupAdd_Success verifies "cloud-init group add -d <payload>" issues
-// POST /admin/groups.
-func TestCloudInitGroupAdd_Success(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod, gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod, gotPath = r.Method, r.URL.Path
-		w.WriteHeader(http.StatusCreated)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "add", "--uri", srv.URL, "--token", "t",
-		"-d", `[{"name":"compute"}]`)
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodPost || gotPath != "/admin/groups" {
-		t.Errorf("request = %s %s, want POST /admin/groups", gotMethod, gotPath)
-	}
-}
-
-// TestCloudInitGroupSet_Success verifies "cloud-init group set -d <payload>"
-// issues a PUT.
-func TestCloudInitGroupSet_Success(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod = r.Method
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "set", "--uri", srv.URL, "--token", "t",
-		"-d", `[{"name":"compute"}]`)
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodPut {
-		t.Errorf("method = %q, want PUT", gotMethod)
-	}
-}
-
-// TestCloudInitGroupDelete_NoConfirm verifies "cloud-init group delete
-// --no-confirm <name>" issues DELETE under /admin/groups.
-func TestCloudInitGroupDelete_NoConfirm(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod, gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod = r.Method
-		gotPath = r.URL.Path
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "delete", "--uri", srv.URL, "--token", "t",
-		"--no-confirm", "compute")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodDelete {
-		t.Errorf("method = %q, want DELETE", gotMethod)
-	}
-	if gotPath != "/admin/groups/compute" {
-		t.Errorf("path = %q, want /admin/groups/compute", gotPath)
-	}
-}
-
-// TestCloudInitNodeSet_Success verifies "cloud-init node set -d <payload>" issues a PUT
-// under /admin/instance-info.
-func TestCloudInitNodeSet_Success(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod, gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod, gotPath = r.Method, r.URL.Path
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "node", "set", "--uri", srv.URL, "--token", "t",
-		"-d", `[{"id":"x0c0s0b0n0"}]`)
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodPut || !strings.HasPrefix(gotPath, "/admin/instance-info") {
-		t.Errorf("request = %s %s, want PUT under /admin/instance-info", gotMethod, gotPath)
-	}
-}
-
-// TestCloudInitDefaults_Set verifies "cloud-init defaults set -d <payload>"
-// issues POST /admin/cluster-defaults.
-func TestCloudInitDefaults_Set(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod, gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod, gotPath = r.Method, r.URL.Path
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "defaults", "set", "--uri", srv.URL, "--token", "t",
-		"-d", `{"cluster-name":"demo"}`)
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodPost || gotPath != "/admin/cluster-defaults" {
-		t.Errorf("request = %s %s, want POST /admin/cluster-defaults", gotMethod, gotPath)
-	}
-}
-
-// TestCloudInitGroupRender_EmptyConfig verifies that "cloud-init group render"
-// succeeds without rendering anything, and logs a warning, when the group's
-// cloud-config is empty.
-func TestCloudInitGroupRender_EmptyConfig(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Empty body for the group-config fetch => nothing to render.
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "group", "render", "--uri", srv.URL, "--token", "t",
-		"compute", "x0c0s0b0n0")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if !strings.Contains(res.stdout, "cloud-config for group compute was empty") {
-		t.Errorf("output = %q, want a warning about the empty cloud-config", res.stdout)
-	}
-}
-
-// TestCloudInitGroupGet_ConfigAndMetaData verifies that "cloud-init group get
-// config" and "cloud-init group get meta-data" succeed against a service that
-// returns no groups.
-func TestCloudInitGroupGet_ConfigAndMetaData(t *testing.T) {
-	t.Parallel()
-
-	for _, subcommand := range []string{"config", "meta-data"} {
-		t.Run(subcommand, func(t *testing.T) {
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				io.WriteString(w, `{}`)
-			}))
-			defer srv.Close()
-
-			res := runOchamiWithRuntime(t, "cloud-init", "group", "get", subcommand,
-				"--ignore-config", "--uri", srv.URL, "--token", "t")
-			if res.err != nil {
-				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-			}
-		})
-	}
-}
 
 // TestCloudInitServiceStatus_API verifies --api prints the returned OpenAPI
 // document through the command's injected output stream.
@@ -212,32 +32,6 @@ func TestCloudInitServiceStatus_API(t *testing.T) {
 	}
 	if !strings.Contains(res.stdout, "openapi") {
 		t.Errorf("stdout = %q, want OpenAPI document", res.stdout)
-	}
-}
-
-// TestCloudInitDefaults_Get verifies "cloud-init defaults get" issues GET
-// /admin/cluster-defaults.
-func TestCloudInitDefaults_Get(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod, gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
-		gotMethod = r.Method
-		w.Write([]byte(`{"cluster-name":"demo"}`))
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "defaults", "get", "--uri", srv.URL)
-
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotPath != "/admin/cluster-defaults" {
-		t.Errorf("path = %q, want /admin/cluster-defaults", gotPath)
-	}
-	if gotMethod != http.MethodGet {
-		t.Errorf("method = %q, want GET", gotMethod)
 	}
 }
 
