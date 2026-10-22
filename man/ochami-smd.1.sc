@@ -451,6 +451,106 @@ Subcommands for this command are as follows:
 
 Manage Ethernet interfaces.
 
+Subcommands for this command are as follows:
+
+*add* [-D _description_] _comp_id_ _mac_addr_ _net_name_,_ip_addr_++
+*add* [-f _format_] -d _data_++
+*add* [-f _format_] -d @_path_++
+*add* [-f _format_] -d @-
+	Add one or more new Ethernet interfaces to SMD.
+
+	In the first form of the command, the ID of the component the interface
+	belongs to (_comp_id_, usually an xname), the interface's MAC address
+	(_mac_addr_), and a network name and IPv4 address delimited by a comma
+	(_net_name_,_ip_addr_) are required.
+
+	In the second form of the command, raw data is passed as an argument to be
+	the payload.
+
+	In the third form of the command, a file containing the payload data (see
+	the *EthernetInterface* data structure above) is passed. This is convenient
+	in cases of dealing with many Ethernet interfaces at once.
+
+	In the fourth form of the command, the payload data is read from standard
+	input.
+
+	This command sends a POST request to SMD's /Inventory/EthernetInterfaces
+	endpoint. An access token is required.
+
+	This command accepts the following options:
+
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
+
+	*-D, --description* _description_
+		Description of the Ethernet interface. Default: *Undescribed Ethernet
+		Interface*. Cannot be used with *-d*.
+
+	*-f, --format-input* _format_
+		Format of input payload data used by *-d*. Supported formats are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+*delete* [--no-confirm] --all++
+*delete* [--no-confirm] _iface_id_...++
+*delete* [--no-confirm] [-f _format_] -d _data_++
+*delete* [--no-confirm] [-f _format_] -d @_path_++
+*delete* [--no-confirm] [-f _format_] -d @-
+	Delete one or more Ethernet interfaces in SMD. Unless *--no-confirm* is
+	passed, the user is asked to confirm deletion.
+
+	In the first form of the command, all Ethernet interfaces are deleted. *BE
+	CAREFUL!*
+
+	In the second form of the command, one or more Ethernet interface IDs
+	(_iface_id_) identifying the interface(s) to delete are specified. Note that
+	an Ethernet interface ID is not the same as a component xname.
+
+	In the third form of the command, raw data is passed as an argument to be
+	the payload.
+
+	In the fourth form of the command, a file containing the payload data (see
+	the *EthernetInterface* data structure above) is passed. This is convenient
+	in cases of dealing with many Ethernet interfaces at once.
+
+	In the fifth form of the command, the payload data is read from standard
+	input.
+
+	Only the ID of each payload item is used. If any ID, whether from the
+	payload or the command line, is blank, is "." or "..", or contains "/",
+	nothing is deleted and the command exits with a usage error. A missing ID
+	is not derived from *MACAddress*, so a payload item with only *MACAddress*
+	set also causes a usage error.
+
+	This command sends one or more DELETE requests to SMD's
+	/Inventory/EthernetInterfaces endpoint. An access token is required.
+
+	This command accepts the following options:
+
+	*-a, --all*
+		Delete *all* Ethernet interfaces in SMD. *BE CAREFUL!*
+
+	*-d, --data* (_data_ | @_path_ | @-)
+		Specify raw _data_ to send, the _path_ to a file to read payload data
+		from, or to read the data from standard input (@-). The format of data
+		read in any of these forms is JSON by default unless *-f* is specified
+		to change it.
+
+	*-f, --format-input* _format_
+		Format of input payload data used by *-d*. Supported formats are:
+
+		- _json_ (default)
+		- _json-pretty_
+		- _yaml_
+
+	*--no-confirm*
+		Do not ask the user to confirm deletion. Use with caution.
+
 *get* [-F _format_] [--by-ip] [--comp-id _xname_,...] [-i _id_] [--ip _ip_,...] [-m _mac_,...] [--net _network_,...] [--newer-than _timestamp_] [--older-than _timestamp_] [--type _type_,...]
 	Aliases: *list*
 
