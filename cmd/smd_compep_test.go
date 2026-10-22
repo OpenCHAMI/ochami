@@ -128,3 +128,27 @@ func TestSMDCompepDelete_AllConfirm(t *testing.T) {
 		t.Errorf("stdout = %q, want the all-endpoints confirmation prompt", res.stdout)
 	}
 }
+
+// TestSMDCompepDelete_AllFalse verifies "delete --all=false <id>" deletes only the
+// given component endpoint instead of every component endpoint.
+func TestSMDCompepDelete_AllFalse(t *testing.T) {
+	t.Parallel()
+
+	var gotPaths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			gotPaths = append(gotPaths, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "delete", "--uri", srv.URL, "--token", "t",
+		"--no-confirm", "--all=false", "x3000c1s7b56n0")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if want := "/Inventory/ComponentEndpoints/x3000c1s7b56n0"; len(gotPaths) != 1 || gotPaths[0] != want {
+		t.Errorf("DELETE paths = %v, want [%s]", gotPaths, want)
+	}
+}

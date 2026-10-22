@@ -238,3 +238,27 @@ func TestSMDIfaceDelete_ByData(t *testing.T) {
 		t.Errorf("DELETE count = %d, want 1", deletes)
 	}
 }
+
+// TestSMDIfaceDelete_AllFalse verifies "delete --all=false <id>" deletes only the
+// given ethernet interface instead of every ethernet interface.
+func TestSMDIfaceDelete_AllFalse(t *testing.T) {
+	t.Parallel()
+
+	var gotPaths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			gotPaths = append(gotPaths, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
+		"--no-confirm", "--all=false", "decafc0ffee0")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if want := "/Inventory/EthernetInterfaces/decafc0ffee0"; len(gotPaths) != 1 || gotPaths[0] != want {
+		t.Errorf("DELETE paths = %v, want [%s]", gotPaths, want)
+	}
+}

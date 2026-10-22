@@ -192,3 +192,27 @@ func TestSMDRFEDelete_AllConfirm(t *testing.T) {
 		t.Errorf("method = %q, want DELETE", gotMethod)
 	}
 }
+
+// TestSMDRFEDelete_AllFalse verifies "delete --all=false <id>" deletes only the
+// given redfish endpoint instead of every redfish endpoint.
+func TestSMDRFEDelete_AllFalse(t *testing.T) {
+	t.Parallel()
+
+	var gotPaths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			gotPaths = append(gotPaths, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "rfe", "delete", "--uri", srv.URL, "--token", "t",
+		"--no-confirm", "--all=false", "x3000c1s7b56")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if want := "/Inventory/RedfishEndpoints/x3000c1s7b56"; len(gotPaths) != 1 || gotPaths[0] != want {
+		t.Errorf("DELETE paths = %v, want [%s]", gotPaths, want)
+	}
+}

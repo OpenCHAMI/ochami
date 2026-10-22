@@ -293,3 +293,27 @@ func TestSMDComponentGet_FormatOutputJSON(t *testing.T) {
 		t.Errorf("expected Components in JSON output, got: %s", res.stdout)
 	}
 }
+
+// TestSMDComponentDelete_AllFalse verifies "delete --all=false <id>" deletes only the
+// given component instead of every component.
+func TestSMDComponentDelete_AllFalse(t *testing.T) {
+	t.Parallel()
+
+	var gotPaths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			gotPaths = append(gotPaths, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "component", "delete", "--uri", srv.URL, "--token", "t",
+		"--no-confirm", "--all=false", "x3000c1s7b56n0")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if want := "/State/Components/x3000c1s7b56n0"; len(gotPaths) != 1 || gotPaths[0] != want {
+		t.Errorf("DELETE paths = %v, want [%s]", gotPaths, want)
+	}
+}

@@ -174,3 +174,18 @@ func TestSMDIfaceDelete_ByIDsHTTPError(t *testing.T) {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 	}
 }
+
+// TestSMDIfaceDelete_AllFalseNoSelector verifies "delete --all=false" with
+// neither -d nor arguments is a usage error, as if --all were omitted.
+func TestSMDIfaceDelete_AllFalseNoSelector(t *testing.T) {
+	t.Parallel()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "delete", "--uri", "http://127.0.0.1:1",
+		"--token", "t", "--no-confirm", "--all=false")
+	if res.err == nil {
+		t.Fatal("expected a usage error, got nil")
+	}
+	if res.exitCode != cli.CodeUsage {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}

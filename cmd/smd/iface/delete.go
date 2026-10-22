@@ -139,7 +139,9 @@ See ochami-smd(1) for more details.`,
 			// - --all
 			// - A set of one or more ethernet interface IDs
 			// must be passed.
-			if !cmd.Flag("all").Changed && !cmd.Flag("data").Changed {
+			// Read --all by value so that --all=false counts as not passed
+			all, _ := cmd.Flags().GetBool("all")
+			if !all && !cmd.Flag("data").Changed {
 				if len(args) == 0 {
 					return cli.Errorf(cli.CodeUsage, "expected -d, --all, or >= 1 argument (interface id), got %d", len(args))
 				}
@@ -165,9 +167,7 @@ See ochami-smd(1) for more details.`,
 			// Since flags are registered with the correct types on this command,
 			// these Get* calls cannot fail, so their errors are ignored
 			opts := &ifaceDeleteOptions{}
-			if cmd.Flag("all").Changed {
-				opts.All = true
-			}
+			opts.All, _ = cmd.Flags().GetBool("all")
 			if cmd.Flag("no-confirm").Changed {
 				opts.NoConfirm, _ = cmd.Flags().GetBool("no-confirm")
 			}
