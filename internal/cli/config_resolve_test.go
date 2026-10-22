@@ -40,8 +40,8 @@ func newConfigEditCmd() (grandparent, leaf *cobra.Command) {
 }
 
 // TestConfigFileToModify verifies that ConfigFileToModify chooses --config
-// first, then --system at any nesting depth, and otherwise the user config
-// file.
+// first, then --system at any nesting depth, and otherwise (including for
+// --system=false) the user config file.
 func TestConfigFileToModify(t *testing.T) {
 	t.Run("explicit --config wins", func(t *testing.T) {
 		_, leaf := newConfigEditCmd()
@@ -65,6 +65,18 @@ func TestConfigFileToModify(t *testing.T) {
 		}
 	})
 
+	t.Run("--system=false falls back to user config file", func(t *testing.T) {
+		grandparent, leaf := newConfigEditCmd()
+		if err := grandparent.PersistentFlags().Set("system", "false"); err != nil {
+			t.Fatalf("set --system: %v", err)
+		}
+		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+		rt.UserConfigFile = "/user/path.yaml"
+		if got := rt.ConfigFileToModify(leaf); got != "/user/path.yaml" {
+			t.Errorf("ConfigFileToModify() = %q, want user config file", got)
+		}
+	})
+
 	t.Run("falls back to user config file", func(t *testing.T) {
 		_, leaf := newConfigEditCmd()
 		rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
@@ -77,7 +89,8 @@ func TestConfigFileToModify(t *testing.T) {
 
 // TestResolveShowEffective verifies that ResolveShowEffective reads the
 // runtime's user config file for --user and the named file for --config, and
-// otherwise returns rt.Effective. The --system file is a fixed path, so it
+// otherwise (including for --system=false and --user=false) returns
+// rt.Effective. The --system file is a fixed path, so it
 // isn't tested here.
 func TestResolveShowEffective(t *testing.T) {
 	writeConfig := func(t *testing.T, content string) string {
@@ -140,4 +153,28 @@ func TestResolveShowEffective(t *testing.T) {
 			t.Errorf("ResolveShowEffective() = %+v, want rt.Effective %+v", got, want)
 		}
 	})
+
+	for _, name := range []string{"system", "user"} {
+		t.Run("--"+name+"=false returns rt.Effective", func(t *testing.T) {
+			grandparent, leaf := newConfigEditCmd()
+			if err := grandparent.PersistentFlags().Set(name, "false"); err != nil {
+				t.Fatalf("set --%s: %v", name, err)
+			}
+			want, _, err := config.LoadDefaultsEffective()
+			if err != nil {
+				t.Fatalf("LoadDefaultsEffective(): %v", err)
+			}
+			rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{})
+			rt.UserConfigFile = writeConfig(t, "timeout: 45s\n")
+			rt.Effective = want
+
+			got, err := rt.ResolveShowEffective(leaf)
+			if err != nil {
+				t.Fatalf("ResolveShowEffective() error = %v", err)
+			}
+			if got != want {
+				t.Errorf("ResolveShowEffective() = %+v, want rt.Effective %+v", got, want)
+			}
+		})
+	}
 }
