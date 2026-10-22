@@ -1,0 +1,35 @@
+{
+  "instance_data": {
+    "v1": {
+      "vendor_data": {
+        "groups": {
+          "all": {
+            "mounts": [
+              {
+                "dst": "/srv/nfs",
+                "type": "nfs",
+                "src": "nfs:/export",
+                "opts": "defaults"
+              },
+              {
+                "dst": "/",
+                "type": "ext4",
+                "src": "/dev/vda1",
+                "opts": "defaults"
+              },
+              {
+                "dst": "/srv/a/b",
+                "type": "vast",
+                "src": "10.0.0.@@@IDX@@@:/export/@@@IDX@@@",
+                "opts": "vers=4",
+                "range": [
+                  7
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

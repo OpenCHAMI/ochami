@@ -1,0 +1,86 @@
+#cloud-config
+merge_how:
+- name: list
+  settings: [append]
+- name: dict
+  settings: [no_replace, recurse_list]
+
+
+write_files:
+
+  - content: |
+      [Unit]
+      Description=Mount /srv/nfs
+      After=network-online.target cloud-final.service
+      Wants=network-online.target
+      ConditionPathIsMountPoint=!/srv/nfs
+
+      [Mount]
+
+      What=nfs:/export
+      Where=/srv/nfs
+      Type=nfs
+      Options=defaults,_netdev
+
+
+      [Install]
+      WantedBy=multi-user.target
+    path: /etc/systemd/system/srv-nfs.mount
+    permissions: '0644'
+    owner: 'root:root'
+
+  - content: |
+      [Unit]
+      Description=Mount /
+      ConditionPathIsMountPoint=!/
+
+      [Mount]
+
+      What=/dev/vda1
+      Where=/
+      Type=ext4
+      Options=defaults
+
+
+      [Install]
+      WantedBy=multi-user.target
+    path: /etc/systemd/system/root.mount
+    permissions: '0644'
+    owner: 'root:root'
+
+  - content: |
+      [Unit]
+      Description=Mount /srv/a/b
+      After=network-online.target cloud-final.service
+      Wants=network-online.target
+      ConditionPathIsMountPoint=!/srv/a/b
+
+      [Mount]
+
+      What=10.0.0.7:/export/7
+      Where=/srv/a/b
+      Type=nfs
+      Options=vers=4,_netdev
+
+
+      [Install]
+      WantedBy=multi-user.target
+    path: /etc/systemd/system/srv-a-b.mount
+    permissions: '0644'
+    owner: 'root:root'
+
+runcmd:
+
+  - mkdir -p /srv/nfs
+
+  - mkdir -p /
+
+  - mkdir -p /srv/a/b
+
+  - systemctl daemon-reload
+
+  - systemctl enable --now --no-block srv-nfs.mount
+
+  - systemctl enable --now --no-block root.mount
+
+  - systemctl enable --now --no-block srv-a-b.mount

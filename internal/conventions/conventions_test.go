@@ -514,10 +514,16 @@ func checkExitCodeLiterals(tr *tree) []violation {
 }
 
 var majorVersion = regexp.MustCompile(`^v\d+$`)
+var dottedMajorVersion = regexp.MustCompile(`\.v\d+$`)
 
 // checkHidesKoanf flags exported declarations in the Go files directly under
 // dir whose types mention a koanf package.
 func checkHidesKoanf(tr *tree, dir string) []violation {
+	return checkHidesDependency(tr, dir, "/koanf/", "koanf")
+}
+
+// checkHidesDependency checks exported declarations for third-party types.
+func checkHidesDependency(tr *tree, dir, importFragment, label string) []violation {
 	var vs []violation
 	for _, sf := range tr.files {
 		if path.Dir(sf.path) != dir || strings.HasSuffix(sf.path, "_test.go") {
@@ -526,13 +532,14 @@ func checkHidesKoanf(tr *tree, dir string) []violation {
 		koanf := map[string]bool{}
 		for _, imp := range sf.file.Imports {
 			p, err := strconv.Unquote(imp.Path.Value)
-			if err != nil || !strings.Contains(p, "/koanf/") {
+			if err != nil || !strings.Contains(p, importFragment) {
 				continue
 			}
 			name := path.Base(p)
 			if majorVersion.MatchString(name) {
 				name = path.Base(path.Dir(p))
 			}
+			name = dottedMajorVersion.ReplaceAllString(name, "")
 			if imp.Name != nil {
 				name = imp.Name.Name
 			}
@@ -555,7 +562,7 @@ func checkHidesKoanf(tr *tree, dir string) []violation {
 		}
 		flag := func(name *ast.Ident, n ast.Node) {
 			if n != nil && mentions(n) {
-				vs = append(vs, sf.at(name.Pos(), "exported %s exposes koanf in its type", name.Name))
+				vs = append(vs, sf.at(name.Pos(), "exported %s exposes %s in its type", name.Name, label))
 			}
 		}
 		for _, decl := range sf.file.Decls {
@@ -698,6 +705,10 @@ var sourceChecks = map[string]func(*tree) []violation{
 	"CodeName":       checkCodeNameMessages,
 	"code literals":  checkExitCodeLiterals,
 	"koanf":          func(tr *tree) []violation { return checkHidesKoanf(tr, "config") },
+	"gojinja": func(tr *tree) []violation {
+		return checkHidesDependency(tr, "cloudinit", "github.com/jryberg/gojinja", "gojinja")
+	},
+	"yaml": func(tr *tree) []violation { return checkHidesDependency(tr, "cloudinit", "gopkg.in/yaml.v3", "yaml") },
 }
 
 // TestTestNames_Format verifies every Test function's name has the form
@@ -820,6 +831,14 @@ func TestWorkflowActions_PinnedToCommits(t *testing.T) {
 		t.Fatalf("failed to read workflows: %v", err)
 	}
 	report(t, vs, "Pin as owner/repo@<40-character commit SHA> # vX.Y.Z; Renovate keeps the pin and comment updated.")
+}
+
+// TestCloudInitAPI_HidesEngineTypes verifies exported rendering declarations
+// do not expose gojinja or YAML implementation types.
+func TestCloudInitAPI_HidesEngineTypes(t *testing.T) {
+	tr, _ := loadModule(t)
+	report(t, checkHidesDependency(tr, "pkg/cloudinit", "github.com/jryberg/gojinja", "gojinja"), "Keep gojinja behind cloudinit.Render.")
+	report(t, checkHidesDependency(tr, "pkg/cloudinit", "gopkg.in/yaml.v3", "yaml"), "Keep YAML nodes behind cloudinit.Document.")
 }
 
 // TestChecks_FlagFixtures verifies every check reports the deliberate
