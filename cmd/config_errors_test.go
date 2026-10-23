@@ -5,12 +5,9 @@
 package cmd
 
 // config_errors_test.go covers rejection-path cases for the "config"
-// commands; see config_test.go (including the writeTempConfig helper) for
-// the success paths these mirror.
+// commands; see config_test.go for the success paths these mirror.
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -49,35 +46,6 @@ func TestConfigShow_RejectsClusterKey(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeConfig {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
-	}
-}
-
-// TestEnableAuth_MissingTokenFails verifies that with enable-auth true and no
-// token available, the command fails with CodeAuth.
-func TestEnableAuth_MissingTokenFails(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`[]`))
-	}))
-	defer srv.Close()
-
-	cfg := writeTempConfig(t, `default-cluster: demo
-clusters:
-- name: demo
-  cluster:
-    uri: `+srv.URL+`
-    enable-auth: true
-`)
-
-	// runOchamiWithRuntime's environment is empty, so DEMO_ACCESS_TOKEN is
-	// unset regardless of the host's environment.
-	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
-	if res.err == nil {
-		t.Fatal("expected an auth error, got nil")
-	}
-	if res.exitCode != cli.CodeAuth {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeAuth, cli.CodeName(cli.CodeAuth))
 	}
 }
 

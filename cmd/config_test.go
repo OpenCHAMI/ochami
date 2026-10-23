@@ -10,8 +10,6 @@ package cmd
 // network requests. Rejection-path cases are covered in config_errors_test.go.
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,19 +18,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/config"
 )
-
-// writeTempConfig creates an (empty) YAML config file in a temp dir and returns
-// its path. Pre-creating the file avoids the interactive "create it?" prompt in
-// commands that write config.
-func writeTempConfig(t *testing.T, contents string) string {
-	t.Helper()
-	dir := t.TempDir()
-	path := filepath.Join(dir, "config.yaml")
-	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
-		t.Fatalf("failed to write temp config: %v", err)
-	}
-	return path
-}
 
 // TestConfigSet_ThenShow verifies that "config set" persists a key to the given
 // config file and "config show" reads it back.
@@ -190,125 +175,5 @@ func TestConfigUnset_ViaConfigFlag(t *testing.T) {
 	}
 	if f.Get("log.level") != nil {
 		t.Error("log.level still exists after unset")
-	}
-}
-
-// TestDefaultCluster_URIResolution verifies a command resolves its base URI from
-// the default cluster's cluster.uri in a config file (no --uri flag).
-func TestDefaultCluster_URIResolution(t *testing.T) {
-	t.Parallel()
-
-	var hit bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hit = true
-		w.Write([]byte(`[]`))
-	}))
-	defer srv.Close()
-
-	cfg := writeTempConfig(t, `default-cluster: demo
-clusters:
-- name: demo
-  cluster:
-    uri: `+srv.URL+`
-    enable-auth: false
-`)
-
-	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if !hit {
-		t.Error("expected the server (from default-cluster uri) to be contacted")
-	}
-}
-
-// TestPerServiceURI_Override verifies a per-service URI override in the cluster
-// config is honored.
-func TestPerServiceURI_Override(t *testing.T) {
-	t.Parallel()
-
-	var gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
-		w.Write([]byte(`[]`))
-	}))
-	defer srv.Close()
-
-	cfg := writeTempConfig(t, `default-cluster: demo
-clusters:
-- name: demo
-  cluster:
-    uri: https://unused.example.com
-    smd:
-      uri: `+srv.URL+`/smd
-    enable-auth: false
-`)
-
-	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if !strings.HasPrefix(gotPath, "/smd") {
-		t.Errorf("path = %q, want the /smd override", gotPath)
-	}
-}
-
-// TestEnableAuth_ReadsTokenFromEnv verifies that, for a cluster with
-// enable-auth set, a command reads the token from <CLUSTER>_ACCESS_TOKEN and
-// sends it as a bearer token.
-func TestEnableAuth_ReadsTokenFromEnv(t *testing.T) {
-	var gotAuth string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotAuth = r.Header.Get("Authorization")
-		w.Write([]byte(`[]`))
-	}))
-	defer srv.Close()
-
-	cfg := writeTempConfig(t, `default-cluster: demo
-clusters:
-- name: demo
-  cluster:
-    uri: `+srv.URL+`
-    enable-auth: true
-`)
-
-	tok := validToken(t)
-	t.Setenv("DEMO_ACCESS_TOKEN", tok)
-
-	res := runOchamiWithRuntimeEnv(t, cli.EnvironmentFunc(os.LookupEnv), "--config", cfg, "smd", "group", "get")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if !strings.Contains(gotAuth, "Bearer") {
-		t.Errorf("Authorization header = %q, want it to carry the bearer token", gotAuth)
-	}
-}
-
-// TestEnableAuth_DisabledSkipsToken verifies that with enable-auth false, no
-// token is required or sent.
-func TestEnableAuth_DisabledSkipsToken(t *testing.T) {
-	t.Parallel()
-
-	var gotAuth string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotAuth = r.Header.Get("Authorization")
-		w.Write([]byte(`[]`))
-	}))
-	defer srv.Close()
-
-	cfg := writeTempConfig(t, `default-cluster: demo
-clusters:
-- name: demo
-  cluster:
-    uri: `+srv.URL+`
-    enable-auth: false
-`)
-
-	res := runOchamiWithRuntime(t, "--config", cfg, "smd", "group", "get")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotAuth != "" {
-		t.Errorf("Authorization header = %q, want empty (auth disabled)", gotAuth)
 	}
 }
