@@ -4,8 +4,9 @@
 
 package cmd
 
-// boot_errors_test.go covers the error arms of the "boot" command group; see
-// boot_test.go for the success paths these mirror.
+// boot_errors_test.go covers the error arms of the "boot" command group that
+// apply to every resource type; see boot_test.go for the success paths these
+// mirror, and boot_<type>_errors_test.go for the error arms of one type.
 
 import (
 	"net/http"
@@ -59,20 +60,6 @@ func TestBootGet_HTTPError(t *testing.T) {
 				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
 			}
 		})
-	}
-}
-
-// TestBootConfigDelete_NoArgs verifies that "boot config delete" with no UID
-// arguments is a usage error (MinimumNArgs(1)).
-func TestBootConfigDelete_NoArgs(t *testing.T) {
-	t.Parallel()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "boot", "config", "delete", "--uri", "http://127.0.0.1:0", "--no-confirm")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeUsage {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
 	}
 }
 
@@ -245,260 +232,27 @@ func TestBootDelete_HTTPError(t *testing.T) {
 	}
 }
 
-// TestBootBmcAdd_MalformedResponse verifies that "boot bmc add" fails with
-// CodePayload when the service's success response can't be decoded.
-func TestBootBmcAdd_MalformedResponse(t *testing.T) {
+// TestBootAdd_HTTPError verifies that "boot <type> add" fails with CodeHTTP for
+// an unsuccessful HTTP response, for every boot resource type.
+func TestBootAdd_HTTPError(t *testing.T) {
 	t.Parallel()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"BMCs":[{"ID":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
+	for _, typ := range []string{"config", "node", "bmc"} {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "bad request", http.StatusBadRequest)
+			}))
+			defer srv.Close()
 
-	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "bmc", "add", "-d", `{}`)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestBootBmcSet_MalformedResponse verifies that "boot bmc set" fails with
-// CodePayload when the service's success response can't be decoded.
-func TestBootBmcSet_MalformedResponse(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"BMCs":[{"ID":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	args := []string{"--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "bmc", "set", "x0c0s1b0n0", "-d", `{"xname":"test"}`}
-	res := runOchamiWithRuntime(t, args...)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestBootBmcSet_EnvelopeMalformedResponse verifies that "boot bmc set -e"
-// fails with CodePayload when the service's success response can't be decoded.
-func TestBootBmcSet_EnvelopeMalformedResponse(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"BMCs":[{"ID":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	args := []string{"--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "bmc", "set", "-e", "x0c0s1b0n0", "-d", `{"spec":{"xname":"test"}}`}
-	res := runOchamiWithRuntime(t, args...)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestBootBmcPatch_MalformedResponse verifies that "boot bmc patch" fails with
-// CodePayload when the service's success response can't be decoded.
-func TestBootBmcPatch_MalformedResponse(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"BMCs":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "bmc", "patch", "x0c0s1b0n0", "-d", `{}`)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestBootNodeAdd_MalformedResponse verifies that "boot node add" fails with
-// CodePayload when the service's success response can't be decoded.
-func TestBootNodeAdd_MalformedResponse(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"Nodes":[{"ID":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	args := []string{"--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "node", "add", "-d", `{}`}
-	res := runOchamiWithRuntime(t, args...)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestBootNodePatch_MalformedResponse verifies that "boot node patch" fails
-// with CodePayload when the service's success response can't be decoded.
-func TestBootNodePatch_MalformedResponse(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"Nodes":[{"ID":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	args := []string{"--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "node", "patch", "x0c0s1b0n0", "-d", `{}`}
-	res := runOchamiWithRuntime(t, args...)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestBootNodeSet_MalformedResponse verifies that "boot node set" fails with
-// CodePayload when the service's success response can't be decoded.
-func TestBootNodeSet_MalformedResponse(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"Nodes":[{"ID":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	args := []string{"--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "node", "set", "x0c0s1b0n0", "-d", `{}`}
-	res := runOchamiWithRuntime(t, args...)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestBootConfigAdd_MalformedResponse verifies that "boot config add" fails
-// with CodePayload when the service's success response can't be decoded.
-func TestBootConfigAdd_MalformedResponse(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"BootConfigParams":[{"ID":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	args := []string{"--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "config", "add", "-d", `{}`}
-	res := runOchamiWithRuntime(t, args...)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestBootConfigPatch_MalformedResponse verifies that "boot config patch" fails
-// with CodePayload when the service's success response can't be decoded.
-func TestBootConfigPatch_MalformedResponse(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"BootConfigParams":[{"ID":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	args := []string{"--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "config", "patch", "x0c0s1b0n0", "-d", `{}`}
-	res := runOchamiWithRuntime(t, args...)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestBootConfigSet_MalformedResponse verifies that "boot config set" fails
-// with CodePayload when the service's success response can't be decoded.
-func TestBootConfigSet_MalformedResponse(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"BootConfigParams":[{"ID":`)); err != nil {
-			t.Errorf("write response: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	args := []string{"--ignore-config", "--cluster-uri", srv.URL, "--token", "t",
-		"boot", "config", "set", "x0c0s1b0n0", "-d", `{}`}
-	res := runOchamiWithRuntime(t, args...)
-
-	if res.err == nil {
-		t.Fatal("expected malformed response error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+			res := runOchamiWithRuntime(t, "boot", typ, "add",
+				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
+				"-d", bootAddPayload(typ))
+			if res.err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if res.exitCode != cli.CodeHTTP {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+			}
+		})
 	}
 }

@@ -12,19 +12,18 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestBSSBootParamsSet_HTTPError verifies an unsuccessful HTTP response resolves
-// to CodeHTTP.
-func TestBSSBootParamsSet_HTTPError(t *testing.T) {
+// TestBSSBootScriptGet_HTTPError verifies a failing boot-script GET resolves to
+// CodeHTTP.
+func TestBSSBootScriptGet_HTTPError(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
 	defer srv.Close()
 
-	res := runOchamiWithRuntime(t, "bss", "boot", "params", "set",
-		"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
-		"--mac", "de:ad:be:ef:00:00", "--kernel", "https://example.com/vmlinuz")
+	res := runOchamiWithRuntime(t, "bss", "boot", "script", "get", "--ignore-config", "--uri", srv.URL,
+		"--mac", "de:ad:be:ef:00:00")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
 	}

@@ -280,3 +280,116 @@ func TestSMDGroupDelete_DataWithExtraArgs(t *testing.T) {
 		t.Errorf("request = %s %s, want DELETE /groups/compute (the payload's group, not the extra argument)", gotMethod, gotPath)
 	}
 }
+
+// TestSMDGroupGet_Success verifies "smd group get" issues GET /groups.
+func TestSMDGroupGet_Success(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "group", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodGet || gotPath != "/groups" {
+		t.Errorf("request = %s %s, want GET /groups", gotMethod, gotPath)
+	}
+}
+
+// TestSMDGroupAdd_ViaFlags verifies "smd group add <label>" issues POST /groups.
+func TestSMDGroupAdd_ViaFlags(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "group", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--description", "compute nodes", "compute")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/groups" {
+		t.Errorf("request = %s %s, want POST /groups", gotMethod, gotPath)
+	}
+}
+
+// TestSMDGroupDelete_NoConfirm verifies "smd group delete --no-confirm <label>"
+// issues DELETE /groups/<label>.
+func TestSMDGroupDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--no-confirm", "compute")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodDelete || !strings.HasPrefix(gotPath, "/groups/compute") {
+		t.Errorf("request = %s %s, want DELETE /groups/compute", gotMethod, gotPath)
+	}
+}
+
+// TestSMDGroupMembership_Get verifies "smd group membership" issues GET
+// /memberships.
+func TestSMDGroupMembership_Get(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotMethod = r.Method
+		w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "group", "membership", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/memberships" {
+		t.Errorf("path = %q, want /memberships", gotPath)
+	}
+	if gotMethod != http.MethodGet {
+		t.Errorf("method = %q, want GET", gotMethod)
+	}
+}
+
+// TestSMDGroupUpdate_Success verifies "smd group update" issues PATCH under /groups.
+func TestSMDGroupUpdate_Success(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "update", "compute",
+		"--description", "compute nodes",
+		"--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodPatch {
+		t.Errorf("method = %q, want PATCH", gotMethod)
+	}
+	if !strings.HasPrefix(gotPath, "/hsm/v2/groups") && !strings.Contains(gotPath, "/groups") {
+		t.Errorf("path = %q, want it under /groups", gotPath)
+	}
+}

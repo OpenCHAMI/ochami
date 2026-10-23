@@ -12,6 +12,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
+	"io"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -294,5 +296,110 @@ func TestShellCompletions_ReturnDefaultValues(t *testing.T) {
 		if len(values) == 0 || directive != cobra.ShellCompDirectiveDefault {
 			t.Errorf("%s completion = %v, %v", name, values, directive)
 		}
+	}
+}
+
+// TestIOStreams_LoopYesNo verifies that LoopYesNo returns the user's yes or no
+// answer and prompts again after an invalid one.
+func TestIOStreams_LoopYesNo(t *testing.T) {
+	cases := []struct {
+		name      string
+		input     string
+		want      bool
+		wantCount int
+	}{
+		{
+			name:      "yes first try",
+			input:     "y\n",
+			want:      true,
+			wantCount: 1,
+		},
+		{
+			name:      "no first try",
+			input:     "n\n",
+			want:      false,
+			wantCount: 1,
+		},
+		{
+			name:      "invalid then no",
+			input:     "maybe\nn\n",
+			want:      false,
+			wantCount: 2,
+		},
+	}
+
+	for _, tt := range cases {
+		// Create per-iteration copy of test tt so that running
+		// tests in parallel does not reuse the same test for
+		// each run.
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			inBuf := bytes.NewBufferString(tc.input)
+			errBuf := &bytes.Buffer{}
+			ios := NewIOStreams(inBuf, io.Discard, errBuf)
+
+			got, err := ios.LoopYesNo("Proceed?")
+			if err != nil {
+				t.Fatalf("LoopYesNo() error = %v, want nil", err)
+			}
+			if got != tc.want {
+				t.Errorf("LoopYesNo() = %v, want %v", got, tc.want)
+			}
+
+			prompt := "Proceed? [yn]:"
+			if count := strings.Count(errBuf.String(), prompt); count != tc.wantCount {
+				t.Errorf("prompt count = %d, want %d", count, tc.wantCount)
+			}
+		})
+	}
+}
+
+type readError struct{ err error }
+
+type writeError struct{ err error }
+
+// TestIOStreams_ConfirmCreate verifies that ConfirmCreate returns the user's
+// answer, prompts again after an invalid one, treats end of input as no, and
+// returns a failure to read the answer or write the prompt.
+func TestIOStreams_ConfirmCreate(t *testing.T) {
+	t.Parallel()
+
+	readErr := errors.New("read failed")
+	writeErr := errors.New("write failed")
+	tests := []struct {
+		name        string
+		input       io.Reader
+		stderr      io.Writer
+		want        bool
+		wantErr     error
+		wantPrompts int
+	}{
+		{name: "accepted", input: strings.NewReader("y\n"), stderr: &bytes.Buffer{}, want: true, wantPrompts: 1},
+		{name: "declined", input: strings.NewReader("n\n"), stderr: &bytes.Buffer{}, wantPrompts: 1},
+		{name: "invalid then accepted", input: strings.NewReader("perhaps\ny\n"), stderr: &bytes.Buffer{}, want: true, wantPrompts: 2},
+		{name: "EOF", input: strings.NewReader(""), stderr: &bytes.Buffer{}, wantPrompts: 1},
+		{name: "read failure", input: readError{err: readErr}, stderr: &bytes.Buffer{}, wantErr: readErr, wantPrompts: 1},
+		{name: "write failure", input: strings.NewReader("y\n"), stderr: writeError{err: writeErr}, wantErr: writeErr},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ios := NewIOStreams(tc.input, io.Discard, tc.stderr)
+			got, err := ios.ConfirmCreate("config.yaml")
+			if got != tc.want {
+				t.Errorf("ConfirmCreate() = %v, want %v", got, tc.want)
+			}
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("ConfirmCreate() error = %v, want %v", err, tc.wantErr)
+			}
+			if buf, ok := tc.stderr.(*bytes.Buffer); ok {
+				const prompt = "config.yaml does not exist. Create it? [yn]:"
+				if got := strings.Count(buf.String(), prompt); got != tc.wantPrompts {
+					t.Errorf("prompt count = %d, want %d; output %q", got, tc.wantPrompts, buf.String())
+				}
+			}
+		})
 	}
 }

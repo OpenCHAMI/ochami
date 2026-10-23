@@ -5,10 +5,12 @@
 package cmd
 
 // boot_test.go provides end-to-end tests for the "boot" command group, whose
-// client wraps the upstream boot-service library. Because the library controls
-// the exact request paths, these tests assert exit-code behavior rather than
-// exact request routing. HTTP-failure and rejection-path cases are covered in
-// boot_errors_test.go.
+// client wraps the upstream boot-service library: tables over the resource
+// types (config, node, bmc) that share each verb, and "boot service status".
+// Because the library controls the exact request paths, these tests assert
+// exit-code behavior rather than exact request routing. HTTP-failure and
+// rejection-path cases are covered in boot_errors_test.go, and those specific
+// to one resource type in boot_<type>_errors_test.go.
 
 import (
 	"net/http"
@@ -443,6 +445,99 @@ func TestBootPatch_StdinData(t *testing.T) {
 				"boot", typ, "patch", "some-uid", "--ignore-config", "--uri", srv.URL, "--token", "t")
 			if res.err != nil {
 				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+		})
+	}
+}
+
+// bootAddPayload returns a minimal add payload for each boot resource type.
+func bootAddPayload(typ string) string {
+	switch typ {
+	case "config":
+		return `{"name":"compute-boot","hosts":["x0c0s0b0n0"],"kernel":"http://s3/vmlinuz"}`
+	case "node":
+		return `{"name":"node-1","xname":"x0c0s0b0n0"}`
+	case "bmc":
+		return `{"name":"bmc-1","xname":"x0c0s0b0"}`
+	default:
+		return `{"name":"thing-1"}`
+	}
+}
+
+// TestBootAdd_Success verifies that "boot <type> add" succeeds for every boot
+// resource type.
+func TestBootAdd_Success(t *testing.T) {
+	t.Parallel()
+
+	for _, typ := range []string{"config", "node", "bmc"} {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				w.Write([]byte(`{}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithRuntime(t, "boot", typ, "add",
+				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
+				"-d", bootAddPayload(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if res.exitCode != cli.CodeSuccess {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
+			}
+		})
+	}
+}
+
+// TestBootSet_Success verifies that "boot <type> set" succeeds for every boot
+// resource type.
+func TestBootSet_Success(t *testing.T) {
+	t.Parallel()
+
+	for _, typ := range []string{"config", "node", "bmc"} {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithRuntime(t, "boot", typ, "set", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
+				"-d", bootAddPayload(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if res.exitCode != cli.CodeSuccess {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
+			}
+		})
+	}
+}
+
+// TestBootPatch_Success verifies that "boot <type> patch" with a payload
+// succeeds for every boot resource type.
+func TestBootPatch_Success(t *testing.T) {
+	t.Parallel()
+
+	for _, typ := range []string{"config", "node", "bmc"} {
+		t.Run(typ, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{}`))
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithRuntime(t, "boot", typ, "patch", "some-uid",
+				"--ignore-config", "--uri", srv.URL, "--token", "faketoken",
+				"-d", bootAddPayload(typ))
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if res.exitCode != cli.CodeSuccess {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
 			}
 		})
 	}

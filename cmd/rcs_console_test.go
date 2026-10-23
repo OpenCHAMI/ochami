@@ -4,10 +4,10 @@
 
 package cmd
 
-// rcs_test.go exercises the "rcs console" subcommands end-to-end: "list"
-// (plain HTTP), "show" (websocket streamed to captured stdout), and
+// rcs_console_test.go exercises the "rcs console" subcommands end-to-end:
+// "list" (plain HTTP), "show" (websocket streamed to captured stdout), and
 // "connect" (interactive websocket session). HTTP-failure cases are covered
-// in rcs_errors_test.go.
+// in rcs_console_errors_test.go.
 
 import (
 	"net/http"
