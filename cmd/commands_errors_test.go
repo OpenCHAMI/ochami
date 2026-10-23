@@ -18,6 +18,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -294,38 +295,11 @@ func TestCommands_RejectInvalidCACert(t *testing.T) {
 	srv := okJSONServer(t)
 	defer srv.Close()
 
-	cases := [][]string{
-		{"smd", "group", "get"},
-		{"smd", "iface", "get"},
-		{"smd", "rfe", "get"},
-		{"smd", "compep", "get"},
-		{"smd", "component", "get"},
-		{"bss", "boot", "params", "get"},
-		{"bss", "hosts", "get"},
-		{"cloud-init", "group", "get", "raw"},
-		{"cloud-init", "node", "get", "meta-data", "x0c0s0b0n0"},
-		{"metadata", "defaults", "list"},
-		{"metadata", "group", "list"},
-		{"metadata", "instance", "list"},
-		{"metadata", "peer", "list"},
-		{"boot", "bmc", "list"},
-		{"boot", "config", "list"},
-		{"boot", "node", "list"},
-		{"pcs", "transition", "list"},
-		{"pcs", "status", "list"},
-		{"rcs", "console", "list"},
-		{"smd", "group", "add", "compute"},
-		{"smd", "rfe", "add", "x0", "n", "172.16.0.1", "de:ad:be:ef:00:00"},
-		{"discover", "static", "-d", discoveryPayload},
-	}
-	for _, args := range cases {
-		name := ""
-		for _, a := range args {
-			name += a + "_"
-		}
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range caCertCommands() {
+		t.Run(tc.path, func(t *testing.T) {
+			args := append(strings.Fields(tc.path), tc.args...)
 			full := append(args, "--ignore-config", "--uri", srv.URL, "--token", "t",
-				"--cacert", "/no/such/ca.pem")
+				"--cacert", filepath.Join(t.TempDir(), "missing-ca.pem"))
 			res := runOchamiWithRuntime(t, full...)
 			if res.err == nil {
 				t.Fatalf("expected an error for invalid --cacert, got nil")

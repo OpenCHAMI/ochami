@@ -108,7 +108,14 @@ func NewClient(baseURI string, opts ...client.Option) (*RCSClient, error) {
 	return &RCSClient{
 		OchamiClient: oc,
 		dial: func(ctx context.Context, uri string, headers http.Header) (messageConn, *http.Response, error) {
-			return websocket.DefaultDialer.DialContext(ctx, uri, headers)
+			// Read the transport at dial time: UseCACert can replace it after
+			// NewClient returns. Keep the dialer and TLS config local to this
+			// connection so clients with different trust settings stay isolated.
+			dialer := *websocket.DefaultDialer
+			if transport, ok := oc.Transport.(*http.Transport); ok && transport.TLSClientConfig != nil {
+				dialer.TLSClientConfig = transport.TLSClientConfig.Clone()
+			}
+			return dialer.DialContext(ctx, uri, headers)
 		},
 		terminal: systemTerminal{},
 	}, nil
@@ -427,7 +434,10 @@ func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-cha
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-outputErr: //nolint:errcheck // Read errors after a user interrupt must not turn a clean exit into a failure.
+	case err := <-outputErr:
+		// Read errors after a user interrupt must not turn a clean exit
+		// into a failure.
+		_ = err
 		return nil
 	case <-after(time.Second):
 		return nil
