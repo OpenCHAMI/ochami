@@ -12,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -228,6 +230,116 @@ func TestWaitForConsoleExit(t *testing.T) {
 			t.Fatalf("data frames = %d, want 0: the close frame must not use WriteMessage", len(conn.writes))
 		}
 	})
+}
+
+// controlWrite is one WriteControl call recorded by blockingMessageWriter.
+type controlWrite struct {
+	messageType int
+	deadline    time.Time
+}
+
+// blockingMessageWriter is a messageWriter whose first WriteMessage blocks
+// until release is closed, holding the input goroutine inside a data write
+// while the session shuts down. It enforces gorilla/websocket's contract:
+// a WriteMessage that overlaps another is reported through overlapped,
+// while WriteControl may run at any time and is reported through controlled.
+type blockingMessageWriter struct {
+	entered     chan struct{}     // closed once WriteMessage is blocked
+	release     chan struct{}     // closed by the test to let WriteMessage return
+	overlapped  chan struct{}     // closed if a second WriteMessage overlaps the first
+	controlled  chan controlWrite // receives each WriteControl call
+	inWrite     atomic.Bool
+	writes      atomic.Int32
+	overlapOnce sync.Once
+}
+
+func newBlockingMessageWriter() *blockingMessageWriter {
+	return &blockingMessageWriter{
+		entered:    make(chan struct{}),
+		release:    make(chan struct{}),
+		overlapped: make(chan struct{}),
+		controlled: make(chan controlWrite, 1),
+	}
+}
+
+func (w *blockingMessageWriter) WriteMessage(int, []byte) error {
+	if !w.inWrite.CompareAndSwap(false, true) {
+		w.overlapOnce.Do(func() { close(w.overlapped) })
+		return nil
+	}
+	defer w.inWrite.Store(false)
+	if w.writes.Add(1) == 1 {
+		close(w.entered)
+		<-w.release
+	}
+	return nil
+}
+
+func (w *blockingMessageWriter) WriteControl(messageType int, _ []byte, deadline time.Time) error {
+	w.controlled <- controlWrite{messageType: messageType, deadline: deadline}
+	return nil
+}
+
+// TestConsoleInterrupt_CloseFrameDoesNotOverlapInputWrite verifies that an
+// interrupt arriving while the input goroutine is blocked inside WriteMessage
+// sends the close frame through WriteControl instead of a second, concurrent
+// WriteMessage, which gorilla/websocket does not allow. The input goroutine
+// runs the buffered (piped stdin) path, where nothing stops it before the
+// close frame is sent; the signal stands in for kill -INT or kill -TERM
+// delivered from outside the terminal. Run under -race.
+func TestConsoleInterrupt_CloseFrameDoesNotOverlapInputWrite(t *testing.T) {
+	const timeout = 5 * time.Second
+	conn := newBlockingMessageWriter()
+	inputErr := make(chan error, 1)
+
+	go streamBufferedConsoleInput(strings.NewReader("x"), conn, inputErr)
+
+	select {
+	case <-conn.entered:
+	case <-time.After(timeout):
+		t.Fatal("input goroutine never entered WriteMessage")
+	}
+
+	interrupt := make(chan os.Signal, 1)
+	interrupt <- syscall.SIGTERM
+	timedOut := make(chan time.Time)
+	close(timedOut)
+	exitErr := make(chan error, 1)
+	start := time.Now()
+	go func() {
+		exitErr <- waitForConsoleExit(context.Background(), conn, interrupt, make(chan struct{}), inputErr, make(chan error), func(time.Duration) <-chan time.Time { return timedOut })
+	}()
+
+	// The close frame must go out while the input write is still blocked,
+	// with a real deadline so a stalled write cannot block the interrupt.
+	select {
+	case control := <-conn.controlled:
+		if control.messageType != websocket.CloseMessage {
+			t.Fatalf("WriteControl message type = %d, want CloseMessage (%d)", control.messageType, websocket.CloseMessage)
+		}
+		if control.deadline.IsZero() || !control.deadline.After(start) {
+			t.Fatalf("WriteControl deadline = %v, want a non-zero time after the interrupt", control.deadline)
+		}
+	case <-conn.overlapped:
+		t.Fatal("close frame was sent with WriteMessage while an input WriteMessage was in progress")
+	case <-time.After(timeout):
+		t.Fatal("close frame was not sent while the input write was blocked")
+	}
+
+	// waitForConsoleExit doesn't depend on the input write finishing: the
+	// close frame is already out and the grace period has elapsed.
+	select {
+	case err := <-exitErr:
+		if err != nil {
+			t.Fatalf("waitForConsoleExit() = %v, want nil", err)
+		}
+	case <-time.After(timeout):
+		t.Fatal("waitForConsoleExit did not return after sending the close frame")
+	}
+	close(conn.release)
+	if got := conn.writes.Load(); got != 1 {
+		t.Fatalf("WriteMessage calls = %d, want 1 (input only)", got)
+	}
 }
 
 // TestStreamConsoleOutput verifies that streamConsoleOutput writes received
