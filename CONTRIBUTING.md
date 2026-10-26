@@ -27,7 +27,7 @@ submitting contributions.
 
 - Go (see minimum version in [go.mod](go.mod))
 - `make` (for local builds)
-- `goreleaser` (for official builds)
+- `goreleaser` >= 2.12 (for official builds)
 - `scdoc` (for man page generation)
 - Container runtime: Docker, Podman, or compatible (optional, for container
   builds)
@@ -119,10 +119,12 @@ make CONTAINER_PROG=$(which podman) container
 #### Goreleaser
 
 Build local containers for all supported architectures using the Makefile
-goreleaser target:
+`goreleaser-*` targets, which require GoReleaser >= 2.12 and Docker Buildx. The
+builder must support `linux/amd64` and `linux/arm64` (use Docker Desktop or
+configure QEMU on Linux):
 
 ```bash
-# Build for your current platform
+# Build binaries, packages, and local images for both container platforms
 make GORELEASER_OPTS='--clean --snapshot' goreleaser-release
 ```
 
@@ -134,11 +136,10 @@ make GORELEASER_OPTS='--clean --snapshot' goreleaser-release
 >
 > If this is not desired, use the multi-stage build method above.
 
-To use a different container runtime (e.g. Podman):
-
-```bash
-make CONTAINER_PROG=$(which podman) GORELEASER_OPTS='--clean --snapshot' goreleaser-release
-```
+GoReleaser uses `docker buildx` directly; `CONTAINER_PROG` only applies to
+`make container`. Snapshot releases build and load separate images with
+`-amd64` and `-arm64` tag suffixes. Do not add `--skip=publish`: with
+`dockers_v2`, that also skips building the containers.
 
 The Makefile supports these environment variables for goreleaser builds:
 
@@ -147,8 +148,10 @@ The Makefile supports these environment variables for goreleaser builds:
 
 ### Testing Local Container
 
-The container will be available as `ghcr.io/openchami/ochami:latest` locally.
-You can test it:
+A GoReleaser snapshot loads `ghcr.io/openchami/ochami:latest-amd64` and
+`ghcr.io/openchami/ochami:latest-arm64` locally. Use the tag matching your
+host architecture. A `make container` build uses `ghcr.io/openchami/ochami:latest`
+by default. You can test it:
 
 ```bash
 # Using Docker

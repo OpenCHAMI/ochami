@@ -265,7 +265,12 @@ There are two dockerfiles for two different purposes.
   uses a multi-stage build, the first stage building from source and the second
   stage copying the binary from the first stage.
 - **goreleaser.dockerfile** is used by Goreleaser for CI. It assumes the binary
-  has already been built and copies it into the container.
+  has already been built and copies it from the platform-specific Buildx context
+  into the container. This requires GoReleaser >= 2.12 and Docker Buildx.
+  Releases publish one multi-platform image for Linux amd64 and arm64; snapshot
+  builds load separate images with `-amd64` and `-arm64` tag suffixes. Use
+  `docker pull --platform=linux/amd64` or `--platform=linux/arm64` to select
+  an architecture from a release tag.
 
 To build the ochami container (with `dirty` tag):
 

@@ -147,61 +147,35 @@ aurs:
       # Extras
       install -Dm755 "./extras/scripts/ochami-discovery-old2new.py" "${pkgdir}/usr/libexec/ochami/ochami-discovery-old2new.py"
 
-dockers:
+# Requires GoReleaser >= 2.12 and Docker Buildx.
+dockers_v2:
   - dockerfile: goreleaser.dockerfile
-    image_templates:
-      - &amd64_linux_image 'ghcr.io/openchami/{{ .ProjectName }}:{{ if eq .Env.IS_PR_BUILD "true" }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Tag }}{{ end }}-amd64'
-      - '{{ if ne .Env.IS_PR_BUILD "true" }}ghcr.io/openchami/{{ .ProjectName }}:v{{ .Major }}-amd64{{ end }}'
-      - '{{ if ne .Env.IS_PR_BUILD "true" }}ghcr.io/openchami/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-amd64{{ end }}'
-    use: buildx
-    goarch: amd64
-    goamd64: v3
-    build_flag_templates:
+    images:
+      - 'ghcr.io/openchami/{{ .ProjectName }}'
+    tags:
+      - '{{ if eq .Env.IS_PR_BUILD "true" }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Tag }}{{ end }}'
+      - '{{ if ne .Env.IS_PR_BUILD "true" }}latest{{ end }}'
+      - '{{ if ne .Env.IS_PR_BUILD "true" }}v{{ .Major }}{{ end }}'
+      - '{{ if ne .Env.IS_PR_BUILD "true" }}v{{ .Major }}.{{ .Minor }}{{ end }}'
+      # Keep the existing unprefixed manifest aliases.
+      - '{{ if ne .Env.IS_PR_BUILD "true" }}{{ .Major }}{{ end }}'
+      - '{{ if ne .Env.IS_PR_BUILD "true" }}{{ .Major }}.{{ .Minor }}{{ end }}'
+    # Use baseline amd64 (v1) and arm64 (v8.0) binaries for portability.
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    flags:
       - '--pull'
-      - '--platform=linux/amd64'
-      - '--label=org.opencontainers.image.created={{ .Date }}'
-      - '--label=org.opencontainers.image.title={{ .ProjectName }}'
-      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
-      - '--label=org.opencontainers.image.version={{ .Version }}'
+    labels:
+      org.opencontainers.image.description: 'OpenCHAMI CLI'
+      org.opencontainers.image.created: '{{ .Date }}'
+      org.opencontainers.image.title: '{{ .ProjectName }}'
+      org.opencontainers.image.revision: '{{ .FullCommit }}'
+      org.opencontainers.image.version: '{{ .Version }}'
+      org.opencontainers.image.source: 'https://github.com/openchami/ochami'
+      org.opencontainers.image.licenses: MIT
     extra_files:
       - LICENSES/MIT.txt
-  - dockerfile: goreleaser.dockerfile
-    image_templates:
-      - &arm64v8_linux_image 'ghcr.io/openchami/{{ .ProjectName }}:{{ if eq .Env.IS_PR_BUILD "true" }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Tag }}{{ end }}-arm64'
-      - '{{ if ne .Env.IS_PR_BUILD "true" }}ghcr.io/openchami/{{ .ProjectName }}:v{{ .Major }}-arm64{{ end }}'
-      - '{{ if ne .Env.IS_PR_BUILD "true" }}ghcr.io/openchami/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-arm64{{ end }}'
-    use: buildx
-    goarch: arm64
-    build_flag_templates:
-      - '--pull'
-      - '--platform=linux/arm64'
-      - '--label=org.opencontainers.image.created={{ .Date }}'
-      - '--label=org.opencontainers.image.title={{ .ProjectName }}'
-      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
-      - '--label=org.opencontainers.image.version={{ .Version }}'
-    extra_files:
-      - LICENSES/MIT.txt
-
-docker_manifests:
-  - name_template: '{{ if ne .Env.IS_PR_BUILD "true" }}ghcr.io/openchami/{{ .ProjectName }}:latest{{ end }}'
-    skip_push: '{{ eq .Env.IS_PR_BUILD "true" }}'
-    image_templates:
-      - *amd64_linux_image
-      - *arm64v8_linux_image
-  - name_template: 'ghcr.io/openchami/{{ .ProjectName }}:{{ if eq .Env.IS_PR_BUILD "true" }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Tag }}{{ end }}'
-    image_templates:
-      - *amd64_linux_image
-      - *arm64v8_linux_image
-  - name_template: '{{ if ne .Env.IS_PR_BUILD "true" }}ghcr.io/openchami/{{ .ProjectName }}:{{ .Major }}{{ end }}'
-    skip_push: '{{ eq .Env.IS_PR_BUILD "true" }}'
-    image_templates:
-      - *amd64_linux_image
-      - *arm64v8_linux_image
-  - name_template: '{{ if ne .Env.IS_PR_BUILD "true" }}ghcr.io/openchami/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}{{ end }}'
-    skip_push: '{{ eq .Env.IS_PR_BUILD "true" }}'
-    image_templates:
-      - *amd64_linux_image
-      - *arm64v8_linux_image
 
 checksum:
   name_template: checksums.txt
