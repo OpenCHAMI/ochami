@@ -39,16 +39,21 @@ func (f *fakeTerminal) Restore(int, *term.State) error {
 	return f.restoreErr
 }
 
+// fakeMessageConn is a messageConn for session tests. Data frames land in
+// writes and control frames in controls, so tests can assert which path a
+// write took. wrote, if set, receives a value after every write of either
+// kind.
 type fakeMessageConn struct {
-	readType int
-	readData []byte
-	readErr  error
-	nextErr  error
-	reads    int
-	writeErr error
-	closeErr error
-	writes   [][]byte
-	wrote    chan struct{}
+	readType   int
+	readData   []byte
+	readErr    error
+	nextErr    error
+	reads      int
+	controlErr error
+	closeErr   error
+	writes     [][]byte
+	controls   [][]byte
+	wrote      chan struct{}
 }
 
 func (f *fakeMessageConn) ReadMessage() (int, []byte, error) {
@@ -59,12 +64,22 @@ func (f *fakeMessageConn) ReadMessage() (int, []byte, error) {
 	return f.readType, f.readData, f.readErr
 }
 
-func (f *fakeMessageConn) WriteMessage(_ int, data []byte) error {
-	f.writes = append(f.writes, append([]byte(nil), data...))
+// record appends a copy of data to dst and signals wrote, if set.
+func (f *fakeMessageConn) record(dst *[][]byte, data []byte) {
+	*dst = append(*dst, append([]byte(nil), data...))
 	if f.wrote != nil {
 		f.wrote <- struct{}{}
 	}
-	return f.writeErr
+}
+
+func (f *fakeMessageConn) WriteMessage(_ int, data []byte) error {
+	f.record(&f.writes, data)
+	return nil
+}
+
+func (f *fakeMessageConn) WriteControl(_ int, data []byte, _ time.Time) error {
+	f.record(&f.controls, data)
+	return f.controlErr
 }
 
 func (f *fakeMessageConn) Close() error { return f.closeErr }
@@ -153,7 +168,7 @@ func TestWaitForConsoleExit(t *testing.T) {
 		want := errors.New("write failed")
 		interrupt := make(chan os.Signal, 1)
 		interrupt <- syscall.SIGINT
-		err := waitForConsoleExit(context.Background(), &fakeMessageConn{writeErr: want}, interrupt, make(chan struct{}), make(chan error), make(chan error), neverAfter)
+		err := waitForConsoleExit(context.Background(), &fakeMessageConn{controlErr: want}, interrupt, make(chan struct{}), make(chan error), make(chan error), neverAfter)
 		if !errors.Is(err, want) {
 			t.Fatalf("waitForConsoleExit() = %v, want close write error", err)
 		}
@@ -171,8 +186,11 @@ func TestWaitForConsoleExit(t *testing.T) {
 		if err := waitForConsoleExit(context.Background(), conn, interrupt, make(chan struct{}), make(chan error), outputErr, neverAfter); err != nil {
 			t.Fatalf("waitForConsoleExit() = %v", err)
 		}
-		if len(conn.writes) != 1 {
-			t.Fatalf("close messages = %d, want 1", len(conn.writes))
+		if len(conn.controls) != 1 {
+			t.Fatalf("close frames = %d, want 1", len(conn.controls))
+		}
+		if len(conn.writes) != 0 {
+			t.Fatalf("data frames = %d, want 0: the close frame must not use WriteMessage", len(conn.writes))
 		}
 	})
 
@@ -203,8 +221,11 @@ func TestWaitForConsoleExit(t *testing.T) {
 		if err := waitForConsoleExit(context.Background(), conn, make(chan os.Signal), localInterrupt, make(chan error), make(chan error), func(time.Duration) <-chan time.Time { return timedOut }); err != nil {
 			t.Fatalf("waitForConsoleExit() = %v", err)
 		}
-		if len(conn.writes) != 1 {
-			t.Fatalf("close messages = %d, want 1", len(conn.writes))
+		if len(conn.controls) != 1 {
+			t.Fatalf("close frames = %d, want 1", len(conn.controls))
+		}
+		if len(conn.writes) != 0 {
+			t.Fatalf("data frames = %d, want 0: the close frame must not use WriteMessage", len(conn.writes))
 		}
 	})
 }

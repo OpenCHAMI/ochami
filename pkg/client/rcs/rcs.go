@@ -27,11 +27,23 @@ import (
 // ctrlCByte is the byte value for Ctrl+C in raw terminal mode.
 const ctrlCByte = byte(0x03)
 
-// messageWriter is the subset of *websocket.Conn used to forward console input.
-// It is an interface so the input-streaming helpers can be unit-tested with a
-// fake writer instead of a live websocket connection.
+// closeFrameWriteTimeout bounds how long waitAfterInterrupt spends sending
+// the close frame. The budget covers both waiting for an in-progress input
+// write to finish and writing the frame itself; a stalled connection surfaces
+// as a close error instead of blocking the interrupt indefinitely.
+const closeFrameWriteTimeout = time.Second
+
+// messageWriter is the subset of *websocket.Conn a console session writes to:
+// WriteMessage forwards console input and WriteControl sends the close frame.
+// It is an interface so the input-streaming and shutdown helpers can be
+// unit-tested with a fake writer instead of a live websocket connection.
+//
+// gorilla/websocket supports only one concurrent WriteMessage caller, while
+// WriteControl may be called concurrently with all other methods. The input
+// goroutine owns WriteMessage; everything else must use WriteControl.
 type messageWriter interface {
 	WriteMessage(messageType int, data []byte) error
+	WriteControl(messageType int, data []byte, deadline time.Time) error
 }
 
 // messageReader is the subset of *websocket.Conn used to read console output.
@@ -413,8 +425,12 @@ func startConsoleOutputStream(stdout io.Writer, conn messageReader, errChan chan
 // briefly waits for the read side to finish.
 func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-chan error, after afterFunc) error {
 	// Translate a local interrupt into a clean websocket close so the remote
-	// side can shut down cleanly.
-	if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+	// side can shut down cleanly. The input goroutine may still be inside
+	// WriteMessage (a signal from outside the terminal, or piped input,
+	// doesn't stop it first), so the close frame must go through
+	// WriteControl; see messageWriter.
+	closeFrame := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
+	if err := conn.WriteControl(websocket.CloseMessage, closeFrame, time.Now().Add(closeFrameWriteTimeout)); err != nil {
 		return fmt.Errorf("failed to send websocket close message: %w", err)
 	}
 
