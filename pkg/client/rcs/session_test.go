@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -173,6 +174,22 @@ func TestWaitForConsoleExit(t *testing.T) {
 		err := waitForConsoleExit(context.Background(), &fakeMessageConn{controlErr: want}, interrupt, make(chan struct{}), make(chan error), make(chan error), neverAfter)
 		if !errors.Is(err, want) {
 			t.Fatalf("waitForConsoleExit() = %v, want close write error", err)
+		}
+	})
+
+	t.Run("close message timeout is a clean exit", func(t *testing.T) {
+		// WriteControl reports a missed deadline as a net.Error whose
+		// Timeout() is true; os.ErrDeadlineExceeded is one such error.
+		// neverAfter also checks that the timeout doesn't wait for the read
+		// side, which can't see a close frame that was never sent.
+		interrupt := make(chan os.Signal, 1)
+		interrupt <- syscall.SIGTERM
+		conn := &fakeMessageConn{controlErr: fmt.Errorf("write: %w", os.ErrDeadlineExceeded)}
+		if err := waitForConsoleExit(context.Background(), conn, interrupt, make(chan struct{}), make(chan error), make(chan error), neverAfter); err != nil {
+			t.Fatalf("waitForConsoleExit() = %v, want nil", err)
+		}
+		if len(conn.controls) != 1 {
+			t.Fatalf("close frames = %d, want 1", len(conn.controls))
 		}
 	})
 

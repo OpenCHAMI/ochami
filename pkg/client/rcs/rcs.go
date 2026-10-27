@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,8 +30,8 @@ const ctrlCByte = byte(0x03)
 
 // closeFrameWriteTimeout bounds how long waitAfterInterrupt spends sending
 // the close frame. The budget covers both waiting for an in-progress input
-// write to finish and writing the frame itself; a stalled connection surfaces
-// as a close error instead of blocking the interrupt indefinitely.
+// write to finish and writing the frame itself, so an input write stuck on a
+// remote that isn't reading cannot block the interrupt indefinitely.
 const closeFrameWriteTimeout = time.Second
 
 // messageWriter is the subset of *websocket.Conn a console session writes to:
@@ -431,6 +432,14 @@ func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-cha
 	// WriteControl; see messageWriter.
 	closeFrame := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
 	if err := conn.WriteControl(websocket.CloseMessage, closeFrame, time.Now().Add(closeFrameWriteTimeout)); err != nil {
+		// A timeout means the input goroutine's write is stuck behind input
+		// the remote hasn't read yet (piped input faster than the console
+		// consumes it), so no clean close can be sent in time. The interrupt
+		// still ends the session: the caller closes the connection, which
+		// the remote sees as an abnormal closure, so don't report a failure.
+		if isTimeout(err) {
+			return nil
+		}
 		return fmt.Errorf("failed to send websocket close message: %w", err)
 	}
 
@@ -448,6 +457,13 @@ func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-cha
 	case <-after(time.Second):
 		return nil
 	}
+}
+
+// isTimeout reports whether err is a write deadline expiring, as returned by
+// WriteControl when the deadline passes before the frame could be written.
+func isTimeout(err error) bool {
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
 // waitForConsoleExit waits for shutdown, a local interrupt, or an I/O error.
