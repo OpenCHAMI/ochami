@@ -4,11 +4,10 @@
 
 package cmd
 
-// bss_boot_image_test.go covers the branch families of "bss boot image set"
-// that the happy path (TestBSSBootImageSet_Success in bss_test.go) does not
-// reach: selector fan-out with per-selector "not found" warnings and selection
-// by --xname/--nid. Malformed or empty GET responses and GET/PUT HTTP error
-// mapping are covered in bss_boot_image_errors_test.go.
+// bss_boot_image_test.go covers "bss boot image set": the GET and PUT it
+// issues, selector fan-out with per-selector "not found" warnings, and
+// selection by --xname/--nid. Malformed or empty GET responses and GET/PUT
+// HTTP error mapping are covered in bss_boot_image_errors_test.go.
 
 import (
 	"io"
@@ -97,5 +96,45 @@ func TestBSSBootImageSet_ByXnameAndNid(t *testing.T) {
 				t.Error("expected at least one PUT to update boot params, got none")
 			}
 		})
+	}
+}
+
+// TestBSSBootImageSet_Success verifies "bss boot image set" fetches the
+// existing boot parameters with a GET and writes the updated root back with a
+// PUT.
+func TestBSSBootImageSet_Success(t *testing.T) {
+	t.Parallel()
+
+	var methods []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		methods = append(methods, r.Method)
+		if r.Method == http.MethodGet {
+			// Return one boot-params entry matching the requested mac so the
+			// command has something to edit and PUT back.
+			w.Write([]byte(`[{"macs":["de:ad:be:ef:00:00"],"params":"console=tty0"}]`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "bss", "boot", "image", "set",
+		"--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--mac", "de:ad:be:ef:00:00", "/dev/sda1")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	// Expect at least one GET (fetch) followed by a PUT (update).
+	sawGet, sawPut := false, false
+	for _, m := range methods {
+		switch m {
+		case http.MethodGet:
+			sawGet = true
+		case http.MethodPut:
+			sawPut = true
+		}
+	}
+	if !sawGet || !sawPut {
+		t.Errorf("methods = %v, want at least one GET and one PUT", methods)
 	}
 }

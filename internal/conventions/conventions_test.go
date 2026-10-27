@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/build/constraint"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -15,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -247,6 +249,98 @@ func checkTestFileSuffixes(tr *tree) []violation {
 		if m := genericSuffix.FindStringSubmatch(sf.path); m != nil {
 			vs = append(vs, sf.at(sf.file.Package, "test file suffix _%s_test.go is generic", m[1]))
 		}
+	}
+	return vs
+}
+
+const (
+	knownOS   = `aix|android|darwin|dragonfly|freebsd|hurd|illumos|ios|js|linux|nacl|netbsd|openbsd|plan9|solaris|wasip1|windows|zos`
+	knownArch = `386|amd64|amd64p32|arm|armbe|arm64|arm64be|loong64|mips|mipsle|mips64|mips64le|mips64p32|mips64p32le|ppc|ppc64|ppc64le|riscv|riscv64|s390|s390x|sparc|sparc64|wasm`
+)
+
+var (
+	platformSuffix = regexp.MustCompile(`_((?:` + knownOS + `)(?:_(?:` + knownArch + `))?|` + knownArch + `)_test\.go$`)
+	platformTag    = regexp.MustCompile(`^(?:unix|` + knownOS + `|` + knownArch + `)$`)
+)
+
+// namesPlatform reports whether a build constraint expression uses a GOOS or
+// GOARCH tag (or "unix").
+func namesPlatform(x constraint.Expr) bool {
+	switch x := x.(type) {
+	case *constraint.TagExpr:
+		return platformTag.MatchString(x.Tag)
+	case *constraint.NotExpr:
+		return namesPlatform(x.X)
+	case *constraint.AndExpr:
+		return namesPlatform(x.X) || namesPlatform(x.Y)
+	case *constraint.OrExpr:
+		return namesPlatform(x.X) || namesPlatform(x.Y)
+	}
+	return false
+}
+
+// platform describes the platforms sf builds for, from its GOOS or GOARCH
+// file name suffix and a //go:build constraint that uses a platform tag, or
+// returns "" if sf builds on every platform. Other build tags, such as
+// "integration", don't make a file platform-specific.
+func platform(sf *sourceFile) string {
+	var parts []string
+	if m := platformSuffix.FindStringSubmatch(sf.path); m != nil {
+		parts = append(parts, m[1])
+	}
+	for _, cg := range sf.file.Comments {
+		if cg.Pos() >= sf.file.Package {
+			break
+		}
+		for _, c := range cg.List {
+			if !constraint.IsGoBuild(c.Text) {
+				continue
+			}
+			x, err := constraint.Parse(c.Text)
+			if err != nil || !namesPlatform(x) || slices.Contains(parts, x.String()) {
+				continue
+			}
+			parts = append(parts, x.String())
+		}
+	}
+	return strings.Join(parts, " && ")
+}
+
+// testBucket returns the suffix bucket of a test file: "errors", "boundary",
+// or "plain".
+func testBucket(file string) string {
+	switch {
+	case strings.HasSuffix(file, "_errors_test.go"):
+		return "errors"
+	case strings.HasSuffix(file, "_boundary_test.go"):
+		return "boundary"
+	}
+	return "plain"
+}
+
+// checkSplitSubjects flags a subject (the part of a test's name before its
+// first underscore) whose tests in one suffix bucket are in more than one file
+// of a package. Files that build only on some platforms are compared only with
+// files for the same platforms, since a file for every platform can't hold
+// their tests.
+func checkSplitSubjects(tr *tree) []violation {
+	type group struct{ dir, subject, bucket, platform string }
+	first := map[group]string{}
+	reported := map[string]bool{}
+	var vs []violation
+	for _, tf := range tr.tests {
+		subject, _, _ := strings.Cut(tf.name, "_")
+		g := group{path.Dir(tf.sf.path), subject, testBucket(tf.sf.path), platform(tf.sf)}
+		file, ok := first[g]
+		if !ok {
+			first[g] = tf.sf.path
+			continue
+		}
+		if file == tf.sf.path || reported[subject+":"+tf.sf.path] {
+			continue
+		}
+		reported[subject+":"+tf.sf.path] = true
+		vs = append(vs, tf.at("%s tests (%s) are split between %s and %s", subject, g.bucket, path.Base(file), path.Base(tf.sf.path)))
 	}
 	return vs
 }
@@ -690,6 +784,7 @@ var sourceChecks = map[string]func(*tree) []violation{
 	"names":          checkTestNames,
 	"bare subjects":  checkBareSubjects,
 	"file suffixes":  checkTestFileSuffixes,
+	"split subjects": checkSplitSubjects,
 	"doc names":      checkDocsStartWithName,
 	"doc wording":    checkDocWording,
 	"claimed method": checkClaimedMethods,
@@ -720,6 +815,14 @@ func TestTestNames_BareSubjectStandsAlone(t *testing.T) {
 func TestTestFiles_NoGenericSuffix(t *testing.T) {
 	tr, _ := loadModule(t)
 	report(t, checkTestFileSuffixes(tr), "Use <subject>_test.go, _errors_test.go, or _boundary_test.go.")
+}
+
+// TestTestFiles_SubjectInOneFile verifies the tests of each subject in each
+// suffix bucket are in one file of their package, or in one file per set of
+// platforms for files that build only on some platforms.
+func TestTestFiles_SubjectInOneFile(t *testing.T) {
+	tr, _ := loadModule(t)
+	report(t, checkSplitSubjects(tr), "Move the test into its subject's file for that bucket, or give a too-broad subject a more specific name; see CONTRIBUTING.md.")
 }
 
 // TestTestDocs_StartWithName verifies every Test function has a doc comment
@@ -834,6 +937,9 @@ func TestChecks_FlagFixtures(t *testing.T) {
 		if len(check(tr)) == 0 {
 			t.Errorf("%s check reported nothing for testdata/violations", name)
 		}
+	}
+	if got := len(checkSplitSubjects(tr)); got != 3 {
+		t.Errorf("split subject check reported %d violations for a subject split across two files, a third with a non-platform build tag, two for one platform, and one for another; want 3", got)
 	}
 	man := "# EXIT STATUS\n\n|  *0*\n:  _CodeSuccess_\n|  *1*\n:  _CodeWrong_\n"
 	if len(checkExitStatusTable("fixture", man)) == 0 {
