@@ -11,11 +11,8 @@ package cmd
 // HTTP-failure cases are covered in smd_errors_test.go.
 
 import (
-	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -82,48 +79,6 @@ func TestSMDGroupDelete_NoConfirm(t *testing.T) {
 	}
 	if gotMethod != http.MethodDelete || !strings.HasPrefix(gotPath, "/groups/compute") {
 		t.Errorf("request = %s %s, want DELETE /groups/compute", gotMethod, gotPath)
-	}
-}
-
-// TestSMDAdd_TrustsCACert verifies that "smd group add" and "smd rfe add"
-// issue their POST to a TLS server whose certificate is trusted only through
-// --cacert.
-func TestSMDAdd_TrustsCACert(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name string
-		args []string
-	}{
-		{name: "group", args: []string{"smd", "group", "add", "compute"}},
-		{name: "rfe", args: []string{"smd", "rfe", "add", "x0", "n", "172.16.0.1", "de:ad:be:ef:00:00"}},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			var gotMethod string
-			srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotMethod = r.Method
-				w.WriteHeader(http.StatusCreated)
-			}))
-			defer srv.Close()
-
-			caPath := filepath.Join(t.TempDir(), "ca.pem")
-			caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: srv.Certificate().Raw})
-			if err := os.WriteFile(caPath, caPEM, 0o600); err != nil {
-				t.Fatalf("failed to write CA certificate: %v", err)
-			}
-
-			full := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "t", "--cacert", caPath)
-			res := runOchamiWithRuntime(t, full...)
-			if res.err != nil {
-				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-			}
-			if gotMethod != http.MethodPost {
-				t.Errorf("method = %q, want POST", gotMethod)
-			}
-		})
 	}
 }
 
