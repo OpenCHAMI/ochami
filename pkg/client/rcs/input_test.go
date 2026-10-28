@@ -57,6 +57,10 @@ func (f *fakeMessageWriter) WriteMessage(_ int, data []byte) error {
 	return nil
 }
 
+// WriteControl is never reached by the input helpers, which only forward
+// data frames; it exists so fakeMessageWriter satisfies messageWriter.
+func (f *fakeMessageWriter) WriteControl(int, []byte, time.Time) error { return nil }
+
 func (f *fakeMessageWriter) written() [][]byte {
 	f.mu.Lock()
 	defer f.mu.Unlock()
