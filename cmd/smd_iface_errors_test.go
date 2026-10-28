@@ -7,6 +7,7 @@ package cmd
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -74,6 +75,53 @@ func TestSMDIfaceAdd_InvalidIP(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeUsage {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestSMDIfaceAdd_InvalidNetworkPairs verifies malformed pairs and missing
+// positional arguments return usage errors without sending a request.
+func TestSMDIfaceAdd_InvalidNetworkPairs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"no arguments", nil, "expected -d or >= 3 arguments"},
+		{"component only", []string{"node"}, "expected -d or >= 3 arguments"},
+		{"no network", []string{"node", "de:ca:fc:0f:fe:ee"}, "expected -d or >= 3 arguments"},
+		{"missing comma", []string{"node", "de:ca:fc:0f:fe:ee", "external"}, "invalid network,ip pair"},
+		{"empty network", []string{"node", "de:ca:fc:0f:fe:ee", ",10.1.0.55"}, "invalid network,ip pair"},
+		{"empty IP", []string{"node", "de:ca:fc:0f:fe:ee", "external,"}, "invalid IP address"},
+		{"extra comma", []string{"node", "de:ca:fc:0f:fe:ee", "external,10.1.0.55,internal"}, "invalid IP address"},
+		{"IPv6", []string{"node", "de:ca:fc:0f:fe:ee", "external,2001:db8::1"}, "invalid IP address"},
+		{"malformed second pair", []string{"node", "de:ca:fc:0f:fe:ee", "external,10.1.0.55", "internal"}, "invalid network,ip pair"},
+		{"invalid second IP", []string{"node", "de:ca:fc:0f:fe:ee", "external,10.1.0.55", "internal,not-an-ip"}, "invalid IP address"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var requests int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				w.WriteHeader(http.StatusCreated)
+			}))
+			defer srv.Close()
+
+			args := append([]string{"smd", "--ignore-config", "iface", "add", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.err == nil || !strings.Contains(res.err.Error(), tc.want) {
+				t.Errorf("error = %v, want %q", res.err, tc.want)
+			}
+			if res.exitCode != cli.CodeUsage {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if requests != 0 {
+				t.Errorf("request count = %d, want 0", requests)
+			}
+		})
 	}
 }
 

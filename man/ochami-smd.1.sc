@@ -453,7 +453,7 @@ Manage Ethernet interfaces.
 
 Subcommands for this command are as follows:
 
-*add* [-D _description_] _comp_id_ _mac_addr_ _net_name_,_ip_addr_++
+*add* [-D _description_] _comp_id_ _mac_addr_ _net_name_,_ip_addr_...++
 *add* [-f _format_] -d _data_++
 *add* [-f _format_] -d @_path_++
 *add* [-f _format_] -d @-
@@ -461,8 +461,9 @@ Subcommands for this command are as follows:
 
 	In the first form of the command, the ID of the component the interface
 	belongs to (_comp_id_, usually an xname), the interface's MAC address
-	(_mac_addr_), and a network name and IPv4 address delimited by a comma
-	(_net_name_,_ip_addr_) are required.
+	(_mac_addr_), and one or more pairs of network name and IPv4 address
+	delimited by a comma (_net_name_,_ip_addr_) are required. Pass each pair
+	as a separate argument to add multiple IP addresses to the interface.
 
 	In the second form of the command, raw data is passed as an argument to be
 	the payload.

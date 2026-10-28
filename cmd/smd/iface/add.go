@@ -49,8 +49,8 @@ See ochami-smd(1) for more details.`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// Check that all required args are passed
 			if !cmd.Flag("data").Changed {
-				if len(args) != 3 {
-					return cli.Errorf(cli.CodeUsage, "expected -d or >= 3 arguments (component id, mac address, network name, ip address), got %d", len(args))
+				if len(args) < 3 {
+					return cli.Errorf(cli.CodeUsage, "expected -d or >= 3 arguments (component id, mac address, network,ip pairs), got %d", len(args))
 				}
 			} else {
 				if len(args) > 0 {
@@ -89,6 +89,9 @@ See ochami-smd(1) for more details.`,
 				var nets []smd.EthernetIP
 				for i := 2; i < len(args); i++ {
 					tokens := strings.SplitN(args[i], ",", 2)
+					if len(tokens) != 2 || tokens[0] == "" {
+						return cli.Errorf(cli.CodeUsage, "invalid network,ip pair %q: expected a network name and IPv4 address separated by a comma", args[i])
+					}
 					if ip := net.ParseIP(tokens[1]); ip.To4() == nil {
 						return cli.Errorf(cli.CodeUsage, "invalid IP address: %s", tokens[1])
 					}
