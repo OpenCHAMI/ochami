@@ -152,7 +152,9 @@ set*, then the form uses _label_ and _ids_ as:
 The *EthernetInterface* contains information on a network interface for a
 *Component*.
 
-Below is an example of a single *EthernetInterface* in JSON form.
+Below is an example of an array containing a single *EthernetInterface* in
+JSON form. Payload data passed to *iface add* and *iface delete* must be such
+an array, even when it contains only one *EthernetInterface*.
 
 ```
 [
@@ -475,6 +477,10 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload data is read from standard
 	input.
 
+	In the second, third, and fourth forms, the payload is an array of
+	*EthernetInterface* objects, even when adding a single interface. If
+	positional arguments are also passed, they are ignored with a warning.
+
 	This command sends a POST request to SMD's /Inventory/EthernetInterfaces
 	endpoint. An access token is required.
 
@@ -522,11 +528,20 @@ Subcommands for this command are as follows:
 	In the fifth form of the command, the payload data is read from standard
 	input.
 
-	Only the ID of each payload item is used. If any ID, whether from the
-	payload or the command line, is blank, is "." or "..", or contains "/",
-	nothing is deleted and the command exits with a usage error. A missing ID
-	is not derived from *MACAddress*, so a payload item with only *MACAddress*
-	set also causes a usage error.
+	In the third, fourth, and fifth forms, the payload is an array of
+	*EthernetInterface* objects, even when deleting a single interface. Only
+	the ID of each payload item is used.
+
+	If any ID used to select interfaces, whether from the payload or the
+	command line, is blank, is "." or "..", or contains "/", nothing is deleted
+	and the command exits with a usage error. A missing ID is not derived from
+	*MACAddress*, so a payload item with only *MACAddress* set also causes a
+	usage error.
+
+	When *--all* or *-d* is passed, positional _iface_id_ arguments are
+	ignored with a warning and are not validated. When both *--all* and *-d*
+	are passed, the payload is still read and validated, but *--all* takes
+	precedence and all Ethernet interfaces are deleted.
 
 	This command sends one or more DELETE requests to SMD's
 	/Inventory/EthernetInterfaces endpoint. An access token is required.
