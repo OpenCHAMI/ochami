@@ -76,7 +76,7 @@ func runCoreCompepDelete(cmd *cobra.Command, opts *compepDeleteOptions, args []s
 
 	// Perform deletion
 	if opts.All {
-		// If --all passed, we don't care about any passed arguments
+		// PreRunE guarantees --all was passed without -d or arguments
 		_, err := smdClient.DeleteComponentEndpointsAll(cmd.Context(), rt.Token)
 		if err != nil {
 			return cli.ClassifyClientError(err,
@@ -133,17 +133,24 @@ See ochami-smd(1) for more details.`,
 			// must be passed.
 			// Read --all by value so that --all=false counts as not passed
 			all, _ := cmd.Flags().GetBool("all")
-			if !all && !cmd.Flag("data").Changed {
+			if all {
+				// Reject other selectors so a leftover or mistyped one
+				// cannot silently widen deletion to everything
+				if cmd.Flag("data").Changed {
+					return cli.Errorf(cli.CodeUsage, "--all cannot be used with -d")
+				}
+				if len(args) > 0 {
+					return cli.Errorf(cli.CodeUsage, "--all cannot be used with arguments, got %v", args)
+				}
+			} else if !cmd.Flag("data").Changed {
 				if len(args) == 0 {
 					return cli.Errorf(cli.CodeUsage, "expected -d, --all, or >= 1 argument (xname), got %d", len(args))
 				}
 				if err := smd_lib.CheckIDs("component endpoint ID", args); err != nil {
 					return err
 				}
-			} else {
-				if len(args) > 0 {
-					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data or --all passed, ignoring extra arguments: %v", args)
-				}
+			} else if len(args) > 0 {
+				cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring extra arguments: %v", args)
 			}
 
 			return nil
