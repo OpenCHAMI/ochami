@@ -237,3 +237,45 @@ func TestSMDIfaceDelete_AllFalseNoSelector(t *testing.T) {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
 	}
 }
+
+// TestSMDIfaceDelete_AllWithSelector verifies "delete --all" with -d or arguments
+// is a usage error that sends no request, so a stray selector cannot widen
+// deletion to everything.
+func TestSMDIfaceDelete_AllWithSelector(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"argument", []string{"decafc0ffeee"}, "--all cannot be used with arguments"},
+		{"invalid argument", []string{"invalid/id"}, "--all cannot be used with arguments"},
+		{"payload", []string{"-d", `[{"ID":"decafc0ffeee"}]`}, "--all cannot be used with -d"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var requests int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			args := append([]string{"smd", "--ignore-config", "iface", "delete", "--uri", srv.URL, "--token", "t",
+				"--no-confirm", "--all"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.err == nil || !strings.Contains(res.err.Error(), tc.want) {
+				t.Errorf("error = %v, want %q", res.err, tc.want)
+			}
+			if res.exitCode != cli.CodeUsage {
+				t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if requests != 0 {
+				t.Errorf("request count = %d, want 0", requests)
+			}
+		})
+	}
+}
