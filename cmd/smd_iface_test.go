@@ -12,11 +12,14 @@ package cmd
 // smd_iface_errors_test.go.
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/openchami/ochami/pkg/client/smd"
 )
 
 // TestSMDIfaceGet_Filters verifies the query builder emits the expected filter
@@ -185,6 +188,50 @@ func TestSMDIfaceAdd_ByFlags(t *testing.T) {
 	}
 	if gotMethod != http.MethodPost || !strings.Contains(gotPath, "EthernetInterfaces") {
 		t.Errorf("request = %s %s, want POST under EthernetInterfaces", gotMethod, gotPath)
+	}
+}
+
+// TestSMDIfaceAdd_MultipleNetworks verifies multiple network,IP arguments produce
+// one POST /Inventory/EthernetInterfaces with all addresses on one interface.
+func TestSMDIfaceAdd_MultipleNetworks(t *testing.T) {
+	t.Parallel()
+
+	var got smd.EthernetInterface
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if r.Method != http.MethodPost || r.URL.Path != "/Inventory/EthernetInterfaces" {
+			t.Errorf("request = %s %s, want POST /Inventory/EthernetInterfaces", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Errorf("decode request: %v", err)
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "add", "--uri", srv.URL, "--token", "t",
+		"-D", "Node networks", "x3000c1s7b55n0", "de:ca:fc:0f:fe:ee", "external,10.1.0.55", "internal,172.16.0.55")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if requests != 1 {
+		t.Errorf("request count = %d, want 1", requests)
+	}
+	if got.ComponentID != "x3000c1s7b55n0" || got.MACAddress != "de:ca:fc:0f:fe:ee" || got.Description != "Node networks" {
+		t.Errorf("interface = %+v, want specified component, MAC and description", got)
+	}
+	want := []smd.EthernetIP{
+		{Network: "external", IPAddress: "10.1.0.55"},
+		{Network: "internal", IPAddress: "172.16.0.55"},
+	}
+	if len(got.IPAddresses) != len(want) {
+		t.Fatalf("IPAddresses = %+v, want %+v", got.IPAddresses, want)
+	}
+	for i := range want {
+		if got.IPAddresses[i] != want[i] {
+			t.Errorf("IPAddresses[%d] = %+v, want %+v", i, got.IPAddresses[i], want[i])
+		}
 	}
 }
 
