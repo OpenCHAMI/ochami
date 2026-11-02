@@ -272,7 +272,8 @@ Subcommands for this command are as follows:
 	This command accepts the following options:
 
 	*-a, --all*
-		Delete *all* component endpoints in SMD. *BE CAREFUL!*
+		Delete *all* component endpoints in SMD. *BE CAREFUL!* Cannot be used
+		with *-d* or positional arguments.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -404,7 +405,8 @@ Subcommands for this command are as follows:
 	This command accepts the following options:
 
 	*-a, --all*
-		Delete *all* components in SMD. *BE CAREFUL!*
+		Delete *all* components in SMD. *BE CAREFUL!* Cannot be used
+		with *-d* or positional arguments.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -538,10 +540,8 @@ Subcommands for this command are as follows:
 	*MACAddress*, so a payload item with only *MACAddress* set also causes a
 	usage error.
 
-	When *--all* or *-d* is passed, positional _iface_id_ arguments are
-	ignored with a warning and are not validated. When both *--all* and *-d*
-	are passed, the payload is still read and validated, but *--all* takes
-	precedence and all Ethernet interfaces are deleted.
+	When *-d* is passed, positional _iface_id_ arguments are ignored with a
+	warning and are not validated.
 
 	This command sends one or more DELETE requests to SMD's
 	/Inventory/EthernetInterfaces endpoint. An access token is required.
@@ -549,7 +549,8 @@ Subcommands for this command are as follows:
 	This command accepts the following options:
 
 	*-a, --all*
-		Delete *all* Ethernet interfaces in SMD. *BE CAREFUL!*
+		Delete *all* Ethernet interfaces in SMD. *BE CAREFUL!* Cannot be used
+		with *-d* or positional arguments.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -696,7 +697,8 @@ Subcommands for this command are as follows:
 	This command accepts the following options:
 
 	*-a, --all*
-		Delete *all* Redfish endpoints in SMD.
+		Delete *all* Redfish endpoints in SMD. Cannot be used
+		with *-d* or positional arguments.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
