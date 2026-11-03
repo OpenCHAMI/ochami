@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -52,6 +53,42 @@ func TestDiscoverStatic_MalformedPayload(t *testing.T) {
 	}
 	if res.exitCode != cli.CodePayload {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
+	}
+}
+
+// TestDiscoverStatic_ExtraArgs verifies that "discover static" rejects
+// positional arguments as a usage error and sends no request, whether or not
+// -d is passed.
+func TestDiscoverStatic_ExtraArgs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"with -d", []string{"-d", discoveryPayload, "extra-arg"}},
+		{"without -d", []string{"nodes.yaml"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var requests atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			args := append([]string{"discover", "static", "--ignore-config", "--uri", srv.URL, "--token", "t"}, tt.args...)
+			res := runOchamiWithInputAndRuntime(t, discoveryPayload, args...)
+			if res.err == nil || res.exitCode != cli.CodeUsage {
+				t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if n := requests.Load(); n != 0 {
+				t.Errorf("requests = %d, want none for positional arguments", n)
+			}
+		})
 	}
 }
 

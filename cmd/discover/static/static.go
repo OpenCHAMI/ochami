@@ -102,9 +102,11 @@ func NewCmd() *cobra.Command {
 	// staticCmd represents the "discover static" command
 	var staticCmd = &cobra.Command{
 		Use:   "static [--overwrite] [-d (<data> | @<path>)] [-f <format>]",
+		Args:  cobra.NoArgs,
 		Short: "Populate SMD with data statically",
-		Long: `Populate SMD using static data. This data can be from a file (if an
-argument is passed) or from standard input. This "fake" discovery
+		Long: `Populate SMD using static data. This data can be passed with -d,
+read from a file with -d @<path>, or read from standard input (with
+-d @- or without -d). It takes no arguments. This "fake" discovery
 data is read by ochami, which then interprets the data and figures
 out which SMD data structures to create. This is meant to be a
 reproduceable alternative to dynamic discovery as is done by

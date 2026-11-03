@@ -145,7 +145,8 @@ deactivate
 
 ## static
 
-Populate SMD using static data from a file or standard input.
+Populate SMD using static data from a file or standard input. This command
+takes no positional arguments. Pass a file with *-d* @_path_.
 
 The format of this command is:
 
