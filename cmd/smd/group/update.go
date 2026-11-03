@@ -6,6 +6,7 @@
 package group
 
 import (
+	"context"
 	"errors"
 
 	"github.com/spf13/cobra"
@@ -54,6 +55,11 @@ func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []str
 	var itemErrs []error
 	for i, result := range results {
 		if result.Err != nil {
+			if errors.Is(result.Err, context.Canceled) {
+				// Reported once for the whole command by CombineItemErrors.
+				itemErrs = append(itemErrs, result.Err)
+				continue
+			}
 			if errors.Is(result.Err, client.UnsuccessfulHTTPError) {
 				rt.Logger.Error().Err(result.Err).
 					Str("group", groups[i].Label).

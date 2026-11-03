@@ -14,9 +14,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -128,10 +127,74 @@ func NewClient(baseURI string, opts ...client.Option) (*RCSClient, error) {
 			if transport, ok := oc.Transport.(*http.Transport); ok && transport.TLSClientConfig != nil {
 				dialer.TLSClientConfig = transport.TLSClientConfig.Clone()
 			}
-			return dialer.DialContext(ctx, uri, headers)
+			return dialContext(ctx, dialer, uri, headers)
 		},
 		terminal: systemTerminal{},
 	}, nil
+}
+
+// dialContext is dialer.DialContext, except that cancelling ctx also aborts
+// the websocket handshake. DialContext observes ctx only while connecting and
+// during the TLS handshake: it sends the HTTP upgrade request and reads the
+// response bounded only by the dialer's HandshakeTimeout (45 seconds for
+// websocket.DefaultDialer), so a server that never answers would hold the
+// dial, and the caller's Ctrl+C, that long. dialContext records the network
+// connection the dialer opens and closes it when ctx is done, which ends the
+// handshake at once, and then returns ctx.Err().
+func dialContext(ctx context.Context, dialer websocket.Dialer, uri string, headers http.Header) (*websocket.Conn, *http.Response, error) {
+	// mu hands the connection over between the dialer and the cancellation
+	// callback, whichever runs second acting on what the first left: the
+	// callback closes a connection already recorded, and a connection made
+	// after the callback ran is closed instead of recorded. Without this, a
+	// cancellation between connecting and recording would find nothing to
+	// close and leave the handshake running.
+	var (
+		mu        sync.Mutex
+		netConn   net.Conn
+		cancelled bool
+	)
+	netDial := dialer.NetDialContext
+	if netDial == nil {
+		netDial = (&net.Dialer{}).DialContext
+	}
+	// The dialer calls this for the connection to the server, or to a proxy
+	// in front of it; either way it is the connection the handshake uses.
+	dialer.NetDialContext = func(dialCtx context.Context, network, addr string) (net.Conn, error) {
+		c, err := netDial(dialCtx, network, addr)
+		if err != nil {
+			return nil, err
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if cancelled {
+			_ = c.Close()
+			return nil, ctx.Err()
+		}
+		netConn = c
+		return c, nil
+	}
+	stopClose := context.AfterFunc(ctx, func() {
+		mu.Lock()
+		defer mu.Unlock()
+		cancelled = true
+		if netConn != nil {
+			_ = netConn.Close()
+		}
+	})
+
+	conn, resp, err := dialer.DialContext(ctx, uri, headers)
+	if !stopClose() {
+		// ctx closed the connection, possibly just after the handshake
+		// succeeded; either way the dial is cancelled.
+		if conn != nil {
+			_ = conn.Close()
+		}
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+		return nil, nil, ctx.Err()
+	}
+	return conn, resp, err
 }
 
 // headersForToken creates HTTP headers with the given token for authentication.
@@ -240,6 +303,7 @@ func (c *RCSClient) ListConsoles(ctx context.Context, token string) ([]NodeConso
 }
 
 // ShowConsole connects to the console for the specified node and streams its output to the provided writer.
+// It returns ctx.Err() if ctx is done before the server closes the connection.
 func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool, lines int, token string, output io.Writer) (retErr error) {
 	headers := headersForToken(token)
 
@@ -247,11 +311,24 @@ func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool,
 	if err != nil {
 		return err
 	}
-	defer func() { retErr = errors.Join(retErr, conn.Close()) }()
+	// ReadMessage ignores ctx once the connection is open, so close the
+	// connection when ctx is done to unblock it. Close it here only if that
+	// hasn't happened, so a second Close's error isn't reported.
+	stopClose := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer func() {
+		if stopClose() {
+			retErr = errors.Join(retErr, conn.Close())
+		}
+	}()
 
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
+			// A read failing because ctx closed the connection is a
+			// cancellation, not a connection failure.
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return ctxErr
+			}
 			if isNormalWebSocketClose(err) {
 				return nil
 			}
@@ -429,14 +506,15 @@ func startConsoleOutputStream(stdout io.Writer, conn messageReader, errChan chan
 	go streamConsoleOutput(stdout, conn, errChan)
 }
 
-// waitAfterInterrupt sends a websocket close frame after an interrupt and
-// briefly waits for the read side to finish.
-func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-chan error, after afterFunc) error {
-	// Translate a local interrupt into a clean websocket close so the remote
-	// side can shut down cleanly. The input goroutine may still be inside
-	// WriteMessage (a signal from outside the terminal, or piped input,
-	// doesn't stop it first), so the close frame must go through
-	// WriteControl; see messageWriter.
+// waitAfterInterrupt sends a websocket close frame after an interrupt (a
+// raw-mode Ctrl+C or a cancelled context) and briefly waits for the read side
+// to finish.
+func waitAfterInterrupt(conn messageWriter, outputErr <-chan error, after afterFunc) error {
+	// Translate an interrupt into a clean websocket close so the remote side
+	// can shut down cleanly. The input goroutine may still be inside
+	// WriteMessage (a cancelled context, or piped input, doesn't stop it
+	// first), so the close frame must go through WriteControl; see
+	// messageWriter.
 	closeFrame := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
 	if err := conn.WriteControl(websocket.CloseMessage, closeFrame, time.Now().Add(closeFrameWriteTimeout)); err != nil {
 		// A timeout means the input goroutine's write is stuck behind input
@@ -455,10 +533,9 @@ func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-cha
 	// reports. The remote can tear down the connection without completing a
 	// clean close handshake (e.g. an abnormal websocket close code, or the
 	// TCP connection simply resetting), and that must not turn a Ctrl+C or
-	// SIGINT/SIGTERM into a reported failure.
+	// cancellation into a reported failure. The caller's context is usually
+	// already done here, so it can't bound the wait; the grace period does.
 	select {
-	case <-ctx.Done():
-		return ctx.Err()
 	case err := <-outputErr:
 		// Read errors after a user interrupt must not turn a clean exit
 		// into a failure.
@@ -476,15 +553,15 @@ func isTimeout(err error) bool {
 	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
-// waitForConsoleExit waits for shutdown, a local interrupt, or an I/O error.
-func waitForConsoleExit(ctx context.Context, conn messageWriter, interrupt <-chan os.Signal, localInterrupt <-chan struct{}, inputErr, outputErr <-chan error, after afterFunc) error {
+// waitForConsoleExit waits for an interrupt or an I/O error. Cancelling ctx
+// is an interrupt, like a raw-mode Ctrl+C: both end the session with a clean
+// websocket close.
+func waitForConsoleExit(ctx context.Context, conn messageWriter, localInterrupt <-chan struct{}, inputErr, outputErr <-chan error, after afterFunc) error {
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
-	case <-interrupt:
-		return waitAfterInterrupt(ctx, conn, outputErr, after)
+		return waitAfterInterrupt(conn, outputErr, after)
 	case <-localInterrupt:
-		return waitAfterInterrupt(ctx, conn, outputErr, after)
+		return waitAfterInterrupt(conn, outputErr, after)
 	case err := <-inputErr:
 		return err
 	case err := <-outputErr:
@@ -493,8 +570,9 @@ func waitForConsoleExit(ctx context.Context, conn messageWriter, interrupt <-cha
 }
 
 // runConsoleSession forwards stdin to conn and conn's output to stdout until
-// the session ends, then closes conn and restores the terminal.
-func runConsoleSession(ctx context.Context, conn messageConn, terminal terminalController, interrupt <-chan os.Signal, after afterFunc, stdin io.Reader, stdout io.Writer) (retErr error) {
+// the session ends, then closes conn and restores the terminal. If ctx is
+// already done, it returns ctx.Err() without starting the session.
+func runConsoleSession(ctx context.Context, conn messageConn, terminal terminalController, after afterFunc, stdin io.Reader, stdout io.Writer) (retErr error) {
 	defer func() { retErr = errors.Join(retErr, conn.Close()) }()
 
 	if err := ctx.Err(); err != nil {
@@ -512,9 +590,14 @@ func runConsoleSession(ctx context.Context, conn messageConn, terminal terminalC
 	defer func() { retErr = errors.Join(retErr, restoreTerminal.Restore()) }()
 
 	startConsoleOutputStream(stdout, conn, outputErr)
-	return waitForConsoleExit(ctx, conn, interrupt, localInterrupt, inputErr, outputErr, after)
+	return waitForConsoleExit(ctx, conn, localInterrupt, inputErr, outputErr, after)
 }
 
+// ConnectConsole opens an interactive session with the console for the
+// specified node, forwarding stdin to it and its output to stdout. A raw-mode
+// Ctrl+C or cancelling ctx during the session closes the websocket cleanly and
+// returns nil; ConnectConsole installs no signal handlers of its own, so
+// callers that want signals to end the session cancel ctx on them.
 func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token string, stdin io.Reader, stdout io.Writer) error {
 	headers := headersForToken(token)
 
@@ -522,10 +605,6 @@ func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token str
 	if err != nil {
 		return err
 	}
-	// Set up interrupt handling to allow Ctrl+C to cleanly close the console connection.
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(interrupt)
 
-	return runConsoleSession(ctx, conn, c.terminal, interrupt, time.After, stdin, stdout)
+	return runConsoleSession(ctx, conn, c.terminal, time.After, stdin, stdout)
 }

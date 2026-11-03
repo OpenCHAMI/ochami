@@ -54,10 +54,17 @@ func createTestRuntime() (*cli.Runtime, *bytes.Buffer) {
 // discarding progress-bar output.
 func runMonitor(t *testing.T, provider pcsTransitionClientProvider, args ...string) error {
 	t.Helper()
+	return runMonitorContext(t, context.Background(), provider, args...)
+}
+
+// runMonitorContext is runMonitor with the command running under ctx. Flags
+// in args, such as --poll-interval, override the defaults runMonitor sets.
+func runMonitorContext(t *testing.T, ctx context.Context, provider pcsTransitionClientProvider, args ...string) error {
+	t.Helper()
 	// Create test runtime and inject into command context
 	rt, stdoutBuf := createTestRuntime()
 	cmd := newCmdTransitionMonitorWithClient(provider)
-	cmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+	cmd.SetContext(cli.ContextWithRuntime(ctx, rt))
 	// Speed up any polling that does occur.
 	if err := cmd.Flags().Set("poll-interval", "0"); err != nil {
 		t.Fatalf("set poll-interval flag: %v", err)

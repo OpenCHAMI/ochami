@@ -90,7 +90,7 @@ See ochami-cloud-init(1) for more details.`,
 			extraVarsMap := make(map[string]interface{})
 			if cmd.Flag("extra-vars").Changed {
 				extraVars := cmd.Flag("extra-vars").Value.String()
-				if err := client.ReadPayloadWithReader(extraVars, rt.Ios.In(), rt.FormatInput, &extraVarsMap); err != nil {
+				if err := client.ReadPayloadWithReader(extraVars, rt.Ios.InContext(cmd.Context()), rt.FormatInput, &extraVarsMap); err != nil {
 					return cli.Errorf(cli.CodePayload, "unable to read extra variable data or file: %w", err)
 				}
 			}

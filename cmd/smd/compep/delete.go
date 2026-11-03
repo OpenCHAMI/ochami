@@ -28,9 +28,9 @@ func runCoreCompepDelete(cmd *cobra.Command, opts *compepDeleteOptions, args []s
 		var respDelete bool
 		var err error
 		if opts.All {
-			respDelete, err = rt.Ios.LoopYesNo("Really delete ALL COMPONENT ENDPOINTS?")
+			respDelete, err = rt.Ios.LoopYesNo(cmd.Context(), "Really delete ALL COMPONENT ENDPOINTS?")
 		} else {
-			respDelete, err = rt.Ios.LoopYesNo("Really delete?")
+			respDelete, err = rt.Ios.LoopYesNo(cmd.Context(), "Really delete?")
 		}
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)

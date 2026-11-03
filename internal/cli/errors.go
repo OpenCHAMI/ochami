@@ -5,9 +5,12 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"syscall"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -55,6 +58,17 @@ const (
 	// so scripts can act on it directly; CodeMixed means the output must be
 	// inspected to see which items failed and why.
 	CodeMixed = 9
+	// CodeInterrupted indicates the command was interrupted by SIGINT (for
+	// example, Ctrl+C) before it finished. Like CodeTerminated, it is 128
+	// plus the signal number, the status a shell reports for a process the
+	// signal kills. On Unix the process doesn't exit with it: after cleaning
+	// up, it kills itself with the signal so its shell sees a death by
+	// SIGINT (see DieFromSignal), and the shell reports this code.
+	CodeInterrupted = 130
+	// CodeTerminated indicates the command was stopped by SIGTERM before it
+	// finished. Like CodeInterrupted, on Unix it is the status the shell
+	// reports for the process killing itself with the signal.
+	CodeTerminated = 143
 )
 
 // CodeName returns the identifier of the exit code constant whose value is
@@ -84,6 +98,10 @@ func CodeName(code int) string {
 		return "CodeDeclined"
 	case CodeMixed:
 		return "CodeMixed"
+	case CodeInterrupted:
+		return "CodeInterrupted"
+	case CodeTerminated:
+		return "CodeTerminated"
 	default:
 		return fmt.Sprintf("Code(%d)", code)
 	}
@@ -119,6 +137,56 @@ func (ce *CodedError) Code() int {
 // errors.Is/errors.As.
 func Errorf(code int, format string, args ...any) error {
 	return &CodedError{code: code, err: fmt.Errorf(format, args...)}
+}
+
+// InterruptError is the cause a command's context is cancelled with when a
+// signal interrupts the command. It matches context.Canceled under errors.Is,
+// so code that checks for cancellation treats it like any other.
+type InterruptError struct {
+	Signal os.Signal
+}
+
+// Error implements the error interface.
+func (e *InterruptError) Error() string {
+	switch e.Signal {
+	case os.Interrupt:
+		return "interrupted by SIGINT"
+	case syscall.SIGTERM:
+		return "terminated by SIGTERM"
+	default:
+		return fmt.Sprintf("interrupted by %s signal", e.Signal)
+	}
+}
+
+// Is reports whether target is context.Canceled.
+func (e *InterruptError) Is(target error) bool {
+	return target == context.Canceled
+}
+
+// Code returns the exit code for the signal: CodeTerminated for SIGTERM and
+// CodeInterrupted for anything else.
+func (e *InterruptError) Code() int {
+	if e.Signal == syscall.SIGTERM {
+		return CodeTerminated
+	}
+	return CodeInterrupted
+}
+
+// Interrupted replaces err with the signal that interrupted the command, coded
+// with that signal's exit code, when err reports cancellation and ctx was
+// cancelled by an InterruptError. Commands return whatever error their
+// cancelled operation produced, often already coded (for example, a request
+// error classified as CodeNetwork), so this lets the interruption decide the
+// exit code in one place. Any other err is returned unchanged.
+func Interrupted(ctx context.Context, err error) error {
+	if !errors.Is(err, context.Canceled) {
+		return err
+	}
+	var ie *InterruptError
+	if !errors.As(context.Cause(ctx), &ie) {
+		return err
+	}
+	return &CodedError{code: ie.Code(), err: ie}
 }
 
 // clientErrorCode resolves the exit code for an error returned by a service
@@ -170,27 +238,36 @@ func (e *itemErrors) Unwrap() []error { return e.errs }
 
 // AggregateItemErrors logs each non-nil error from a multi-item operation
 // (one error per item, nil for items that succeeded) and returns
-// CombineItemErrors(errs, msg).
+// CombineItemErrors(errs, msg). Errors reporting cancellation are not logged,
+// since CombineItemErrors reports the interruption once for the whole
+// operation.
 func AggregateItemErrors(logger zerolog.Logger, errs []error, msg string) error {
 	for _, err := range errs {
-		if err != nil {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.Error().Err(err).Msgf("%s failed", msg)
 		}
 	}
 	return CombineItemErrors(errs, msg)
 }
 
-// CombineItemErrors returns nil if errs has no non-nil errors. Otherwise it
-// returns a summary error coded with the code every failure shares, or with
-// CodeMixed if they differ. Each item's code is its own CodedError code if it
-// carries one, or the service client code (see clientErrorCode) if not. Use it
-// directly when a command logs item failures itself.
+// CombineItemErrors returns nil if errs has no non-nil errors. If any error
+// reports cancellation, it returns a single error saying the operation was
+// interrupted, wrapping the first such error: the items skipped after an
+// interruption didn't fail, and the interruption decides the exit code (see
+// Interrupted). Otherwise it returns a summary error coded with the code every
+// failure shares, or with CodeMixed if they differ. Each item's code is its
+// own CodedError code if it carries one, or the service client code (see
+// clientErrorCode) if not. Use it directly when a command logs item failures
+// itself, skipping errors that report cancellation.
 func CombineItemErrors(errs []error, msg string) error {
 	var failed []error
 	code := CodeSuccess
 	for _, err := range errs {
 		if err == nil {
 			continue
+		}
+		if errors.Is(err, context.Canceled) {
+			return fmt.Errorf("%s interrupted: %w", msg, err)
 		}
 		failed = append(failed, err)
 

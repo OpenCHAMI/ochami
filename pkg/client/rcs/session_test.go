@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"testing"
 	"time"
 
@@ -136,42 +135,52 @@ func TestTerminalLifecycle_UsesInjectedController(t *testing.T) {
 	}
 }
 
-// TestWaitForConsoleExit verifies that waitForConsoleExit returns a context
-// cancellation or a stream error, returns a failure to send the close frame
-// after an interrupt, and otherwise exits cleanly after an interrupt, even when
-// the read side reports an abnormal close or doesn't finish within the grace
-// period.
+// TestWaitForConsoleExit verifies that waitForConsoleExit returns a stream
+// error, returns a failure to send the close frame after an interrupt, and
+// otherwise exits cleanly after an interrupt (a cancelled context or a local
+// Ctrl+C), even when the read side reports an abnormal close or doesn't finish
+// within the grace period.
 func TestWaitForConsoleExit(t *testing.T) {
 	neverAfter := func(time.Duration) <-chan time.Time { return make(chan time.Time) }
-	newChannels := func() (chan os.Signal, chan struct{}, chan error, chan error) {
-		return make(chan os.Signal), make(chan struct{}), make(chan error), make(chan error)
-	}
-
-	t.Run("context cancellation", func(t *testing.T) {
+	cancelled := func() context.Context {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		interrupt, localInterrupt, inputErr, outputErr := newChannels()
-		err := waitForConsoleExit(ctx, &fakeMessageConn{}, interrupt, localInterrupt, inputErr, outputErr, neverAfter)
-		if !errors.Is(err, context.Canceled) {
-			t.Fatalf("waitForConsoleExit() = %v, want context.Canceled", err)
+		return ctx
+	}
+
+	t.Run("context cancellation is a clean interrupt", func(t *testing.T) {
+		outputErr := make(chan error, 1)
+		conn := &fakeMessageConn{wrote: make(chan struct{}, 1)}
+		go func() {
+			<-conn.wrote
+			outputErr <- nil
+		}()
+		if err := waitForConsoleExit(cancelled(), conn, make(chan struct{}), make(chan error), outputErr, neverAfter); err != nil {
+			t.Fatalf("waitForConsoleExit() = %v, want nil", err)
+		}
+		if len(conn.controls) != 1 {
+			t.Fatalf("close frames = %d, want 1", len(conn.controls))
+		}
+		if got, want := conn.controls[0], websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""); !bytes.Equal(got, want) {
+			t.Fatalf("close frame = %v, want normal closure %v", got, want)
+		}
+		if len(conn.writes) != 0 {
+			t.Fatalf("data frames = %d, want 0: the close frame must not use WriteMessage", len(conn.writes))
 		}
 	})
 
 	t.Run("stream error", func(t *testing.T) {
 		want := errors.New("stream failed")
-		interrupt, localInterrupt, _, outputErr := newChannels()
 		inputErr := make(chan error, 1)
 		inputErr <- want
-		if err := waitForConsoleExit(context.Background(), &fakeMessageConn{}, interrupt, localInterrupt, inputErr, outputErr, neverAfter); !errors.Is(err, want) {
+		if err := waitForConsoleExit(context.Background(), &fakeMessageConn{}, make(chan struct{}), inputErr, make(chan error), neverAfter); !errors.Is(err, want) {
 			t.Fatalf("waitForConsoleExit() = %v, want stream error", err)
 		}
 	})
 
 	t.Run("close message failure", func(t *testing.T) {
 		want := errors.New("write failed")
-		interrupt := make(chan os.Signal, 1)
-		interrupt <- syscall.SIGINT
-		err := waitForConsoleExit(context.Background(), &fakeMessageConn{controlErr: want}, interrupt, make(chan struct{}), make(chan error), make(chan error), neverAfter)
+		err := waitForConsoleExit(cancelled(), &fakeMessageConn{controlErr: want}, make(chan struct{}), make(chan error), make(chan error), neverAfter)
 		if !errors.Is(err, want) {
 			t.Fatalf("waitForConsoleExit() = %v, want close write error", err)
 		}
@@ -182,34 +191,12 @@ func TestWaitForConsoleExit(t *testing.T) {
 		// Timeout() is true; os.ErrDeadlineExceeded is one such error.
 		// neverAfter also checks that the timeout doesn't wait for the read
 		// side, which can't see a close frame that was never sent.
-		interrupt := make(chan os.Signal, 1)
-		interrupt <- syscall.SIGTERM
 		conn := &fakeMessageConn{controlErr: fmt.Errorf("write: %w", os.ErrDeadlineExceeded)}
-		if err := waitForConsoleExit(context.Background(), conn, interrupt, make(chan struct{}), make(chan error), make(chan error), neverAfter); err != nil {
+		if err := waitForConsoleExit(cancelled(), conn, make(chan struct{}), make(chan error), make(chan error), neverAfter); err != nil {
 			t.Fatalf("waitForConsoleExit() = %v, want nil", err)
 		}
 		if len(conn.controls) != 1 {
 			t.Fatalf("close frames = %d, want 1", len(conn.controls))
-		}
-	})
-
-	t.Run("clean interrupt", func(t *testing.T) {
-		interrupt := make(chan os.Signal, 1)
-		interrupt <- syscall.SIGINT
-		outputErr := make(chan error, 1)
-		conn := &fakeMessageConn{wrote: make(chan struct{}, 1)}
-		go func() {
-			<-conn.wrote
-			outputErr <- nil
-		}()
-		if err := waitForConsoleExit(context.Background(), conn, interrupt, make(chan struct{}), make(chan error), outputErr, neverAfter); err != nil {
-			t.Fatalf("waitForConsoleExit() = %v", err)
-		}
-		if len(conn.controls) != 1 {
-			t.Fatalf("close frames = %d, want 1", len(conn.controls))
-		}
-		if len(conn.writes) != 0 {
-			t.Fatalf("data frames = %d, want 0: the close frame must not use WriteMessage", len(conn.writes))
 		}
 	})
 
@@ -218,15 +205,15 @@ func TestWaitForConsoleExit(t *testing.T) {
 		// tears down the connection abnormally (no clean close handshake)
 		// within the grace window: the interrupt, not the read side, decides
 		// the outcome.
-		interrupt := make(chan os.Signal, 1)
-		interrupt <- syscall.SIGINT
+		localInterrupt := make(chan struct{}, 1)
+		localInterrupt <- struct{}{}
 		outputErr := make(chan error, 1)
 		conn := &fakeMessageConn{wrote: make(chan struct{}, 1)}
 		go func() {
 			<-conn.wrote
 			outputErr <- &websocket.CloseError{Code: websocket.CloseInternalServerErr}
 		}()
-		if err := waitForConsoleExit(context.Background(), conn, interrupt, make(chan struct{}), make(chan error), outputErr, neverAfter); err != nil {
+		if err := waitForConsoleExit(context.Background(), conn, localInterrupt, make(chan error), outputErr, neverAfter); err != nil {
 			t.Fatalf("waitForConsoleExit() = %v, want nil despite abnormal output error", err)
 		}
 	})
@@ -237,7 +224,7 @@ func TestWaitForConsoleExit(t *testing.T) {
 		timedOut := make(chan time.Time)
 		close(timedOut)
 		conn := &fakeMessageConn{}
-		if err := waitForConsoleExit(context.Background(), conn, make(chan os.Signal), localInterrupt, make(chan error), make(chan error), func(time.Duration) <-chan time.Time { return timedOut }); err != nil {
+		if err := waitForConsoleExit(context.Background(), conn, localInterrupt, make(chan error), make(chan error), func(time.Duration) <-chan time.Time { return timedOut }); err != nil {
 			t.Fatalf("waitForConsoleExit() = %v", err)
 		}
 		if len(conn.controls) != 1 {
@@ -302,8 +289,9 @@ func (w *blockingMessageWriter) WriteControl(messageType int, _ []byte, deadline
 // sends the close frame through WriteControl instead of a second, concurrent
 // WriteMessage, which gorilla/websocket does not allow. The input goroutine
 // runs the buffered (piped stdin) path, where nothing stops it before the
-// close frame is sent; the signal stands in for kill -INT or kill -TERM
-// delivered from outside the terminal. Run under -race.
+// close frame is sent; the cancelled context stands in for kill -INT or
+// kill -TERM delivered from outside the terminal, which cancel the command's
+// context. Run under -race.
 func TestConsoleInterrupt_CloseFrameDoesNotOverlapInputWrite(t *testing.T) {
 	const timeout = 5 * time.Second
 	conn := newBlockingMessageWriter()
@@ -317,14 +305,14 @@ func TestConsoleInterrupt_CloseFrameDoesNotOverlapInputWrite(t *testing.T) {
 		t.Fatal("input goroutine never entered WriteMessage")
 	}
 
-	interrupt := make(chan os.Signal, 1)
-	interrupt <- syscall.SIGTERM
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 	timedOut := make(chan time.Time)
 	close(timedOut)
 	exitErr := make(chan error, 1)
 	start := time.Now()
 	go func() {
-		exitErr <- waitForConsoleExit(context.Background(), conn, interrupt, make(chan struct{}), inputErr, make(chan error), func(time.Duration) <-chan time.Time { return timedOut })
+		exitErr <- waitForConsoleExit(ctx, conn, make(chan struct{}), inputErr, make(chan error), func(time.Duration) <-chan time.Time { return timedOut })
 	}()
 
 	// The close frame must go out while the input write is still blocked,
@@ -503,7 +491,7 @@ func TestRunConsoleSession_ImmediateCancellation(t *testing.T) {
 	cancel()
 	closeErr := errors.New("close failed")
 	conn := &fakeMessageConn{closeErr: closeErr}
-	err := runConsoleSession(ctx, conn, &fakeTerminal{}, make(chan os.Signal), time.After, strings.NewReader(""), io.Discard)
+	err := runConsoleSession(ctx, conn, &fakeTerminal{}, time.After, strings.NewReader(""), io.Discard)
 	if !errors.Is(err, context.Canceled) || !errors.Is(err, closeErr) {
 		t.Fatalf("runConsoleSession() error = %v, want canceled and close errors", err)
 	}

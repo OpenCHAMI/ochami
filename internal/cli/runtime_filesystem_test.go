@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -70,7 +71,7 @@ func TestRuntimeAskToCreate(t *testing.T) {
 				},
 			}
 
-			got, err := rt.AskToCreate(tc.path)
+			got, err := rt.AskToCreate(context.Background(), tc.path)
 			if got != tc.want {
 				t.Errorf("AskToCreate() = %v, want %v", got, tc.want)
 			}

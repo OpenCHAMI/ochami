@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -220,12 +221,45 @@ func commandEditsConfig(cmd *cobra.Command) bool {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
+//
+// The command runs under a context that SIGINT and SIGTERM cancel, so Ctrl+C
+// stops it through its context and lets deferred cleanup run instead of
+// killing the process. Once it has stopped, the process kills itself with the
+// same signal rather than exiting with CodeInterrupted or CodeTerminated, so
+// a shell running ochami in a loop stops the loop on Ctrl+C as it would for
+// any program the signal killed (see cli.DieFromSignal).
 func Execute() {
-	rootCmd := NewRootCmd()
-	err := rootCmd.Execute()
-	if code := handleExecuteError(rootCmd, err); code != cli.CodeSuccess {
+	ctx, stop := cli.NotifyContext(context.Background())
+	code := execute(ctx, NewRootCmd())
+	// os.Exit skips deferred calls, so release the signals explicitly.
+	stop()
+	if code == cli.CodeInterrupted || code == cli.CodeTerminated {
+		// Returns only if the process survives the signal (or outside
+		// Unix), leaving the exit below to report the signal's code.
+		cli.DieFromSignal(ctx)
+	}
+	if code != cli.CodeSuccess {
 		os.Exit(code)
 	}
+}
+
+// execute runs rootCmd under ctx and returns the process exit code. A command
+// that fails because a signal cancelled ctx exits with that signal's code (see
+// cli.Interrupted), whatever code its own error carries.
+func execute(ctx context.Context, rootCmd *cobra.Command) int {
+	// Keep the tree's runtime on the context, as rootCmd.Execute would, so
+	// errors raised before PersistentPreRunE (such as flag parse errors) are
+	// logged through it.
+	if rt, ok := cli.FromContext(rootCmd.Context()); ok {
+		ctx = cli.ContextWithRuntime(ctx, rt)
+	}
+	err := rootCmd.ExecuteContext(ctx)
+	if err != nil && ctx.Err() != nil {
+		// cli.Interrupted may replace err with the signal; keep err itself
+		// for debugging.
+		cli.LoggerFromCommand(rootCmd).Debug().Err(err).Msg("command failed after its context was cancelled")
+	}
+	return handleExecuteError(rootCmd, cli.Interrupted(ctx, err))
 }
 
 // handleExecuteError centralizes the post-Execute error handling: it logs the
@@ -238,9 +272,10 @@ func handleExecuteError(rootCmd *cobra.Command, err error) int {
 		return cli.CodeSuccess
 	}
 	code := cli.ExitCode(err)
-	if code == cli.CodeDeclined {
-		// Declining a prompt is a deliberate choice rather than a failure,
-		// so report it without suggesting --help.
+	if code == cli.CodeDeclined || code == cli.CodeInterrupted || code == cli.CodeTerminated {
+		// Declining a prompt or interrupting the command is a deliberate
+		// choice rather than a failure, so report it without suggesting
+		// --help.
 		cli.LoggerFromCommand(rootCmd).Warn().Msg(err.Error())
 		return code
 	}

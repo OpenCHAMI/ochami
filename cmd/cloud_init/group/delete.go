@@ -26,7 +26,7 @@ func runCoreGroupDelete(cmd *cobra.Command, opts *groupDeleteOptions, groupsToDe
 	// Ask before attempting deletion unless --no-confirm was passed
 	if !opts.NoConfirm {
 		rt.Logger.Debug().Msg("--no-confirm not passed, prompting user to confirm deletion")
-		respDelete, err := rt.Ios.LoopYesNo("Really delete?")
+		respDelete, err := rt.Ios.LoopYesNo(cmd.Context(), "Really delete?")
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
 		} else if !respDelete {

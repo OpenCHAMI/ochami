@@ -6,6 +6,7 @@
 package image
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -159,6 +160,12 @@ See ochami-bss(1) for more details.`,
 				// Send modified params back to BSS
 				_, err = bssClient.PutBootParams(cmd.Context(), bps[bpIdx], rt.Token)
 				if err != nil {
+					if errors.Is(err, context.Canceled) {
+						// Every remaining request would be cancelled too;
+						// CombineItemErrors reports the interruption once.
+						itemErrs = append(itemErrs, err)
+						break
+					}
 					if errors.Is(err, client.UnsuccessfulHTTPError) {
 						rt.Logger.Error().Err(err).Msg("BSS boot parameter PUT request yielded unsuccessful HTTP response")
 					} else {

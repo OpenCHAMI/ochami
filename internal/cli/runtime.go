@@ -128,10 +128,75 @@ func (i *IOStreams) Out() io.Writer { return i.stdout }
 // Err returns the error writer.
 func (i *IOStreams) Err() io.Writer { return i.stderr }
 
+// InContext returns a reader of the input stream whose reads return ctx.Err()
+// as soon as ctx is done, instead of blocking until input arrives. A nil ctx
+// (such as the context of a command that was never executed) never cancels.
+func (i *IOStreams) InContext(ctx context.Context) io.Reader {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return &contextReader{ctx: ctx, r: i.stdin}
+}
+
+// contextReader reads from r, but returns ctx.Err() from a Read once ctx is
+// done. Each Read of r runs in its own goroutine into a private buffer, so a
+// Read abandoned on cancellation never writes into a caller's slice. The
+// abandoned Read stays blocked on r (acceptable for stdin, since the process
+// exits soon after), and its result is delivered by the next Read so no
+// input is lost.
+type contextReader struct {
+	ctx     context.Context
+	r       io.Reader
+	pending chan readResult
+	buf     []byte
+	err     error
+}
+
+// readResult is the outcome of one Read of a contextReader's underlying
+// reader.
+type readResult struct {
+	data []byte
+	err  error
+}
+
+// Read implements io.Reader. It returns buffered data left over from an
+// earlier underlying Read first, and otherwise waits for the next underlying
+// Read or for ctx to be done, whichever comes first, returning ctx.Err() in
+// the latter case. The underlying reader's error is returned once its data
+// has been consumed.
+func (c *contextReader) Read(p []byte) (int, error) {
+	if len(c.buf) == 0 && c.err == nil {
+		if c.pending == nil {
+			ch := make(chan readResult, 1)
+			buf := make([]byte, len(p))
+			go func() {
+				n, err := c.r.Read(buf)
+				ch <- readResult{data: buf[:n], err: err}
+			}()
+			c.pending = ch
+		}
+		select {
+		case <-c.ctx.Done():
+			return 0, c.ctx.Err()
+		case res := <-c.pending:
+			c.pending = nil
+			c.buf, c.err = res.data, res.err
+		}
+	}
+	n := copy(p, c.buf)
+	c.buf = c.buf[n:]
+	if len(c.buf) == 0 && c.err != nil {
+		err := c.err
+		c.err = nil
+		return n, err
+	}
+	return n, nil
+}
+
 // ConfirmCreate asks whether a missing file should be created. Filesystem
 // existence checks are owned by Runtime rather than the I/O streams.
-func (i *IOStreams) ConfirmCreate(path string) (bool, error) {
-	create, err := i.LoopYesNo(fmt.Sprintf("%s does not exist. Create it?", path))
+func (i *IOStreams) ConfirmCreate(ctx context.Context, path string) (bool, error) {
+	create, err := i.LoopYesNo(ctx, fmt.Sprintf("%s does not exist. Create it?", path))
 	if err != nil {
 		return false, fmt.Errorf("error fetching user input: %w", err)
 	}
@@ -142,14 +207,22 @@ func (i *IOStreams) ConfirmCreate(path string) (bool, error) {
 // input. As long as the user's input is not "y" or "n" (case insensitive), the
 // function redisplays the prompt. If the user's response is "y", true is
 // returned. If the user's response is "n", false is returned.
-func (i *IOStreams) LoopYesNo(p string) (bool, error) {
-	s := bufio.NewScanner(i.stdin)
+//
+// If ctx is done before the user answers, LoopYesNo ends the prompt line and
+// returns ctx.Err(): an interrupted prompt is not an answer of "n".
+func (i *IOStreams) LoopYesNo(ctx context.Context, p string) (bool, error) {
+	s := bufio.NewScanner(i.InContext(ctx))
 
 	for {
 		if _, err := fmt.Fprintf(i.stderr, "%s [yn]:", p); err != nil {
 			return false, fmt.Errorf("failed to write prompt: %w", err)
 		}
 		if !s.Scan() {
+			if err := ctx.Err(); err != nil {
+				// Keep the shell prompt off the prompt line.
+				_, _ = fmt.Fprintln(i.stderr)
+				return false, err
+			}
 			break
 		}
 		resp := strings.TrimSpace(s.Text())
@@ -501,7 +574,7 @@ func (rt *Runtime) GetTimeout(cmd *cobra.Command) time.Duration {
 func (rt *Runtime) HandlePayload(cmd *cobra.Command, v any) error {
 	if cmd.Flag("data").Changed {
 		data := cmd.Flag("data").Value.String()
-		if err := client.ReadPayloadWithReader(data, rt.Ios.In(), rt.FormatInput, v); err != nil {
+		if err := client.ReadPayloadWithReader(data, rt.Ios.InContext(cmd.Context()), rt.FormatInput, v); err != nil {
 			return Errorf(CodePayload, "unable to read payload data or file: %w", err)
 		}
 	}
@@ -511,7 +584,7 @@ func (rt *Runtime) HandlePayload(cmd *cobra.Command, v any) error {
 // HandlePayloadStdin is similar to HandlePayload except the data is read from
 // standard input.
 func (rt *Runtime) HandlePayloadStdin(cmd *cobra.Command, v any) error {
-	if err := client.ReadPayloadReader(rt.Ios.In(), rt.FormatInput, v); err != nil {
+	if err := client.ReadPayloadReader(rt.Ios.InContext(cmd.Context()), rt.FormatInput, v); err != nil {
 		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}
 	return nil
@@ -523,7 +596,7 @@ func (rt *Runtime) HandlePayloadStdin(cmd *cobra.Command, v any) error {
 func HandlePayloadSlice[T any](rt *Runtime, cmd *cobra.Command, v *[]T) error {
 	if cmd.Flag("data").Changed {
 		data := cmd.Flag("data").Value.String()
-		if err := client.ReadPayloadSliceWithReader[T](data, rt.Ios.In(), rt.FormatInput, v); err != nil {
+		if err := client.ReadPayloadSliceWithReader[T](data, rt.Ios.InContext(cmd.Context()), rt.FormatInput, v); err != nil {
 			return Errorf(CodePayload, "unable to read payload data or file into slice: %w", err)
 		}
 	}
@@ -535,7 +608,7 @@ func HandlePayloadSlice[T any](rt *Runtime, cmd *cobra.Command, v *[]T) error {
 // function (rather than a method) because Go does not permit type parameters on
 // methods.
 func HandlePayloadStdinSlice[T any](rt *Runtime, cmd *cobra.Command, v *[]T) error {
-	if err := client.ReadPayloadReaderSlice[T](rt.Ios.In(), rt.FormatInput, v); err != nil {
+	if err := client.ReadPayloadReaderSlice[T](rt.Ios.InContext(cmd.Context()), rt.FormatInput, v); err != nil {
 		return Errorf(CodePayload, "error reading payload data from stdin: %w", err)
 	}
 	return nil
@@ -710,7 +783,7 @@ func (rt *Runtime) InitConfig(cmd *cobra.Command, create bool) error {
 	if rt.ConfigFile != "" {
 		if create {
 			// Try to create config file with default values if it doesn't exist
-			if cr, err := rt.AskToCreate(rt.ConfigFile); err != nil {
+			if cr, err := rt.AskToCreate(cmd.Context(), rt.ConfigFile); err != nil {
 				// Only return error if error is not one that the file
 				// already exists.
 				if !errors.Is(err, ErrFileExists) {
@@ -862,7 +935,7 @@ func (rt *Runtime) CreateIfNotExists(path string) error {
 // AskToCreate checks whether path is missing and, if so, asks the user whether
 // it should be created. Existing files are reported with ErrFileExists;
 // other stat failures are preserved.
-func (rt *Runtime) AskToCreate(path string) (bool, error) {
+func (rt *Runtime) AskToCreate(ctx context.Context, path string) (bool, error) {
 	if path == "" {
 		return false, fmt.Errorf("path cannot be empty")
 	}
@@ -871,5 +944,5 @@ func (rt *Runtime) AskToCreate(path string) (bool, error) {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return false, fmt.Errorf("checking %s failed: %w", path, err)
 	}
-	return rt.Ios.ConfirmCreate(path)
+	return rt.Ios.ConfirmCreate(ctx, path)
 }

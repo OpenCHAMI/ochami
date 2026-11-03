@@ -29,9 +29,9 @@ func runCoreComponentDelete(cmd *cobra.Command, opts *componentDeleteOptions, ar
 		var respDelete bool
 		var err error
 		if opts.All {
-			respDelete, err = rt.Ios.LoopYesNo("Really delete ALL COMPONENTS?")
+			respDelete, err = rt.Ios.LoopYesNo(cmd.Context(), "Really delete ALL COMPONENTS?")
 		} else {
-			respDelete, err = rt.Ios.LoopYesNo("Really delete?")
+			respDelete, err = rt.Ios.LoopYesNo(cmd.Context(), "Really delete?")
 		}
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)
