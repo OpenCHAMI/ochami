@@ -512,7 +512,7 @@ func TestBatchDelete_MixedFailures(t *testing.T) {
 }
 
 // TestCommands_RejectInvalidArguments verifies that arguments a service client
-// rejects before sending any request (a blank group label or node ID) resolve
+// rejects before sending any request (e.g. a blank group label) resolve
 // to CodeUsage. Nothing listens on the URI, so a request that was sent anyway
 // would fail with CodeNetwork instead.
 func TestCommands_RejectInvalidArguments(t *testing.T) {
@@ -524,6 +524,9 @@ func TestCommands_RejectInvalidArguments(t *testing.T) {
 		{"smd", "group", "member", "get", ""},
 		{"smd", "group", "member", "set", "", "x0c0s0b0n0"},
 		{"cloud-init", "node", "get", "group", "", "compute"},
+		{"pcs", "transition", "show", ""},
+		{"pcs", "transition", "show", ".."},
+		{"pcs", "transition", "monitor", "a/b"},
 	}
 	for _, args := range cases {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
@@ -1121,6 +1124,7 @@ func TestBatchCommands_RejectInvalidIDs(t *testing.T) {
 		{"cloud-init node get user-data", []string{"cloud-init", "node", "get", "user-data", "x0c0s0b0n0", ""}, "node ID"},
 		{"cloud-init node get vendor-data", []string{"cloud-init", "node", "get", "vendor-data", "x0c0s0b0n0", "a/b"}, "node ID"},
 		{"cloud-init node set", []string{"cloud-init", "node", "set", "-d", `[{"id":"x0c0s0b0n0"},{"id":".."}]`}, "invalid payload"},
+		{"pcs transition abort", []string{"pcs", "transition", "abort", ""}, "transition ID cannot be blank"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

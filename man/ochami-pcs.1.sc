@@ -199,6 +199,9 @@ Subcommands for this command are as follows:
 *abort* [-F _format_] _id_
 	Abort or terminate an active power transition.
 
+	If _id_ is blank, is "." or "..", contains "/", or contains a malformed
+	percent-escape, nothing is aborted and the command exits with a usage error.
+
 	This command accepts the following options:
 
 	*-F, --format-output* _format_
