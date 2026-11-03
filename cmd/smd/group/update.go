@@ -36,7 +36,8 @@ func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []str
 	// so SMD leaves the others unchanged.
 	var groups []smd.GroupPatch
 
-	// Read payload from file first, allowing overwrites from flags
+	// Build the patches from the payload or, without -d, from the flags and
+	// argument. -d and the flags are mutually exclusive.
 	if cmd.Flag("data").Changed {
 		if err := rt.HandlePayload(cmd, &groups); err != nil {
 			return err
@@ -105,6 +106,7 @@ containing the payload data. -f can be specified to change
 the format of the input payload data ('json' by default), but
 the rules above still apply for the payload. If "-" is used as
 the input payload filename, the data is read from standard input.
+-d cannot be used with --description or --tag.
 
 This command sends a PATCH to SMD. An access token is required.
 
@@ -184,6 +186,8 @@ See ochami-smd(1) for more details.`,
 	cli.AddFormatInputFlag(groupUpdateCmd)
 	groupUpdateCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	groupUpdateCmd.MarkFlagsOneRequired("description", "tag", "data")
+	groupUpdateCmd.MarkFlagsMutuallyExclusive("description", "data")
+	groupUpdateCmd.MarkFlagsMutuallyExclusive("tag", "data")
 
 	return groupUpdateCmd
 }

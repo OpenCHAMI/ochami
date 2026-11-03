@@ -923,7 +923,7 @@ Subcommands for this command are as follows:
 		to change it.
 
 	*-D, --description* _description_
-		Specify a brief description of the group.
+		Specify a brief description of the group. Cannot be used with *-d*.
 
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats
@@ -937,7 +937,7 @@ Subcommands for this command are as follows:
 		flag can be specified multiple times or this flag can be specified once
 		and multiple tags can be specified, separated by commas. Passing this
 		flag will *replace* any existing tags, so be sure any existing tags that
-		need to be kept are passed to this flag.
+		need to be kept are passed to this flag. Cannot be used with *-d*.
 
 *membership* [-F _format_] [FILTERS]
 	Gets the memberships of one or more nodes.
