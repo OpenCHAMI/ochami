@@ -61,10 +61,13 @@ const (
 	// CodeInterrupted indicates the command was interrupted by SIGINT (for
 	// example, Ctrl+C) before it finished. Like CodeTerminated, it is 128
 	// plus the signal number, the status a shell reports for a process the
-	// signal kills.
+	// signal kills. On Unix the process doesn't exit with it: after cleaning
+	// up, it kills itself with the signal so its shell sees a death by
+	// SIGINT (see DieFromSignal), and the shell reports this code.
 	CodeInterrupted = 130
 	// CodeTerminated indicates the command was stopped by SIGTERM before it
-	// finished.
+	// finished. Like CodeInterrupted, on Unix it is the status the shell
+	// reports for the process killing itself with the signal.
 	CodeTerminated = 143
 )
 

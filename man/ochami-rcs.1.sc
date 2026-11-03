@@ -41,6 +41,13 @@ Subcommands for this command are as follows:
 *connect* _nodeID_
 	Start an interactive session with the console of the specified node.
 
+	When standard input is a terminal, it is put in raw mode so each
+	keystroke is sent to the console as typed, except Ctrl+C, which ends the
+	session instead of being sent. *SIGINT* and *SIGTERM* also end the
+	session. Either way, the connection is closed cleanly and the command
+	exits with status 0, not the interrupted status described in
+	*ochami*(1).
+
 	*nodeID*
 		Node ID of the console to connect to.
 

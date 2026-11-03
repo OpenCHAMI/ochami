@@ -200,6 +200,29 @@ See *ochami-config*(5) for more information on configuring these files, as well
 as *ochami-config*(1) for how to use *ochami* commands to manage configuration
 options.
 
+# SIGNALS
+
+On *SIGINT* (for example, Ctrl+C) or *SIGTERM*, *ochami* stops the running
+command rather than dying on the spot: requests in flight are cancelled, prompts
+and reads from standard input return, and the command cleans up after itself
+(for example, closing a console connection or removing a temporary file). It
+then kills itself with the same signal, so its parent sees a process the signal
+killed and the shell reports exit status 130 for *SIGINT* or 143 for *SIGTERM*.
+Because of this, Ctrl+C stops a shell loop or script that runs *ochami* just as
+it would for any other program killed by the signal. *bash*, for one, continues
+a loop after a program that exits normally, even with status 130.
+
+A second *SIGINT* or *SIGTERM* while *ochami* is stopping kills it immediately,
+skipping any cleanup still in progress.
+
+A signal *ochami* starts with ignored stays ignored. Non-interactive shells
+start background jobs with *SIGINT* ignored, so *ochami* run with *&* from a
+script is not interrupted by Ctrl+C.
+
+*ochami rcs console connect* is an exception: it treats *SIGINT* and *SIGTERM*
+as a request to end the console session, closes the connection cleanly, and
+exits with status 0; see *ochami-rcs*(1).
+
 # EXIT STATUS
 
 *ochami* exposes the exit codes below so that scripts and other tooling can
@@ -249,10 +272,13 @@ the following codes:
 |  *130*
 :  _CodeInterrupted_
 :  The command was interrupted by *SIGINT* (for example, Ctrl+C) before it
-   finished.
+   finished. On Unix, *ochami* is killed by the signal after cleaning up, and
+   this is the status the shell reports; see *SIGNALS*.
 |  *143*
 :  _CodeTerminated_
-:  The command was stopped by *SIGTERM* before it finished.
+:  The command was stopped by *SIGTERM* before it finished. On Unix, *ochami* is
+   killed by the signal after cleaning up, and this is the status the shell
+   reports; see *SIGNALS*.
 
 # FILES
 

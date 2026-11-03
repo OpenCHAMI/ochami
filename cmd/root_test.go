@@ -14,12 +14,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -29,7 +33,8 @@ import (
 )
 
 // TestHandleExecuteError verifies that handleExecuteError maps a nil error to
-// CodeSuccess and a coded error (HTTP, generic, or declined) to its code.
+// CodeSuccess and a coded error (HTTP, generic, declined, or interrupted) to
+// its code.
 func TestHandleExecuteError(t *testing.T) {
 	t.Parallel()
 
@@ -56,6 +61,91 @@ func TestHandleExecuteError(t *testing.T) {
 	declined := cli.Errorf(cli.CodeDeclined, "user declined")
 	if code := handleExecuteError(rootCmd, declined); code != cli.CodeDeclined {
 		t.Errorf("handleExecuteError(declined err) = %d, want %d (%s)", code, cli.CodeDeclined, cli.CodeName(cli.CodeDeclined))
+	}
+
+	// An interruption resolves to CodeInterrupted.
+	interrupted := cli.Interrupted(signalledContext(os.Interrupt), context.Canceled)
+	if code := handleExecuteError(rootCmd, interrupted); code != cli.CodeInterrupted {
+		t.Errorf("handleExecuteError(interrupted err) = %d, want %d (%s)", code, cli.CodeInterrupted, cli.CodeName(cli.CodeInterrupted))
+	}
+}
+
+// signalledContext returns a context cancelled as cli.NotifyContext cancels
+// one when sig arrives.
+func signalledContext(sig os.Signal) context.Context {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	cancel(&cli.InterruptError{Signal: sig})
+	return ctx
+}
+
+// TestExecute_Interrupted verifies that a signal cancelling the context stops
+// a command blocked in a request, a confirmation prompt, a stdin payload read,
+// or a console websocket handshake promptly, and that it exits with the
+// signal's code rather than the code of the error the cancelled operation
+// returned: CodeInterrupted for SIGINT and CodeTerminated for SIGTERM.
+func TestExecute_Interrupted(t *testing.T) {
+	t.Parallel()
+
+	var deletes atomic.Int32
+	// The server never answers, so a request blocks until it is cancelled.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deletes.Add(1)
+		}
+		<-r.Context().Done()
+	}))
+	// The subtests run in parallel, after this function returns.
+	t.Cleanup(func() {
+		srv.Close()
+		if n := deletes.Load(); n != 0 {
+			t.Errorf("DELETE count = %d, want 0: an interrupted confirmation must not delete", n)
+		}
+	})
+
+	tests := []struct {
+		name     string
+		sig      os.Signal
+		args     []string
+		wantCode int
+	}{
+		{name: "request", sig: os.Interrupt, args: []string{"smd", "component", "get"}, wantCode: cli.CodeInterrupted},
+		{name: "request SIGTERM", sig: syscall.SIGTERM, args: []string{"smd", "component", "get"}, wantCode: cli.CodeTerminated},
+		{name: "delete prompt", sig: os.Interrupt, args: []string{"smd", "group", "delete", "compute"}, wantCode: cli.CodeInterrupted},
+		{name: "stdin payload", sig: os.Interrupt, args: []string{"smd", "component", "add", "-d", "@-"}, wantCode: cli.CodeInterrupted},
+		{name: "console show handshake", sig: os.Interrupt, args: []string{"rcs", "console", "show", "-f", "x0"}, wantCode: cli.CodeInterrupted},
+		{name: "console connect handshake", sig: os.Interrupt, args: []string{"rcs", "console", "connect", "x0"}, wantCode: cli.CodeInterrupted},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// No one ever writes to stdin, so prompts and stdin reads block
+			// until they are cancelled.
+			stdin, stdinWriter := io.Pipe()
+			defer stdinWriter.Close()
+			var out bytes.Buffer
+			rt := cli.NewTestRuntime(stdin, &out, &out)
+			rootCmd := NewRootCmd()
+			rootCmd.SetContext(cli.ContextWithRuntime(context.Background(), rt))
+			rootCmd.SetArgs(append([]string{"--ignore-config"}, append(tc.args, "--uri", srv.URL, "--token", "t")...))
+			rootCmd.SetOut(&out)
+			rootCmd.SetErr(&out)
+
+			ctx, cancel := context.WithCancelCause(context.Background())
+			defer cancel(nil)
+			time.AfterFunc(50*time.Millisecond, func() { cancel(&cli.InterruptError{Signal: tc.sig}) })
+
+			done := make(chan int, 1)
+			go func() { done <- execute(ctx, rootCmd) }()
+			select {
+			case code := <-done:
+				if code != tc.wantCode {
+					t.Errorf("execute() = %d (%s), want %d (%s)\noutput:\n%s", code, cli.CodeName(code), tc.wantCode, cli.CodeName(tc.wantCode), out.String())
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("execute() did not return within 5s of the signal")
+			}
+		})
 	}
 }
 
