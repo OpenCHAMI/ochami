@@ -336,6 +336,9 @@ func TestCloudInit_InvalidID(t *testing.T) {
 		{"get node group data", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
 			return cic.GetNodeGroupData(ctx, "tok", "x0c0s0b0n0", "", "compute", "a/b")
 		}},
+		{"post groups", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PostGroups(ctx, []cistore.GroupData{{Name: ""}, {Name: "compute"}, {Name: ".."}}, "tok"), nil
+		}},
 		{"put groups", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
 			return cic.PutGroups(ctx, []cistore.GroupData{{Name: ".."}, {Name: "compute"}, {Name: "a/b"}}, "tok"), nil
 		}},

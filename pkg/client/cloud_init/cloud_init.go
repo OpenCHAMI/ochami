@@ -266,12 +266,19 @@ func (cic *CloudInitClient) PostDefaults(ctx context.Context, ciDflts cistore.Cl
 // slice of cistore.GroupData and a token, puts the token in the request headers
 // as an authorization bearer, and iteratively calls OchamiClient.PostData using
 // each item from the slice.
+//
+// A group name that client.CheckPathSegment rejects is reported as that item's
+// error, and no request is sent for it, since such a group could not be
+// addressed later.
 func (cic *CloudInitClient) PostGroups(ctx context.Context, ciGroups []cistore.GroupData, token string) client.BatchResult[client.HTTPEnvelope] {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, ciGroups, func(ctx context.Context, cig cistore.GroupData) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("group name", cig.Name); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PostGroups(): %w", err)
+		}
 		body, err := json.Marshal(cig)
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("PostGroups(): failed to marshal GroupData: %w", err)

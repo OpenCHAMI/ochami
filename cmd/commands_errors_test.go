@@ -1124,6 +1124,7 @@ func TestBatchCommands_RejectInvalidIDs(t *testing.T) {
 	}{
 		{"cloud-init group delete", []string{"cloud-init", "group", "delete", "compute", ""}, "group name cannot be blank (item 2 of 2)"},
 		{"cloud-init group delete payload", []string{"cloud-init", "group", "delete", "--no-confirm", "-d", `[{"name":"compute"},{"name":".."}]`}, `invalid payload: invalid argument: group name ".." is not a single path segment`},
+		{"cloud-init group add", []string{"cloud-init", "group", "add", "-d", `[{"name":"compute"},{"name":".."}]`}, "invalid payload"},
 		{"cloud-init group get config", []string{"cloud-init", "group", "get", "config", "compute", ".."}, "group name"},
 		{"cloud-init group get meta-data", []string{"cloud-init", "group", "get", "meta-data", "compute", "a/b"}, "group name"},
 		{"cloud-init group get raw", []string{"cloud-init", "group", "get", "raw", "compute", "%zz"}, "malformed percent-escape"},

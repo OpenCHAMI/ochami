@@ -264,6 +264,10 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload is passed raw on the command
 	line.
 
+	If the *name* field of any group is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is sent and the command exits
+	with a usage error.
+
 	This command sends a POST to the */cloud-init/admin/groups* endpoint.
 
 	This command accepts the following flags:
