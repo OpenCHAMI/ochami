@@ -81,9 +81,7 @@ See ochami-cloud-init(1) for more details.`,
   ochami cloud-init group delete -d @payload.yaml -f yaml
 
   # Delete cloud-init groups using data from standard input
-  echo '<json_data>' | ochami cloud-init group delete
   echo '<json_data>' | ochami cloud-init group delete -d @-
-  echo '<yaml_data>' | ochami cloud-init group delete -f yaml
   echo '<yaml_data>' | ochami cloud-init group delete -d @- -f yaml`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if !cmd.Flag("data").Changed {
