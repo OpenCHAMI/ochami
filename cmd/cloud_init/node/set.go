@@ -89,6 +89,15 @@ See ochami-cloud-init(1) for more details.`,
 				}
 			}
 
+			// Reject the whole payload before sending any request
+			nodeIDs := make([]string, 0, len(ciInstInfo))
+			for _, instanceInfo := range ciInstInfo {
+				nodeIDs = append(nodeIDs, instanceInfo.ID)
+			}
+			if err := cli.CheckIDs("node ID", nodeIDs); err != nil {
+				return cli.Errorf(cli.CodeUsage, "invalid payload: %w", err)
+			}
+
 			// Send data
 			results, err := cloudInitClient.PutInstanceInfo(cmd.Context(), ciInstInfo, rt.Token)
 			if err != nil {

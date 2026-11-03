@@ -20,6 +20,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -1093,5 +1094,55 @@ func TestResourceCommands_RejectMalformedSuccessBodies(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestBatchCommands_RejectInvalidIDs verifies that one invalid ID fails a batch
+// command with CodeUsage before any request is sent, even for the valid IDs
+// listed before it. Delete commands run without --no-confirm, so a check placed
+// after the prompt would fail on the empty standard input with another code.
+func TestBatchCommands_RejectInvalidIDs(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		args    []string
+		wantMsg string
+	}{
+		{"cloud-init group delete", []string{"cloud-init", "group", "delete", "compute", ""}, "group name cannot be blank (item 2 of 2)"},
+		{"cloud-init group delete payload", []string{"cloud-init", "group", "delete", "--no-confirm", "-d", `[{"name":"compute"},{"name":".."}]`}, `invalid payload: invalid argument: group name ".." is not a single path segment`},
+		{"cloud-init group get config", []string{"cloud-init", "group", "get", "config", "compute", ".."}, "group name"},
+		{"cloud-init group get meta-data", []string{"cloud-init", "group", "get", "meta-data", "compute", "a/b"}, "group name"},
+		{"cloud-init group get raw", []string{"cloud-init", "group", "get", "raw", "compute", "%zz"}, "malformed percent-escape"},
+		{"cloud-init group set", []string{"cloud-init", "group", "set", "-d", `[{"name":"compute"},{"name":"a/b"}]`}, "invalid payload"},
+		{"cloud-init node get group", []string{"cloud-init", "node", "get", "group", "x0c0s0b0n0", "compute", ".."}, "group name"},
+		{"cloud-init node get group node", []string{"cloud-init", "node", "get", "group", "..", "compute"}, "node ID"},
+		{"cloud-init node get meta-data", []string{"cloud-init", "node", "get", "meta-data", "x0c0s0b0n0", ".."}, "node ID"},
+		{"cloud-init node get user-data", []string{"cloud-init", "node", "get", "user-data", "x0c0s0b0n0", ""}, "node ID"},
+		{"cloud-init node get vendor-data", []string{"cloud-init", "node", "get", "vendor-data", "x0c0s0b0n0", "a/b"}, "node ID"},
+		{"cloud-init node set", []string{"cloud-init", "node", "set", "-d", `[{"id":"x0c0s0b0n0"},{"id":".."}]`}, "invalid payload"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var requests atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+			}))
+			defer srv.Close()
+
+			full := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, full...)
+			if res.exitCode != cli.CodeUsage {
+				t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if res.err == nil || !strings.Contains(res.err.Error(), tc.wantMsg) {
+				t.Errorf("error = %v, want it to contain %q", res.err, tc.wantMsg)
+			}
+			if got := requests.Load(); got != 0 {
+				t.Errorf("request count = %d, want 0", got)
+			}
+		})
 	}
 }

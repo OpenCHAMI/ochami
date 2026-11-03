@@ -301,6 +301,10 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload is passed raw on the command
 	line.
 
+	If any group name, whether from the payload or the command line, is blank,
+	is "." or "..", contains "/", or contains a malformed percent-escape,
+	nothing is deleted and the command exits with a usage error.
+
 	This command sends one or more DELETE requests to the
 	*/cloud-init/admin/groups* endpoint.
 
@@ -329,6 +333,10 @@ Subcommands for this command are as follows:
 	Aliases: *list*
 
 	Get cloud-init group data.
+
+	If any _group_name_ is blank, is "." or "..", contains "/", or contains a
+	malformed percent-escape, nothing is requested and the command exits with a
+	usage error.
 
 	Commands under this one send one or more GET requests to the
 	*/cloud-init/admin/groups* or */cloud-init/admin/groups/{id}* endpoints.
@@ -527,6 +535,10 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload is passed raw on the command
 	line. This data is passed raw to the server.
 
+	If the *name* field of any group is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is sent and the command exits
+	with a usage error.
+
 	This command sends a PUT to the */cloud-init/admin/groups* endpoint.
 
 	This command accepts the following options:
@@ -554,7 +566,13 @@ Subcommands for this command are as follows:
 *get*
 	Aliases: *list*
 
-	Get cloud-init node data. This command has the following subcommands:
+	Get cloud-init node data.
+
+	If any _node_id_ or _group_name_ is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is requested and the command
+	exits with a usage error.
+
+	This command has the following subcommands:
 
 	*group* [--header _when_] _node_id_ _group_name_...
 		Print the cloud-init group data for _node_id_ for each group
@@ -680,6 +698,10 @@ Subcommands for this command are as follows:
 
 	In the fourth form of the command, the payload is passed raw on the command
 	line. This data is passed raw to the server.
+
+	If the *id* field of any item is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is sent and the command exits
+	with a usage error.
 
 	This command sends a PUT to the */cloud-init/admin/instance-info/{id}*
 	endpoint for each *{id}*.
