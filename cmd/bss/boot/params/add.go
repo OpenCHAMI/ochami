@@ -91,7 +91,7 @@ See ochami-bss(1) for more details.`,
   # Add boot parameters using data from standard input
   echo '<json_data>' | ochami bss boot params add -d @-
   echo '<yaml_data>' | ochami bss boot params add -d @- -f yaml`,
-		PreRunE: validateBootParamsSetFlags,
+		PreRunE: validateBootParamFlags,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get runtime from context (always available since cmd/root.go injects it)
 			rt, err := cli.RuntimeFromCommand(cmd)

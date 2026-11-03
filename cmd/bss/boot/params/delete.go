@@ -111,21 +111,9 @@ See ochami-bss(1) for more details.`,
   echo '<json_data>' | ochami bss boot params delete -d @-
   echo '<yaml_data>' | ochami bss boot params delete -d @- -f yaml`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			// Function to return true if any flag is set
-			anyChanged := func(flags ...string) bool {
-				for _, f := range flags {
-					if cmd.Flag(f).Changed {
-						return true
-					}
-				}
-				return false
-			}
 			if cmd.Flag("data").Changed {
-				// -d/--data trumps all, ignore values of other flags if specified
-				if anyChanged("xname", "nid", "mac", "kernel", "initrd", "params") {
-					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring CLI configuration")
-				}
-			} else if !anyChanged("xname", "nid", "mac", "kernel", "initrd", "params") {
+				warnDataWithFlags(cmd)
+			} else if !cli.AnyFlagChanged(cmd, bootParamFlags...) {
 				// If -d/--data not passed, then boot parameters can be deleted
 				// by component (--xname/--nid/--mac) or by config
 				// (--kernel/--initrd/--params), so any one of them is enough

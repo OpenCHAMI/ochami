@@ -459,3 +459,23 @@ func TestHandleToken_FlagPrecedesRuntimeEnvironment(t *testing.T) {
 		t.Fatal("HandleToken() did not preserve explicit token precedence")
 	}
 }
+
+// TestAnyFlagChanged verifies AnyFlagChanged reports whether any of the named
+// flags was passed, skipping names that aren't registered.
+func TestAnyFlagChanged(t *testing.T) {
+	t.Parallel()
+
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().String("kernel", "", "")
+	cmd.Flags().String("initrd", "", "")
+	if err := cmd.ParseFlags([]string{"--kernel", "k"}); err != nil {
+		t.Fatalf("ParseFlags() error = %v", err)
+	}
+
+	if !AnyFlagChanged(cmd, "initrd", "kernel") {
+		t.Error("AnyFlagChanged(initrd, kernel) = false, want true for the passed --kernel")
+	}
+	if AnyFlagChanged(cmd, "initrd", "unregistered") {
+		t.Error("AnyFlagChanged(initrd, unregistered) = true, want false when neither was passed")
+	}
+}

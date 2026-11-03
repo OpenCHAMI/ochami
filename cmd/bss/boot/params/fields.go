@@ -7,7 +7,13 @@ package params
 import (
 	"github.com/openchami/bss/pkg/bssTypes"
 	"github.com/spf13/cobra"
+
+	"github.com/openchami/ochami/internal/cli"
 )
+
+// bootParamFlags names the flags that select components (--xname, --nid,
+// --mac) and set boot parameters (--kernel, --initrd, --params).
+var bootParamFlags = []string{"xname", "nid", "mac", "kernel", "initrd", "params"}
 
 // bootParamFields holds the values of the flags that select components and set
 // boot parameters, which the add, set, update, and delete commands share.
@@ -67,5 +73,29 @@ func applyBootParamFlags(cmd *cobra.Command, bp *bssTypes.BootParams, f bootPara
 	}
 	if cmd.Flag("params").Changed {
 		bp.Params = f.Params
+	}
+}
+
+// validateBootParamFlags validates the flags of the add, set, and update
+// commands. Without -d, at least one of --xname/--nid/--mac must be specified,
+// along with at least one of --kernel/--initrd/--params.
+func validateBootParamFlags(cmd *cobra.Command, args []string) error {
+	if cmd.Flag("data").Changed {
+		warnDataWithFlags(cmd)
+	} else if !cli.AnyFlagChanged(cmd, "xname", "nid", "mac") {
+		return cli.Errorf(cli.CodeUsage, "expected -d or one of --xname, --nid, or --mac")
+	} else if !cli.AnyFlagChanged(cmd, "kernel", "initrd", "params") {
+		return cli.Errorf(cli.CodeUsage, "specifying any of --xname, --nid, or --mac also requires specifying at least one of --kernel, --initrd, or --params")
+	}
+
+	return nil
+}
+
+// warnDataWithFlags warns if any boot parameter flags were passed to cmd along
+// with -d.
+func warnDataWithFlags(cmd *cobra.Command) {
+	// -d/--data trumps all, ignore values of other flags if specified
+	if cli.AnyFlagChanged(cmd, bootParamFlags...) {
+		cli.LoggerFromCommand(cmd).Warn().Msg("raw data passed, ignoring CLI configuration")
 	}
 }
