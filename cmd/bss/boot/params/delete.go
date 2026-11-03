@@ -36,11 +36,10 @@ func runCoreBootParamsDelete(cmd *cobra.Command, opts *bootParamsDeleteOptions, 
 		applyBootParamFlags(cmd, &bp, opts.bootParamFields)
 	}
 
-	// If we are deleting by component (xname/mac/nid), validate MAC addresses if any were provided
-	if len(opts.Mac) > 0 {
-		if err := bp.CheckMacs(); err != nil {
-			return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
-		}
+	// Validate MAC addresses, whether they came from --mac or the payload.
+	// CheckMacs accepts an empty list.
+	if err := bp.CheckMacs(); err != nil {
+		return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
 	}
 
 	// Ask before attempting deletion unless --no-confirm was passed

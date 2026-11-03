@@ -259,6 +259,46 @@ func TestBSSBootParams_DataWithFlags(t *testing.T) {
 	}
 }
 
+// TestBSSBootParams_InvalidPayloadMac verifies that an invalid MAC address in
+// a -d payload is a usage error for add, set, update, and delete, and that no
+// request is sent.
+func TestBSSBootParams_InvalidPayloadMac(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		verb      string
+		extraArgs []string
+	}{
+		{"add", nil},
+		{"set", nil},
+		{"update", nil},
+		{"delete", []string{"--no-confirm"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.verb, func(t *testing.T) {
+			t.Parallel()
+
+			var requests int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			args := append([]string{"bss", "boot", "params", tt.verb,
+				"--ignore-config", "--uri", srv.URL, "--token", "t",
+				"-d", `{"macs":["not-a-mac"],"kernel":"http://k"}`}, tt.extraArgs...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.err == nil || res.exitCode != cli.CodeUsage {
+				t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if requests != 0 {
+				t.Errorf("requests = %d, want none for an invalid payload MAC", requests)
+			}
+		})
+	}
+}
+
 // TestBSSBootParamsAdd_NetworkError verifies a closed port surfaces CodeNetwork
 // for "add".
 func TestBSSBootParamsAdd_NetworkError(t *testing.T) {

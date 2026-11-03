@@ -42,11 +42,10 @@ func runCoreBootParamsSet(cmd *cobra.Command, opts *bootParamsSetOptions, bssCli
 		applyBootParamFlags(cmd, &bp, opts.bootParamFields)
 	}
 
-	// Validate MAC addresses if any were provided
-	if len(opts.Mac) > 0 {
-		if err := bp.CheckMacs(); err != nil {
-			return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
-		}
+	// Validate MAC addresses, whether they came from --mac or the payload.
+	// CheckMacs accepts an empty list.
+	if err := bp.CheckMacs(); err != nil {
+		return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
 	}
 
 	// Send 'em off
