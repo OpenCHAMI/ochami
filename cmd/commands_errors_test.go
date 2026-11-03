@@ -527,6 +527,7 @@ func TestCommands_RejectInvalidArguments(t *testing.T) {
 		{"pcs", "transition", "show", ""},
 		{"pcs", "transition", "show", ".."},
 		{"pcs", "transition", "monitor", "a/b"},
+		{"metadata", "peer", "get", "a/b"},
 		{"boot", "node", "get", "a/b"},
 	}
 	for _, args := range cases {
@@ -1132,6 +1133,14 @@ func TestBatchCommands_RejectInvalidIDs(t *testing.T) {
 		{"boot bmc delete after a valid one", []string{"boot", "bmc", "delete", "bmc-773d99bf", ".."}, `BMC UID ".." is not a single path segment (item 2 of 2)`},
 		{"boot config delete blank", []string{"boot", "config", "delete", ""}, "boot configuration UID cannot be blank"},
 		{"boot config delete after a valid one", []string{"boot", "config", "delete", "boo-914afad2", ".."}, `boot configuration UID ".." is not a single path segment (item 2 of 2)`},
+		{"metadata defaults delete blank", []string{"metadata", "defaults", "delete", ""}, "cluster defaults UID cannot be blank"},
+		{"metadata defaults delete after a valid one", []string{"metadata", "defaults", "delete", "clusterdefaults-d614b918", ".."}, `cluster defaults UID ".." is not a single path segment (item 2 of 2)`},
+		{"metadata group delete blank", []string{"metadata", "group", "delete", ""}, "group UID cannot be blank"},
+		{"metadata group delete after a valid one", []string{"metadata", "group", "delete", "group-d614b918", ".."}, `group UID ".." is not a single path segment (item 2 of 2)`},
+		{"metadata instance delete blank", []string{"metadata", "instance", "delete", ""}, "instance info UID cannot be blank"},
+		{"metadata instance delete after a valid one", []string{"metadata", "instance", "delete", "instanceinfo-d614b918", ".."}, `instance info UID ".." is not a single path segment (item 2 of 2)`},
+		{"metadata peer delete blank", []string{"metadata", "peer", "delete", ""}, "WireGuard peer UID cannot be blank"},
+		{"metadata peer delete after a valid one", []string{"metadata", "peer", "delete", "wireguardpeer-d614b918", ".."}, `WireGuard peer UID ".." is not a single path segment (item 2 of 2)`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

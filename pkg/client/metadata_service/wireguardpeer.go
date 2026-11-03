@@ -43,8 +43,15 @@ func (msc *MetadataServiceClient) AddWireGuardPeers(ctx context.Context, token s
 // DeleteWireGuardPeers is a wrapper that calls the metadata-service client's
 // DeleteWireGuardPeer() function, passing it context and a list of
 // WireGuardPeer UIDs to delete. It returns one result per UID in input order.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (msc *MetadataServiceClient) DeleteWireGuardPeers(ctx context.Context, token string, uids []string) client.BatchResult[string] {
 	return client.RunBatchWithTimeout(ctx, msc.Timeout, uids, func(requestCtx context.Context, peerUID string) (string, error) {
+		if err := client.CheckPathSegment("WireGuard peer UID", peerUID); err != nil {
+			return "", err
+		}
 		err := msc.Client.WithBearerToken(token).DeleteWireGuardPeer(requestCtx, peerUID)
 		if err != nil {
 			return "", fmt.Errorf("failed to delete WireGuard peer %s: %w", peerUID, client.FabricaWrapHTTPError(err))
@@ -57,7 +64,14 @@ func (msc *MetadataServiceClient) DeleteWireGuardPeers(ctx context.Context, toke
 // GetWireGuardPeer() function, passing it context and a UID. The output is a
 // []byte containing the entity's WireGuard peer information, formatted as
 // outFormat.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) GetWireGuardPeer(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	if err := client.CheckPathSegment("WireGuard peer UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -99,7 +113,14 @@ func (msc *MetadataServiceClient) ListWireGuardPeers(ctx context.Context, token 
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the WireGuardPeer identified by uid. It returns the modified
 // WireGuardPeer resource returned by metadata-service and any error.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) PatchWireGuardPeer(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.WireGuardPeer, error) {
+	if err := client.CheckPathSegment("WireGuard peer UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -124,7 +145,14 @@ func (msc *MetadataServiceClient) PatchWireGuardPeer(ctx context.Context, token 
 // SetWireGuardPeer is a wrapper that calls the metadata-service client's
 // UpdateWireGuardPeer() function, passing it context. It returns the modified
 // WireGuardPeer resource returned by metadata-service and any error.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) SetWireGuardPeer(ctx context.Context, token string, uid string, peer metadata_service_client.UpdateWireGuardPeerRequest) (*api.WireGuardPeer, error) {
+	if err := client.CheckPathSegment("WireGuard peer UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -152,7 +180,14 @@ func (msc *MetadataServiceClient) AddWireGuardPeerSpecs(ctx context.Context, tok
 // SetWireGuardPeerSpec is like SetWireGuardPeer but calls the metadata-service
 // client's simple UpdateWireGuardPeerSimple() function, which only sends the
 // resource spec.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) SetWireGuardPeerSpec(ctx context.Context, token string, uid string, spec api.WireGuardPeerSpec) (*api.WireGuardPeer, error) {
+	if err := client.CheckPathSegment("WireGuard peer UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 

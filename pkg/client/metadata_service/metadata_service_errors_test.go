@@ -11,9 +11,11 @@ package metadata_service
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -265,5 +267,111 @@ func TestReadEndpoints_RejectUnsupportedOutputFormat(t *testing.T) {
 				t.Fatal("call returned nil error for unsupported output format")
 			}
 		})
+	}
+}
+
+// TestMetadataHelpers_InvalidUID verifies that every helper that puts a UID in
+// the request path rejects one that is blank or is not a single path segment,
+// wrapping client.InvalidArgumentError, without sending a request.
+func TestMetadataHelpers_InvalidUID(t *testing.T) {
+	ctx := context.Background()
+	var requests atomic.Int32
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+	})
+	defer srv.Close()
+
+	calls := []struct {
+		name string
+		call func(c *MetadataServiceClient, uid string) error
+	}{
+		{"delete group", func(c *MetadataServiceClient, uid string) error {
+			return c.DeleteGroups(ctx, "", []string{uid})[0].Err
+		}},
+		{"get group", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.GetGroup(ctx, "", format.DataFormatJson, uid)
+			return err
+		}},
+		{"patch group", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.PatchGroup(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			return err
+		}},
+		{"set group", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.SetGroup(ctx, "", uid, metadata_service_client.UpdateGroupRequest{})
+			return err
+		}},
+		{"set group spec", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.SetGroupSpec(ctx, "", uid, api.GroupSpec{})
+			return err
+		}},
+		{"delete defaults", func(c *MetadataServiceClient, uid string) error {
+			return c.DeleteDefaults(ctx, "", []string{uid})[0].Err
+		}},
+		{"get defaults", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.GetDefaults(ctx, "", format.DataFormatJson, uid)
+			return err
+		}},
+		{"patch defaults", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.PatchDefaults(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			return err
+		}},
+		{"set defaults", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.SetDefaults(ctx, "", uid, metadata_service_client.UpdateClusterDefaultsRequest{})
+			return err
+		}},
+		{"set defaults spec", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.SetDefaultsSpec(ctx, "", uid, api.ClusterDefaultsSpec{})
+			return err
+		}},
+		{"delete instance info", func(c *MetadataServiceClient, uid string) error {
+			return c.DeleteInstanceInfos(ctx, "", []string{uid})[0].Err
+		}},
+		{"get instance info", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.GetInstanceInfo(ctx, "", format.DataFormatJson, uid)
+			return err
+		}},
+		{"patch instance info", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.PatchInstanceInfo(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			return err
+		}},
+		{"set instance info", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.SetInstanceInfo(ctx, "", uid, metadata_service_client.UpdateInstanceInfoRequest{})
+			return err
+		}},
+		{"set instance info spec", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.SetInstanceInfoSpec(ctx, "", uid, api.InstanceInfoSpec{})
+			return err
+		}},
+		{"delete WireGuard peer", func(c *MetadataServiceClient, uid string) error {
+			return c.DeleteWireGuardPeers(ctx, "", []string{uid})[0].Err
+		}},
+		{"get WireGuard peer", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.GetWireGuardPeer(ctx, "", format.DataFormatJson, uid)
+			return err
+		}},
+		{"patch WireGuard peer", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.PatchWireGuardPeer(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			return err
+		}},
+		{"set WireGuard peer", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.SetWireGuardPeer(ctx, "", uid, metadata_service_client.UpdateWireGuardPeerRequest{})
+			return err
+		}},
+		{"set WireGuard peer spec", func(c *MetadataServiceClient, uid string) error {
+			_, err := c.SetWireGuardPeerSpec(ctx, "", uid, api.WireGuardPeerSpec{})
+			return err
+		}},
+	}
+	for _, tc := range calls {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, uid := range []string{"", " ", ".", "..", "a/b", "../bmcs/abc"} {
+				if err := tc.call(c, uid); !errors.Is(err, client.InvalidArgumentError) {
+					t.Errorf("UID %q: error = %v, want it to wrap client.InvalidArgumentError", uid, err)
+				}
+			}
+		})
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf("request count = %d, want 0", got)
 	}
 }
