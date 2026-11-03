@@ -136,9 +136,15 @@ See ochami-pcs(1) for more details.`,
 			failedBar := createBar(p, transitionTaskStateFailed)
 
 			// Poll transition state until it is complete or aborted
+			ctx := cmd.Context()
 			for {
-				transitionHttpEnv, err := pcsClient.GetTransition(cmd.Context(), transitionID, rt.Token)
+				transitionHttpEnv, err := pcsClient.GetTransition(ctx, transitionID, rt.Token)
 				if err != nil {
+					// A request cut short by cancellation didn't fail;
+					// report the cancellation itself.
+					if ctxErr := ctx.Err(); ctxErr != nil {
+						return ctxErr
+					}
 					return cli.ClassifyClientError(err, "failed to get transition", "failed to get transition")
 				}
 
@@ -169,8 +175,12 @@ See ochami-pcs(1) for more details.`,
 					break
 				}
 
-				// Sleep poll interval
-				time.Sleep(time.Duration(pollInterval) * time.Second)
+				// Wait poll interval, stopping early if cancelled
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(time.Duration(pollInterval) * time.Second):
+				}
 			}
 
 			return nil
