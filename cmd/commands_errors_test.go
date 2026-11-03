@@ -349,27 +349,26 @@ func TestCommands_MalformedPayload(t *testing.T) {
 	}
 }
 
-// TestCommands_DataWithExtraArgs verifies that each listed delete command
-// accepts -d together with extra positional arguments, succeeds, and logs a
-// warning that the extra arguments are ignored.
+// TestCommands_DataWithExtraArgs verifies that each listed command rejects -d
+// together with positional arguments as a usage error, before any prompt or
+// request.
 func TestCommands_DataWithExtraArgs(t *testing.T) {
 	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[]`))
-	}))
-	defer srv.Close()
 
 	cases := []struct {
 		args []string
 		data string
 	}{
-		{[]string{"smd", "iface", "delete", "--no-confirm"}, `[{"ID":"decafc0ffeee"}]`},
-		{[]string{"smd", "rfe", "delete", "--no-confirm"}, `{"RedfishEndpoints":[{"ID":"x0"}]}`},
-		{[]string{"smd", "compep", "delete", "--no-confirm"}, `[{"ID":"x0"}]`},
-		{[]string{"smd", "component", "delete", "--no-confirm"}, `{"Components":[{"ID":"x0"}]}`},
+		{[]string{"smd", "component", "add"}, `{"Components":[{"ID":"x0"}]}`},
+		{[]string{"smd", "group", "add"}, `[{"label":"compute"}]`},
+		{[]string{"smd", "group", "update"}, `[{"label":"compute","description":"d"}]`},
+		{[]string{"smd", "iface", "add"}, `[{"ComponentID":"x0","MACAddress":"de:ad:be:ef:00:00"}]`},
+		{[]string{"smd", "rfe", "add"}, `{"RedfishEndpoints":[{"ID":"x0"}]}`},
+		{[]string{"smd", "compep", "delete"}, `[{"ID":"x0"}]`},
+		{[]string{"smd", "component", "delete"}, `{"Components":[{"ID":"x0"}]}`},
+		{[]string{"smd", "group", "delete"}, `[{"label":"compute"}]`},
+		{[]string{"smd", "iface", "delete"}, `[{"ID":"decafc0ffeee"}]`},
+		{[]string{"smd", "rfe", "delete"}, `{"RedfishEndpoints":[{"ID":"x0"}]}`},
 	}
 	for _, tc := range cases {
 		name := ""
@@ -377,13 +376,21 @@ func TestCommands_DataWithExtraArgs(t *testing.T) {
 			name += a + "_"
 		}
 		t.Run(name, func(t *testing.T) {
+			var requests int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			// No --no-confirm: rejection must come before any prompt
 			full := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "t", "-d", tc.data, "extra-arg")
 			res := runOchamiWithRuntime(t, full...)
-			if res.err != nil {
-				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			if res.err == nil || res.exitCode != cli.CodeUsage {
+				t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
 			}
-			if !strings.Contains(res.stdout, "ignoring extra arguments") {
-				t.Errorf("output = %q, want a warning that the extra arguments are ignored", res.stdout)
+			if requests != 0 {
+				t.Errorf("requests = %d, want none when -d is combined with arguments", requests)
 			}
 		})
 	}
