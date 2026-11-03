@@ -302,6 +302,10 @@ Subcommands for this command are as follows:
 	If no arguments are passed, all component endpoints are returned. Otherwise,
 	the results are filtered by one or more passed xnames.
 
+	If any _xname_ is blank, is "." or "..", contains "/", or contains a
+	malformed percent-escape, nothing is requested and the command exits with a
+	usage error.
+
 	This command sends a GET request to SMD's /ComponentEndpoints endpoint.
 
 	This command accepts the following options:
@@ -929,6 +933,10 @@ Subcommands for this command are as follows:
 
 	In the fourth form of the command, the payload data is read from standard
 	input.
+
+	If the label of any group is blank, is "." or "..", contains "/", or contains
+	a malformed percent-escape, nothing is updated and the command exits with a
+	usage error.
 
 	This command sends a PATCH  request to SMD's /groups endpoint.
 

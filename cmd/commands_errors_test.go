@@ -524,6 +524,12 @@ func TestCommands_RejectInvalidArguments(t *testing.T) {
 		{"smd", "group", "member", "get", ""},
 		{"smd", "group", "member", "set", "", "x0c0s0b0n0"},
 		{"cloud-init", "node", "get", "group", "", "compute"},
+		{"smd", "component", "get", "-x", ""},
+		{"smd", "iface", "get", "-i", ".."},
+		{"smd", "group", "member", "get", ".."},
+		{"smd", "group", "member", "add", "a/b", "x0c0s0b0n0"},
+		{"smd", "group", "member", "set", "..", "x0c0s0b0n0"},
+		{"smd", "group", "update", "-d", `[{"label":".."}]`},
 		{"pcs", "transition", "show", ""},
 		{"pcs", "transition", "show", ".."},
 		{"pcs", "transition", "monitor", "a/b"},
@@ -1141,6 +1147,8 @@ func TestBatchCommands_RejectInvalidIDs(t *testing.T) {
 		{"metadata instance delete after a valid one", []string{"metadata", "instance", "delete", "instanceinfo-d614b918", ".."}, `instance info UID ".." is not a single path segment (item 2 of 2)`},
 		{"metadata peer delete blank", []string{"metadata", "peer", "delete", ""}, "WireGuard peer UID cannot be blank"},
 		{"metadata peer delete after a valid one", []string{"metadata", "peer", "delete", "wireguardpeer-d614b918", ".."}, `WireGuard peer UID ".." is not a single path segment (item 2 of 2)`},
+		{"smd compep get", []string{"smd", "compep", "get", "x0c0s0b0n0", ".."}, `component endpoint ID ".." is not a single path segment (item 2 of 2)`},
+		{"smd group update", []string{"smd", "group", "update", "-d", `[{"label":"compute"},{"label":".."}]`}, "invalid payload"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

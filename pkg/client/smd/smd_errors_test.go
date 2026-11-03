@@ -627,6 +627,141 @@ func TestSMDClient_RejectsBlankRequiredFields(t *testing.T) {
 	}
 }
 
+// TestSMD_InvalidID verifies that each method that is not a delete reports an
+// ID that is blank or is not a single path segment as that item's error,
+// wrapping client.InvalidArgumentError, without sending a request for it, while
+// still sending a request for the valid ID.
+func TestSMD_InvalidID(t *testing.T) {
+	ctx := context.Background()
+	cases := []struct {
+		name string
+		call func(sc *SMDClient) client.BatchResult[client.HTTPEnvelope]
+	}{
+		{"get component endpoints", func(sc *SMDClient) client.BatchResult[client.HTTPEnvelope] {
+			return sc.GetComponentEndpoints(ctx, "tok", "", "x0c0s0b0n0", "..")
+		}},
+		{"put components", func(sc *SMDClient) client.BatchResult[client.HTTPEnvelope] {
+			return sc.PutComponents(ctx, ComponentSlice{Components: []Component{{ID: "."}, {ID: "x0c0s0b0n0"}, {ID: "a/b"}}}, "tok")
+		}},
+		{"put redfish endpoints", func(sc *SMDClient) client.BatchResult[client.HTTPEnvelope] {
+			return sc.PutRedfishEndpoints(ctx, RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: ".."}, {ID: "x0c0s0b0"}, {ID: " "}}}, "tok")
+		}},
+		{"put redfish endpoints v2", func(sc *SMDClient) client.BatchResult[client.HTTPEnvelope] {
+			return sc.PutRedfishEndpointsV2(ctx, RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{
+				{RedfishEndpoint: csm.RedfishEndpoint{ID: "a/b"}},
+				{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}},
+				{RedfishEndpoint: csm.RedfishEndpoint{ID: "."}},
+			}}, "tok")
+		}},
+		{"patch ethernet interfaces", func(sc *SMDClient) client.BatchResult[client.HTTPEnvelope] {
+			return sc.PatchEthernetInterfaces(ctx, []EthernetInterface{{ID: ".."}, {ID: "decafc0ffee"}, {MACAddress: "::"}}, "tok")
+		}},
+		{"patch groups", func(sc *SMDClient) client.BatchResult[client.HTTPEnvelope] {
+			return sc.PatchGroups(ctx, []Group{{Label: ".."}, {Label: "compute"}, {Label: ""}}, "tok")
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests atomic.Int32
+			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				w.WriteHeader(http.StatusOK)
+			})
+			defer srv.Close()
+
+			results := tc.call(sc)
+			if len(results) != 3 {
+				t.Fatalf("results length = %d, want 3", len(results))
+			}
+			for _, i := range []int{0, 2} {
+				if !errors.Is(results[i].Err, client.InvalidArgumentError) {
+					t.Errorf("results[%d].Err = %v, want it to wrap client.InvalidArgumentError", i, results[i].Err)
+				}
+			}
+			if results[1].Err != nil {
+				t.Errorf("results[1].Err = %v, want nil", results[1].Err)
+			}
+			if got := requests.Load(); got != 1 {
+				t.Errorf("request count = %d, want 1", got)
+			}
+		})
+	}
+}
+
+// TestSMD_InvalidSingleID verifies that methods addressing a single resource,
+// or a group's membership as a whole, reject an ID that is blank or is not a
+// single path segment with an error wrapping client.InvalidArgumentError,
+// without sending a request.
+func TestSMD_InvalidSingleID(t *testing.T) {
+	ctx := context.Background()
+	var requests atomic.Int32
+	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+	})
+	defer srv.Close()
+
+	calls := []struct {
+		name string
+		call func(id string) error
+	}{
+		{"get component", func(id string) error {
+			_, err := sc.GetComponentsXname(ctx, id, "tok")
+			return err
+		}},
+		{"get ethernet interface", func(id string) error {
+			_, err := sc.GetEthernetInterfaceByID(ctx, id, "tok", false)
+			return err
+		}},
+		{"get ethernet interface IPs", func(id string) error {
+			_, err := sc.GetEthernetInterfaceByID(ctx, id, "tok", true)
+			return err
+		}},
+		{"get group members", func(id string) error {
+			_, err := sc.GetGroupMembers(ctx, id, "tok")
+			return err
+		}},
+		{"post group members", func(id string) error {
+			_, err := sc.PostGroupMembers(ctx, "tok", id, "x0c0s0b0n0")
+			return err
+		}},
+		{"put group members", func(id string) error {
+			_, err := sc.PutGroupMembers(ctx, "tok", id, "x0c0s0b0n0")
+			return err
+		}},
+	}
+	for _, tc := range calls {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, id := range []string{"", " ", ".", "..", "a/b"} {
+				if err := tc.call(id); !errors.Is(err, client.InvalidArgumentError) {
+					t.Errorf("ID %q: error = %v, want it to wrap client.InvalidArgumentError", id, err)
+				}
+			}
+		})
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf("request count = %d, want 0", got)
+	}
+}
+
+// TestEthernetInterface_EffectiveID verifies that an interface's own ID wins
+// and that a blank one is adapted from its MAC address.
+func TestEthernetInterface_EffectiveID(t *testing.T) {
+	tests := []struct {
+		ei   EthernetInterface
+		want string
+	}{
+		{EthernetInterface{ID: "decafc0ffee", MACAddress: "de:ad:be:ef:00:00"}, "decafc0ffee"},
+		{EthernetInterface{MACAddress: "DE:AD-BE_EF:00:00"}, "deadbeef0000"},
+		{EthernetInterface{MACAddress: "::"}, ""},
+		{EthernetInterface{}, ""},
+	}
+	for _, tc := range tests {
+		if got := tc.ei.EffectiveID(); got != tc.want {
+			t.Errorf("%+v.EffectiveID() = %q, want %q", tc.ei, got, tc.want)
+		}
+	}
+}
+
 // TestIterativeDeletes_InvalidID verifies that each iterative delete reports
 // an ID that is blank or is not a single path segment as that item's error,
 // wrapping client.InvalidArgumentError, without sending a request for it,

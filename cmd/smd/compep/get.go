@@ -25,6 +25,9 @@ func newCmdCompepGet() *cobra.Command {
 		Long: `Get all component endpoints or a subset, identified by xname.
 
 See ochami-smd(1) for more details.`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return cli.CheckIDs("component endpoint ID", args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get runtime from context (always available since cmd/root.go injects it)
 			rt, err := cli.RuntimeFromCommand(cmd)
