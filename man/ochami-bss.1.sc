@@ -84,7 +84,7 @@ Manage boot parameters for components.
 
 Subcommands for this command are as follows:
 
-*add* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_])++
+*add* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_] [--params _params_])++
 *add* -d _data_ [-f _format_]++
 *add* -d @_file_ [-f _format_]++
 *add* -d @- [-f _format_] < _file_
@@ -266,7 +266,7 @@ Subcommands for this command are as follows:
 		either this flag can be specified multiple times or this flag can be
 		specified once and multiple xnames, separated by commas.
 
-*set* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_])++
+*set* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_] [--params _params_])++
 *set* -d _data_ [-f _format_]++
 *set* -d @_file_ [-f _format_]++
 *set* -d @- [-f _format_] < _file_
@@ -340,7 +340,7 @@ Subcommands for this command are as follows:
 	*--params* _kernel_params_
 		Command line arguments to pass to kernel for components.
 
-*update* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_])++
+*update* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_] [--params _params_])++
 *update* -d _data_ [-f _format_]++
 *update* -d @_file_ [-f _format_]++
 *update* -d @- [-f _format_] < _file_
