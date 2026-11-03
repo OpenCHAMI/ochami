@@ -72,6 +72,9 @@ See ochami-boot(1) for more details.`,
 
   # Don't confirm deletion
   ochami boot config delete --no-confirm boo-ebf2a27a`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return cli.CheckIDs("boot configuration UID", args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get runtime from context (always available since cmd/root.go injects it)
 			rt, err := cli.RuntimeFromCommand(cmd)

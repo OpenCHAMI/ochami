@@ -267,6 +267,9 @@ Subcommands for this command are as follows:
 	Delete one or more BMCs identified by _uid_. Unless *--no-confirm* is
 	passed, the user is asked to confirm deletion.
 
+	If any _uid_ is blank, is "." or "..", contains "/", or contains a malformed
+	percent-escape, nothing is deleted and the command exits with a usage error.
+
 	This command sends one or more DELETE requests to boot-service's BMC
 	endpoint.
 
@@ -457,6 +460,9 @@ Subcommands for this command are as follows:
 *delete* [--no-confirm] _uid_...
 	Delete one or more boot configurations identified by _uid_. Unless
 	*--no-confirm* is passed, the user is asked to confirm deletion.
+
+	If any _uid_ is blank, is "." or "..", contains "/", or contains a malformed
+	percent-escape, nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to boot-service's
 	/bootconfiguration endpoint.
@@ -649,6 +655,9 @@ Subcommands for this command are as follows:
 *delete* [--no-confirm] _uid_...
 	Delete one or more nodes identified by _uid_. Unless *--no-confirm* is
 	passed, the user is asked to confirm deletion.
+
+	If any _uid_ is blank, is "." or "..", contains "/", or contains a malformed
+	percent-escape, nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to boot-service's node
 	endpoint.

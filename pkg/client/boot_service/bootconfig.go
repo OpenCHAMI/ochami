@@ -43,8 +43,15 @@ func (bsc *BootServiceClient) AddBootConfigs(ctx context.Context, token string, 
 // DeleteBootConfigs is a wrapper that calls the boot-service client's
 // DeleteBootConfiguration() function, passing it context and a list of boot
 // config UIDs to delete. It returns one result per UID in input order.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (bsc *BootServiceClient) DeleteBootConfigs(ctx context.Context, token string, uids []string) client.BatchResult[string] {
 	return client.RunBatchWithTimeout(ctx, bsc.Timeout, uids, func(requestCtx context.Context, bcfgUID string) (string, error) {
+		if err := client.CheckPathSegment("boot configuration UID", bcfgUID); err != nil {
+			return "", err
+		}
 		err := bsc.Client.WithBearerToken(token).DeleteBootConfiguration(requestCtx, bcfgUID)
 		if err != nil {
 			return "", fmt.Errorf("failed to delete boot config %s: %w", bcfgUID, client.FabricaWrapHTTPError(err))
@@ -56,7 +63,14 @@ func (bsc *BootServiceClient) DeleteBootConfigs(ctx context.Context, token strin
 // GetBootConfig is a wrapper that calls the boot-service client's
 // GetBootConfiguration() function, passing it context and a UID. The output is
 // a []byte containing the entity's boot configuration, formatted as outFormat.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) GetBootConfig(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	if err := client.CheckPathSegment("boot configuration UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
@@ -97,7 +111,14 @@ func (bsc *BootServiceClient) ListBootConfigs(ctx context.Context, token string,
 // PatchBootConfiguration() function. It accepts data that represents a patch
 // formatted as patchFormat and sends it as JSON to the boot-service via a PATCH
 // request for the boot configuration identified by uid.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) PatchBootConfig(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.BootConfiguration, error) {
+	if err := client.CheckPathSegment("boot configuration UID", uid); err != nil {
+		return nil, err
+	}
+
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
@@ -126,7 +147,14 @@ func (bsc *BootServiceClient) PatchBootConfig(ctx context.Context, token string,
 // UpdateBootConfiguration() function, passing it context. The output is a
 // pointer to the boot configuration that got updated, along with an error if
 // one occurred.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) SetBootConfig(ctx context.Context, token string, uid string, bootCfg boot_service_client.UpdateBootConfigurationRequest) (*api.BootConfiguration, error) {
+	if err := client.CheckPathSegment("boot configuration UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
@@ -154,7 +182,14 @@ func (bsc *BootServiceClient) AddBootConfigSpecs(ctx context.Context, token stri
 // SetBootConfigSpec is like SetBootConfig but calls the boot-service client's
 // simple UpdateBootConfigurationSimple() function, which only sends the
 // resource spec.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) SetBootConfigSpec(ctx context.Context, token string, uid string, spec api.BootConfigurationSpec) (*api.BootConfiguration, error) {
+	if err := client.CheckPathSegment("boot configuration UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 

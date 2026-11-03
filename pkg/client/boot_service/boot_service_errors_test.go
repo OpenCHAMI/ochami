@@ -12,9 +12,11 @@ package boot_service
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -217,5 +219,92 @@ func TestReadEndpoints_RejectUnsupportedOutputFormat(t *testing.T) {
 				t.Fatal("call returned nil error for unsupported output format")
 			}
 		})
+	}
+}
+
+// TestBootHelpers_InvalidUID verifies that every helper that puts a UID in
+// the request path rejects one that is blank or is not a single path segment,
+// wrapping client.InvalidArgumentError, without sending a request.
+func TestBootHelpers_InvalidUID(t *testing.T) {
+	ctx := context.Background()
+	var requests atomic.Int32
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+	})
+	defer srv.Close()
+
+	calls := []struct {
+		name string
+		call func(c *BootServiceClient, uid string) error
+	}{
+		{"delete BMC", func(c *BootServiceClient, uid string) error {
+			return c.DeleteBMCs(ctx, "", []string{uid})[0].Err
+		}},
+		{"get BMC", func(c *BootServiceClient, uid string) error {
+			_, err := c.GetBMC(ctx, "", format.DataFormatJson, uid)
+			return err
+		}},
+		{"patch BMC", func(c *BootServiceClient, uid string) error {
+			_, err := c.PatchBMC(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			return err
+		}},
+		{"set BMC", func(c *BootServiceClient, uid string) error {
+			_, err := c.SetBMC(ctx, "", uid, boot_service_client.UpdateBMCRequest{})
+			return err
+		}},
+		{"set BMC spec", func(c *BootServiceClient, uid string) error {
+			_, err := c.SetBMCSpec(ctx, "", uid, api.BMCSpec{})
+			return err
+		}},
+		{"delete node", func(c *BootServiceClient, uid string) error {
+			return c.DeleteNodes(ctx, "", []string{uid})[0].Err
+		}},
+		{"get node", func(c *BootServiceClient, uid string) error {
+			_, err := c.GetNode(ctx, "", format.DataFormatJson, uid)
+			return err
+		}},
+		{"patch node", func(c *BootServiceClient, uid string) error {
+			_, err := c.PatchNode(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			return err
+		}},
+		{"set node", func(c *BootServiceClient, uid string) error {
+			_, err := c.SetNode(ctx, "", uid, boot_service_client.UpdateNodeRequest{})
+			return err
+		}},
+		{"set node spec", func(c *BootServiceClient, uid string) error {
+			_, err := c.SetNodeSpec(ctx, "", uid, api.NodeSpec{})
+			return err
+		}},
+		{"delete boot config", func(c *BootServiceClient, uid string) error {
+			return c.DeleteBootConfigs(ctx, "", []string{uid})[0].Err
+		}},
+		{"get boot config", func(c *BootServiceClient, uid string) error {
+			_, err := c.GetBootConfig(ctx, "", format.DataFormatJson, uid)
+			return err
+		}},
+		{"patch boot config", func(c *BootServiceClient, uid string) error {
+			_, err := c.PatchBootConfig(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			return err
+		}},
+		{"set boot config", func(c *BootServiceClient, uid string) error {
+			_, err := c.SetBootConfig(ctx, "", uid, boot_service_client.UpdateBootConfigurationRequest{})
+			return err
+		}},
+		{"set boot config spec", func(c *BootServiceClient, uid string) error {
+			_, err := c.SetBootConfigSpec(ctx, "", uid, api.BootConfigurationSpec{})
+			return err
+		}},
+	}
+	for _, tc := range calls {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, uid := range []string{"", " ", ".", "..", "a/b", "../bmcs/abc"} {
+				if err := tc.call(c, uid); !errors.Is(err, client.InvalidArgumentError) {
+					t.Errorf("UID %q: error = %v, want it to wrap client.InvalidArgumentError", uid, err)
+				}
+			}
+		})
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf("request count = %d, want 0", got)
 	}
 }

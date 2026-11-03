@@ -527,6 +527,7 @@ func TestCommands_RejectInvalidArguments(t *testing.T) {
 		{"pcs", "transition", "show", ""},
 		{"pcs", "transition", "show", ".."},
 		{"pcs", "transition", "monitor", "a/b"},
+		{"boot", "node", "get", "a/b"},
 	}
 	for _, args := range cases {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
@@ -1125,6 +1126,12 @@ func TestBatchCommands_RejectInvalidIDs(t *testing.T) {
 		{"cloud-init node get vendor-data", []string{"cloud-init", "node", "get", "vendor-data", "x0c0s0b0n0", "a/b"}, "node ID"},
 		{"cloud-init node set", []string{"cloud-init", "node", "set", "-d", `[{"id":"x0c0s0b0n0"},{"id":".."}]`}, "invalid payload"},
 		{"pcs transition abort", []string{"pcs", "transition", "abort", ""}, "transition ID cannot be blank"},
+		{"boot node delete blank", []string{"boot", "node", "delete", ""}, "node UID cannot be blank"},
+		{"boot node delete after a valid one", []string{"boot", "node", "delete", "nod-bc76f7f2", ".."}, `node UID ".." is not a single path segment (item 2 of 2)`},
+		{"boot bmc delete blank", []string{"boot", "bmc", "delete", ""}, "BMC UID cannot be blank"},
+		{"boot bmc delete after a valid one", []string{"boot", "bmc", "delete", "bmc-773d99bf", ".."}, `BMC UID ".." is not a single path segment (item 2 of 2)`},
+		{"boot config delete blank", []string{"boot", "config", "delete", ""}, "boot configuration UID cannot be blank"},
+		{"boot config delete after a valid one", []string{"boot", "config", "delete", "boo-914afad2", ".."}, `boot configuration UID ".." is not a single path segment (item 2 of 2)`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

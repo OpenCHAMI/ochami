@@ -42,8 +42,15 @@ func (bsc *BootServiceClient) AddBMCs(ctx context.Context, token string, bmcs []
 // DeleteBMCs is a wrapper that calls the boot-service client's DeleteBMC()
 // function, passing it context and a list of BMC UIDs to delete. It returns one
 // result per UID in input order.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (bsc *BootServiceClient) DeleteBMCs(ctx context.Context, token string, uids []string) client.BatchResult[string] {
 	return client.RunBatchWithTimeout(ctx, bsc.Timeout, uids, func(requestCtx context.Context, bmcUid string) (string, error) {
+		if err := client.CheckPathSegment("BMC UID", bmcUid); err != nil {
+			return "", err
+		}
 		err := bsc.Client.WithBearerToken(token).DeleteBMC(requestCtx, bmcUid)
 		if err != nil {
 			return "", fmt.Errorf("failed to delete BMC %s: %w", bmcUid, client.FabricaWrapHTTPError(err))
@@ -55,7 +62,14 @@ func (bsc *BootServiceClient) DeleteBMCs(ctx context.Context, token string, uids
 // GetBMC is a wrapper that calls the boot-service client's GetBMC() function,
 // passing it context and a UID. The output is a []byte containing the entity's
 // BMC information, formatted as outFormat.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) GetBMC(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	if err := client.CheckPathSegment("BMC UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
@@ -96,7 +110,14 @@ func (bsc *BootServiceClient) ListBMCs(ctx context.Context, token string, outFor
 // function. It accepts data that represents a patch formatted as patchFormat
 // and sends it as JSON to the boot-service via a PATCH request for the BMC
 // identified by uid.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) PatchBMC(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.BMC, error) {
+	if err := client.CheckPathSegment("BMC UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
@@ -121,7 +142,14 @@ func (bsc *BootServiceClient) PatchBMC(ctx context.Context, token string, patchF
 // SetBMC is a wrapper that calls the boot-service client's UpdateBMC()
 // function, passing it context. The output is a pointer to the BMC details that
 // got updated, along with an error if one occurred.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) SetBMC(ctx context.Context, token string, uid string, bmc boot_service_client.UpdateBMCRequest) (*api.BMC, error) {
+	if err := client.CheckPathSegment("BMC UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
@@ -147,7 +175,14 @@ func (bsc *BootServiceClient) AddBMCSpecs(ctx context.Context, token string, bmc
 
 // SetBMCSpec is like SetBMC but calls the boot-service client's simple
 // UpdateBMCSimple() function, which only sends the resource spec.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) SetBMCSpec(ctx context.Context, token string, uid string, spec api.BMCSpec) (*api.BMC, error) {
+	if err := client.CheckPathSegment("BMC UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
