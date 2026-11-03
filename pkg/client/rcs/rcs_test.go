@@ -139,11 +139,13 @@ func TestShowConsole_StreamsOutput(t *testing.T) {
 }
 
 // TestConnectConsole_EchoesInput verifies ConnectConsole forwards buffered stdin
-// to the server and streams the server's echo back to stdout. The session ends
-// when the context is cancelled.
+// to the server and streams the server's echo back to stdout. Cancelling the
+// context ends the session cleanly: the server receives a normal close frame
+// and ConnectConsole returns nil.
 func TestConnectConsole_EchoesInput(t *testing.T) {
 	var serverGotMu sync.Mutex
 	var serverGot []byte
+	closeCode := make(chan int, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := wsUpgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -153,6 +155,10 @@ func TestConnectConsole_EchoesInput(t *testing.T) {
 		for {
 			mt, msg, err := conn.ReadMessage()
 			if err != nil {
+				var ce *websocket.CloseError
+				if errors.As(err, &ce) {
+					closeCode <- ce.Code
+				}
 				return
 			}
 			if mt == websocket.TextMessage {
@@ -206,8 +212,16 @@ func TestConnectConsole_EchoesInput(t *testing.T) {
 	}
 
 	cancel()
-	if err := <-errCh; !errors.Is(err, context.Canceled) {
-		t.Fatalf("ConnectConsole() = %v, want context.Canceled", err)
+	if err := <-errCh; err != nil {
+		t.Fatalf("ConnectConsole() = %v, want nil after cancellation", err)
+	}
+	select {
+	case code := <-closeCode:
+		if code != websocket.CloseNormalClosure {
+			t.Errorf("server close code = %d, want %d (normal closure)", code, websocket.CloseNormalClosure)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("server never received a close frame")
 	}
 
 	serverGotMu.Lock()

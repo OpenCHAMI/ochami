@@ -44,7 +44,7 @@ func TestRunConsoleSession_TerminalErrors(t *testing.T) {
 	t.Run("setup failure", func(t *testing.T) {
 		want := errors.New("raw setup failed")
 		conn := &fakeMessageConn{}
-		err := runConsoleSession(context.Background(), conn, &fakeTerminal{isTerminal: true, makeErr: want}, make(chan os.Signal), time.After, file, io.Discard)
+		err := runConsoleSession(context.Background(), conn, &fakeTerminal{isTerminal: true, makeErr: want}, time.After, file, io.Discard)
 		if !errors.Is(err, want) {
 			t.Fatalf("runConsoleSession() error = %v, want setup error", err)
 		}
@@ -58,7 +58,7 @@ func TestRunConsoleSession_TerminalErrors(t *testing.T) {
 			closeErr: closeErr,
 		}
 		terminal := &fakeTerminal{isTerminal: true, restoreErr: restoreErr}
-		err := runConsoleSession(context.Background(), conn, terminal, make(chan os.Signal), time.After, file, io.Discard)
+		err := runConsoleSession(context.Background(), conn, terminal, time.After, file, io.Discard)
 		if !errors.Is(err, restoreErr) || !errors.Is(err, closeErr) {
 			t.Fatalf("runConsoleSession() error = %v, want restore and close errors", err)
 		}

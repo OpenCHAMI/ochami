@@ -14,9 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -443,14 +441,15 @@ func startConsoleOutputStream(stdout io.Writer, conn messageReader, errChan chan
 	go streamConsoleOutput(stdout, conn, errChan)
 }
 
-// waitAfterInterrupt sends a websocket close frame after an interrupt and
-// briefly waits for the read side to finish.
-func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-chan error, after afterFunc) error {
-	// Translate a local interrupt into a clean websocket close so the remote
-	// side can shut down cleanly. The input goroutine may still be inside
-	// WriteMessage (a signal from outside the terminal, or piped input,
-	// doesn't stop it first), so the close frame must go through
-	// WriteControl; see messageWriter.
+// waitAfterInterrupt sends a websocket close frame after an interrupt (a
+// raw-mode Ctrl+C or a cancelled context) and briefly waits for the read side
+// to finish.
+func waitAfterInterrupt(conn messageWriter, outputErr <-chan error, after afterFunc) error {
+	// Translate an interrupt into a clean websocket close so the remote side
+	// can shut down cleanly. The input goroutine may still be inside
+	// WriteMessage (a cancelled context, or piped input, doesn't stop it
+	// first), so the close frame must go through WriteControl; see
+	// messageWriter.
 	closeFrame := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
 	if err := conn.WriteControl(websocket.CloseMessage, closeFrame, time.Now().Add(closeFrameWriteTimeout)); err != nil {
 		// A timeout means the input goroutine's write is stuck behind input
@@ -469,10 +468,9 @@ func waitAfterInterrupt(ctx context.Context, conn messageWriter, outputErr <-cha
 	// reports. The remote can tear down the connection without completing a
 	// clean close handshake (e.g. an abnormal websocket close code, or the
 	// TCP connection simply resetting), and that must not turn a Ctrl+C or
-	// SIGINT/SIGTERM into a reported failure.
+	// cancellation into a reported failure. The caller's context is usually
+	// already done here, so it can't bound the wait; the grace period does.
 	select {
-	case <-ctx.Done():
-		return ctx.Err()
 	case err := <-outputErr:
 		// Read errors after a user interrupt must not turn a clean exit
 		// into a failure.
@@ -490,15 +488,15 @@ func isTimeout(err error) bool {
 	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
-// waitForConsoleExit waits for shutdown, a local interrupt, or an I/O error.
-func waitForConsoleExit(ctx context.Context, conn messageWriter, interrupt <-chan os.Signal, localInterrupt <-chan struct{}, inputErr, outputErr <-chan error, after afterFunc) error {
+// waitForConsoleExit waits for an interrupt or an I/O error. Cancelling ctx
+// is an interrupt, like a raw-mode Ctrl+C: both end the session with a clean
+// websocket close.
+func waitForConsoleExit(ctx context.Context, conn messageWriter, localInterrupt <-chan struct{}, inputErr, outputErr <-chan error, after afterFunc) error {
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
-	case <-interrupt:
-		return waitAfterInterrupt(ctx, conn, outputErr, after)
+		return waitAfterInterrupt(conn, outputErr, after)
 	case <-localInterrupt:
-		return waitAfterInterrupt(ctx, conn, outputErr, after)
+		return waitAfterInterrupt(conn, outputErr, after)
 	case err := <-inputErr:
 		return err
 	case err := <-outputErr:
@@ -507,8 +505,9 @@ func waitForConsoleExit(ctx context.Context, conn messageWriter, interrupt <-cha
 }
 
 // runConsoleSession forwards stdin to conn and conn's output to stdout until
-// the session ends, then closes conn and restores the terminal.
-func runConsoleSession(ctx context.Context, conn messageConn, terminal terminalController, interrupt <-chan os.Signal, after afterFunc, stdin io.Reader, stdout io.Writer) (retErr error) {
+// the session ends, then closes conn and restores the terminal. If ctx is
+// already done, it returns ctx.Err() without starting the session.
+func runConsoleSession(ctx context.Context, conn messageConn, terminal terminalController, after afterFunc, stdin io.Reader, stdout io.Writer) (retErr error) {
 	defer func() { retErr = errors.Join(retErr, conn.Close()) }()
 
 	if err := ctx.Err(); err != nil {
@@ -526,9 +525,14 @@ func runConsoleSession(ctx context.Context, conn messageConn, terminal terminalC
 	defer func() { retErr = errors.Join(retErr, restoreTerminal.Restore()) }()
 
 	startConsoleOutputStream(stdout, conn, outputErr)
-	return waitForConsoleExit(ctx, conn, interrupt, localInterrupt, inputErr, outputErr, after)
+	return waitForConsoleExit(ctx, conn, localInterrupt, inputErr, outputErr, after)
 }
 
+// ConnectConsole opens an interactive session with the console for the
+// specified node, forwarding stdin to it and its output to stdout. A raw-mode
+// Ctrl+C or cancelling ctx during the session closes the websocket cleanly and
+// returns nil; ConnectConsole installs no signal handlers of its own, so
+// callers that want signals to end the session cancel ctx on them.
 func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token string, stdin io.Reader, stdout io.Writer) error {
 	headers := headersForToken(token)
 
@@ -536,10 +540,6 @@ func (c *RCSClient) ConnectConsole(ctx context.Context, nodeID string, token str
 	if err != nil {
 		return err
 	}
-	// Set up interrupt handling to allow Ctrl+C to cleanly close the console connection.
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(interrupt)
 
-	return runConsoleSession(ctx, conn, c.terminal, interrupt, time.After, stdin, stdout)
+	return runConsoleSession(ctx, conn, c.terminal, time.After, stdin, stdout)
 }
