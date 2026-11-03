@@ -240,6 +240,7 @@ func (c *RCSClient) ListConsoles(ctx context.Context, token string) ([]NodeConso
 }
 
 // ShowConsole connects to the console for the specified node and streams its output to the provided writer.
+// It returns ctx.Err() if ctx is done before the server closes the connection.
 func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool, lines int, token string, output io.Writer) (retErr error) {
 	headers := headersForToken(token)
 
@@ -247,11 +248,24 @@ func (c *RCSClient) ShowConsole(ctx context.Context, nodeID string, follow bool,
 	if err != nil {
 		return err
 	}
-	defer func() { retErr = errors.Join(retErr, conn.Close()) }()
+	// ReadMessage ignores ctx once the connection is open, so close the
+	// connection when ctx is done to unblock it. Close it here only if that
+	// hasn't happened, so a second Close's error isn't reported.
+	stopClose := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer func() {
+		if stopClose() {
+			retErr = errors.Join(retErr, conn.Close())
+		}
+	}()
 
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
+			// A read failing because ctx closed the connection is a
+			// cancellation, not a connection failure.
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return ctxErr
+			}
 			if isNormalWebSocketClose(err) {
 				return nil
 			}

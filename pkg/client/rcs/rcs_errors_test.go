@@ -15,9 +15,12 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -187,5 +190,55 @@ func TestShowConsole_ReturnsConnectionCloseError(t *testing.T) {
 	}
 	if err := c.ShowConsole(context.Background(), "x0", false, 1, "", io.Discard); !errors.Is(err, want) {
 		t.Fatalf("ShowConsole() error = %v, want close error", err)
+	}
+}
+
+// closeUnblocksConn is a messageConn whose ReadMessage blocks until Close is
+// called, like a websocket whose server never sends anything.
+type closeUnblocksConn struct {
+	*fakeMessageConn
+	once   sync.Once
+	closed chan struct{}
+	closes atomic.Int32
+}
+
+func (c *closeUnblocksConn) ReadMessage() (int, []byte, error) {
+	<-c.closed
+	return 0, nil, net.ErrClosed
+}
+
+func (c *closeUnblocksConn) Close() error {
+	c.closes.Add(1)
+	c.once.Do(func() { close(c.closed) })
+	return nil
+}
+
+// TestShowConsole_Cancelled verifies that cancelling the context returns a
+// ShowConsole blocked waiting for output with context.Canceled, and closes the
+// connection exactly once.
+func TestShowConsole_Cancelled(t *testing.T) {
+	conn := &closeUnblocksConn{fakeMessageConn: &fakeMessageConn{}, closed: make(chan struct{})}
+	c, err := NewClient("https://example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.dial = func(context.Context, string, http.Header) (messageConn, *http.Response, error) {
+		return conn, nil, nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(10*time.Millisecond, cancel)
+
+	done := make(chan error, 1)
+	go func() { done <- c.ShowConsole(ctx, "x0", true, 1, "", io.Discard) }()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("ShowConsole() error = %v, want context.Canceled", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("ShowConsole() did not return after its context was cancelled")
+	}
+	if n := conn.closes.Load(); n != 1 {
+		t.Errorf("Close() called %d times, want 1", n)
 	}
 }
