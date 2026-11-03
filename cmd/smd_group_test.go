@@ -11,6 +11,7 @@ package cmd
 // input are covered in smd_group_errors_test.go.
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -134,6 +135,50 @@ func TestSMDGroupUpdate_ByFlags(t *testing.T) {
 	}
 	if gotMethod != http.MethodPatch {
 		t.Errorf("method = %q, want PATCH", gotMethod)
+	}
+}
+
+// TestSMDGroupUpdate_OnlyGivenFields verifies that "update" sends only the
+// fields given by flag or payload, so that updating the tags alone leaves out
+// the description instead of sending an empty one that clears it.
+func TestSMDGroupUpdate_OnlyGivenFields(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"flags", []string{"--tag", "t1", "compute"}},
+		{"payload", []string{"-d", `[{"label":"compute","tags":["t1"]}]`}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotPath string
+			var gotBody []byte
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				var err error
+				if gotBody, err = io.ReadAll(r.Body); err != nil {
+					t.Errorf("read request body: %v", err)
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			args := append([]string{"smd", "group", "update", "--uri", srv.URL, "--token", "t"}, tt.args...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if gotPath != "/groups/compute" {
+				t.Errorf("path = %q, want /groups/compute", gotPath)
+			}
+			if want := `{"tags":["t1"]}`; string(gotBody) != want {
+				t.Errorf("body = %s, want %s", gotBody, want)
+			}
+		})
 	}
 }
 

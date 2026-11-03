@@ -12,6 +12,7 @@ package smd
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -326,6 +327,41 @@ func TestPutGroupMembers_Success(t *testing.T) {
 	}
 }
 
+// TestPatchGroupFields_Body verifies PatchGroupFields sends only the fields
+// that are set: a nil field is left out, so SMD leaves it unchanged, and an
+// empty one is sent, so SMD clears it.
+func TestPatchGroupFields_Body(t *testing.T) {
+	empty, desc := "", "new"
+	cases := []struct {
+		name     string
+		patch    GroupPatch
+		wantBody string
+	}{
+		{"description only", GroupPatch{Label: "compute", Description: &desc}, `{"description":"new"}`},
+		{"tags only", GroupPatch{Label: "compute", Tags: &[]string{"t1"}}, `{"tags":["t1"]}`},
+		{"cleared", GroupPatch{Label: "compute", Description: &empty, Tags: &[]string{}}, `{"description":"","tags":[]}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotBody []byte
+			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+				var err error
+				if gotBody, err = io.ReadAll(r.Body); err != nil {
+					t.Errorf("read request body: %v", err)
+				}
+				w.WriteHeader(http.StatusOK)
+			})
+			defer srv.Close()
+			if err := sc.PatchGroupFields(context.Background(), []GroupPatch{tc.patch}, "tok")[0].Err; err != nil {
+				t.Fatalf("PatchGroupFields: %v", err)
+			}
+			if string(gotBody) != tc.wantBody {
+				t.Errorf("body = %s, want %s", gotBody, tc.wantBody)
+			}
+		})
+	}
+}
+
 // TestBulkDeletes verifies the "*All" delete helpers issue DELETE to their
 // respective collection endpoints.
 func TestBulkDeletes(t *testing.T) {
@@ -406,6 +442,9 @@ func TestSMDClient_SingleResourceAndBulkDeletePaths(t *testing.T) {
 		}, http.MethodPatch, "/Inventory/EthernetInterfaces/eth0"},
 		{"patch group", func(c *SMDClient) error {
 			return c.PatchGroups(context.Background(), []Group{{Label: "compute"}}, "tok")[0].Err
+		}, http.MethodPatch, "/groups/compute"},
+		{"patch group fields", func(c *SMDClient) error {
+			return c.PatchGroupFields(context.Background(), []GroupPatch{{Label: "compute"}}, "tok")[0].Err
 		}, http.MethodPatch, "/groups/compute"},
 		{"delete all component endpoints", func(c *SMDClient) error {
 			_, err := c.DeleteComponentEndpointsAll(context.Background(), "tok")

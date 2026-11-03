@@ -32,8 +32,9 @@ func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []str
 		return err
 	}
 
-	// The group list we will send
-	var groups []smd.Group
+	// The group patches we will send. Only the fields that are set are sent,
+	// so SMD leaves the others unchanged.
+	var groups []smd.GroupPatch
 
 	// Read payload from file first, allowing overwrites from flags
 	if cmd.Flag("data").Changed {
@@ -41,17 +42,22 @@ func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []str
 			return err
 		}
 	} else {
-		// ...otherwise use CLI options/args
-		group := smd.Group{Label: args[0]}
-		group.Description = opts.Description
-		group.Tags = opts.Tags
+		// ...otherwise use CLI options/args, setting only the fields whose
+		// flags were passed
+		group := smd.GroupPatch{Label: args[0]}
+		if cmd.Flag("description").Changed {
+			group.Description = &opts.Description
+		}
+		if cmd.Flag("tag").Changed {
+			group.Tags = &opts.Tags
+		}
 		groups = append(groups, group)
 	}
 
 	// Send 'em off
-	results := smdClient.PatchGroups(cmd.Context(), groups, rt.Token)
-	// Since smdClient.PatchGroups does the edition iteratively, we need to deal with
-	// each error that might have occurred.
+	results := smdClient.PatchGroupFields(cmd.Context(), groups, rt.Token)
+	// Since smdClient.PatchGroupFields does the edition iteratively, we need to
+	// deal with each error that might have occurred.
 	var itemErrs []error
 	for i, result := range results {
 		if result.Err != nil {

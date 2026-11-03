@@ -125,6 +125,17 @@ type Group struct {
 	} `json:"members,omitempty" yaml:"members,omitempty"`
 }
 
+// GroupPatch represents the payload structure for updating some fields of an
+// SMD group. Label names the group to update. SMD leaves a field unchanged if
+// it is absent from the request and clears it if it is set to an empty value,
+// so Description and Tags are pointers: nil leaves the field out, while a
+// pointer to an empty value clears it.
+type GroupPatch struct {
+	Label       string    `json:"label" yaml:"label"`
+	Description *string   `json:"description,omitempty" yaml:"description,omitempty"`
+	Tags        *[]string `json:"tags,omitempty" yaml:"tags,omitempty"`
+}
+
 // GroupMembers represents the payload structure for SMD group membership for
 // PUT requests. It consists of only the group label and list of group IDs.
 type GroupMembers struct {
@@ -788,6 +799,38 @@ func (sc *SMDClient) PatchGroups(ctx context.Context, groups []Group, token stri
 		henv, err := sc.PatchData(ctx, groupPath, "", headers, body)
 		if err != nil {
 			return henv, fmt.Errorf("PatchGroups(): failed to PATCH group %s in SMD: %w", group.Label, err)
+		}
+		return henv, nil
+	})
+}
+
+// PatchGroupFields is like PatchGroups, except that it takes GroupPatch
+// values and sends only their description and tags, leaving out the nil ones,
+// so that SMD changes only the fields that are set.
+func (sc *SMDClient) PatchGroupFields(ctx context.Context, patches []GroupPatch, token string) client.BatchResult[client.HTTPEnvelope] {
+	headers := client.NewHTTPHeaders()
+	if token != "" {
+		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
+	}
+	return client.RunBatch(ctx, patches, func(ctx context.Context, patch GroupPatch) (client.HTTPEnvelope, error) {
+		if patch.Label == "" {
+			return client.HTTPEnvelope{}, fmt.Errorf("PatchGroupFields(): %w: no group label specified to update", client.InvalidArgumentError)
+		}
+		groupPath, err := url.JoinPath(SMDRelpathGroups, patch.Label)
+		if err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PatchGroupFields(): failed to join group path (%s) with group label (%s): %w", SMDRelpathGroups, patch.Label, err)
+		}
+		// The label is in the path, so the body carries only the fields
+		body, err := json.Marshal(struct {
+			Description *string   `json:"description,omitempty"`
+			Tags        *[]string `json:"tags,omitempty"`
+		}{patch.Description, patch.Tags})
+		if err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PatchGroupFields(): failed to marshal GroupPatch: %w", err)
+		}
+		henv, err := sc.PatchData(ctx, groupPath, "", headers, body)
+		if err != nil {
+			return henv, fmt.Errorf("PatchGroupFields(): failed to PATCH group %s in SMD: %w", patch.Label, err)
 		}
 		return henv, nil
 	})

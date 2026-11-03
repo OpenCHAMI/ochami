@@ -897,7 +897,8 @@ Subcommands for this command are as follows:
 *update* -d @_file_ [-f _format_]++
 *update* -d @- [-f _format_] < _file_
 	Update one or more existing groups in SMD. If the group does not already
-	exist, this command will fail.
+	exist, this command will fail. Only the fields that are given, by flag or
+	in the payload, are changed. A field given an empty value is cleared.
 
 	In the first form of the command, a _group_name_ is required as well as at
 	least one of *--description* or *--tag*.
