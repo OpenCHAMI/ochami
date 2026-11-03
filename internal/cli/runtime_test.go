@@ -12,6 +12,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
+	"io"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -204,9 +206,9 @@ func TestUseCACert(t *testing.T) {
 	}
 }
 
-// TestRuntimeInitConfig_DeclineCreate verifies that declining to create a
+// TestInitConfig_DeclineCreate verifies that declining to create a
 // missing config file resolves to CodeDeclined and leaves the file uncreated.
-func TestRuntimeInitConfig_DeclineCreate(t *testing.T) {
+func TestInitConfig_DeclineCreate(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	rt := NewTestRuntime(strings.NewReader("n\n"), &bytes.Buffer{}, &bytes.Buffer{}).WithConfigFile(path)
 	cmd := &cobra.Command{Use: "test"}
@@ -218,6 +220,57 @@ func TestRuntimeInitConfig_DeclineCreate(t *testing.T) {
 	}
 	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
 		t.Errorf("stat %s = %v, want not-exist", path, statErr)
+	}
+}
+
+// TestInitConfig_LoadsMergedDefaults verifies InitConfig reads real process
+// environment variables (HOME, XDG_CONFIG_HOME) to resolve and load the
+// merged system+user configuration when explicitly opted in via
+// WithEnvironment, since NewTestRuntime is hermetic by default.
+func TestInitConfig_LoadsMergedDefaults(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{}).WithEnvironment(EnvironmentFunc(os.LookupEnv))
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("ignore-config", false, "")
+
+	if err := rt.InitConfig(cmd, false); err != nil {
+		t.Fatalf("InitConfig() error = %v", err)
+	}
+	if rt.Config.Log.Level == "" {
+		t.Error("InitConfig() did not load global defaults")
+	}
+	if rt.Effective == (config.Effective{}) {
+		t.Fatal("InitConfig() did not retain the effective view")
+	}
+	if rt.UserConfigFile == "" {
+		t.Error("InitConfig() did not resolve the user config path")
+	}
+}
+
+// TestInitConfig_IgnoreConfigResolvesUserConfigFile verifies that --ignore-config
+// still resolves rt.UserConfigFile (without reading it), so commands that
+// report or target the user config path (e.g. "config show --user") get a
+// usable path instead of an empty string.
+func TestInitConfig_IgnoreConfigResolvesUserConfigFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+
+	rt := NewTestRuntime(nil, &bytes.Buffer{}, &bytes.Buffer{}).WithEnvironment(EnvironmentFunc(os.LookupEnv))
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("ignore-config", false, "")
+	if err := cmd.Flags().Set("ignore-config", "true"); err != nil {
+		t.Fatalf("set ignore-config flag: %v", err)
+	}
+
+	if err := rt.InitConfig(cmd, false); err != nil {
+		t.Fatalf("InitConfig() error = %v", err)
+	}
+	if rt.UserConfigFile == "" {
+		t.Error("InitConfig() with --ignore-config did not resolve the user config path")
 	}
 }
 
@@ -294,5 +347,114 @@ func TestShellCompletions_ReturnDefaultValues(t *testing.T) {
 		if len(values) == 0 || directive != cobra.ShellCompDirectiveDefault {
 			t.Errorf("%s completion = %v, %v", name, values, directive)
 		}
+	}
+}
+
+// TestIOStreams_LoopYesNo verifies that LoopYesNo returns the user's yes or no
+// answer and prompts again after an invalid one.
+func TestIOStreams_LoopYesNo(t *testing.T) {
+	cases := []struct {
+		name      string
+		input     string
+		want      bool
+		wantCount int
+	}{
+		{
+			name:      "yes first try",
+			input:     "y\n",
+			want:      true,
+			wantCount: 1,
+		},
+		{
+			name:      "no first try",
+			input:     "n\n",
+			want:      false,
+			wantCount: 1,
+		},
+		{
+			name:      "invalid then no",
+			input:     "maybe\nn\n",
+			want:      false,
+			wantCount: 2,
+		},
+	}
+
+	for _, tt := range cases {
+		// Create per-iteration copy of test tt so that running
+		// tests in parallel does not reuse the same test for
+		// each run.
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			inBuf := bytes.NewBufferString(tc.input)
+			errBuf := &bytes.Buffer{}
+			ios := NewIOStreams(inBuf, io.Discard, errBuf)
+
+			got, err := ios.LoopYesNo("Proceed?")
+			if err != nil {
+				t.Fatalf("LoopYesNo() error = %v, want nil", err)
+			}
+			if got != tc.want {
+				t.Errorf("LoopYesNo() = %v, want %v", got, tc.want)
+			}
+
+			prompt := "Proceed? [yn]:"
+			if count := strings.Count(errBuf.String(), prompt); count != tc.wantCount {
+				t.Errorf("prompt count = %d, want %d", count, tc.wantCount)
+			}
+		})
+	}
+}
+
+type readError struct{ err error }
+
+func (r readError) Read([]byte) (int, error) { return 0, r.err }
+
+type writeError struct{ err error }
+
+func (w writeError) Write([]byte) (int, error) { return 0, w.err }
+
+// TestIOStreams_ConfirmCreate verifies that ConfirmCreate returns the user's
+// answer, prompts again after an invalid one, treats end of input as no, and
+// returns a failure to read the answer or write the prompt.
+func TestIOStreams_ConfirmCreate(t *testing.T) {
+	t.Parallel()
+
+	readErr := errors.New("read failed")
+	writeErr := errors.New("write failed")
+	tests := []struct {
+		name        string
+		input       io.Reader
+		stderr      io.Writer
+		want        bool
+		wantErr     error
+		wantPrompts int
+	}{
+		{name: "accepted", input: strings.NewReader("y\n"), stderr: &bytes.Buffer{}, want: true, wantPrompts: 1},
+		{name: "declined", input: strings.NewReader("n\n"), stderr: &bytes.Buffer{}, wantPrompts: 1},
+		{name: "invalid then accepted", input: strings.NewReader("perhaps\ny\n"), stderr: &bytes.Buffer{}, want: true, wantPrompts: 2},
+		{name: "EOF", input: strings.NewReader(""), stderr: &bytes.Buffer{}, wantPrompts: 1},
+		{name: "read failure", input: readError{err: readErr}, stderr: &bytes.Buffer{}, wantErr: readErr, wantPrompts: 1},
+		{name: "write failure", input: strings.NewReader("y\n"), stderr: writeError{err: writeErr}, wantErr: writeErr},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ios := NewIOStreams(tc.input, io.Discard, tc.stderr)
+			got, err := ios.ConfirmCreate("config.yaml")
+			if got != tc.want {
+				t.Errorf("ConfirmCreate() = %v, want %v", got, tc.want)
+			}
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("ConfirmCreate() error = %v, want %v", err, tc.wantErr)
+			}
+			if buf, ok := tc.stderr.(*bytes.Buffer); ok {
+				const prompt = "config.yaml does not exist. Create it? [yn]:"
+				if got := strings.Count(buf.String(), prompt); got != tc.wantPrompts {
+					t.Errorf("prompt count = %d, want %d; output %q", got, tc.wantPrompts, buf.String())
+				}
+			}
+		})
 	}
 }

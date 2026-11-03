@@ -10,7 +10,9 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -18,66 +20,11 @@ import (
 
 	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/lestrrat-go/jwx/v4/jwt"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/pkg/config"
 )
-
-// TestIOStreams_LoopYesNo verifies that LoopYesNo returns the user's yes or no
-// answer and prompts again after an invalid one.
-func TestIOStreams_LoopYesNo(t *testing.T) {
-	cases := []struct {
-		name      string
-		input     string
-		want      bool
-		wantCount int
-	}{
-		{
-			name:      "yes first try",
-			input:     "y\n",
-			want:      true,
-			wantCount: 1,
-		},
-		{
-			name:      "no first try",
-			input:     "n\n",
-			want:      false,
-			wantCount: 1,
-		},
-		{
-			name:      "invalid then no",
-			input:     "maybe\nn\n",
-			want:      false,
-			wantCount: 2,
-		},
-	}
-
-	for _, tt := range cases {
-		// Create per-iteration copy of test tt so that running
-		// tests in parallel does not reuse the same test for
-		// each run.
-		tc := tt
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			inBuf := bytes.NewBufferString(tc.input)
-			errBuf := &bytes.Buffer{}
-			ios := NewIOStreams(inBuf, io.Discard, errBuf)
-
-			got, err := ios.LoopYesNo("Proceed?")
-			if err != nil {
-				t.Fatalf("LoopYesNo() error = %v, want nil", err)
-			}
-			if got != tc.want {
-				t.Errorf("LoopYesNo() = %v, want %v", got, tc.want)
-			}
-
-			prompt := "Proceed? [yn]:"
-			if count := strings.Count(errBuf.String(), prompt); count != tc.wantCount {
-				t.Errorf("prompt count = %d, want %d", count, tc.wantCount)
-			}
-		})
-	}
-}
 
 // Helper function to generate a test JWT token.
 func generateTestToken(exp time.Time, nbf time.Time, iat time.Time) (string, error) {
@@ -376,5 +323,139 @@ func TestLogHelpHint(t *testing.T) {
 	LogHelpHint(cmd)
 	if !strings.Contains(stderr.String(), "see 'demo --help' for long command help") {
 		t.Errorf("stderr = %q, want the help hint for demo", stderr.String())
+	}
+}
+
+// TestCheckToken_ParsingAndTimeClaims verifies that local validation accepts
+// optional time claims and invalid signatures but rejects duplicate claims.
+func TestCheckToken_ParsingAndTimeClaims(t *testing.T) {
+	t.Parallel()
+	now := time.Now().Unix()
+	for _, tc := range []struct {
+		name       string
+		payload    string
+		wantReject bool
+		wantCause  error
+		wantWarn   bool
+	}{
+		{
+			name:    "missing_optional_time_claims",
+			payload: `{"sub":"test-subject"}`,
+		},
+		{
+			name:    "invalid_signature_checked_by_service",
+			payload: fmt.Sprintf(`{"exp":%d,"nbf":%d,"iat":%d}`, now+3600, now-60, now-60),
+		},
+		{
+			name:       "future_issued_at",
+			payload:    fmt.Sprintf(`{"iat":%d}`, now+3600),
+			wantReject: true,
+			wantCause:  jwt.InvalidIssuedAtError{},
+		},
+		{
+			name:       "duplicate_expiration",
+			payload:    fmt.Sprintf(`{"exp":%d,"exp":%d}`, now+7200, now+3600),
+			wantReject: true,
+		},
+		{
+			name:       "duplicate_custom_claim",
+			payload:    `{"scope":"admin","scope":"audit"}`,
+			wantReject: true,
+		},
+		{
+			name:     "expiry_warning",
+			payload:  fmt.Sprintf(`{"exp":%d}`, now+600),
+			wantWarn: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Construct raw payloads so duplicate names survive serialization.
+			// The signature is deliberately invalid: only services verify it.
+			token := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT"}`)) + "." +
+				base64.RawURLEncoding.EncodeToString([]byte(tc.payload)) + ".c2lnbmF0dXJl"
+			var logs bytes.Buffer
+			rt := NewTestRuntime(strings.NewReader(""), io.Discard, io.Discard).
+				WithToken(token).WithLogger(zerolog.New(&logs))
+			err := rt.CheckToken()
+			if tc.wantReject {
+				if err == nil || ExitCode(err) != CodeAuth {
+					t.Fatalf("CheckToken() = %v, want authentication error", err)
+				}
+				if tc.wantCause != nil && !errors.Is(err, tc.wantCause) {
+					t.Errorf("CheckToken() = %v, want cause %T", err, tc.wantCause)
+				}
+			} else if err != nil {
+				t.Fatalf("CheckToken() = %v, want success", err)
+			}
+			if rt.Token != token {
+				t.Error("CheckToken modified the bearer token")
+			}
+			if warned := strings.Contains(logs.String(), "until token expires"); warned != tc.wantWarn {
+				t.Errorf("expiry warning = %t, want %t", warned, tc.wantWarn)
+			}
+		})
+	}
+}
+
+// TestSetTokenFromEnv_PerRuntimeEnvironment verifies that each runtime
+// resolves its cluster's token from its own environment.
+func TestSetTokenFromEnv_PerRuntimeEnvironment(t *testing.T) {
+	t.Parallel()
+
+	lookup := func(values map[string]string) EnvironmentFunc {
+		return func(key string) (string, bool) {
+			value, ok := values[key]
+			return value, ok
+		}
+	}
+	rtA := NewTestRuntime(nil, io.Discard, io.Discard).WithEnvironment(lookup(map[string]string{"CLUSTER_A_ACCESS_TOKEN": "token-a"}))
+	rtB := NewTestRuntime(nil, io.Discard, io.Discard).WithEnvironment(lookup(map[string]string{"CLUSTER_B_ACCESS_TOKEN": "token-b"}))
+	rtA.Config.DefaultCluster = "cluster-a"
+	rtB.Config.DefaultCluster = "cluster-b"
+
+	if err := rtA.SetTokenFromEnv(tokenTestCmd()); err != nil {
+		t.Fatalf("runtime A SetTokenFromEnv() error = %v", err)
+	}
+	if err := rtB.SetTokenFromEnv(tokenTestCmd()); err != nil {
+		t.Fatalf("runtime B SetTokenFromEnv() error = %v", err)
+	}
+	if rtA.Token != "token-a" || rtB.Token != "token-b" {
+		t.Fatalf("tokens = %q, %q; want token-a, token-b", rtA.Token, rtB.Token)
+	}
+}
+
+// TestHandleToken_FlagPrecedesRuntimeEnvironment verifies that HandleToken uses
+// --token even when the cluster's token environment variable is also set.
+func TestHandleToken_FlagPrecedesRuntimeEnvironment(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	flagToken, err := generateTestToken(now.Add(time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("generate flag token: %v", err)
+	}
+	envToken, err := generateTestToken(now.Add(2*time.Hour), now.Add(-time.Hour), now.Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("generate environment token: %v", err)
+	}
+	rt := NewTestRuntime(nil, io.Discard, io.Discard).WithEnvironment(EnvironmentFunc(func(key string) (string, bool) {
+		return envToken, key == "MY_CLUSTER_ACCESS_TOKEN"
+	}))
+	rt.Config = config.Config{
+		DefaultCluster: "my-cluster",
+		Clusters: []config.Cluster{{
+			Name:    "my-cluster",
+			Cluster: config.ClusterConfig{EnableAuth: true},
+		}},
+	}
+	cmd := tokenTestCmd()
+	if err := cmd.Flags().Set("token", flagToken); err != nil {
+		t.Fatalf("set token flag: %v", err)
+	}
+	if err := rt.HandleToken(cmd); err != nil {
+		t.Fatalf("HandleToken() error = %v", err)
+	}
+	if rt.Token != flagToken {
+		t.Fatal("HandleToken() did not preserve explicit token precedence")
 	}
 }

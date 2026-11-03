@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -40,6 +42,19 @@ func writeJSONResponse(t *testing.T, w http.ResponseWriter, value any) {
 	if err := json.NewEncoder(w).Encode(value); err != nil {
 		t.Errorf("encode test response: %v", err)
 	}
+}
+
+// writeTempConfig creates an (empty) YAML config file in a temp dir and returns
+// its path. Pre-creating the file avoids the interactive "create it?" prompt in
+// commands that write config.
+func writeTempConfig(t *testing.T, contents string) string {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatalf("failed to write temp config: %v", err)
+	}
+	return path
 }
 
 // cmdResult captures everything a command-level test needs to assert on after

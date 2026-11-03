@@ -4,13 +4,13 @@
 
 package cmd
 
-// discover_static_test.go exercises "ochami discover static", which reads a
+// discover_test.go exercises "ochami discover static", which reads a
 // discovery payload and populates SMD by POSTing components, redfish endpoints,
 // and groups, against an httptest.Server standing in for SMD: the default path,
 // the --overwrite 409-then-fallback loops (redfish PUT, ethernet-interface
 // PATCH, group PATCH), the discovery-version v1 ethernet-interface path, stdin
-// input, and the deprecated discovery format. Error-arm cases live in
-// discover_static_errors_test.go.
+// input, the deprecated discovery format, and that flag state stays local to
+// each command instance. Error-arm cases live in discover_errors_test.go.
 
 import (
 	"net/http"
@@ -19,6 +19,7 @@ import (
 	"sync"
 	"testing"
 
+	discover_static "github.com/openchami/ochami/cmd/discover/static"
 	"github.com/openchami/ochami/internal/cli"
 )
 
@@ -361,5 +362,21 @@ func TestDiscoverStatic_Help(t *testing.T) {
 	}
 	if !strings.Contains(res.stdout, "Populate SMD") {
 		t.Errorf("expected help to describe the command, got: %s", res.stdout)
+	}
+}
+
+// TestDiscoverStatic_FlagStateIsLocal verifies one command invocation cannot
+// change the default discovery version of a subsequently constructed command.
+func TestDiscoverStatic_FlagStateIsLocal(t *testing.T) {
+	t.Parallel()
+
+	first := discover_static.NewCmd()
+	if err := first.Flags().Set("discovery-version", "1"); err != nil {
+		t.Fatalf("set first discovery version: %v", err)
+	}
+
+	second := discover_static.NewCmd()
+	if got := second.Flags().Lookup("discovery-version").Value.String(); got != "2" {
+		t.Errorf("second command discovery version = %q, want default 2", got)
 	}
 }

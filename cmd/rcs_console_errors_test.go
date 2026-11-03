@@ -4,10 +4,10 @@
 
 package cmd
 
-// rcs_errors_test.go covers failure paths for the "rcs" command group:
-// unsuccessful HTTP responses, and a console connection without a node ID, with
-// its websocket upgrade rejected, or without a token; see rcs_test.go for the
-// success paths these mirror.
+// rcs_console_errors_test.go covers failure paths for the "rcs console"
+// commands: unsuccessful HTTP responses, and a console connection without a
+// node ID, with its websocket upgrade rejected, or without a token; see
+// rcs_console_test.go for the success paths these mirror.
 
 import (
 	"net/http"

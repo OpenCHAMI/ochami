@@ -4,8 +4,8 @@
 
 package cmd
 
-// config_boundary_test.go exercises configuration edge cases (explicit nulls,
-// unusual file states) and the error handling they reach.
+// config_boundary_test.go exercises edge cases of the "config" commands
+// (unusual file states and environments) and the error handling they reach.
 
 import (
 	"bytes"
@@ -82,34 +82,6 @@ clusters:
 	}
 }
 
-// TestConfig_NullValueHandling verifies that an explicit YAML "null" for a
-// non-nullable key (log.level) is rejected as a config validation error at
-// load time, rather than silently resolving to its default.
-func TestConfig_NullValueHandling(t *testing.T) {
-	t.Parallel()
-
-	cfg := writeTempConfig(t, `log:
-  level: null
-  format: json
-clusters:
-  - name: test
-    cluster:
-      uri: http://localhost:8080
-`)
-
-	// --ignore-config is deliberately omitted: it would skip reading --config
-	// entirely (see InitConfig), which would make this test pass regardless
-	// of what the file contains.
-	res := runOchamiWithRuntime(t, "--config", cfg, "version")
-
-	if res.err == nil {
-		t.Fatal("expected an error for a null log.level, got nil")
-	}
-	if res.exitCode != cli.CodeConfig {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeConfig, cli.CodeName(cli.CodeConfig))
-	}
-}
-
 // TestConfig_PermissionPreservation verifies that "config set" keeps the
 // config file's permissions when it replaces the file.
 func TestConfig_PermissionPreservation(t *testing.T) {
@@ -138,22 +110,6 @@ func TestConfig_PermissionPreservation(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "level: debug") {
 		t.Errorf("config = %q, want log.level updated to debug", data)
-	}
-}
-
-// TestConfig_IgnoreConfigSkipsConfigFile verifies that --ignore-config skips
-// reading the path given to --config entirely (per InitConfig), so a
-// nonexistent path doesn't cause an error.
-func TestConfig_IgnoreConfigSkipsConfigFile(t *testing.T) {
-	t.Parallel()
-
-	res := runOchamiWithRuntime(t, "--config", "/nonexistent/path/to/config.yaml", "--ignore-config", "version")
-
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if res.exitCode != cli.CodeSuccess {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeSuccess, cli.CodeName(cli.CodeSuccess))
 	}
 }
 

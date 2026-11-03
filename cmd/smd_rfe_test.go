@@ -216,3 +216,71 @@ func TestSMDRFEDelete_AllFalse(t *testing.T) {
 		t.Errorf("DELETE paths = %v, want [%s]", gotPaths, want)
 	}
 }
+
+// TestSMDRFEGet_Success verifies "smd rfe get" issues GET /Inventory/RedfishEndpoints.
+func TestSMDRFEGet_Success(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotMethod = r.Method
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "rfe", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/Inventory/RedfishEndpoints" {
+		t.Errorf("path = %q, want /Inventory/RedfishEndpoints", gotPath)
+	}
+	if gotMethod != http.MethodGet {
+		t.Errorf("method = %q, want GET", gotMethod)
+	}
+}
+
+// TestSMDRFEAdd_ViaArgs verifies "smd rfe add <xname> <name> <ip> <mac>" issues
+// POST /Inventory/RedfishEndpoints.
+func TestSMDRFEAdd_ViaArgs(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "rfe", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"x0c0s0b0", "bmc0", "172.16.0.100", "de:ad:be:ef:01:02")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/Inventory/RedfishEndpoints" {
+		t.Errorf("request = %s %s, want POST /Inventory/RedfishEndpoints", gotMethod, gotPath)
+	}
+}
+
+// TestSMDRFEDelete_NoConfirm verifies "smd rfe delete --no-confirm" issues a
+// DELETE.
+func TestSMDRFEDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		w.Write([]byte(`{"code":0,"message":"ok"}`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "rfe", "delete", "x0c0s0b0",
+		"--uri", srv.URL, "--token", "t", "--no-confirm")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodDelete {
+		t.Errorf("method = %q, want DELETE", gotMethod)
+	}
+}

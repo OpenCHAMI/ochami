@@ -101,3 +101,23 @@ func TestSMDGroupMember_NetworkErrors(t *testing.T) {
 		t.Errorf("member get network: err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
 	}
 }
+
+// TestSMDGroupMemberAdd_HTTPError verifies an unsuccessful HTTP response
+// resolves to CodeHTTP.
+func TestSMDGroupMemberAdd_HTTPError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "conflict", http.StatusConflict)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "group", "member", "add", "compute", "x0c0s0b0n0",
+		"--uri", srv.URL, "--token", "t")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}

@@ -152,3 +152,54 @@ func TestSMDCompepDelete_AllFalse(t *testing.T) {
 		t.Errorf("DELETE paths = %v, want [%s]", gotPaths, want)
 	}
 }
+
+// TestSMDCompepGet_Success verifies "smd compep get" issues GET
+// /Inventory/ComponentEndpoints.
+func TestSMDCompepGet_Success(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotMethod = r.Method
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "compep", "get", "--ignore-config", "--uri", srv.URL, "--token", "t")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotPath != "/Inventory/ComponentEndpoints" {
+		t.Errorf("path = %q, want /Inventory/ComponentEndpoints", gotPath)
+	}
+	if gotMethod != http.MethodGet {
+		t.Errorf("method = %q, want GET", gotMethod)
+	}
+}
+
+// TestSMDCompepDelete_NoConfirm verifies "smd compep delete --no-confirm <xname>"
+// issues DELETE under /Inventory/ComponentEndpoints.
+func TestSMDCompepDelete_NoConfirm(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "smd", "compep", "delete", "--ignore-config", "--uri", srv.URL, "--token", "t",
+		"--no-confirm", "x0c0s0b0n0")
+	if res.err != nil {
+		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+	}
+	if gotMethod != http.MethodDelete {
+		t.Errorf("method = %q, want DELETE", gotMethod)
+	}
+	if gotPath != "/Inventory/ComponentEndpoints/x0c0s0b0n0" {
+		t.Errorf("path = %q, want /Inventory/ComponentEndpoints/x0c0s0b0n0", gotPath)
+	}
+}

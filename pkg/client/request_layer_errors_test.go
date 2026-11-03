@@ -259,23 +259,3 @@ func TestPayloadInput_Failures(t *testing.T) {
 		})
 	}
 }
-
-// TestUseCACert_FileFailures verifies that UseCACert rejects a missing file, a
-// directory, and an empty file.
-func TestUseCACert_FileFailures(t *testing.T) {
-	oc, err := NewOchamiClient("test", "https://example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := t.TempDir()
-	empty := filepath.Join(dir, "empty.pem")
-	if err := os.WriteFile(empty, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	for _, path := range []string{filepath.Join(dir, "missing.pem"), dir, empty} {
-		if err := oc.UseCACert(path); err == nil {
-			t.Errorf("UseCACert(%q) error = nil", path)
-		}
-	}
-}

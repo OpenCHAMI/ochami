@@ -10,11 +10,11 @@ import (
 	"testing"
 )
 
-// TestFile_FailedWriteLeavesStateUnchanged verifies that when a mutating
+// TestFileUpdate_FailedWriteLeavesStateUnchanged verifies that when a mutating
 // method's write fails, neither the file on disk nor the File's in-memory
 // state reflects the attempted change: the mutation is staged on a clone that
 // is discarded on failure.
-func TestFile_FailedWriteLeavesStateUnchanged(t *testing.T) {
+func TestFileUpdate_FailedWriteLeavesStateUnchanged(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "config.yaml")
@@ -57,10 +57,10 @@ func TestFile_FailedWriteLeavesStateUnchanged(t *testing.T) {
 	}
 }
 
-// TestFile_FailedUpdateLeavesStateUnchanged verifies that a batched Update
+// TestFileUpdate_FailedBatchLeavesStateUnchanged verifies that a batched Update
 // whose final write fails leaves the File's in-memory state exactly as it was
 // before Update, so none of the batch's staged mutations survive.
-func TestFile_FailedUpdateLeavesStateUnchanged(t *testing.T) {
+func TestFileUpdate_FailedBatchLeavesStateUnchanged(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "config.yaml")
@@ -95,10 +95,10 @@ func TestFile_FailedUpdateLeavesStateUnchanged(t *testing.T) {
 	}
 }
 
-// TestFile_RejectedMutationLeavesNoStagedState verifies that a mutation that
-// rejects its input leaves no working copy behind, so a later mutation starts
-// from the committed state.
-func TestFile_RejectedMutationLeavesNoStagedState(t *testing.T) {
+// TestFileUpdate_RejectedMutationLeavesNoStagedState verifies that a mutation
+// that rejects its input leaves no working copy behind, so a later mutation
+// starts from the committed state.
+func TestFileUpdate_RejectedMutationLeavesNoStagedState(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "config.yaml")
@@ -129,11 +129,11 @@ func TestFile_RejectedMutationLeavesNoStagedState(t *testing.T) {
 	}
 }
 
-// TestFile_DirectorySyncFailureKeepsStateWithFile verifies that when the new
-// contents replace the file but syncing its directory fails, the mutation
+// TestFileUpdate_DirectorySyncFailureKeepsStateWithFile verifies that when the
+// new contents replace the file but syncing its directory fails, the mutation
 // returns the error and f's in-memory state matches the replaced file, so a
 // later write doesn't undo the change.
-func TestFile_DirectorySyncFailureKeepsStateWithFile(t *testing.T) {
+func TestFileUpdate_DirectorySyncFailureKeepsStateWithFile(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "config.yaml")
