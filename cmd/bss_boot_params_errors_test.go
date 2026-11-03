@@ -107,29 +107,13 @@ func TestBSSBootParamsUpdate_HTTPError(t *testing.T) {
 	}
 }
 
-// TestBSSBootParamsDelete_MissingSelector verifies delete without -d and without
-// a component selector is a usage error.
+// TestBSSBootParamsDelete_MissingSelector verifies delete without -d and
+// without any component or boot config flag is a usage error.
 func TestBSSBootParamsDelete_MissingSelector(t *testing.T) {
 	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "delete",
 		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm")
-	if res.err == nil {
-		t.Fatal("expected a usage error, got nil")
-	}
-	if res.exitCode != cli.CodeUsage {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
-	}
-}
-
-// TestBSSBootParamsDelete_MissingConfig verifies delete with a component selector
-// but no config selector is a usage error.
-func TestBSSBootParamsDelete_MissingConfig(t *testing.T) {
-	t.Parallel()
-
-	res := runOchamiWithRuntime(t, "bss", "boot", "params", "delete",
-		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm",
-		"--mac", "de:ad:be:ef:00:00")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
 	}

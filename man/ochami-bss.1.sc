@@ -150,7 +150,7 @@ Subcommands for this command are as follows:
 	*--params* _kernel_params_
 		Command line arguments to pass to kernel for components.
 
-*delete* [--no-confirm] ([--mac, _mac_,...] [--nid, _nid_,...] [--xname _xname_,...] [--kernel _kernel_] [--initrd _initrd_])++
+*delete* [--no-confirm] ([--mac, _mac_,...] [--nid, _nid_,...] [--xname _xname_,...] [--kernel _kernel_] [--initrd _initrd_] [--params _params_])++
 *delete* [--no-confirm] -d _data_ [-f _format_]++
 *delete* [--no-confirm] -d @_file_ [-f _format_]++
 *delete* [--no-confirm] -d @- [-f _format_]
@@ -160,11 +160,13 @@ Subcommands for this command are as follows:
 	to confirm deletion.
 
 	In the first form of the command, one or more of *--mac*, *--nid*,
-	*--xname*, *--kernel*, or *--initrd* is required to identify which
-	component(s) whose boot parameters to delete. For any of these options,
-	multiple arguments can be passed either by specifying the flag multiple
-	times (e.g. *--mac* _mac1_ *--mac* _mac2_) or by using one flag and
-	separating each argument by commas (e.g. *--mac* _mac1_,_mac2_).
+	*--xname*, *--kernel*, *--initrd*, or *--params* is required to identify
+	which boot parameters to delete, either by component (*--mac*, *--nid*,
+	*--xname*) or by boot configuration (*--kernel*, *--initrd*, *--params*).
+	For *--mac*, *--nid*, and *--xname*, multiple arguments can be passed
+	either by specifying the flag multiple times (e.g. *--mac* _mac1_ *--mac*
+	_mac2_) or by using one flag and separating each argument by commas (e.g.
+	*--mac* _mac1_,_mac2_).
 
 	In the second form of the command, raw data is passed as an argument to be
 	the payload.

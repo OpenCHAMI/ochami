@@ -125,14 +125,11 @@ See ochami-bss(1) for more details.`,
 				if anyChanged("xname", "nid", "mac", "kernel", "initrd", "params") {
 					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring CLI configuration")
 				}
-			} else {
-				// If -d/--data not passed, then at least one of --xname/--nid/--mac must
-				// be specified, along with at least one of --kernel/--initrd/--params
-				if !anyChanged("xname", "nid", "mac") {
-					return cli.Errorf(cli.CodeUsage, "expected -d or one of --xname, --nid, or --mac")
-				} else if !anyChanged("kernel", "initrd", "params") {
-					return cli.Errorf(cli.CodeUsage, "specifying any of --xname, --nid, or --mac also requires specifying at least one of --kernel, --initrd, or --params")
-				}
+			} else if !anyChanged("xname", "nid", "mac", "kernel", "initrd", "params") {
+				// If -d/--data not passed, then boot parameters can be deleted
+				// by component (--xname/--nid/--mac) or by config
+				// (--kernel/--initrd/--params), so any one of them is enough
+				return cli.Errorf(cli.CodeUsage, "expected -d or at least one of --xname, --nid, --mac, --kernel, --initrd, or --params")
 			}
 
 			return nil

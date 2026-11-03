@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -414,6 +415,62 @@ func TestBSSBootParamsDelete_ByFlags(t *testing.T) {
 	}
 	if gotMethod != http.MethodDelete {
 		t.Errorf("method = %q, want DELETE", gotMethod)
+	}
+}
+
+// TestBSSBootParamsDelete_OneFlag verifies "delete --no-confirm" accepts a
+// lone component selector or a lone boot config flag, and sends a DELETE
+// whose body carries that field and leaves the others empty.
+func TestBSSBootParamsDelete_OneFlag(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		flag       string
+		value      string
+		wantMacs   []string
+		wantKernel string
+	}{
+		{"mac", "--mac", "de:ad:be:ef:00:00", []string{"de:ad:be:ef:00:00"}, ""},
+		{"kernel", "--kernel", "https://example.com/vmlinuz", nil, "https://example.com/vmlinuz"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotMethod string
+			var gotBody []byte
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotMethod = r.Method
+				var err error
+				gotBody, err = io.ReadAll(r.Body)
+				if err != nil {
+					t.Errorf("read request body: %v", err)
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithRuntime(t, "bss", "boot", "params", "delete",
+				"--ignore-config", "--uri", srv.URL, "--token", "t", "--no-confirm",
+				tt.flag, tt.value)
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if gotMethod != http.MethodDelete {
+				t.Errorf("method = %q, want DELETE", gotMethod)
+			}
+			var bp struct {
+				Macs   []string `json:"macs"`
+				Kernel string   `json:"kernel"`
+			}
+			if err := json.Unmarshal(gotBody, &bp); err != nil {
+				t.Fatalf("failed to unmarshal body %q: %v", string(gotBody), err)
+			}
+			if !slices.Equal(bp.Macs, tt.wantMacs) || bp.Kernel != tt.wantKernel {
+				t.Errorf("body macs = %v, kernel = %q; want %v, %q", bp.Macs, bp.Kernel, tt.wantMacs, tt.wantKernel)
+			}
+		})
 	}
 }
 
