@@ -390,7 +390,7 @@ func TestIOStreams_LoopYesNo(t *testing.T) {
 			errBuf := &bytes.Buffer{}
 			ios := NewIOStreams(inBuf, io.Discard, errBuf)
 
-			got, err := ios.LoopYesNo("Proceed?")
+			got, err := ios.LoopYesNo(context.Background(), "Proceed?")
 			if err != nil {
 				t.Fatalf("LoopYesNo() error = %v, want nil", err)
 			}
@@ -403,6 +403,31 @@ func TestIOStreams_LoopYesNo(t *testing.T) {
 				t.Errorf("prompt count = %d, want %d", count, tc.wantCount)
 			}
 		})
+	}
+}
+
+// TestIOStreams_InContext verifies that the reader InContext returns passes
+// input and end of input through unchanged, even to a caller that reads in
+// pieces smaller than the underlying reads.
+func TestIOStreams_InContext(t *testing.T) {
+	t.Parallel()
+
+	ios := NewIOStreams(strings.NewReader("hello, world"), io.Discard, io.Discard)
+	r := ios.InContext(context.Background())
+	var got []byte
+	buf := make([]byte, 5)
+	for {
+		n, err := r.Read(buf)
+		got = append(got, buf[:n]...)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Read() error = %v, want nil or io.EOF", err)
+		}
+	}
+	if string(got) != "hello, world" {
+		t.Errorf("read %q, want %q", got, "hello, world")
 	}
 }
 
@@ -442,7 +467,7 @@ func TestIOStreams_ConfirmCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ios := NewIOStreams(tc.input, io.Discard, tc.stderr)
-			got, err := ios.ConfirmCreate("config.yaml")
+			got, err := ios.ConfirmCreate(context.Background(), "config.yaml")
 			if got != tc.want {
 				t.Errorf("ConfirmCreate() = %v, want %v", got, tc.want)
 			}

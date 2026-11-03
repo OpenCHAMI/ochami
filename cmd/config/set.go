@@ -61,7 +61,7 @@ See ochami-config(5) for details on the configuration options.`,
 			}
 
 			// Ask to create file if it doesn't exist.
-			if create, err := rt.AskToCreate(fileToModify); err != nil {
+			if create, err := rt.AskToCreate(cmd.Context(), fileToModify); err != nil {
 				if !errors.Is(err, cli.ErrFileExists) {
 					return cli.Errorf(cli.CodeConfig, "error asking to create file: %w", err)
 				}

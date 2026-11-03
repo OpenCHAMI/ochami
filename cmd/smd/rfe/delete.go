@@ -29,9 +29,9 @@ func runCoreRfeDelete(cmd *cobra.Command, opts *rfeDeleteOptions, args []string,
 		var respDelete bool
 		var err error
 		if opts.All {
-			respDelete, err = rt.Ios.LoopYesNo("Really delete ALL REDFISH ENDPOINTS?")
+			respDelete, err = rt.Ios.LoopYesNo(cmd.Context(), "Really delete ALL REDFISH ENDPOINTS?")
 		} else {
-			respDelete, err = rt.Ios.LoopYesNo("Really delete?")
+			respDelete, err = rt.Ios.LoopYesNo(cmd.Context(), "Really delete?")
 		}
 		if err != nil {
 			return cli.Errorf(cli.CodeGeneric, "error fetching user input: %w", err)

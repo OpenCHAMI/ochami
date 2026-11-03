@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -96,6 +97,131 @@ type errorReader struct{ err error }
 
 func (r errorReader) Read([]byte) (int, error) { return 0, r.err }
 
+// gatedReader blocks every Read until a value arrives on its channel, then
+// returns that value, simulating a terminal no one is typing into.
+type gatedReader struct{ lines chan string }
+
+func (r gatedReader) Read(p []byte) (int, error) {
+	line, ok := <-r.lines
+	if !ok {
+		return 0, io.EOF
+	}
+	return copy(p, line), nil
+}
+
+// cancelDeadline bounds how long a cancelled read may take to return.
+const cancelDeadline = 5 * time.Second
+
+// TestIOStreams_LoopYesNoCancelled verifies that cancelling the context
+// returns a prompt blocked on input with context.Canceled, rather than an
+// answer of no, and ends the prompt line.
+func TestIOStreams_LoopYesNoCancelled(t *testing.T) {
+	t.Parallel()
+
+	errBuf := &bytes.Buffer{}
+	ios := NewIOStreams(gatedReader{make(chan string)}, io.Discard, errBuf)
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(10*time.Millisecond, cancel)
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := ios.LoopYesNo(ctx, "Proceed?")
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("LoopYesNo() error = %v, want context.Canceled", err)
+		}
+	case <-time.After(cancelDeadline):
+		t.Fatal("LoopYesNo() did not return after its context was cancelled")
+	}
+	if got, want := errBuf.String(), "Proceed? [yn]:\n"; got != want {
+		t.Errorf("stderr = %q, want %q", got, want)
+	}
+}
+
+// TestIOStreams_InContextCancelled verifies that a Read abandoned when the
+// context is cancelled delivers its input to the next Read instead of losing
+// it.
+func TestIOStreams_InContextCancelled(t *testing.T) {
+	t.Parallel()
+
+	in := gatedReader{make(chan string, 1)}
+	ios := NewIOStreams(in, io.Discard, io.Discard)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	r := ios.InContext(ctx)
+	buf := make([]byte, 8)
+	if _, err := r.Read(buf); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Read() error = %v, want context.Canceled", err)
+	}
+
+	// The abandoned Read is still waiting on input; a reader with a live
+	// context sharing its state must not lose what it eventually reads.
+	cr := r.(*contextReader)
+	cr.ctx = context.Background()
+	in.lines <- "late"
+	n, err := r.Read(buf)
+	if err != nil || string(buf[:n]) != "late" {
+		t.Errorf("Read() = %q, %v; want %q, nil", buf[:n], err, "late")
+	}
+}
+
+// TestRuntimeHandlePayload_StdinCancelled verifies that cancelling the
+// command's context returns a payload read blocked on standard input.
+func TestRuntimeHandlePayload_StdinCancelled(t *testing.T) {
+	t.Parallel()
+
+	rt := NewTestRuntime(gatedReader{make(chan string)}, io.Discard, io.Discard)
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(10*time.Millisecond, cancel)
+
+	tests := []struct {
+		name string
+		read func(cmd *cobra.Command) error
+	}{
+		{name: "data @-", read: func(cmd *cobra.Command) error {
+			var v map[string]any
+			return rt.HandlePayload(cmd, &v)
+		}},
+		{name: "stdin", read: func(cmd *cobra.Command) error {
+			var v map[string]any
+			return rt.HandlePayloadStdin(cmd, &v)
+		}},
+		{name: "slice data @-", read: func(cmd *cobra.Command) error {
+			var v []map[string]any
+			return HandlePayloadSlice(rt, cmd, &v)
+		}},
+		{name: "slice stdin", read: func(cmd *cobra.Command) error {
+			var v []map[string]any
+			return HandlePayloadStdinSlice(rt, cmd, &v)
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := &cobra.Command{}
+			cmd.Flags().String("data", "", "")
+			if err := cmd.Flags().Set("data", "@-"); err != nil {
+				t.Fatalf("set data flag: %v", err)
+			}
+			cmd.SetContext(ctx)
+
+			done := make(chan error, 1)
+			go func() { done <- tc.read(cmd) }()
+			select {
+			case err := <-done:
+				if !errors.Is(err, context.Canceled) {
+					t.Fatalf("error = %v, want context.Canceled", err)
+				}
+			case <-time.After(cancelDeadline):
+				t.Fatal("payload read did not return after its context was cancelled")
+			}
+		})
+	}
+}
+
 // TestIOStreams_Errors verifies that LoopYesNo returns prompt-write and
 // input-read failures, and that WriteOutput reports a writer that writes too
 // few or too many bytes as io.ErrShortWrite.
@@ -105,13 +231,13 @@ func TestIOStreams_Errors(t *testing.T) {
 	sentinel := errors.New("stream failure")
 	t.Run("prompt writer", func(t *testing.T) {
 		ios := NewIOStreams(strings.NewReader("y\n"), io.Discard, errorWriter{sentinel})
-		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+		if _, err := ios.LoopYesNo(context.Background(), "Proceed?"); !errors.Is(err, sentinel) {
 			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
 		}
 	})
 	t.Run("input reader", func(t *testing.T) {
 		ios := NewIOStreams(errorReader{sentinel}, io.Discard, io.Discard)
-		if _, err := ios.LoopYesNo("Proceed?"); !errors.Is(err, sentinel) {
+		if _, err := ios.LoopYesNo(context.Background(), "Proceed?"); !errors.Is(err, sentinel) {
 			t.Fatalf("LoopYesNo() error = %v, want stream failure", err)
 		}
 	})
