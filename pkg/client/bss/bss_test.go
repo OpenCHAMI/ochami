@@ -12,12 +12,15 @@ package bss
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	bssTypes "github.com/openchami/bss/pkg/bssTypes"
+
+	"github.com/openchami/ochami/pkg/client"
 )
 
 // newTestBSS starts an httptest.Server with the given handler and returns a
@@ -131,6 +134,60 @@ func TestPutPatchDeleteBootParams(t *testing.T) {
 			}
 			if gotPath != "/bootparameters" {
 				t.Errorf("path = %q, want /bootparameters", gotPath)
+			}
+		})
+	}
+}
+
+// TestBootParamsBatch verifies that each *BootParamsBatch method sends one
+// request per BootParams, in order, with the matching HTTP method, and returns
+// one result per item, aligned with its input.
+func TestBootParamsBatch(t *testing.T) {
+	cases := []struct {
+		name       string
+		call       func(*BSSClient, []bssTypes.BootParams) client.BatchResult[client.HTTPEnvelope]
+		wantMethod string
+	}{
+		{"post", func(bc *BSSClient, bps []bssTypes.BootParams) client.BatchResult[client.HTTPEnvelope] {
+			return bc.PostBootParamsBatch(context.Background(), bps, "tok")
+		}, http.MethodPost},
+		{"put", func(bc *BSSClient, bps []bssTypes.BootParams) client.BatchResult[client.HTTPEnvelope] {
+			return bc.PutBootParamsBatch(context.Background(), bps, "tok")
+		}, http.MethodPut},
+		{"patch", func(bc *BSSClient, bps []bssTypes.BootParams) client.BatchResult[client.HTTPEnvelope] {
+			return bc.PatchBootParamsBatch(context.Background(), bps, "tok")
+		}, http.MethodPatch},
+		{"delete", func(bc *BSSClient, bps []bssTypes.BootParams) client.BatchResult[client.HTTPEnvelope] {
+			return bc.DeleteBootParamsBatch(context.Background(), bps, "tok")
+		}, http.MethodDelete},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotKernels []string
+			bc, srv := newTestBSS(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != tc.wantMethod {
+					t.Errorf("method = %s, want %s", r.Method, tc.wantMethod)
+				}
+				var bp bssTypes.BootParams
+				if err := json.NewDecoder(r.Body).Decode(&bp); err != nil {
+					t.Errorf("decode body: %v", err)
+				}
+				gotKernels = append(gotKernels, bp.Kernel)
+				// Fail the second item to check that results stay aligned
+				if bp.Kernel == "k2" {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			})
+			defer srv.Close()
+
+			results := tc.call(bc, []bssTypes.BootParams{{Kernel: "k1"}, {Kernel: "k2"}})
+			if len(gotKernels) != 2 || gotKernels[0] != "k1" || gotKernels[1] != "k2" {
+				t.Errorf("request kernels = %v, want [k1 k2]", gotKernels)
+			}
+			if len(results) != 2 || results[0].Err != nil || !errors.Is(results[1].Err, client.UnsuccessfulHTTPError) {
+				t.Errorf("results = %v, want success then an unsuccessful HTTP error", results)
 			}
 		})
 	}

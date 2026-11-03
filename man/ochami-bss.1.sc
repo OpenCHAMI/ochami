@@ -121,6 +121,9 @@ Subcommands for this command are as follows:
 		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
 		*--initrd*, or *--params*.
 
+		The payload can hold one boot parameters object or an array of them.
+		Each object is sent in its own request.
+
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats
 		are:
@@ -192,6 +195,9 @@ Subcommands for this command are as follows:
 
 		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
 		*--initrd*, or *--params*.
+
+		The payload can hold one boot parameters object or an array of them.
+		Each object is sent in its own request.
 
 	*--no-confirm*
 		Do not ask the user to confirm deletion. Use with caution.
@@ -299,6 +305,9 @@ Subcommands for this command are as follows:
 		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
 		*--initrd*, or *--params*.
 
+		The payload can hold one boot parameters object or an array of them.
+		Each object is sent in its own request.
+
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats
 		are:
@@ -366,6 +375,9 @@ Subcommands for this command are as follows:
 
 		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
 		*--initrd*, or *--params*.
+
+		The payload can hold one boot parameters object or an array of them.
+		Each object is sent in its own request.
 
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats

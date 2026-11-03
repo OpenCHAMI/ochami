@@ -435,6 +435,62 @@ func TestBSSBootParamsDelete_Confirm(t *testing.T) {
 	}
 }
 
+// TestBSSBootParams_PayloadArray verifies that add, set, update, and delete
+// accept a -d payload holding an array of boot parameters, in JSON or YAML,
+// and send one request per element, in order.
+func TestBSSBootParams_PayloadArray(t *testing.T) {
+	t.Parallel()
+
+	const (
+		jsonPayload = `[{"macs":["de:ad:be:ef:00:00"],"kernel":"k1"},{"macs":["de:ad:be:ef:00:01"],"kernel":"k2"}]`
+		yamlPayload = "- macs: [de:ad:be:ef:00:00]\n  kernel: k1\n- macs: [de:ad:be:ef:00:01]\n  kernel: k2\n"
+	)
+	tests := []struct {
+		name       string
+		verb       string
+		args       []string
+		status     int
+		wantMethod string
+	}{
+		{"add", "add", []string{"-d", jsonPayload}, http.StatusCreated, http.MethodPost},
+		{"set", "set", []string{"-d", jsonPayload}, http.StatusOK, http.MethodPut},
+		{"set yaml", "set", []string{"-d", yamlPayload, "-f", "yaml"}, http.StatusOK, http.MethodPut},
+		{"update", "update", []string{"-d", jsonPayload}, http.StatusOK, http.MethodPatch},
+		{"delete", "delete", []string{"-d", jsonPayload, "--no-confirm"}, http.StatusOK, http.MethodDelete},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotKernels []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != tt.wantMethod {
+					t.Errorf("method = %q, want %s", r.Method, tt.wantMethod)
+				}
+				var bp struct {
+					Kernel string `json:"kernel"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&bp); err != nil {
+					t.Errorf("decode request body: %v", err)
+				}
+				gotKernels = append(gotKernels, bp.Kernel)
+				w.WriteHeader(tt.status)
+			}))
+			defer srv.Close()
+
+			args := append([]string{"bss", "boot", "params", tt.verb,
+				"--ignore-config", "--uri", srv.URL, "--token", "t"}, tt.args...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if !slices.Equal(gotKernels, []string{"k1", "k2"}) {
+				t.Errorf("request kernels = %v, want [k1 k2]", gotKernels)
+			}
+		})
+	}
+}
+
 // TestBSSBootParamsSet_Success verifies "bss boot params set" issues PUT /bootparameters.
 func TestBSSBootParamsSet_Success(t *testing.T) {
 	t.Parallel()

@@ -6,7 +6,6 @@
 package params
 
 import (
-	"github.com/openchami/bss/pkg/bssTypes"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -28,32 +27,16 @@ func runCoreBootParamsAdd(cmd *cobra.Command, opts *bootParamsAddOptions, bssCli
 		return err
 	}
 
-	// The BSS BootParams struct we will send
-	var bp bssTypes.BootParams
-
-	// Build the request from the payload or, without -d, from the flags; the
-	// two are mutually exclusive
-	if cmd.Flag("data").Changed {
-		if err := rt.HandlePayload(cmd, &bp); err != nil {
-			return err
-		}
-	} else {
-		applyBootParamFlags(cmd, &bp, opts.bootParamFields)
-	}
-
-	// Validate MAC addresses, whether they came from --mac or the payload.
-	// CheckMacs accepts an empty list.
-	if err := bp.CheckMacs(); err != nil {
-		return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
-	}
-
-	// Send 'em off
-	_, err := bssClient.PostBootParams(cmd.Context(), bp, rt.Token)
+	// The BSS BootParams structs we will send, from the payload or, without
+	// -d, from the flags. The two are mutually exclusive.
+	bps, err := readBootParams(cmd, rt, opts.bootParamFields)
 	if err != nil {
-		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to add boot parameters to BSS")
+		return err
 	}
 
-	return nil
+	// Send 'em off, one request per boot parameters object
+	results := bssClient.PostBootParamsBatch(cmd.Context(), bps, rt.Token)
+	return cli.AggregateItemErrors(rt.Logger, results.Errors(), "BSS boot parameter addition")
 }
 
 func newCmdBootParamsAdd() *cobra.Command {
@@ -70,6 +53,8 @@ be specified to change the format of the input payload data ('json' by
 default), but the rules above still apply for the payload. If "-" is used
 as the input payload filename, the data is read from standard input.
 -d cannot be used with --xname, --mac, --nid, --kernel, --initrd, or --params.
+The payload can hold one boot parameters object or an array of them, each
+sent in its own request.
 
 This command sends a POST to BSS. An access token is required.
 
@@ -84,7 +69,22 @@ See ochami-bss(1) for more details.`,
   ochami bss boot params add --mac 00:de:ad:be:ef:00 --mac 00:c0:ff:ee:00:00 --kernel https://example.com/kernel
 
   # Add boot parameters using input payload data
-  ochami bss boot params add -d '{"macs":["00:de:ad:be:ef:00"],"kernel":"https://example.com/kernel"}'
+  ochami bss boot params add -d '{
+    "macs": ["00:de:ad:be:ef:00"],
+    "kernel": "https://example.com/kernel"
+  }'
+
+  # Add multiple boot parameters using JSON array
+  ochami bss boot params add -d '[
+    {
+      "macs": ["00:de:ad:be:ef:00"],
+      "kernel": "https://example.com/kernel"
+    },
+    {
+      "macs": ["00:c0:ff:ee:00:00"],
+      "kernel": "https://example.com/kernel2"
+    }
+  ]'
 
   # Add boot parameters using input payload file
   ochami bss boot params add -d @payload.json

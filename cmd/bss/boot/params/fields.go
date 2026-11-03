@@ -75,6 +75,36 @@ func applyBootParamFlags(cmd *cobra.Command, bp *bssTypes.BootParams, f bootPara
 	}
 }
 
+// readBootParams returns the boot parameters that rt's command cmd should send:
+// those in the -d payload, which can hold one boot parameters object or an
+// array of them, or, without -d, one built from the flag values in f. It
+// rejects a payload with no boot parameters and any malformed MAC address,
+// whether it came from --mac or the payload.
+func readBootParams(cmd *cobra.Command, rt *cli.Runtime, f bootParamFields) ([]bssTypes.BootParams, error) {
+	var bps []bssTypes.BootParams
+	if cmd.Flag("data").Changed {
+		if err := cli.HandlePayloadSlice(rt, cmd, &bps); err != nil {
+			return nil, err
+		}
+		if len(bps) == 0 {
+			return nil, cli.Errorf(cli.CodeUsage, "payload contained no boot parameters")
+		}
+	} else {
+		var bp bssTypes.BootParams
+		applyBootParamFlags(cmd, &bp, f)
+		bps = append(bps, bp)
+	}
+
+	// CheckMacs accepts an empty list
+	for _, bp := range bps {
+		if err := bp.CheckMacs(); err != nil {
+			return nil, cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
+		}
+	}
+
+	return bps, nil
+}
+
 // validateBootParamFlags validates the flags of the add, set, and update
 // commands. Without -d, at least one of --xname/--nid/--mac must be specified,
 // along with at least one of --kernel/--initrd/--params.

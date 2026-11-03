@@ -299,6 +299,56 @@ func TestBSSBootParams_InvalidPayloadMac(t *testing.T) {
 	}
 }
 
+// TestBSSBootParamsSet_EmptyPayloadArray verifies that a -d payload holding an
+// empty array is a usage error and sends no request.
+func TestBSSBootParamsSet_EmptyPayloadArray(t *testing.T) {
+	t.Parallel()
+
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "set", "--ignore-config",
+		"--uri", srv.URL, "--token", "t", "-d", "[]")
+	if res.err == nil || res.exitCode != cli.CodeUsage {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+	if requests != 0 {
+		t.Errorf("requests = %d, want none for an empty payload", requests)
+	}
+}
+
+// TestBSSBootParamsSet_PayloadArrayPartialFailure verifies that when one
+// element of a -d payload array fails, the others are still sent and the
+// command exits with CodeHTTP.
+func TestBSSBootParamsSet_PayloadArrayPartialFailure(t *testing.T) {
+	t.Parallel()
+
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			http.Error(w, "bad", http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "set", "--ignore-config",
+		"--uri", srv.URL, "--token", "t",
+		"-d", `[{"macs":["de:ad:be:ef:00:00"],"kernel":"k1"},{"macs":["de:ad:be:ef:00:01"],"kernel":"k2"}]`)
+	if res.err == nil || res.exitCode != cli.CodeHTTP {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+	if requests != 2 {
+		t.Errorf("requests = %d, want 2 (the failure must not stop the rest)", requests)
+	}
+}
+
 // TestBSSBootParamsAdd_NetworkError verifies a closed port surfaces CodeNetwork
 // for "add".
 func TestBSSBootParamsAdd_NetworkError(t *testing.T) {
