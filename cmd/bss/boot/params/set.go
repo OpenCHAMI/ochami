@@ -32,13 +32,15 @@ func runCoreBootParamsSet(cmd *cobra.Command, opts *bootParamsSetOptions, bssCli
 	// The BSS BootParams struct we will send
 	var bp bssTypes.BootParams
 
-	// Read payload from file first, allowing overwrites from flags
+	// Build the request from the payload or, without -d, from the flags; the
+	// two are mutually exclusive
 	if cmd.Flag("data").Changed {
 		if err := rt.HandlePayload(cmd, &bp); err != nil {
 			return err
 		}
+	} else {
+		applyBootParamFlags(cmd, &bp, opts.bootParamFields)
 	}
-	applyBootParamFlags(cmd, &bp, opts.bootParamFields)
 
 	// Validate MAC addresses if any were provided
 	if len(opts.Mac) > 0 {
@@ -71,7 +73,8 @@ payload data or (if flag argument starts with @) a file containing
 the payload data. -f can be specified to change the format of the
 input payload data ('json' by default), but the rules above still
 apply for the payload. If "-" is used as the input payload filename,
-the data is read from standard input.
+the data is read from standard input. -d cannot be used with
+--xname, --mac, --nid, --kernel, --initrd, or --params.
 
 This command sends a PUT to BSS. An access token is required.
 
@@ -123,6 +126,7 @@ See ochami-bss(1) for more details.`,
 	bootParamsSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 
 	cli.AddFormatInputFlag(bootParamsSetCmd)
+	markDataExclusive(bootParamsSetCmd)
 	bootParamsSetCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return bootParamsSetCmd

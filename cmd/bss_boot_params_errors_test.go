@@ -205,6 +205,60 @@ func TestBSSBootParamsAdd_InvalidMac(t *testing.T) {
 	}
 }
 
+// TestBSSBootParams_DataWithFlags verifies that add, set, update, and delete
+// reject -d combined with any component or boot config flag as a usage error,
+// without sending a request.
+func TestBSSBootParams_DataWithFlags(t *testing.T) {
+	t.Parallel()
+
+	verbs := []struct {
+		verb      string
+		extraArgs []string
+	}{
+		{"add", nil},
+		{"set", nil},
+		{"update", nil},
+		{"delete", []string{"--no-confirm"}},
+	}
+	flags := []struct {
+		flag  string
+		value string
+	}{
+		{"--xname", "x0c0s0b0n0"},
+		{"--nid", "1"},
+		{"--mac", "de:ad:be:ef:00:01"},
+		{"--kernel", "https://example.com/new-vmlinuz"},
+		{"--initrd", "https://example.com/new-initrd"},
+		{"--params", "quiet"},
+	}
+	for _, v := range verbs {
+		for _, f := range flags {
+			t.Run(v.verb+" "+f.flag, func(t *testing.T) {
+				t.Parallel()
+
+				var requests int
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					requests++
+					w.WriteHeader(http.StatusOK)
+				}))
+				defer srv.Close()
+
+				args := append([]string{"bss", "boot", "params", v.verb,
+					"--ignore-config", "--uri", srv.URL, "--token", "t",
+					"-d", `{"macs":["de:ad:be:ef:00:00"],"kernel":"http://old/vmlinuz"}`,
+					f.flag, f.value}, v.extraArgs...)
+				res := runOchamiWithRuntime(t, args...)
+				if res.err == nil || res.exitCode != cli.CodeUsage {
+					t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+				}
+				if requests != 0 {
+					t.Errorf("requests = %d, want none when -d is combined with %s", requests, f.flag)
+				}
+			})
+		}
+	}
+}
+
 // TestBSSBootParamsAdd_NetworkError verifies a closed port surfaces CodeNetwork
 // for "add".
 func TestBSSBootParamsAdd_NetworkError(t *testing.T) {

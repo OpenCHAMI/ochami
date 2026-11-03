@@ -53,8 +53,7 @@ func readBootParamFlags(cmd *cobra.Command) bootParamFields {
 	return f
 }
 
-// applyBootParamFlags sets each field of bp whose flag was passed to cmd, so
-// the flags override the matching fields of a payload already read into bp.
+// applyBootParamFlags sets each field of bp whose flag was passed to cmd.
 func applyBootParamFlags(cmd *cobra.Command, bp *bssTypes.BootParams, f bootParamFields) {
 	if cmd.Flag("xname").Changed {
 		bp.Hosts = f.Xname
@@ -80,9 +79,12 @@ func applyBootParamFlags(cmd *cobra.Command, bp *bssTypes.BootParams, f bootPara
 // commands. Without -d, at least one of --xname/--nid/--mac must be specified,
 // along with at least one of --kernel/--initrd/--params.
 func validateBootParamFlags(cmd *cobra.Command, args []string) error {
+	// With -d, the flag groups registered by markDataExclusive reject the
+	// other flags
 	if cmd.Flag("data").Changed {
-		warnDataWithFlags(cmd)
-	} else if !cli.AnyFlagChanged(cmd, "xname", "nid", "mac") {
+		return nil
+	}
+	if !cli.AnyFlagChanged(cmd, "xname", "nid", "mac") {
 		return cli.Errorf(cli.CodeUsage, "expected -d or one of --xname, --nid, or --mac")
 	} else if !cli.AnyFlagChanged(cmd, "kernel", "initrd", "params") {
 		return cli.Errorf(cli.CodeUsage, "specifying any of --xname, --nid, or --mac also requires specifying at least one of --kernel, --initrd, or --params")
@@ -91,11 +93,11 @@ func validateBootParamFlags(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// warnDataWithFlags warns if any boot parameter flags were passed to cmd along
-// with -d.
-func warnDataWithFlags(cmd *cobra.Command) {
-	// -d/--data trumps all, ignore values of other flags if specified
-	if cli.AnyFlagChanged(cmd, bootParamFlags...) {
-		cli.LoggerFromCommand(cmd).Warn().Msg("raw data passed, ignoring CLI configuration")
+// markDataExclusive marks each boot parameter flag of cmd as mutually
+// exclusive with -d, so that a request comes either wholly from the payload or
+// wholly from the flags.
+func markDataExclusive(cmd *cobra.Command) {
+	for _, f := range bootParamFlags {
+		cmd.MarkFlagsMutuallyExclusive(f, "data")
 	}
 }

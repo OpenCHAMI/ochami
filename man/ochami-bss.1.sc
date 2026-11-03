@@ -118,6 +118,9 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
+		*--initrd*, or *--params*.
+
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats
 		are:
@@ -186,6 +189,9 @@ Subcommands for this command are as follows:
 		from, or to read the data from standard input (@-). The format of data
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
+
+		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
+		*--initrd*, or *--params*.
 
 	*--no-confirm*
 		Do not ask the user to confirm deletion. Use with caution.
@@ -290,6 +296,9 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
+		*--initrd*, or *--params*.
+
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats
 		are:
@@ -354,6 +363,9 @@ Subcommands for this command are as follows:
 		from, or to read the data from standard input (@-). The format of data
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
+
+		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
+		*--initrd*, or *--params*.
 
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats

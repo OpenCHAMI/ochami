@@ -26,13 +26,15 @@ func runCoreBootParamsDelete(cmd *cobra.Command, opts *bootParamsDeleteOptions, 
 	// The BSS BootParams struct we will send
 	var bp bssTypes.BootParams
 
-	// Read payload from file first, allowing overwrites from flags
+	// Build the request from the payload or, without -d, from the flags; the
+	// two are mutually exclusive
 	if cmd.Flag("data").Changed {
 		if err := rt.HandlePayload(cmd, &bp); err != nil {
 			return err
 		}
+	} else {
+		applyBootParamFlags(cmd, &bp, opts.bootParamFields)
 	}
-	applyBootParamFlags(cmd, &bp, opts.bootParamFields)
 
 	// If we are deleting by component (xname/mac/nid), validate MAC addresses if any were provided
 	if len(opts.Mac) > 0 {
@@ -90,7 +92,8 @@ raw payload data or (if flag argument starts with @) a file containing
 the payload data. -f can be specified to change the format of the
 input payload data ('json' by default), but the rules above still
 apply for the payload. If "-" is used as the input payload filename,
-the data is read from standard input.
+the data is read from standard input. -d cannot be used with
+--xname, --mac, --nid, --kernel, --initrd, or --params.
 
 This command sends a DELETE to BSS. An access token is required.
 
@@ -111,9 +114,9 @@ See ochami-bss(1) for more details.`,
   echo '<json_data>' | ochami bss boot params delete -d @-
   echo '<yaml_data>' | ochami bss boot params delete -d @- -f yaml`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flag("data").Changed {
-				warnDataWithFlags(cmd)
-			} else if !cli.AnyFlagChanged(cmd, bootParamFlags...) {
+			// With -d, the flag groups registered by markDataExclusive reject
+			// the other flags
+			if !cmd.Flag("data").Changed && !cli.AnyFlagChanged(cmd, bootParamFlags...) {
 				// If -d/--data not passed, then boot parameters can be deleted
 				// by component (--xname/--nid/--mac) or by config
 				// (--kernel/--initrd/--params), so any one of them is enough
@@ -150,6 +153,7 @@ See ochami-bss(1) for more details.`,
 	bootParamsDelete.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to delete")
 	bootParamsDelete.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	cli.AddFormatInputFlag(bootParamsDelete)
+	markDataExclusive(bootParamsDelete)
 	bootParamsDelete.Flags().Bool("no-confirm", false, "do not ask before attempting deletion")
 
 	return bootParamsDelete

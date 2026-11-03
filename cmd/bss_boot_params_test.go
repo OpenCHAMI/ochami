@@ -205,48 +205,6 @@ func TestBSSBootParamsGet_Formats(t *testing.T) {
 	}
 }
 
-// TestBSSBootParamsAdd_DataAndFlags verifies that "add -d <payload>" with
-// --mac sends a POST whose MACs come from the flag and whose kernel comes
-// from the payload.
-func TestBSSBootParamsAdd_DataAndFlags(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod string
-	var gotBody []byte
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod = r.Method
-		var err error
-		gotBody, err = io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read request body: %v", err)
-		}
-		w.WriteHeader(http.StatusCreated)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "bss", "boot", "params", "add", "--ignore-config", "--uri", srv.URL, "--token", "t",
-		"-d", `{"macs":["de:ad:be:ef:00:01"],"kernel":"https://example.com/vmlinuz"}`, "--mac", "de:ad:be:ef:00:00")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodPost {
-		t.Errorf("method = %q, want POST", gotMethod)
-	}
-	var bp struct {
-		Macs   []string `json:"macs"`
-		Kernel string   `json:"kernel"`
-	}
-	if err := json.Unmarshal(gotBody, &bp); err != nil {
-		t.Fatalf("failed to unmarshal body %q: %v", string(gotBody), err)
-	}
-	if len(bp.Macs) != 1 || bp.Macs[0] != "de:ad:be:ef:00:00" {
-		t.Errorf("macs = %v, want the --mac value [de:ad:be:ef:00:00]", bp.Macs)
-	}
-	if bp.Kernel != "https://example.com/vmlinuz" {
-		t.Errorf("kernel = %q, want the payload's https://example.com/vmlinuz", bp.Kernel)
-	}
-}
-
 // TestBSSBootParamsAdd_AllFlags verifies that "bss boot params add" accepts
 // every component selector and config-field flag at once and sends a POST.
 func TestBSSBootParamsAdd_AllFlags(t *testing.T) {
@@ -347,50 +305,6 @@ func TestBSSBootParamsUpdate_AllSelectorFlags(t *testing.T) {
 	}
 	if gotMethod != http.MethodPatch {
 		t.Errorf("method = %q, want PATCH", gotMethod)
-	}
-}
-
-// TestBSSBootParamsSet_DataWithFlagOverride verifies that "set -d <payload>"
-// with --kernel sends a PUT whose kernel comes from the flag and whose MACs
-// come from the payload.
-func TestBSSBootParamsSet_DataWithFlagOverride(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod string
-	var gotBody []byte
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod = r.Method
-		var err error
-		gotBody, err = io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read request body: %v", err)
-		}
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "bss", "boot", "params", "set",
-		"--ignore-config", "--uri", srv.URL, "--token", "t",
-		"-d", `{"macs":["de:ad:be:ef:00:00"],"kernel":"http://old/vmlinuz"}`,
-		"--kernel", "https://example.com/new-vmlinuz")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodPut {
-		t.Errorf("method = %q, want PUT", gotMethod)
-	}
-	var bp struct {
-		Macs   []string `json:"macs"`
-		Kernel string   `json:"kernel"`
-	}
-	if err := json.Unmarshal(gotBody, &bp); err != nil {
-		t.Fatalf("failed to unmarshal body %q: %v", string(gotBody), err)
-	}
-	if bp.Kernel != "https://example.com/new-vmlinuz" {
-		t.Errorf("kernel = %q, want the --kernel value https://example.com/new-vmlinuz", bp.Kernel)
-	}
-	if len(bp.Macs) != 1 || bp.Macs[0] != "de:ad:be:ef:00:00" {
-		t.Errorf("macs = %v, want the payload's [de:ad:be:ef:00:00]", bp.Macs)
 	}
 }
 
@@ -518,48 +432,6 @@ func TestBSSBootParamsDelete_Confirm(t *testing.T) {
 	}
 	if deletes != 1 {
 		t.Errorf("DELETE count = %d, want 1", deletes)
-	}
-}
-
-// TestBSSBootParamsUpdate_DataWithFlags verifies that "bss boot params update
-// -d <payload>" combined with --mac sends a PATCH whose MACs come from the
-// flag, and logs the "raw data passed" warning.
-func TestBSSBootParamsUpdate_DataWithFlags(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod string
-	var gotBody []byte
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod = r.Method
-		var err error
-		gotBody, err = io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read request body: %v", err)
-		}
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "bss", "boot", "params", "update", "--ignore-config", "--uri", srv.URL, "--token", "t",
-		"-d", `{"macs":["de:ad:be:ef:00:00"],"kernel":"http://k"}`, "--mac", "de:ad:be:ef:00:01")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if !strings.Contains(res.stdout, "raw data passed, ignoring CLI configuration") {
-		t.Errorf("output = %q, want the raw data warning", res.stdout)
-	}
-	if gotMethod != http.MethodPatch {
-		t.Errorf("method = %q, want PATCH", gotMethod)
-	}
-	var bp struct {
-		Macs   []string `json:"macs"`
-		Kernel string   `json:"kernel"`
-	}
-	if err := json.Unmarshal(gotBody, &bp); err != nil {
-		t.Fatalf("failed to unmarshal body %q: %v", string(gotBody), err)
-	}
-	if len(bp.Macs) != 1 || bp.Macs[0] != "de:ad:be:ef:00:01" {
-		t.Errorf("macs = %v, want the --mac value [de:ad:be:ef:00:01]", bp.Macs)
 	}
 }
 
