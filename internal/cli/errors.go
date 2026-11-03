@@ -5,9 +5,12 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"syscall"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -55,6 +58,14 @@ const (
 	// so scripts can act on it directly; CodeMixed means the output must be
 	// inspected to see which items failed and why.
 	CodeMixed = 9
+	// CodeInterrupted indicates the command was interrupted by SIGINT (for
+	// example, Ctrl+C) before it finished. Like CodeTerminated, it is 128
+	// plus the signal number, the status a shell reports for a process the
+	// signal kills.
+	CodeInterrupted = 130
+	// CodeTerminated indicates the command was stopped by SIGTERM before it
+	// finished.
+	CodeTerminated = 143
 )
 
 // CodeName returns the identifier of the exit code constant whose value is
@@ -84,6 +95,10 @@ func CodeName(code int) string {
 		return "CodeDeclined"
 	case CodeMixed:
 		return "CodeMixed"
+	case CodeInterrupted:
+		return "CodeInterrupted"
+	case CodeTerminated:
+		return "CodeTerminated"
 	default:
 		return fmt.Sprintf("Code(%d)", code)
 	}
@@ -119,6 +134,56 @@ func (ce *CodedError) Code() int {
 // errors.Is/errors.As.
 func Errorf(code int, format string, args ...any) error {
 	return &CodedError{code: code, err: fmt.Errorf(format, args...)}
+}
+
+// InterruptError is the cause a command's context is cancelled with when a
+// signal interrupts the command. It matches context.Canceled under errors.Is,
+// so code that checks for cancellation treats it like any other.
+type InterruptError struct {
+	Signal os.Signal
+}
+
+// Error implements the error interface.
+func (e *InterruptError) Error() string {
+	switch e.Signal {
+	case os.Interrupt:
+		return "interrupted by SIGINT"
+	case syscall.SIGTERM:
+		return "terminated by SIGTERM"
+	default:
+		return fmt.Sprintf("interrupted by %s signal", e.Signal)
+	}
+}
+
+// Is reports whether target is context.Canceled.
+func (e *InterruptError) Is(target error) bool {
+	return target == context.Canceled
+}
+
+// Code returns the exit code for the signal: CodeTerminated for SIGTERM and
+// CodeInterrupted for anything else.
+func (e *InterruptError) Code() int {
+	if e.Signal == syscall.SIGTERM {
+		return CodeTerminated
+	}
+	return CodeInterrupted
+}
+
+// Interrupted replaces err with the signal that interrupted the command, coded
+// with that signal's exit code, when err reports cancellation and ctx was
+// cancelled by an InterruptError. Commands return whatever error their
+// cancelled operation produced, often already coded (for example, a request
+// error classified as CodeNetwork), so this lets the interruption decide the
+// exit code in one place. Any other err is returned unchanged.
+func Interrupted(ctx context.Context, err error) error {
+	if !errors.Is(err, context.Canceled) {
+		return err
+	}
+	var ie *InterruptError
+	if !errors.As(context.Cause(ctx), &ie) {
+		return err
+	}
+	return &CodedError{code: ie.Code(), err: ie}
 }
 
 // clientErrorCode resolves the exit code for an error returned by a service

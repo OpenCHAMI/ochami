@@ -246,6 +246,13 @@ the following codes:
 :  A command acting on several items had failures that do not share a single
    code above (for example, some items got an unsuccessful HTTP response and
    others a network error). The log output identifies which items failed.
+|  *130*
+:  _CodeInterrupted_
+:  The command was interrupted by *SIGINT* (for example, Ctrl+C) before it
+   finished.
+|  *143*
+:  _CodeTerminated_
+:  The command was stopped by *SIGTERM* before it finished.
 
 # FILES
 

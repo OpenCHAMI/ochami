@@ -9,14 +9,17 @@ package cli
 // rules, and the WrapUsageErrors command-tree wiring.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -291,6 +294,61 @@ func TestCombineItemErrors(t *testing.T) {
 	err := CombineItemErrors([]error{errors.New("connection refused")}, "resource update")
 	if code := ExitCode(err); code != CodeNetwork {
 		t.Errorf("ExitCode() = %d, want %d (%s)", code, CodeNetwork, CodeName(CodeNetwork))
+	}
+}
+
+// TestInterrupted verifies Interrupted codes a cancellation error with the
+// exit code of the signal that cancelled the context, even when the command
+// already coded the error, and leaves every other error unchanged.
+func TestInterrupted(t *testing.T) {
+	signalled := func(sig os.Signal) context.Context {
+		ctx, cancel := context.WithCancelCause(context.Background())
+		cancel(&InterruptError{Signal: sig})
+		return ctx
+	}
+	plain, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	requestErr := Errorf(CodeNetwork, "failed to get components: %w", context.Canceled)
+	otherErr := Errorf(CodeHTTP, "failed to get components: %w", client.UnsuccessfulHTTPError)
+
+	tests := []struct {
+		name     string
+		ctx      context.Context
+		err      error
+		wantCode int
+		wantMsg  string
+	}{
+		{name: "SIGINT", ctx: signalled(os.Interrupt), err: requestErr, wantCode: CodeInterrupted, wantMsg: "interrupted by SIGINT"},
+		{name: "SIGTERM", ctx: signalled(syscall.SIGTERM), err: requestErr, wantCode: CodeTerminated, wantMsg: "terminated by SIGTERM"},
+		{name: "cancelled without signal", ctx: plain, err: requestErr, wantCode: CodeNetwork, wantMsg: requestErr.Error()},
+		{name: "not a cancellation", ctx: signalled(os.Interrupt), err: otherErr, wantCode: CodeHTTP, wantMsg: otherErr.Error()},
+		{name: "context not done", ctx: context.Background(), err: requestErr, wantCode: CodeNetwork, wantMsg: requestErr.Error()},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Interrupted(tc.ctx, tc.err)
+			if code := ExitCode(err); code != tc.wantCode {
+				t.Errorf("ExitCode(Interrupted()) = %d, want %d (%s)", code, tc.wantCode, CodeName(tc.wantCode))
+			}
+			if err.Error() != tc.wantMsg {
+				t.Errorf("Interrupted() = %q, want %q", err, tc.wantMsg)
+			}
+		})
+	}
+
+	if err := Interrupted(signalled(os.Interrupt), nil); err != nil {
+		t.Errorf("Interrupted(nil) = %v, want nil", err)
+	}
+}
+
+// TestInterruptError_IsCanceled verifies an InterruptError matches
+// context.Canceled, so cancellation checks treat a signal like any other
+// cancellation.
+func TestInterruptError_IsCanceled(t *testing.T) {
+	if err := error(&InterruptError{Signal: os.Interrupt}); !errors.Is(err, context.Canceled) {
+		t.Errorf("errors.Is(%v, context.Canceled) = false, want true", err)
 	}
 }
 
