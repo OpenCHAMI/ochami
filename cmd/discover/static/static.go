@@ -6,6 +6,7 @@
 package static
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -288,6 +289,11 @@ See ochami-discover(1) for more details.`,
 				results := smdClient.PutComponents(cmd.Context(), comps, rt.Token)
 				for _, err := range results.Errors() {
 					if err != nil {
+						if errors.Is(err, context.Canceled) {
+							// Reported once for the whole command by CombineItemErrors.
+							compErrors = append(compErrors, err)
+							continue
+						}
 						var errMsg string
 						if errors.Is(err, client.UnsuccessfulHTTPError) {
 							errMsg = "SMD component request yielded unsuccessful HTTP response"
@@ -359,6 +365,11 @@ See ochami-discover(1) for more details.`,
 				rfeErrs = smdClient.PostRedfishEndpointsV2(cmd.Context(), rfes, rt.Token).Errors()
 				for _, err := range rfeErrs {
 					if err != nil {
+						if errors.Is(err, context.Canceled) {
+							// Reported once for the whole command by CombineItemErrors.
+							rfeErrors = append(rfeErrors, err)
+							continue
+						}
 						var errMsg string
 						if errors.Is(err, client.UnsuccessfulHTTPError) {
 							errMsg = "SMD redfish endpoint request yielded unsuccessful HTTP response"
@@ -411,6 +422,11 @@ See ochami-discover(1) for more details.`,
 					ifaceErrs = smdClient.PostEthernetInterfaces(cmd.Context(), ifaces, rt.Token).Errors()
 					for _, err := range ifaceErrs {
 						if err != nil {
+							if errors.Is(err, context.Canceled) {
+								// Reported once for the whole command by CombineItemErrors.
+								ifaceErrors = append(ifaceErrors, err)
+								continue
+							}
 							var errMsg string
 							if errors.Is(err, client.UnsuccessfulHTTPError) {
 								errMsg = "SMD ethernet interface request yielded unsuccessful HTTP response"
@@ -460,6 +476,11 @@ See ochami-discover(1) for more details.`,
 				groupErrs = smdClient.PostGroups(cmd.Context(), groupList, rt.Token).Errors()
 				for _, err := range groupErrs {
 					if err != nil {
+						if errors.Is(err, context.Canceled) {
+							// Reported once for the whole command by CombineItemErrors.
+							groupErrors = append(groupErrors, err)
+							continue
+						}
 						var errMsg string
 						if errors.Is(err, client.UnsuccessfulHTTPError) {
 							errMsg = "SMD groups request yielded unsuccessful HTTP response"

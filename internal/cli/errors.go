@@ -235,27 +235,36 @@ func (e *itemErrors) Unwrap() []error { return e.errs }
 
 // AggregateItemErrors logs each non-nil error from a multi-item operation
 // (one error per item, nil for items that succeeded) and returns
-// CombineItemErrors(errs, msg).
+// CombineItemErrors(errs, msg). Errors reporting cancellation are not logged,
+// since CombineItemErrors reports the interruption once for the whole
+// operation.
 func AggregateItemErrors(logger zerolog.Logger, errs []error, msg string) error {
 	for _, err := range errs {
-		if err != nil {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.Error().Err(err).Msgf("%s failed", msg)
 		}
 	}
 	return CombineItemErrors(errs, msg)
 }
 
-// CombineItemErrors returns nil if errs has no non-nil errors. Otherwise it
-// returns a summary error coded with the code every failure shares, or with
-// CodeMixed if they differ. Each item's code is its own CodedError code if it
-// carries one, or the service client code (see clientErrorCode) if not. Use it
-// directly when a command logs item failures itself.
+// CombineItemErrors returns nil if errs has no non-nil errors. If any error
+// reports cancellation, it returns a single error saying the operation was
+// interrupted, wrapping the first such error: the items skipped after an
+// interruption didn't fail, and the interruption decides the exit code (see
+// Interrupted). Otherwise it returns a summary error coded with the code every
+// failure shares, or with CodeMixed if they differ. Each item's code is its
+// own CodedError code if it carries one, or the service client code (see
+// clientErrorCode) if not. Use it directly when a command logs item failures
+// itself, skipping errors that report cancellation.
 func CombineItemErrors(errs []error, msg string) error {
 	var failed []error
 	code := CodeSuccess
 	for _, err := range errs {
 		if err == nil {
 			continue
+		}
+		if errors.Is(err, context.Canceled) {
+			return fmt.Errorf("%s interrupted: %w", msg, err)
 		}
 		failed = append(failed, err)
 

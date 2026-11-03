@@ -9,6 +9,7 @@ package cli
 // rules, and the WrapUsageErrors command-tree wiring.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -85,10 +86,10 @@ func TestClassifyClientError(t *testing.T) {
 	}
 }
 
-// TestAggregateItemErrors verifies that AggregateItemErrors returns nil when no
-// item failed, wraps every item error, and codes the result with the code the
-// failures share or with CodeMixed when they differ.
-func TestAggregateItemErrors(t *testing.T) {
+// TestAggregateItemErrors_Codes verifies that AggregateItemErrors returns nil
+// when no item failed, wraps every item error, and codes the result with the
+// code the failures share or with CodeMixed when they differ.
+func TestAggregateItemErrors_Codes(t *testing.T) {
 	httpErr := fmt.Errorf("item: %w", client.UnsuccessfulHTTPError)
 	netErr := errors.New("connection refused")
 	authErr := Errorf(CodeAuth, "token expired")
@@ -124,6 +125,29 @@ func TestAggregateItemErrors(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestAggregateItemErrors_Interrupted verifies that an operation with
+// cancelled items returns one error saying it was interrupted, which still
+// reports cancellation, and logs only the failures of items that ran.
+func TestAggregateItemErrors_Interrupted(t *testing.T) {
+	httpErr := fmt.Errorf("item: %w", client.UnsuccessfulHTTPError)
+	cancelled := Errorf(CodeNetwork, "request: %w", context.Canceled)
+
+	var logs bytes.Buffer
+	err := AggregateItemErrors(zerolog.New(&logs), []error{nil, httpErr, cancelled, cancelled}, "resource update")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("AggregateItemErrors() = %v, want an error reporting context.Canceled", err)
+	}
+	if !strings.HasPrefix(err.Error(), "resource update interrupted") {
+		t.Errorf("AggregateItemErrors() = %q, want it to say the update was interrupted", err)
+	}
+	if got := strings.Count(logs.String(), "\n"); got != 1 {
+		t.Errorf("logged %d lines, want 1 (the HTTP failure only):\n%s", got, logs.String())
+	}
+	if strings.Contains(logs.String(), "canceled") {
+		t.Errorf("logged a cancelled item:\n%s", logs.String())
 	}
 }
 
