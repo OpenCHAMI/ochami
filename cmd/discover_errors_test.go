@@ -414,63 +414,67 @@ func TestDiscoverStatic_OverwriteNetworkError(t *testing.T) {
 	}
 }
 
-// TestDiscoverStatic_OverwriteRejectsInvalidIDs verifies that with --overwrite,
-// where IDs end up in request paths, one invalid ID fails discovery with
-// CodeUsage before any request is sent, while the same payload without
-// --overwrite only sends POSTs and succeeds.
-func TestDiscoverStatic_OverwriteRejectsInvalidIDs(t *testing.T) {
+// TestDiscoverStatic_RejectsInvalidIDs verifies that one invalid ID fails
+// discovery with CodeUsage before any request is sent, whether it would be sent
+// in a request path (--overwrite) or only in a POST body.
+func TestDiscoverStatic_RejectsInvalidIDs(t *testing.T) {
 	t.Parallel()
 
 	payload := strings.Replace(discoveryPayload, `["compute"]`, `["compute", ".."]`, 1)
 
-	var requests atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[]`))
-	}))
-	defer srv.Close()
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{name: "with overwrite", args: []string{"--overwrite"}},
+		{name: "without overwrite"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	res := runOchamiWithRuntime(t, "discover", "static", "-d", payload, "--overwrite",
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
-	if res.exitCode != cli.CodeUsage {
-		t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
-	}
-	if want := `group label ".." is not a single path segment`; res.err == nil || !strings.Contains(res.err.Error(), want) {
-		t.Errorf("error = %v, want it to contain %q", res.err, want)
-	}
-	if got := requests.Load(); got != 0 {
-		t.Errorf("request count = %d, want 0", got)
-	}
+			var requests atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`[]`))
+			}))
+			defer srv.Close()
 
-	res = runOchamiWithRuntime(t, "discover", "static", "-d", payload,
-		"--ignore-config", "--uri", srv.URL, "--token", "t")
-	if res.err != nil {
-		t.Errorf("without --overwrite: error = %v, want nil", res.err)
+			args := append([]string{"discover", "static", "-d", payload, "--ignore-config", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.exitCode != cli.CodeUsage {
+				t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if want := `group label ".." is not a single path segment`; res.err == nil || !strings.Contains(res.err.Error(), want) {
+				t.Errorf("error = %v, want it to contain %q", res.err, want)
+			}
+			if got := requests.Load(); got != 0 {
+				t.Errorf("request count = %d, want 0", got)
+			}
+		})
 	}
 }
 
-// TestDiscoverStatic_IfaceIDsCheckedOnlyWhenInPath verifies that an interface is
-// checked by the ID adapted from its MAC address, and only in the one mode that
-// puts that ID in a request path: --overwrite with discovery version 1. Version
-// 2 sends interfaces inside redfish endpoints, and without --overwrite every
-// request is a POST with its IDs in the body, so neither rejects the payload.
-func TestDiscoverStatic_IfaceIDsCheckedOnlyWhenInPath(t *testing.T) {
+// TestDiscoverStatic_IfaceIDsCheckedOnlyWhenSent verifies that an interface is
+// checked by the ID adapted from its MAC address, and only with discovery
+// version 1, which sends interfaces separately. Version 2 sends them inside
+// redfish endpoints and does not use that ID, so it does not reject the payload.
+func TestDiscoverStatic_IfaceIDsCheckedOnlyWhenSent(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		mac          string
-		args         []string
-		wantCode     int
-		wantMsg      string
-		wantOnlyPOST bool
+		name     string
+		mac      string
+		args     []string
+		wantCode int
+		wantMsg  string
 	}{
 		{name: "v1 overwrite with blank adapted ID", mac: "::", args: []string{"--overwrite", "--discovery-version", "1"}, wantCode: cli.CodeUsage, wantMsg: "ethernet interface ID cannot be blank"},
 		{name: "v1 overwrite with path-like ID", mac: "a/b", args: []string{"--overwrite", "--discovery-version", "1"}, wantCode: cli.CodeUsage, wantMsg: `ethernet interface ID "a/b" is not a single path segment`},
-		{name: "v1 without overwrite", mac: "::", args: []string{"--discovery-version", "1"}, wantCode: cli.CodeSuccess, wantOnlyPOST: true},
+		{name: "v1 without overwrite", mac: "::", args: []string{"--discovery-version", "1"}, wantCode: cli.CodeUsage, wantMsg: "ethernet interface ID cannot be blank"},
 		{name: "v2 overwrite", mac: "::", args: []string{"--overwrite", "--discovery-version", "2"}, wantCode: cli.CodeSuccess},
+		{name: "v2 without overwrite", mac: "::", args: []string{"--discovery-version", "2"}, wantCode: cli.CodeSuccess},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -512,11 +516,8 @@ func TestDiscoverStatic_IfaceIDsCheckedOnlyWhenInPath(t *testing.T) {
 				t.Error("no requests sent, want discovery to proceed")
 			}
 			for _, req := range requests {
-				if strings.Contains(req, "EthernetInterfaces/") {
-					t.Errorf("request %q put an interface ID in its path", req)
-				}
-				if tc.wantOnlyPOST && !strings.HasPrefix(req, http.MethodPost+" ") {
-					t.Errorf("request %q is not a POST", req)
+				if strings.Contains(req, "EthernetInterfaces") {
+					t.Errorf("request %q sent an interface separately", req)
 				}
 			}
 		})

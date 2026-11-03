@@ -110,6 +110,15 @@ See ochami-smd(1) for more details.`,
 				eis = append(eis, ei)
 			}
 
+			// Reject the whole selection before sending any request
+			ifaceIDs := make([]string, 0, len(eis))
+			for _, ei := range eis {
+				ifaceIDs = append(ifaceIDs, ei.EffectiveID())
+			}
+			if err := cli.CheckIDs("ethernet interface ID", ifaceIDs); err != nil {
+				return err
+			}
+
 			// Send off request
 			results := smdClient.PostEthernetInterfaces(cmd.Context(), eis, rt.Token)
 			if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "SMD ethernet interface addition"); err != nil {

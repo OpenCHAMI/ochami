@@ -36,3 +36,22 @@ func GetClient(cmd *cobra.Command, rt *cli.Runtime) (*smd.SMDClient, error) {
 
 	return smdClient, nil
 }
+
+// CheckGroups returns a CodeUsage error for the first label or member of groups
+// that cannot name a single SMD resource (see cli.CheckIDs), so that a command
+// can reject its whole selection before sending any request.
+func CheckGroups(groups []smd.Group) error {
+	labels := make([]string, 0, len(groups))
+	for _, group := range groups {
+		labels = append(labels, group.Label)
+	}
+	if err := cli.CheckIDs("group label", labels); err != nil {
+		return err
+	}
+	for _, group := range groups {
+		if err := cli.CheckIDs("group member", group.Members.IDs); err != nil {
+			return err
+		}
+	}
+	return nil
+}

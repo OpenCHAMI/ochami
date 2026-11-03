@@ -81,6 +81,20 @@ func (ei EthernetInterface) EffectiveID() string {
 	return id
 }
 
+// RedfishEndpointEffectiveID returns the ID that identifies rfe in SMD when it
+// is created: its ID or, if that is blank, its hostname or the host portion of
+// its FQDN, which is how SMD adapts a blank ID.
+func RedfishEndpointEffectiveID(rfe csm.RedfishEndpoint) string {
+	if rfe.ID != "" {
+		return rfe.ID
+	}
+	if rfe.Hostname != "" {
+		return rfe.Hostname
+	}
+	host, _, _ := strings.Cut(rfe.FQDN, ".")
+	return host
+}
+
 type EthernetIP struct {
 	IPAddress string `json:"IPAddress" yaml:"IPAddress"`
 	Network   string `json:"Network" yaml:"Network"`
@@ -447,6 +461,9 @@ func (sc *SMDClient) GetGroupMembership(ctx context.Context, qstr, token string)
 // a ComponentSlice and a token, puts the token in the request headers as an
 // authorization bearer, marshalls compSlice as JSON and sets it as the request
 // body, then passes it to Ochami.PostData.
+//
+// An ID that client.CheckPathSegment rejects is an error, and no request is
+// sent, since a component with such an ID could not be addressed later.
 func (sc *SMDClient) PostComponents(ctx context.Context, compSlice ComponentSlice, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv    client.HTTPEnvelope
@@ -454,6 +471,11 @@ func (sc *SMDClient) PostComponents(ctx context.Context, compSlice ComponentSlic
 		body    client.HTTPBody
 		err     error
 	)
+	for _, comp := range compSlice.Components {
+		if err = client.CheckPathSegment("component ID", comp.ID); err != nil {
+			return henv, fmt.Errorf("PostComponents(): %w", err)
+		}
+	}
 	if body, err = json.Marshal(compSlice); err != nil {
 		return henv, fmt.Errorf("PostComponents(): failed to marshal ComponentArray: %w", err)
 	}
@@ -479,6 +501,9 @@ func (sc *SMDClient) PostRedfishEndpoints(ctx context.Context, rfes RedfishEndpo
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, rfes.RedfishEndpoints, func(ctx context.Context, rfe csm.RedfishEndpoint) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("redfish endpoint ID", RedfishEndpointEffectiveID(rfe)); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PostRedfishEndpoints(): %w", err)
+		}
 		body, err := json.Marshal(rfe)
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("PostRedfishEndpoints(): failed to marshal RedfishEndpoint: %w", err)
@@ -499,6 +524,9 @@ func (sc *SMDClient) PostRedfishEndpointsV2(ctx context.Context, rfes RedfishEnd
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, rfes.RedfishEndpoints, func(ctx context.Context, rfe RedfishEndpointV2) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("redfish endpoint ID", RedfishEndpointEffectiveID(rfe.RedfishEndpoint)); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PostRedfishEndpointsV2(): %w", err)
+		}
 		body, err := json.Marshal(rfe)
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("PostRedfishEndpointsV2(): failed to marshal RedfishEndpoint: %w", err)
@@ -521,6 +549,9 @@ func (sc *SMDClient) PostEthernetInterfaces(ctx context.Context, eis []EthernetI
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, eis, func(ctx context.Context, ei EthernetInterface) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("ethernet interface ID", ei.EffectiveID()); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PostEthernetInterfaces(): %w", err)
+		}
 		body, err := json.Marshal(ei)
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("PostEthernetInterfaces(): failed to marshal EthernetInterface: %w", err)
@@ -543,6 +574,14 @@ func (sc *SMDClient) PostGroups(ctx context.Context, groups []Group, token strin
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, groups, func(ctx context.Context, group Group) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("group label", group.Label); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PostGroups(): %w", err)
+		}
+		for _, member := range group.Members.IDs {
+			if err := client.CheckPathSegment("group member", member); err != nil {
+				return client.HTTPEnvelope{}, fmt.Errorf("PostGroups(): %w", err)
+			}
+		}
 		body, err := json.Marshal(group)
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("PostGroups(): failed to marshal Group: %w", err)
@@ -571,6 +610,9 @@ func (sc *SMDClient) PostGroupMembers(ctx context.Context, token, group string, 
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	results := client.RunBatch(ctx, members, func(ctx context.Context, member string) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("group member", member); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PostGroupMembers(): %w", err)
+		}
 		groupPath, err := url.JoinPath(SMDRelpathGroups, group, "members")
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("PostGroupMembers(): failed to join group path (%s) with group label (%s): %w", SMDRelpathGroups, group, err)
@@ -695,6 +737,11 @@ func (sc *SMDClient) PutGroupMembers(ctx context.Context, token, group string, m
 	}
 	if len(members) == 0 {
 		return henv, fmt.Errorf("PutGroupMembers(): %w: no members specified", client.InvalidArgumentError)
+	}
+	for _, member := range members {
+		if err := client.CheckPathSegment("group member", member); err != nil {
+			return henv, fmt.Errorf("PutGroupMembers(): %w", err)
+		}
 	}
 
 	// Add token to headers

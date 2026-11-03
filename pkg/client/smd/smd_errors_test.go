@@ -762,6 +762,122 @@ func TestEthernetInterface_EffectiveID(t *testing.T) {
 	}
 }
 
+// TestSMD_InvalidBodyID verifies that a method that only sends an ID in its
+// request body still rejects one that could not be addressed later, wrapping
+// client.InvalidArgumentError, without sending a request for it.
+func TestSMD_InvalidBodyID(t *testing.T) {
+	ctx := context.Background()
+	cases := []struct {
+		name string
+		call func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error)
+	}{
+		{"post redfish endpoints", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PostRedfishEndpoints(ctx, RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{ID: ".."}, {ID: "x0c0s0b0"}, {}}}, "tok"), nil
+		}},
+		{"post redfish endpoints v2", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PostRedfishEndpointsV2(ctx, RedfishEndpointSliceV2{RedfishEndpoints: []RedfishEndpointV2{
+				{RedfishEndpoint: csm.RedfishEndpoint{ID: "a/b"}},
+				{RedfishEndpoint: csm.RedfishEndpoint{ID: "x0c0s0b0"}},
+				{RedfishEndpoint: csm.RedfishEndpoint{Hostname: ".."}},
+			}}, "tok"), nil
+		}},
+		{"post ethernet interfaces", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PostEthernetInterfaces(ctx, []EthernetInterface{{ID: ".."}, {MACAddress: "de:ad:be:ef:00:00"}, {MACAddress: "::"}}, "tok"), nil
+		}},
+		{"post groups", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			member := Group{Label: "compute"}
+			member.Members.IDs = []string{"x0c0s0b0n0", ".."}
+			return sc.PostGroups(ctx, []Group{{Label: ".."}, {Label: "compute"}, member}, "tok"), nil
+		}},
+		{"post group members", func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PostGroupMembers(ctx, "tok", "compute", "", "x0c0s0b0n0", "..")
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests atomic.Int32
+			sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				w.WriteHeader(http.StatusOK)
+			})
+			defer srv.Close()
+
+			results, err := tc.call(sc)
+			if err != nil {
+				t.Fatalf("operation-wide error = %v, want nil", err)
+			}
+			if len(results) != 3 {
+				t.Fatalf("results length = %d, want 3", len(results))
+			}
+			for _, i := range []int{0, 2} {
+				if !errors.Is(results[i].Err, client.InvalidArgumentError) {
+					t.Errorf("results[%d].Err = %v, want it to wrap client.InvalidArgumentError", i, results[i].Err)
+				}
+			}
+			if results[1].Err != nil {
+				t.Errorf("results[1].Err = %v, want nil", results[1].Err)
+			}
+			if got := requests.Load(); got != 1 {
+				t.Errorf("request count = %d, want 1", got)
+			}
+		})
+	}
+}
+
+// TestSMD_InvalidBodyIDInSingleRequest verifies that a method sending every ID
+// in one request rejects the whole request for one bad ID.
+func TestSMD_InvalidBodyIDInSingleRequest(t *testing.T) {
+	ctx := context.Background()
+	var requests atomic.Int32
+	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+	})
+	defer srv.Close()
+
+	if _, err := sc.PostComponents(ctx, ComponentSlice{Components: []Component{{ID: "x0c0s0b0n0"}, {ID: ".."}}}, "tok"); !errors.Is(err, client.InvalidArgumentError) {
+		t.Errorf("PostComponents() error = %v, want it to wrap client.InvalidArgumentError", err)
+	}
+	if _, err := sc.PutGroupMembers(ctx, "tok", "compute", "x0c0s0b0n0", ".."); !errors.Is(err, client.InvalidArgumentError) {
+		t.Errorf("PutGroupMembers() error = %v, want it to wrap client.InvalidArgumentError", err)
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf("request count = %d, want 0", got)
+	}
+}
+
+// TestPostRedfishEndpoints_BlankIDUsesHostname verifies that a blank ID is
+// accepted when SMD can adapt one from the hostname or FQDN.
+func TestPostRedfishEndpoints_BlankIDUsesHostname(t *testing.T) {
+	sc, srv := newTestSMD(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	defer srv.Close()
+
+	rfes := RedfishEndpointSlice{RedfishEndpoints: []csm.RedfishEndpoint{{Hostname: "x0c0s0b0"}, {FQDN: "x0c0s1b0.mgmt.example.com"}}}
+	if results := sc.PostRedfishEndpoints(context.Background(), rfes, "tok"); results.HasErrors() {
+		t.Errorf("PostRedfishEndpoints() errors = %v, want none", results.Errors())
+	}
+}
+
+// TestRedfishEndpointEffectiveID verifies the order SMD adapts a blank ID in.
+func TestRedfishEndpointEffectiveID(t *testing.T) {
+	tests := []struct {
+		rfe  csm.RedfishEndpoint
+		want string
+	}{
+		{csm.RedfishEndpoint{ID: "x0c0s0b0", Hostname: "x0c0s1b0", FQDN: "x0c0s2b0.example.com"}, "x0c0s0b0"},
+		{csm.RedfishEndpoint{Hostname: "x0c0s1b0", FQDN: "x0c0s2b0.example.com"}, "x0c0s1b0"},
+		{csm.RedfishEndpoint{FQDN: "x0c0s2b0.example.com"}, "x0c0s2b0"},
+		{csm.RedfishEndpoint{FQDN: "x0c0s2b0"}, "x0c0s2b0"},
+		{csm.RedfishEndpoint{}, ""},
+	}
+	for _, tc := range tests {
+		if got := RedfishEndpointEffectiveID(tc.rfe); got != tc.want {
+			t.Errorf("RedfishEndpointEffectiveID(%+v) = %q, want %q", tc.rfe, got, tc.want)
+		}
+	}
+}
+
 // TestIterativeDeletes_InvalidID verifies that each iterative delete reports
 // an ID that is blank or is not a single path segment as that item's error,
 // wrapping client.InvalidArgumentError, without sending a request for it,

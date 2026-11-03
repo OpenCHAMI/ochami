@@ -46,6 +46,11 @@ func runCoreGroupAdd(cmd *cobra.Command, opts *groupAddOptions, args []string, s
 		groups = append(groups, group)
 	}
 
+	// Reject the whole selection before sending any request
+	if err := smd_lib.CheckGroups(groups); err != nil {
+		return err
+	}
+
 	// Send off request
 	results := smdClient.PostGroups(cmd.Context(), groups, rt.Token)
 	if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "SMD group addition"); err != nil {

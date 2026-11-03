@@ -31,6 +31,12 @@ removed from the group.
 
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member set compute x1000c1s7b1n0 x1000c1s7b2n0`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := cli.CheckIDs("group label", args[:1]); err != nil {
+				return err
+			}
+			return cli.CheckIDs("group member", args[1:])
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get runtime from context (always available since cmd/root.go injects it)
 			rt, err := cli.RuntimeFromCommand(cmd)

@@ -21,6 +21,8 @@ import (
 	"github.com/openchami/ochami/pkg/client/smd"
 	"github.com/openchami/ochami/pkg/config"
 	"github.com/openchami/ochami/pkg/discover"
+
+	smd_lib "github.com/openchami/ochami/internal/cli/smd"
 )
 
 // nodeCommon keeps basic node information that is common between the deprecated
@@ -78,25 +80,27 @@ func buildGroupList(logger zerolog.Logger, nodesCommon []nodeCommon) []smd.Group
 	return groupList
 }
 
-// checkOverwriteIDs returns a CodeUsage error for the first ID that --overwrite
-// would put in a request path but that cannot name a single SMD resource, so
-// that discovery can reject its whole payload before sending any request.
-func checkOverwriteIDs(comps smd.ComponentSlice, rfes smd.RedfishEndpointSliceV2, ifaces []smd.EthernetInterface, groups []smd.Group) error {
+// checkIDs returns a CodeUsage error for the first ID in the payload that
+// cannot name a single SMD resource, so that discovery can reject its whole
+// payload before sending any request. overwrite says that redfish endpoints may
+// be sent with a PUT, whose path needs an actual ID. Otherwise they are only
+// POSTed, where SMD adapts a blank ID.
+func checkIDs(comps smd.ComponentSlice, rfes smd.RedfishEndpointSliceV2, ifaces []smd.EthernetInterface, groups []smd.Group, overwrite bool) error {
 	compIDs := make([]string, 0, len(comps.Components))
 	for _, comp := range comps.Components {
 		compIDs = append(compIDs, comp.ID)
 	}
 	rfeIDs := make([]string, 0, len(rfes.RedfishEndpoints))
 	for _, rfe := range rfes.RedfishEndpoints {
-		rfeIDs = append(rfeIDs, rfe.ID)
+		if overwrite {
+			rfeIDs = append(rfeIDs, rfe.ID)
+		} else {
+			rfeIDs = append(rfeIDs, smd.RedfishEndpointEffectiveID(rfe.RedfishEndpoint))
+		}
 	}
 	ifaceIDs := make([]string, 0, len(ifaces))
 	for _, iface := range ifaces {
 		ifaceIDs = append(ifaceIDs, iface.EffectiveID())
-	}
-	groupLabels := make([]string, 0, len(groups))
-	for _, group := range groups {
-		groupLabels = append(groupLabels, group.Label)
 	}
 
 	for _, selection := range []struct {
@@ -106,11 +110,13 @@ func checkOverwriteIDs(comps smd.ComponentSlice, rfes smd.RedfishEndpointSliceV2
 		{"component ID", compIDs},
 		{"redfish endpoint ID", rfeIDs},
 		{"ethernet interface ID", ifaceIDs},
-		{"group label", groupLabels},
 	} {
 		if err := cli.CheckIDs(selection.what, selection.ids); err != nil {
 			return cli.Errorf(cli.CodeUsage, "invalid payload: %w", err)
 		}
+	}
+	if err := smd_lib.CheckGroups(groups); err != nil {
+		return cli.Errorf(cli.CodeUsage, "invalid payload: %w", err)
 	}
 	return nil
 }
@@ -321,17 +327,14 @@ See ochami-discover(1) for more details.`,
 			// add to those groups.
 			groupList := buildGroupList(rt.Logger, nodesCommon)
 
-			// Reject the whole payload before sending any request. Only
-			// --overwrite puts IDs in request paths, and interfaces are only
-			// sent separately for discovery version 1.
-			if overwrite {
-				var ifacesToCheck []smd.EthernetInterface
-				if discoveryVersion == discover.DiscoveryMethodV1 {
-					ifacesToCheck = ifaces
-				}
-				if err := checkOverwriteIDs(comps, rfes, ifacesToCheck, groupList); err != nil {
-					return err
-				}
+			// Reject the whole payload before sending any request.
+			// Interfaces are only sent separately for discovery version 1.
+			var ifacesToCheck []smd.EthernetInterface
+			if discoveryVersion == discover.DiscoveryMethodV1 {
+				ifacesToCheck = ifaces
+			}
+			if err := checkIDs(comps, rfes, ifacesToCheck, groupList, overwrite); err != nil {
+				return err
 			}
 
 			// Send Component requests

@@ -4,9 +4,8 @@
 
 package static
 
-// static_errors_test.go covers the rejection of a payload whose IDs cannot be
-// used in the request paths that --overwrite sends. See static_test.go for the
-// success paths.
+// static_errors_test.go covers the rejection of a payload whose IDs could not
+// be addressed in SMD. See static_test.go for the success paths.
 
 import (
 	"strings"
@@ -18,10 +17,10 @@ import (
 	"github.com/openchami/ochami/pkg/client/smd"
 )
 
-// TestCheckOverwriteIDs_RejectsInvalidIDs verifies that an invalid ID of each
+// TestCheckIDs_RejectsInvalidIDs verifies that an invalid ID of each
 // kind resolves to CodeUsage, and that an interface is checked by the ID its
 // request would use, which may be adapted from its MAC address.
-func TestCheckOverwriteIDs_RejectsInvalidIDs(t *testing.T) {
+func TestCheckIDs_RejectsInvalidIDs(t *testing.T) {
 	t.Parallel()
 
 	validComps := smd.ComponentSlice{Components: []smd.Component{{ID: "x0c0s0b0n0"}}}
@@ -74,7 +73,7 @@ func TestCheckOverwriteIDs_RejectsInvalidIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := checkOverwriteIDs(tc.comps, tc.rfes, tc.ifaces, tc.groups)
+			err := checkIDs(tc.comps, tc.rfes, tc.ifaces, tc.groups, true)
 			if got := cli.ExitCode(err); got != cli.CodeUsage {
 				t.Errorf("ExitCode() = %d, want %d (%s)", got, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
 			}
@@ -84,7 +83,40 @@ func TestCheckOverwriteIDs_RejectsInvalidIDs(t *testing.T) {
 		})
 	}
 
-	if err := checkOverwriteIDs(validComps, validRFEs, validIfaces, validGroups); err != nil {
-		t.Errorf("checkOverwriteIDs() with valid IDs = %v, want nil", err)
+	if err := checkIDs(validComps, validRFEs, validIfaces, validGroups, true); err != nil {
+		t.Errorf("checkIDs() with valid IDs = %v, want nil", err)
+	}
+}
+
+// TestCheckIDs_BlankRedfishEndpointID verifies that a redfish endpoint with a
+// blank ID that SMD can adapt from its FQDN is only rejected with --overwrite,
+// whose PUT needs an actual ID in its path.
+func TestCheckIDs_BlankRedfishEndpointID(t *testing.T) {
+	t.Parallel()
+
+	rfes := smd.RedfishEndpointSliceV2{RedfishEndpoints: []smd.RedfishEndpointV2{{RedfishEndpoint: csm.RedfishEndpoint{FQDN: "x0c0s0b0.example.com"}}}}
+
+	if err := checkIDs(smd.ComponentSlice{}, rfes, nil, nil, false); err != nil {
+		t.Errorf("checkIDs() without overwrite = %v, want nil", err)
+	}
+	if got := cli.ExitCode(checkIDs(smd.ComponentSlice{}, rfes, nil, nil, true)); got != cli.CodeUsage {
+		t.Errorf("ExitCode() with overwrite = %d, want %d (%s)", got, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestCheckIDs_GroupMember verifies that a group's members are checked as well
+// as its label.
+func TestCheckIDs_GroupMember(t *testing.T) {
+	t.Parallel()
+
+	group := smd.Group{Label: "compute"}
+	group.Members.IDs = []string{"x0c0s0b0n0", ".."}
+
+	err := checkIDs(smd.ComponentSlice{}, smd.RedfishEndpointSliceV2{}, nil, []smd.Group{group}, false)
+	if got := cli.ExitCode(err); got != cli.CodeUsage {
+		t.Errorf("ExitCode() = %d, want %d (%s)", got, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+	if err == nil || !strings.Contains(err.Error(), `group member ".."`) {
+		t.Errorf("error = %v, want it to name the group member", err)
 	}
 }

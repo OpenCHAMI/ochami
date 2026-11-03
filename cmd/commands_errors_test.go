@@ -1151,6 +1151,17 @@ func TestBatchCommands_RejectInvalidIDs(t *testing.T) {
 		{"metadata peer delete after a valid one", []string{"metadata", "peer", "delete", "wireguardpeer-d614b918", ".."}, `WireGuard peer UID ".." is not a single path segment (item 2 of 2)`},
 		{"smd compep get", []string{"smd", "compep", "get", "x0c0s0b0n0", ".."}, `component endpoint ID ".." is not a single path segment (item 2 of 2)`},
 		{"smd group update", []string{"smd", "group", "update", "-d", `[{"label":"compute"},{"label":".."}]`}, "invalid payload"},
+		{"smd component add", []string{"smd", "component", "add", "..", "56"}, `component ID ".." is not a single path segment`},
+		{"smd component add payload", []string{"smd", "component", "add", "-d", `{"Components":[{"ID":"x0c0s0b0n0"},{"ID":"a/b"}]}`}, "(item 2 of 2)"},
+		{"smd rfe add payload", []string{"smd", "rfe", "add", "-d", `{"RedfishEndpoints":[{"ID":"x0c0s0b0"},{"ID":".."}]}`}, "redfish endpoint ID"},
+		{"smd rfe add without any ID", []string{"smd", "rfe", "add", "-d", `{"RedfishEndpoints":[{}]}`}, "redfish endpoint ID cannot be blank"},
+		{"smd iface add", []string{"smd", "iface", "add", "x0c0s0b0n0", "::", "mgmt,172.16.0.1"}, "ethernet interface ID cannot be blank"},
+		{"smd iface add payload", []string{"smd", "iface", "add", "-d", `[{"MACAddress":"de:ad:be:ef:00:00"},{"ID":".."}]`}, "(item 2 of 2)"},
+		{"smd group add", []string{"smd", "group", "add", ".."}, `group label ".." is not a single path segment`},
+		{"smd group add member", []string{"smd", "group", "add", "compute", "--member", "x0c0s0b0n0,.."}, `group member ".."`},
+		{"smd group add payload", []string{"smd", "group", "add", "-d", `[{"label":"compute"},{"label":"."}]`}, "(item 2 of 2)"},
+		{"smd group member add", []string{"smd", "group", "member", "add", "compute", "x0c0s0b0n0", ".."}, "group member"},
+		{"smd group member set", []string{"smd", "group", "member", "set", "compute", "x0c0s0b0n0", "a/b"}, "group member"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

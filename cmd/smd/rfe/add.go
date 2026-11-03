@@ -53,6 +53,15 @@ func runCoreRfeAdd(cmd *cobra.Command, opts *rfeAddOptions, args []string, smdCl
 		rfes.RedfishEndpoints = append(rfes.RedfishEndpoints, rfe)
 	}
 
+	// Reject the whole selection before sending any request
+	rfeIDs := make([]string, 0, len(rfes.RedfishEndpoints))
+	for _, rfe := range rfes.RedfishEndpoints {
+		rfeIDs = append(rfeIDs, smd.RedfishEndpointEffectiveID(rfe))
+	}
+	if err := cli.CheckIDs("redfish endpoint ID", rfeIDs); err != nil {
+		return err
+	}
+
 	// Send off request
 	results := smdClient.PostRedfishEndpoints(cmd.Context(), rfes, rt.Token)
 	if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "SMD redfish endpoint addition"); err != nil {
