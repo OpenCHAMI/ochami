@@ -60,7 +60,7 @@ func runCoreGroupDelete(cmd *cobra.Command, opts *groupDeleteOptions, args []str
 		if len(gLabelSlice) == 0 {
 			return cli.Errorf(cli.CodeUsage, "payload contained no groups to delete")
 		}
-		if err := smd_lib.CheckIDs("group label", gLabelSlice); err != nil {
+		if err := cli.CheckIDs("group label", gLabelSlice); err != nil {
 			return cli.Errorf(cli.CodeUsage, "invalid payload: %w", err)
 		}
 	} else {
@@ -117,7 +117,7 @@ See ochami-smd(1) for more details.`,
 				if len(args) == 0 {
 					return cli.Errorf(cli.CodeUsage, "expected -d or >= 1 argument (group label), got %d", len(args))
 				}
-				if err := smd_lib.CheckIDs("group label", args); err != nil {
+				if err := cli.CheckIDs("group label", args); err != nil {
 					return err
 				}
 			} else {

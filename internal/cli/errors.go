@@ -225,6 +225,20 @@ func ClassifyClientError(err error, httpMsg, netMsg string) error {
 	return Errorf(code, "%s: %w", netMsg, err)
 }
 
+// CheckIDs returns a CodeUsage error for the first of ids that cannot name a
+// single resource (see client.CheckPathSegment), so that a batch command can
+// reject its whole selection before sending any request. what names the IDs in
+// the error message (e.g. "component ID"), which also gives the 1-based
+// position of the rejected ID.
+func CheckIDs(what string, ids []string) error {
+	for i, id := range ids {
+		if err := client.CheckPathSegment(what, id); err != nil {
+			return Errorf(CodeUsage, "%w (item %d of %d)", err, i+1, len(ids))
+		}
+	}
+	return nil
+}
+
 // itemErrors reports the failures of a multi-item operation. Its message is
 // a summary (each failure is logged individually), and it unwraps to every
 // item error so errors.Is/errors.As can inspect them.

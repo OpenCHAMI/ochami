@@ -66,7 +66,7 @@ func runCoreCompepDelete(cmd *cobra.Command, opts *compepDeleteOptions, args []s
 		if len(xnameSlice) == 0 {
 			return cli.Errorf(cli.CodeUsage, "payload contained no component endpoints to delete")
 		}
-		if err := smd_lib.CheckIDs("component endpoint ID", xnameSlice); err != nil {
+		if err := cli.CheckIDs("component endpoint ID", xnameSlice); err != nil {
 			return cli.Errorf(cli.CodeUsage, "invalid payload: %w", err)
 		}
 	} else {
@@ -155,7 +155,7 @@ See ochami-smd(1) for more details.`,
 				if len(args) == 0 {
 					return cli.Errorf(cli.CodeUsage, "expected -d, --all, or >= 1 argument (xname), got %d", len(args))
 				}
-				if err := smd_lib.CheckIDs("component endpoint ID", args); err != nil {
+				if err := cli.CheckIDs("component endpoint ID", args); err != nil {
 					return err
 				}
 			} else if len(args) > 0 {
