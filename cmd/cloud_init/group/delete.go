@@ -92,7 +92,7 @@ See ochami-cloud-init(1) for more details.`,
 				}
 			} else {
 				if len(args) > 0 {
-					return cli.Errorf(cli.CodeUsage, "raw data passed, ignoring extra arguments: %v", args)
+					return cli.Errorf(cli.CodeUsage, "-d cannot be used with arguments, got %v", args)
 				}
 			}
 

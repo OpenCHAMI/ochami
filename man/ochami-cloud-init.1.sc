@@ -312,6 +312,8 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with _group_name_ arguments.
+
 	*--no-confirm*
 		Do not ask the user to confirm deletion. Use with caution.
 
