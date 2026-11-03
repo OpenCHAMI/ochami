@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -126,10 +127,74 @@ func NewClient(baseURI string, opts ...client.Option) (*RCSClient, error) {
 			if transport, ok := oc.Transport.(*http.Transport); ok && transport.TLSClientConfig != nil {
 				dialer.TLSClientConfig = transport.TLSClientConfig.Clone()
 			}
-			return dialer.DialContext(ctx, uri, headers)
+			return dialContext(ctx, dialer, uri, headers)
 		},
 		terminal: systemTerminal{},
 	}, nil
+}
+
+// dialContext is dialer.DialContext, except that cancelling ctx also aborts
+// the websocket handshake. DialContext observes ctx only while connecting and
+// during the TLS handshake: it sends the HTTP upgrade request and reads the
+// response bounded only by the dialer's HandshakeTimeout (45 seconds for
+// websocket.DefaultDialer), so a server that never answers would hold the
+// dial, and the caller's Ctrl+C, that long. dialContext records the network
+// connection the dialer opens and closes it when ctx is done, which ends the
+// handshake at once, and then returns ctx.Err().
+func dialContext(ctx context.Context, dialer websocket.Dialer, uri string, headers http.Header) (*websocket.Conn, *http.Response, error) {
+	// mu hands the connection over between the dialer and the cancellation
+	// callback, whichever runs second acting on what the first left: the
+	// callback closes a connection already recorded, and a connection made
+	// after the callback ran is closed instead of recorded. Without this, a
+	// cancellation between connecting and recording would find nothing to
+	// close and leave the handshake running.
+	var (
+		mu        sync.Mutex
+		netConn   net.Conn
+		cancelled bool
+	)
+	netDial := dialer.NetDialContext
+	if netDial == nil {
+		netDial = (&net.Dialer{}).DialContext
+	}
+	// The dialer calls this for the connection to the server, or to a proxy
+	// in front of it; either way it is the connection the handshake uses.
+	dialer.NetDialContext = func(dialCtx context.Context, network, addr string) (net.Conn, error) {
+		c, err := netDial(dialCtx, network, addr)
+		if err != nil {
+			return nil, err
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if cancelled {
+			_ = c.Close()
+			return nil, ctx.Err()
+		}
+		netConn = c
+		return c, nil
+	}
+	stopClose := context.AfterFunc(ctx, func() {
+		mu.Lock()
+		defer mu.Unlock()
+		cancelled = true
+		if netConn != nil {
+			_ = netConn.Close()
+		}
+	})
+
+	conn, resp, err := dialer.DialContext(ctx, uri, headers)
+	if !stopClose() {
+		// ctx closed the connection, possibly just after the handshake
+		// succeeded; either way the dial is cancelled.
+		if conn != nil {
+			_ = conn.Close()
+		}
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+		return nil, nil, ctx.Err()
+	}
+	return conn, resp, err
 }
 
 // headersForToken creates HTTP headers with the given token for authentication.

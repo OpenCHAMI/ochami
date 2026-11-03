@@ -242,3 +242,114 @@ func TestShowConsole_Cancelled(t *testing.T) {
 		t.Errorf("Close() called %d times, want 1", n)
 	}
 }
+
+// stalledHandshakeServer starts a listener that accepts connections but never
+// answers the websocket upgrade request, and returns its base URI and a
+// channel that is closed when the first connection's client closes it.
+func stalledHandshakeServer(t *testing.T) (string, <-chan struct{}) {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { _ = l.Close() })
+	closed := make(chan struct{})
+	go func() {
+		conn, err := l.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		// Read the upgrade request and never reply; a read error means the
+		// client closed the connection.
+		_, _ = io.Copy(io.Discard, conn) //nolint:errcheck // the error is the signal
+		close(closed)
+	}()
+	return "http://" + l.Addr().String(), closed
+}
+
+// TestRCSClient_HandshakeCancelled verifies that cancelling the context
+// aborts a websocket handshake the server never answers: ShowConsole and
+// ConnectConsole return context.Canceled promptly instead of waiting out the
+// dialer's handshake timeout, and the connection to the server is closed.
+func TestRCSClient_HandshakeCancelled(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(ctx context.Context, c *RCSClient) error
+	}{
+		{name: "ShowConsole", run: func(ctx context.Context, c *RCSClient) error {
+			return c.ShowConsole(ctx, "x0", true, 1, "", io.Discard)
+		}},
+		{name: "ConnectConsole", run: func(ctx context.Context, c *RCSClient) error {
+			return c.ConnectConsole(ctx, "x0", "", strings.NewReader(""), io.Discard)
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			uri, closed := stalledHandshakeServer(t)
+			c, err := NewClient(uri)
+			if err != nil {
+				t.Fatalf("NewClient: %v", err)
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			time.AfterFunc(50*time.Millisecond, cancel)
+
+			done := make(chan error, 1)
+			go func() { done <- tc.run(ctx, c) }()
+			select {
+			case err := <-done:
+				if !errors.Is(err, context.Canceled) {
+					t.Fatalf("error = %v, want context.Canceled", err)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("did not return within 5s of cancellation")
+			}
+			select {
+			case <-closed:
+			case <-time.After(5 * time.Second):
+				t.Error("connection to the server was not closed")
+			}
+		})
+	}
+}
+
+// TestDialContext_CancelledWhileConnecting verifies that a cancellation
+// arriving after the network connection is made, but before dialContext has
+// recorded it, still aborts the handshake: the connection is closed and
+// dialContext returns context.Canceled promptly rather than at the dialer's
+// handshake timeout.
+func TestDialContext_CancelledWhileConnecting(t *testing.T) {
+	uri, closed := stalledHandshakeServer(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dialer := *websocket.DefaultDialer
+	dialer.NetDialContext = func(dialCtx context.Context, network, addr string) (net.Conn, error) {
+		c, err := (&net.Dialer{}).DialContext(dialCtx, network, addr)
+		// Cancel between connecting and returning the connection, and give
+		// the cancellation callback time to run before it is recorded.
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		return c, err
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := dialContext(ctx, dialer, "ws"+strings.TrimPrefix(uri, "http")+"/consoles/x0", nil)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("dialContext() error = %v, want context.Canceled", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("dialContext() did not return within 5s of cancellation")
+	}
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Error("connection to the server was not closed")
+	}
+}
