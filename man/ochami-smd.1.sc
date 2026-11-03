@@ -263,8 +263,9 @@ Subcommands for this command are as follows:
 	input.
 
 	Only the ID of each payload item is used. If any ID, whether from the
-	payload or the command line, is blank, is "." or "..", or contains "/",
-	nothing is deleted and the command exits with a usage error.
+	payload or the command line, is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is deleted and the command
+	exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /ComponentEndpoints
 	endpoint.
@@ -400,8 +401,9 @@ Subcommands for this command are as follows:
 	In the fifth form of the command, the payload is read from standard input.
 
 	Only the ID of each payload item is used. If any ID, whether from the
-	payload or the command line, is blank, is "." or "..", or contains "/",
-	nothing is deleted and the command exits with a usage error.
+	payload or the command line, is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is deleted and the command
+	exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /Components
 	endpoint.
@@ -542,10 +544,10 @@ Subcommands for this command are as follows:
 	the ID of each payload item is used.
 
 	If any ID used to select interfaces, whether from the payload or the
-	command line, is blank, is "." or "..", or contains "/", nothing is deleted
-	and the command exits with a usage error. A missing ID is not derived from
-	*MACAddress*, so a payload item with only *MACAddress* set also causes a
-	usage error.
+	command line, is blank, is "." or "..", contains "/", or contains a
+	malformed percent-escape, nothing is deleted and the command exits with a
+	usage error. A missing ID is not derived from *MACAddress*, so a payload
+	item with only *MACAddress* set also causes a usage error.
 
 	This command sends one or more DELETE requests to SMD's
 	/Inventory/EthernetInterfaces endpoint. An access token is required.
@@ -696,8 +698,9 @@ Subcommands for this command are as follows:
 	passed. This is convenient in cases of dealing with many components at once.
 
 	Only the ID of each payload item is used. If any ID, whether from the
-	payload or the command line, is blank, is "." or "..", or contains "/",
-	nothing is deleted and the command exits with a usage error.
+	payload or the command line, is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is deleted and the command
+	exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /RedfishEndpoints
 	endpoint. An access token is required.
@@ -854,8 +857,9 @@ Subcommands for this command are as follows:
 	input.
 
 	Only the label of each payload item is used. If any label, whether from the
-	payload or the command line, is blank, is "." or "..", or contains "/",
-	nothing is deleted and the command exits with a usage error.
+	payload or the command line, is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is deleted and the command
+	exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /groups endpoint.
 
@@ -1068,8 +1072,9 @@ Subcommands for this command are as follows:
 *delete* _group_name_ _xname_...
 	Delete one or more components from an existing SMD group.
 
-	If the group name or any _xname_ is blank, is "." or "..", or contains "/",
-	nothing is deleted and the command exits with a usage error.
+	If the group name or any _xname_ is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is deleted and the command
+	exits with a usage error.
 
 	This command sends one or more DELETE requests to the members subendpoint
 	under SMD's /groups endpoint.

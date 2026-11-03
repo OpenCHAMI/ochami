@@ -62,9 +62,9 @@ func TestUseCACert_RejectsInvalidPEM(t *testing.T) {
 
 // TestCheckPathSegment_Rejects verifies that CheckPathSegment rejects, with an
 // error wrapping InvalidArgumentError, every ID that url.JoinPath would not
-// resolve to a single resource below the endpoint.
+// resolve to a single resource below the endpoint or would fail on.
 func TestCheckPathSegment_Rejects(t *testing.T) {
-	for _, seg := range []string{"", " ", "\t", ".", "..", "/", "x0/", "x0/..", "a/b"} {
+	for _, seg := range []string{"", " ", "\t", ".", "..", "/", "x0/", "x0/..", "a/b", "%zz", "a%b", "x0%"} {
 		err := CheckPathSegment("component ID", seg)
 		if !errors.Is(err, InvalidArgumentError) {
 			t.Errorf("CheckPathSegment(%q) = %v, want an error wrapping InvalidArgumentError", seg, err)

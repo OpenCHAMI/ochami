@@ -162,14 +162,19 @@ func (oc *OchamiClient) GetURI(endpoint, query string) (string, error) {
 // cannot name a single resource below an endpoint: if it is blank, is "." or
 // "..", or contains "/". url.JoinPath resolves each of these to the endpoint
 // itself or to a different path, and a DELETE to a collection endpoint can
-// delete every resource in it. what names seg in the error message (e.g.
-// "component ID").
+// delete every resource in it. It also rejects a seg with a malformed
+// percent-escape, which url.JoinPath fails on, so that a batch can reject it
+// before sending a request for any other item. what names seg in the error
+// message (e.g. "component ID").
 func CheckPathSegment(what, seg string) error {
 	switch {
 	case strings.TrimSpace(seg) == "":
 		return fmt.Errorf("%w: %s cannot be blank", InvalidArgumentError, what)
 	case seg == "." || seg == ".." || strings.Contains(seg, "/"):
 		return fmt.Errorf("%w: %s %q is not a single path segment", InvalidArgumentError, what, seg)
+	}
+	if _, err := url.PathUnescape(seg); err != nil {
+		return fmt.Errorf("%w: %s %q contains a malformed percent-escape", InvalidArgumentError, what, seg)
 	}
 	return nil
 }
