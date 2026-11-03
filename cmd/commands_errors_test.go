@@ -530,6 +530,8 @@ func TestCommands_RejectInvalidArguments(t *testing.T) {
 		{"smd", "group", "member", "add", "a/b", "x0c0s0b0n0"},
 		{"smd", "group", "member", "set", "..", "x0c0s0b0n0"},
 		{"smd", "group", "update", "-d", `[{"label":".."}]`},
+		{"rcs", "console", "show", ""},
+		{"rcs", "console", "connect", ".."},
 		{"pcs", "transition", "show", ""},
 		{"pcs", "transition", "show", ".."},
 		{"pcs", "transition", "monitor", "a/b"},

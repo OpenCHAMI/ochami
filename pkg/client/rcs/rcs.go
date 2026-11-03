@@ -208,7 +208,11 @@ func headersForToken(token string) *client.HTTPHeaders {
 }
 
 // dialWebSocket constructs the websocket URL for the console endpoint and attempts to establish a connection with the appropriate headers.
+// A node ID that client.CheckPathSegment rejects is an error, and no connection is attempted.
 func (c *RCSClient) dialWebSocket(ctx context.Context, nodeID string, query string, headers *client.HTTPHeaders) (messageConn, error) {
+	if err := client.CheckPathSegment("node ID", nodeID); err != nil {
+		return nil, err
+	}
 	endpoint := fmt.Sprintf("/consoles/%s", nodeID)
 	uriStr, err := c.GetURI(endpoint, query)
 	if err != nil {
