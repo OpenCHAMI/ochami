@@ -120,7 +120,16 @@ See ochami-smd(1) for more details.`,
   ochami smd component delete --all
 
   # Delete components using input payload data
-  ochami smd component delete -d '{"Components":[{"ID"x3000c1s7b56n0"},{"ID":"x3000c1s7b56n1"}]}'
+  ochami smd component delete -d '{
+    "Components": [
+      {
+        "ID": "x3000c1s7b56n0"
+      },
+      {
+        "ID": "x3000c1s7b56n1"
+      }
+    ]
+  }'
 
   # Delete components using input payload file
   ochami smd component delete -d @payload.json

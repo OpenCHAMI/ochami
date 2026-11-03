@@ -116,7 +116,16 @@ See ochami-smd(1) for more details.`,
   ochami smd compep delete --all
 
   # Delete component endpoints using input payload data
-  ochami smd compep delete -d '{"ComponentEndpoints":[{"ID":"x3000c1s7b56n0"},{"ID":"x3000c1s7b56n1"}]}'
+  ochami smd compep delete -d '{
+    "ComponentEndpoints": [
+      {
+        "ID": "x3000c1s7b56n0"
+      },
+      {
+        "ID": "x3000c1s7b56n1"
+      }
+    ]
+  }'
 
   # Delete component endpoints using input payload file
   ochami smd compep delete -d @payload.json
