@@ -201,6 +201,10 @@ This command accepts the following options:
 	Instead of failing if data already exists, overwrite it with new data
 	contained in the payload.
 
+	If any ID that this sends in a request path is blank, is "." or "..",
+	contains "/", or contains a malformed percent-escape, nothing is sent and
+	the command exits with a usage error.
+
 *--discovery-version*
 	Set the version of the discovery method to use for static discovery.
 
