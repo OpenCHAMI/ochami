@@ -659,6 +659,9 @@ func TestSMD_InvalidID(t *testing.T) {
 		{"patch groups", func(sc *SMDClient) client.BatchResult[client.HTTPEnvelope] {
 			return sc.PatchGroups(ctx, []Group{{Label: ".."}, {Label: "compute"}, {Label: ""}}, "tok")
 		}},
+		{"patch group fields", func(sc *SMDClient) client.BatchResult[client.HTTPEnvelope] {
+			return sc.PatchGroupFields(ctx, []GroupPatch{{Label: ".."}, {Label: "compute"}, {Label: "a/b"}}, "tok")
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

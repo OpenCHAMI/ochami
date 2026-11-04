@@ -891,8 +891,8 @@ func (sc *SMDClient) PatchGroupFields(ctx context.Context, patches []GroupPatch,
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, patches, func(ctx context.Context, patch GroupPatch) (client.HTTPEnvelope, error) {
-		if patch.Label == "" {
-			return client.HTTPEnvelope{}, fmt.Errorf("PatchGroupFields(): %w: no group label specified to update", client.InvalidArgumentError)
+		if err := client.CheckPathSegment("group label", patch.Label); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PatchGroupFields(): %w", err)
 		}
 		groupPath, err := url.JoinPath(SMDRelpathGroups, patch.Label)
 		if err != nil {
