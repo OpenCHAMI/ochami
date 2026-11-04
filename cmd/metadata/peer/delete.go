@@ -74,6 +74,9 @@ See ochami-metadata(1) for more details.`,
 
   # Don't confirm deletion
   ochami metadata peer delete --no-confirm wireguardpeer-d614b918`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return cli.CheckIDs("WireGuard peer UID", args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get runtime from context (always available since cmd/root.go injects it)
 			rt, err := cli.RuntimeFromCommand(cmd)

@@ -85,6 +85,15 @@ See ochami-cloud-init(1) for more details.`,
 				}
 			}
 
+			// Reject the whole payload before sending any request
+			groupNames := make([]string, 0, len(ciGroups))
+			for _, group := range ciGroups {
+				groupNames = append(groupNames, group.Name)
+			}
+			if err := cli.CheckIDs("group name", groupNames); err != nil {
+				return cli.Errorf(cli.CodeUsage, "invalid payload: %w", err)
+			}
+
 			// Send data
 			results := cloudInitClient.PostGroups(cmd.Context(), ciGroups, rt.Token)
 			if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "cloud-init group addition"); err != nil {

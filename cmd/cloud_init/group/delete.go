@@ -88,6 +88,9 @@ See ochami-cloud-init(1) for more details.`,
 				if len(args) == 0 {
 					return cli.Errorf(cli.CodeUsage, "expected -d or at >= 1 argument (group name(s)); got none")
 				}
+				if err := cli.CheckIDs("group name", args); err != nil {
+					return err
+				}
 			} else {
 				if len(args) > 0 {
 					return cli.Errorf(cli.CodeUsage, "-d cannot be used with arguments, got %v", args)
@@ -114,6 +117,9 @@ See ochami-cloud-init(1) for more details.`,
 				}
 				for _, group := range ciGroups {
 					groupsToDel = append(groupsToDel, group.Name)
+				}
+				if err := cli.CheckIDs("group name", groupsToDel); err != nil {
+					return cli.Errorf(cli.CodeUsage, "invalid payload: %w", err)
 				}
 			} else {
 				groupsToDel = args

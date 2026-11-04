@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -410,5 +411,115 @@ func TestDiscoverStatic_OverwriteNetworkError(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeNetwork {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
+	}
+}
+
+// TestDiscoverStatic_RejectsInvalidIDs verifies that one invalid ID fails
+// discovery with CodeUsage before any request is sent, whether it would be sent
+// in a request path (--overwrite) or only in a POST body.
+func TestDiscoverStatic_RejectsInvalidIDs(t *testing.T) {
+	t.Parallel()
+
+	payload := strings.Replace(discoveryPayload, `["compute"]`, `["compute", ".."]`, 1)
+
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{name: "with overwrite", args: []string{"--overwrite"}},
+		{name: "without overwrite"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var requests atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`[]`))
+			}))
+			defer srv.Close()
+
+			args := append([]string{"discover", "static", "-d", payload, "--ignore-config", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.exitCode != cli.CodeUsage {
+				t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if want := `group label ".." is not a single path segment`; res.err == nil || !strings.Contains(res.err.Error(), want) {
+				t.Errorf("error = %v, want it to contain %q", res.err, want)
+			}
+			if got := requests.Load(); got != 0 {
+				t.Errorf("request count = %d, want 0", got)
+			}
+		})
+	}
+}
+
+// TestDiscoverStatic_IfaceIDsCheckedOnlyWhenSent verifies that an interface is
+// checked by the ID adapted from its MAC address, and only with discovery
+// version 1, which sends interfaces separately. Version 2 sends them inside
+// redfish endpoints and does not use that ID, so it does not reject the payload.
+func TestDiscoverStatic_IfaceIDsCheckedOnlyWhenSent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		mac      string
+		args     []string
+		wantCode int
+		wantMsg  string
+	}{
+		{name: "v1 overwrite with blank adapted ID", mac: "::", args: []string{"--overwrite", "--discovery-version", "1"}, wantCode: cli.CodeUsage, wantMsg: "ethernet interface ID cannot be blank"},
+		{name: "v1 overwrite with path-like ID", mac: "a/b", args: []string{"--overwrite", "--discovery-version", "1"}, wantCode: cli.CodeUsage, wantMsg: `ethernet interface ID "a/b" is not a single path segment`},
+		{name: "v1 without overwrite", mac: "::", args: []string{"--discovery-version", "1"}, wantCode: cli.CodeUsage, wantMsg: "ethernet interface ID cannot be blank"},
+		{name: "v2 overwrite", mac: "::", args: []string{"--overwrite", "--discovery-version", "2"}, wantCode: cli.CodeSuccess},
+		{name: "v2 without overwrite", mac: "::", args: []string{"--discovery-version", "2"}, wantCode: cli.CodeSuccess},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				mu       sync.Mutex
+				requests []string
+			)
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				mu.Unlock()
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`[]`))
+			}))
+			defer srv.Close()
+
+			payload := strings.Replace(discoveryPayload, "de:ad:be:ee:ee:f1", tc.mac, 1)
+			args := append([]string{"discover", "static", "-d", payload, "--ignore-config", "--uri", srv.URL, "--token", "t"}, tc.args...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.exitCode != tc.wantCode {
+				t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, tc.wantCode, cli.CodeName(tc.wantCode))
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			if tc.wantMsg != "" {
+				if res.err == nil || !strings.Contains(res.err.Error(), tc.wantMsg) {
+					t.Errorf("error = %v, want it to contain %q", res.err, tc.wantMsg)
+				}
+				if len(requests) != 0 {
+					t.Errorf("requests = %v, want none", requests)
+				}
+				return
+			}
+			if len(requests) == 0 {
+				t.Error("no requests sent, want discovery to proceed")
+			}
+			for _, req := range requests {
+				if strings.Contains(req, "EthernetInterfaces") {
+					t.Errorf("request %q sent an interface separately", req)
+				}
+			}
+		})
 	}
 }

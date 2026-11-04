@@ -111,6 +111,15 @@ See ochami-smd(1) for more details.`,
 				compSlice.Components = append(compSlice.Components, comp)
 			}
 
+			// Reject the whole selection before sending any request
+			compIDs := make([]string, 0, len(compSlice.Components))
+			for _, comp := range compSlice.Components {
+				compIDs = append(compIDs, comp.ID)
+			}
+			if err := cli.CheckIDs("component ID", compIDs); err != nil {
+				return err
+			}
+
 			// Send off request
 			_, err = smdClient.PostComponents(cmd.Context(), compSlice, rt.Token)
 			if err != nil {

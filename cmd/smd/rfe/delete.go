@@ -67,7 +67,7 @@ func runCoreRfeDelete(cmd *cobra.Command, opts *rfeDeleteOptions, args []string,
 		if len(xnameSlice) == 0 {
 			return cli.Errorf(cli.CodeUsage, "payload contained no redfish endpoints to delete")
 		}
-		if err := smd_lib.CheckIDs("redfish endpoint ID", xnameSlice); err != nil {
+		if err := cli.CheckIDs("redfish endpoint ID", xnameSlice); err != nil {
 			return cli.Errorf(cli.CodeUsage, "invalid payload: %w", err)
 		}
 	} else {
@@ -147,7 +147,7 @@ See ochami-smd(1) for more details.`,
 				if len(args) == 0 {
 					return cli.Errorf(cli.CodeUsage, "expected -d, --all, or >= 1 argument (xname), got %d", len(args))
 				}
-				if err := smd_lib.CheckIDs("redfish endpoint ID", args); err != nil {
+				if err := cli.CheckIDs("redfish endpoint ID", args); err != nil {
 					return err
 				}
 			} else if len(args) > 0 {

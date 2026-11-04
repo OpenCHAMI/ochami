@@ -42,6 +42,15 @@ func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []str
 		if err := rt.HandlePayload(cmd, &groups); err != nil {
 			return err
 		}
+
+		// Reject the whole payload before sending any request
+		labels := make([]string, 0, len(groups))
+		for _, group := range groups {
+			labels = append(labels, group.Label)
+		}
+		if err := cli.CheckIDs("group label", labels); err != nil {
+			return cli.Errorf(cli.CodeUsage, "invalid payload: %w", err)
+		}
 	} else {
 		// ...otherwise use CLI options/args, setting only the fields whose
 		// flags were passed

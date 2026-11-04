@@ -159,6 +159,11 @@ Redfish may not be possible or feasible using dynamic methods (e.g. no Redfish
 support), or storing node data in a user-friendly file that can be used to
 populate SMD is preferred.
 
+If any xname, group name, or derived interface ID in the payload is blank, is
+"." or "..", contains "/", "?", or "#", in plain or percent-encoded form, or
+contains a malformed percent-escape, nothing is sent and the command exits with
+a usage error.
+
 If *-d* is not specified, then the data is read from standard input. The format
 of the input data is JSON by default, but *-f* can be used to specify a
 different format.

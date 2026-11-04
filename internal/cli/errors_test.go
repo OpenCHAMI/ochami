@@ -86,6 +86,28 @@ func TestClassifyClientError(t *testing.T) {
 	}
 }
 
+// TestCheckIDs verifies that CheckIDs accepts a selection of valid IDs and
+// resolves the first invalid ID to CodeUsage, naming its position.
+func TestCheckIDs(t *testing.T) {
+	if err := CheckIDs("component ID", []string{"x0c0s0b0n0", "x0c0s1b0n0"}); err != nil {
+		t.Errorf("CheckIDs() with valid IDs = %v, want nil", err)
+	}
+	if err := CheckIDs("component ID", nil); err != nil {
+		t.Errorf("CheckIDs() with no IDs = %v, want nil", err)
+	}
+
+	err := CheckIDs("component ID", []string{"x0c0s0b0n0", "..", ""})
+	if got := ExitCode(err); got != CodeUsage {
+		t.Errorf("ExitCode() = %d, want %d (%s)", got, CodeUsage, CodeName(CodeUsage))
+	}
+	if !errors.Is(err, client.InvalidArgumentError) {
+		t.Errorf("error = %v, want it to wrap client.InvalidArgumentError", err)
+	}
+	if want := `component ID ".." is not a single path segment (item 2 of 3)`; !strings.Contains(err.Error(), want) {
+		t.Errorf("error = %q, want it to contain %q", err, want)
+	}
+}
+
 // TestAggregateItemErrors_Codes verifies that AggregateItemErrors returns nil
 // when no item failed, wraps every item error, and codes the result with the
 // code the failures share or with CodeMixed when they differ.

@@ -43,8 +43,15 @@ func (msc *MetadataServiceClient) AddDefaults(ctx context.Context, token string,
 // DeleteDefaults is a wrapper that calls the metadata-service client's
 // DeleteClusterDefaults() function, passing it context and a list of cluster
 // defaults UIDs to delete. It returns one result per UID in input order.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (msc *MetadataServiceClient) DeleteDefaults(ctx context.Context, token string, uids []string) client.BatchResult[string] {
 	return client.RunBatchWithTimeout(ctx, msc.Timeout, uids, func(requestCtx context.Context, defaultsUID string) (string, error) {
+		if err := client.CheckPathSegment("cluster defaults UID", defaultsUID); err != nil {
+			return "", err
+		}
 		err := msc.Client.WithBearerToken(token).DeleteClusterDefaults(requestCtx, defaultsUID)
 		if err != nil {
 			return "", fmt.Errorf("failed to delete cluster defaults %s: %w", defaultsUID, client.FabricaWrapHTTPError(err))
@@ -57,7 +64,14 @@ func (msc *MetadataServiceClient) DeleteDefaults(ctx context.Context, token stri
 // GetClusterDefaults() function, passing it context and a UID. The output is a
 // []byte containing the entity's cluster defaults information, formatted as
 // outFormat.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) GetDefaults(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	if err := client.CheckPathSegment("cluster defaults UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -99,7 +113,14 @@ func (msc *MetadataServiceClient) ListDefaults(ctx context.Context, token string
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the cluster defaults identified by uid. It returns the
 // modified ClusterDefaults resource returned by metadata-service and any error.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) PatchDefaults(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.ClusterDefaults, error) {
+	if err := client.CheckPathSegment("cluster defaults UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -124,7 +145,14 @@ func (msc *MetadataServiceClient) PatchDefaults(ctx context.Context, token strin
 // SetDefaults is a wrapper that calls the metadata-service client's
 // UpdateClusterDefaults() function, passing it context. It returns the modified
 // ClusterDefaults resource returned by metadata-service and any error.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) SetDefaults(ctx context.Context, token string, uid string, defaults metadata_service_client.UpdateClusterDefaultsRequest) (*api.ClusterDefaults, error) {
+	if err := client.CheckPathSegment("cluster defaults UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -152,7 +180,14 @@ func (msc *MetadataServiceClient) AddDefaultsSpecs(ctx context.Context, token st
 // SetDefaultsSpec is like SetDefaults but calls the metadata-service client's
 // simple UpdateClusterDefaultsSimple() function, which only sends the resource
 // spec.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) SetDefaultsSpec(ctx context.Context, token string, uid string, spec api.ClusterDefaultsSpec) (*api.ClusterDefaults, error) {
+	if err := client.CheckPathSegment("cluster defaults UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 

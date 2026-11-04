@@ -67,7 +67,7 @@ func runCoreIfaceDelete(cmd *cobra.Command, opts *ifaceDeleteOptions, args []str
 		if len(eIdSlice) == 0 {
 			return cli.Errorf(cli.CodeUsage, "payload contained no ethernet interfaces to delete")
 		}
-		if err := smd_lib.CheckIDs("ethernet interface ID", eIdSlice); err != nil {
+		if err := cli.CheckIDs("ethernet interface ID", eIdSlice); err != nil {
 			// Unlike patch, delete does not derive a missing ID from
 			// the MAC address, so say so when the payload has one.
 			for _, ei := range eiSlice {
@@ -154,7 +154,7 @@ See ochami-smd(1) for more details.`,
 				if len(args) == 0 {
 					return cli.Errorf(cli.CodeUsage, "expected -d, --all, or >= 1 argument (interface id), got %d", len(args))
 				}
-				if err := smd_lib.CheckIDs("ethernet interface ID", args); err != nil {
+				if err := cli.CheckIDs("ethernet interface ID", args); err != nil {
 					return err
 				}
 			} else if len(args) > 0 {

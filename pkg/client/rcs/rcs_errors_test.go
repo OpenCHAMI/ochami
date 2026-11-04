@@ -8,7 +8,7 @@ package rcs
 // from the plain HTTP endpoints, a websocket dial failure for the
 // console-streaming endpoints, a failure to close the console connection,
 // malformed response bodies, websocketDialError's classification of failed
-// dials, and the rejection of a malformed client URI.
+// dials, and the rejection of a malformed client URI or an invalid node ID.
 
 import (
 	"bytes"
@@ -118,6 +118,29 @@ func TestDialWebSocket_MalformedURI(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "failed to parse console URI") {
 		t.Errorf("dialWebSocket error = %v, want it to mention URI parsing", err)
+	}
+}
+
+// TestDialWebSocket_InvalidNodeID verifies that the console methods reject a
+// node ID that is blank or is not a single path segment, wrapping
+// client.InvalidArgumentError, without attempting a connection.
+func TestDialWebSocket_InvalidNodeID(t *testing.T) {
+	var requests atomic.Int32
+	c, srv := newTestRCS(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+	})
+	defer srv.Close()
+
+	for _, id := range []string{"", " ", ".", "..", "a/b"} {
+		if err := c.ShowConsole(context.Background(), id, false, 10, "", io.Discard); !errors.Is(err, client.InvalidArgumentError) {
+			t.Errorf("ShowConsole(%q) error = %v, want it to wrap client.InvalidArgumentError", id, err)
+		}
+		if err := c.ConnectConsole(context.Background(), id, "", strings.NewReader(""), io.Discard); !errors.Is(err, client.InvalidArgumentError) {
+			t.Errorf("ConnectConsole(%q) error = %v, want it to wrap client.InvalidArgumentError", id, err)
+		}
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf("request count = %d, want 0", got)
 	}
 }
 

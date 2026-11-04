@@ -42,8 +42,15 @@ func (msc *MetadataServiceClient) AddGroups(ctx context.Context, token string, g
 // DeleteGroups is a wrapper that calls the metadata-service client's
 // DeleteGroup() function, passing it context and a list of Group UIDs to
 // delete. It returns one result per UID in input order.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (msc *MetadataServiceClient) DeleteGroups(ctx context.Context, token string, uids []string) client.BatchResult[string] {
 	return client.RunBatchWithTimeout(ctx, msc.Timeout, uids, func(requestCtx context.Context, groupUID string) (string, error) {
+		if err := client.CheckPathSegment("group UID", groupUID); err != nil {
+			return "", err
+		}
 		err := msc.Client.WithBearerToken(token).DeleteGroup(requestCtx, groupUID)
 		if err != nil {
 			return "", fmt.Errorf("failed to delete group %s: %w", groupUID, client.FabricaWrapHTTPError(err))
@@ -56,7 +63,14 @@ func (msc *MetadataServiceClient) DeleteGroups(ctx context.Context, token string
 // GetGroup() function, passing it context and a UID. The output is a
 // []byte containing the entity's group information, formatted as
 // outFormat.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) GetGroup(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	if err := client.CheckPathSegment("group UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -98,7 +112,14 @@ func (msc *MetadataServiceClient) ListGroups(ctx context.Context, token string, 
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the Group identified by uid. It returns the modified Group
 // resource returned by metadata-service and any error.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) PatchGroup(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.Group, error) {
+	if err := client.CheckPathSegment("group UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -123,7 +144,14 @@ func (msc *MetadataServiceClient) PatchGroup(ctx context.Context, token string, 
 // SetGroup is a wrapper that calls the metadata-service client's
 // UpdateGroup() function, passing it context. It returns the modified Group
 // resource returned by metadata-service and any error.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) SetGroup(ctx context.Context, token string, uid string, group metadata_service_client.UpdateGroupRequest) (*api.Group, error) {
+	if err := client.CheckPathSegment("group UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -150,7 +178,14 @@ func (msc *MetadataServiceClient) AddGroupSpecs(ctx context.Context, token strin
 
 // SetGroupSpec is like SetGroup but calls the metadata-service client's simple
 // UpdateGroupSimple() function, which only sends the resource spec.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) SetGroupSpec(ctx context.Context, token string, uid string, spec api.GroupSpec) (*api.Group, error) {
+	if err := client.CheckPathSegment("group UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 

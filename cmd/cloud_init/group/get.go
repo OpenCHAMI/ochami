@@ -23,6 +23,11 @@ import (
 // getGroupData returns a slice of cloud-init group data for the
 // requested groups using the provided runtime for configuration.
 func getGroupData(cmd *cobra.Command, args []string, rt *cli.Runtime) (groupSlice []cistore.GroupData, err error) {
+	// Reject the whole selection before sending any request
+	if err := cli.CheckIDs("group name", args); err != nil {
+		return nil, err
+	}
+
 	// Create client to use for requests
 	cloudInitClient, err := cloud_init_lib.GetClient(cmd, rt)
 	if err != nil {

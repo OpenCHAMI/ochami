@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/openchami/cloud-init/pkg/cistore"
 
@@ -125,6 +124,10 @@ func (cic *CloudInitClient) GetDefaults(ctx context.Context, token string) (clie
 // GetGroups is a wrapper function around OchamiClient.Getdata that returns
 // group data for a list of group ids. If none are passed, all group data is
 // returned.
+//
+// An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (cic *CloudInitClient) GetGroups(ctx context.Context, token string, ids ...string) client.BatchResult[client.HTTPEnvelope] {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
@@ -138,6 +141,9 @@ func (cic *CloudInitClient) GetGroups(ctx context.Context, token string, ids ...
 		return client.BatchResult[client.HTTPEnvelope]{{Value: henv, Err: err}}
 	}
 	return client.RunBatch(ctx, ids, func(ctx context.Context, id string) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("group name", id); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("GetGroups(): %w", err)
+		}
 		finalEP, err := url.JoinPath(CloudInitRelpathGroups, id)
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("GetGroups(): failed to join base group path with ID: %w", err)
@@ -156,6 +162,9 @@ func (cic *CloudInitClient) GetGroups(ctx context.Context, token string, ids ...
 // OchamiClient.GetData. Slices containing the client.HTTPEnvelope and error for
 // each request is returned, along with a separate single error if a function
 // error occurred.
+//
+// An ID that client.CheckPathSegment rejects is reported as that item's error,
+// and no request is sent for it.
 func (cic *CloudInitClient) GetNodeData(ctx context.Context, dataType CIDataType, token string, ids ...string) (client.BatchResult[client.HTTPEnvelope], error) {
 	if len(ids) == 0 {
 		return nil, fmt.Errorf("GetNodeData(): %w: at least one ID is required", client.InvalidArgumentError)
@@ -165,6 +174,9 @@ func (cic *CloudInitClient) GetNodeData(ctx context.Context, dataType CIDataType
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, ids, func(ctx context.Context, id string) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("node ID", id); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("GetNodeData(): %w", err)
+		}
 		finalEP, err := url.JoinPath(CloudInitRelpathImpersonation, id, string(dataType))
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("GetNodeData(): failed to join %s with ID %s and %s: %w", CloudInitRelpathImpersonation, id, dataType, err)
@@ -183,9 +195,13 @@ func (cic *CloudInitClient) GetNodeData(ctx context.Context, dataType CIDataType
 // iteratively calling OchamiClient.GetData. Slices containing the
 // client.HTTPEnvelope and error for each request are returned, along with a
 // separate single error if a function error occurred.
+//
+// A node ID that client.CheckPathSegment rejects is an operation-wide error,
+// and no request is sent. A group that it rejects is reported as that item's
+// error, and no request is sent for it.
 func (cic *CloudInitClient) GetNodeGroupData(ctx context.Context, token, id string, groups ...string) (client.BatchResult[client.HTTPEnvelope], error) {
-	if strings.Trim(id, " ") == "" {
-		return nil, fmt.Errorf("GetNodeGroupData(): %w: group cannot be blank", client.InvalidArgumentError)
+	if err := client.CheckPathSegment("node ID", id); err != nil {
+		return nil, fmt.Errorf("GetNodeGroupData(): %w", err)
 	}
 	if len(groups) == 0 {
 		return nil, fmt.Errorf("GetNodeGroupData(): %w: at least one group is required", client.InvalidArgumentError)
@@ -195,6 +211,9 @@ func (cic *CloudInitClient) GetNodeGroupData(ctx context.Context, token, id stri
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, groups, func(ctx context.Context, group string) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("group name", group); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("GetNodeGroupData(): %w", err)
+		}
 		finalEP, err := url.JoinPath(CloudInitRelpathImpersonation, id, fmt.Sprintf("%s.yaml", group))
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("GetNodeGroupData(): failed to join %s with ID %s and %s.yaml: %w", CloudInitRelpathImpersonation, id, group, err)
@@ -247,12 +266,19 @@ func (cic *CloudInitClient) PostDefaults(ctx context.Context, ciDflts cistore.Cl
 // slice of cistore.GroupData and a token, puts the token in the request headers
 // as an authorization bearer, and iteratively calls OchamiClient.PostData using
 // each item from the slice.
+//
+// A group name that client.CheckPathSegment rejects is reported as that item's
+// error, and no request is sent for it, since such a group could not be
+// addressed later.
 func (cic *CloudInitClient) PostGroups(ctx context.Context, ciGroups []cistore.GroupData, token string) client.BatchResult[client.HTTPEnvelope] {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, ciGroups, func(ctx context.Context, cig cistore.GroupData) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("group name", cig.Name); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PostGroups(): %w", err)
+		}
 		body, err := json.Marshal(cig)
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("PostGroups(): failed to marshal GroupData: %w", err)
@@ -269,14 +295,17 @@ func (cic *CloudInitClient) PostGroups(ctx context.Context, ciGroups []cistore.G
 // slice of cistore.GroupData and a token, puts the token in the request
 // headers as an authorization bearer, and iteratively calls
 // OchamiClient.PostData using each item from the slice.
+//
+// A group name that client.CheckPathSegment rejects is reported as that item's
+// error, and no request is sent for it.
 func (cic *CloudInitClient) PutGroups(ctx context.Context, ciGroups []cistore.GroupData, token string) client.BatchResult[client.HTTPEnvelope] {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, ciGroups, func(ctx context.Context, cig cistore.GroupData) (client.HTTPEnvelope, error) {
-		if strings.Trim(cig.Name, " ") == "" {
-			return client.HTTPEnvelope{}, fmt.Errorf("PutGroups(): %w: group name cannot be blank", client.InvalidArgumentError)
+		if err := client.CheckPathSegment("group name", cig.Name); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PutGroups(): %w", err)
 		}
 		finalEP, err := url.JoinPath(CloudInitRelpathGroups, cig.Name)
 		if err != nil {
@@ -296,6 +325,9 @@ func (cic *CloudInitClient) PutGroups(ctx context.Context, ciGroups []cistore.Gr
 
 // PutInstanceInfo sends a PUT to cloud-init for each instance info in
 // instanceInfoList, using the "id" field to determine which node to use.
+//
+// An ID that client.CheckPathSegment rejects is reported as that item's error,
+// and no request is sent for it.
 func (cic *CloudInitClient) PutInstanceInfo(ctx context.Context, instanceInfoList []cistore.OpenCHAMIInstanceInfo, token string) (client.BatchResult[client.HTTPEnvelope], error) {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
@@ -305,8 +337,8 @@ func (cic *CloudInitClient) PutInstanceInfo(ctx context.Context, instanceInfoLis
 		return nil, fmt.Errorf("PutInstanceInfo(): %w: at least one instance info is required", client.InvalidArgumentError)
 	}
 	return client.RunBatch(ctx, instanceInfoList, func(ctx context.Context, instanceInfo cistore.OpenCHAMIInstanceInfo) (client.HTTPEnvelope, error) {
-		if strings.Trim(instanceInfo.ID, " ") == "" {
-			return client.HTTPEnvelope{}, fmt.Errorf("PutInstanceInfo(): %w: id cannot be blank", client.InvalidArgumentError)
+		if err := client.CheckPathSegment("node ID", instanceInfo.ID); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("PutInstanceInfo(): %w", err)
 		}
 		finalEP, err := url.JoinPath(CloudInitRelpathInstanceInfo, instanceInfo.ID)
 		if err != nil {
@@ -328,12 +360,19 @@ func (cic *CloudInitClient) PutInstanceInfo(ctx context.Context, instanceInfoLis
 // OchamiClient.DeleteData for each group. The iteration is necessary as the
 // delete endpoint only allows deleting one group at a time. Each group has
 // one aligned result.
+//
+// A group name that client.CheckPathSegment rejects (e.g. a blank one, which
+// would otherwise address the whole collection) is reported as that item's
+// error, and no request is sent for it.
 func (cic *CloudInitClient) DeleteGroups(ctx context.Context, token string, groups ...string) client.BatchResult[client.HTTPEnvelope] {
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
 	}
 	return client.RunBatch(ctx, groups, func(ctx context.Context, group string) (client.HTTPEnvelope, error) {
+		if err := client.CheckPathSegment("group name", group); err != nil {
+			return client.HTTPEnvelope{}, fmt.Errorf("DeleteGroups(): %w", err)
+		}
 		finalEP, err := url.JoinPath(CloudInitRelpathGroups, group)
 		if err != nil {
 			return client.HTTPEnvelope{}, fmt.Errorf("DeleteGroups(): failed join %q with %q: %w", CloudInitRelpathGroups, group, err)

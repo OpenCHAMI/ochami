@@ -43,8 +43,15 @@ func (msc *MetadataServiceClient) AddInstanceInfos(ctx context.Context, token st
 // DeleteInstanceInfos is a wrapper that calls the metadata-service client's
 // DeleteInstanceInfo() function, passing it context and a list of InstanceInfo
 // UIDs to delete. It returns one result per UID in input order.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (msc *MetadataServiceClient) DeleteInstanceInfos(ctx context.Context, token string, uids []string) client.BatchResult[string] {
 	return client.RunBatchWithTimeout(ctx, msc.Timeout, uids, func(requestCtx context.Context, instanceUID string) (string, error) {
+		if err := client.CheckPathSegment("instance info UID", instanceUID); err != nil {
+			return "", err
+		}
 		err := msc.Client.WithBearerToken(token).DeleteInstanceInfo(requestCtx, instanceUID)
 		if err != nil {
 			return "", fmt.Errorf("failed to delete instance info %s: %w", instanceUID, client.FabricaWrapHTTPError(err))
@@ -57,7 +64,14 @@ func (msc *MetadataServiceClient) DeleteInstanceInfos(ctx context.Context, token
 // GetInstanceInfo() function, passing it context and a UID. The output is a
 // []byte containing the entity's instance info, formatted as
 // outFormat.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) GetInstanceInfo(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	if err := client.CheckPathSegment("instance info UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -99,7 +113,14 @@ func (msc *MetadataServiceClient) ListInstanceInfos(ctx context.Context, token s
 // formatted as patchFormat and sends it as JSON to the metadata-service via a
 // PATCH request for the InstanceInfo identified by uid. It returns the modified
 // InstanceInfo resource returned by metadata-service and any error.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) PatchInstanceInfo(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.InstanceInfo, error) {
+	if err := client.CheckPathSegment("instance info UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -124,7 +145,14 @@ func (msc *MetadataServiceClient) PatchInstanceInfo(ctx context.Context, token s
 // SetInstanceInfo is a wrapper that calls the metadata-service client's
 // UpdateInstanceInfo() function, passing it context. It returns the modified
 // InstanceInfo resource returned by metadata-service and any error.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) SetInstanceInfo(ctx context.Context, token string, uid string, instance metadata_service_client.UpdateInstanceInfoRequest) (*api.InstanceInfo, error) {
+	if err := client.CheckPathSegment("instance info UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 
@@ -152,7 +180,14 @@ func (msc *MetadataServiceClient) AddInstanceInfoSpecs(ctx context.Context, toke
 // SetInstanceInfoSpec is like SetInstanceInfo but calls the metadata-service
 // client's simple UpdateInstanceInfoSimple() function, which only sends the
 // resource spec.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (msc *MetadataServiceClient) SetInstanceInfoSpec(ctx context.Context, token string, uid string, spec api.InstanceInfoSpec) (*api.InstanceInfo, error) {
+	if err := client.CheckPathSegment("instance info UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, msc.Timeout)
 	defer cancel()
 

@@ -70,10 +70,10 @@ func newCmdGroupMemberDelete() *cobra.Command {
 See ochami-smd(1) for more details.`,
 		Example: `  ochami smd group member delete compute x3000c1s7b56n0`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := smd_lib.CheckIDs("group label", args[:1]); err != nil {
+			if err := cli.CheckIDs("group label", args[:1]); err != nil {
 				return err
 			}
-			return smd_lib.CheckIDs("group member", args[1:])
+			return cli.CheckIDs("group member", args[1:])
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get runtime from context (always available since cmd/root.go injects it)

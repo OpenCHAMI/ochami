@@ -20,6 +20,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -511,7 +512,7 @@ func TestBatchDelete_MixedFailures(t *testing.T) {
 }
 
 // TestCommands_RejectInvalidArguments verifies that arguments a service client
-// rejects before sending any request (a blank group label or node ID) resolve
+// rejects before sending any request (e.g. a blank group label) resolve
 // to CodeUsage. Nothing listens on the URI, so a request that was sent anyway
 // would fail with CodeNetwork instead.
 func TestCommands_RejectInvalidArguments(t *testing.T) {
@@ -523,6 +524,19 @@ func TestCommands_RejectInvalidArguments(t *testing.T) {
 		{"smd", "group", "member", "get", ""},
 		{"smd", "group", "member", "set", "", "x0c0s0b0n0"},
 		{"cloud-init", "node", "get", "group", "", "compute"},
+		{"smd", "component", "get", "-x", ""},
+		{"smd", "iface", "get", "-i", ".."},
+		{"smd", "group", "member", "get", ".."},
+		{"smd", "group", "member", "add", "a/b", "x0c0s0b0n0"},
+		{"smd", "group", "member", "set", "..", "x0c0s0b0n0"},
+		{"smd", "group", "update", "-d", `[{"label":".."}]`},
+		{"rcs", "console", "show", ""},
+		{"rcs", "console", "connect", ".."},
+		{"pcs", "transition", "show", ""},
+		{"pcs", "transition", "show", ".."},
+		{"pcs", "transition", "monitor", "a/b"},
+		{"metadata", "peer", "get", "a/b"},
+		{"boot", "node", "get", "a/b"},
 	}
 	for _, args := range cases {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
@@ -1093,5 +1107,88 @@ func TestResourceCommands_RejectMalformedSuccessBodies(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestBatchCommands_RejectInvalidIDs verifies that one invalid ID fails a batch
+// command with CodeUsage before any request is sent, even for the valid IDs
+// listed before it. Delete commands run without --no-confirm, so a check placed
+// after the prompt would fail on the empty standard input with another code.
+func TestBatchCommands_RejectInvalidIDs(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		args    []string
+		wantMsg string
+	}{
+		{"cloud-init group delete", []string{"cloud-init", "group", "delete", "compute", ""}, "group name cannot be blank (item 2 of 2)"},
+		{"cloud-init group delete payload", []string{"cloud-init", "group", "delete", "--no-confirm", "-d", `[{"name":"compute"},{"name":".."}]`}, `invalid payload: invalid argument: group name ".." is not a single path segment`},
+		{"cloud-init group add", []string{"cloud-init", "group", "add", "-d", `[{"name":"compute"},{"name":".."}]`}, "invalid payload"},
+		{"cloud-init group get config", []string{"cloud-init", "group", "get", "config", "compute", ".."}, "group name"},
+		{"cloud-init group get meta-data", []string{"cloud-init", "group", "get", "meta-data", "compute", "a/b"}, "group name"},
+		{"cloud-init group get raw", []string{"cloud-init", "group", "get", "raw", "compute", "%zz"}, "malformed percent-escape"},
+		{"cloud-init group set", []string{"cloud-init", "group", "set", "-d", `[{"name":"compute"},{"name":"a/b"}]`}, "invalid payload"},
+		{"cloud-init node get group", []string{"cloud-init", "node", "get", "group", "x0c0s0b0n0", "compute", ".."}, "group name"},
+		{"cloud-init node get group node", []string{"cloud-init", "node", "get", "group", "..", "compute"}, "node ID"},
+		{"cloud-init node get meta-data", []string{"cloud-init", "node", "get", "meta-data", "x0c0s0b0n0", ".."}, "node ID"},
+		{"cloud-init node get user-data", []string{"cloud-init", "node", "get", "user-data", "x0c0s0b0n0", ""}, "node ID"},
+		{"cloud-init node get vendor-data", []string{"cloud-init", "node", "get", "vendor-data", "x0c0s0b0n0", "a/b"}, "node ID"},
+		{"cloud-init node set", []string{"cloud-init", "node", "set", "-d", `[{"id":"x0c0s0b0n0"},{"id":".."}]`}, "invalid payload"},
+		{"pcs transition abort", []string{"pcs", "transition", "abort", ""}, "transition ID cannot be blank"},
+		{"pcs transition abort encoded dots", []string{"pcs", "transition", "abort", "%2e%2e"}, `transition ID "%2e%2e" is not a single path segment`},
+		{"boot node delete blank", []string{"boot", "node", "delete", ""}, "node UID cannot be blank"},
+		{"boot node delete query", []string{"boot", "node", "delete", "?"}, `node UID "?" is not a single path segment`},
+		{"boot node delete encoded traversal", []string{"boot", "node", "delete", "%2e%2e%2fbmcs%2fabc"}, "is not a single path segment"},
+		{"boot node delete fragment", []string{"boot", "node", "delete", "a#b"}, "is not a single path segment"},
+		{"boot node delete after a valid one", []string{"boot", "node", "delete", "nod-bc76f7f2", ".."}, `node UID ".." is not a single path segment (item 2 of 2)`},
+		{"boot bmc delete blank", []string{"boot", "bmc", "delete", ""}, "BMC UID cannot be blank"},
+		{"boot bmc delete after a valid one", []string{"boot", "bmc", "delete", "bmc-773d99bf", ".."}, `BMC UID ".." is not a single path segment (item 2 of 2)`},
+		{"boot config delete blank", []string{"boot", "config", "delete", ""}, "boot configuration UID cannot be blank"},
+		{"boot config delete after a valid one", []string{"boot", "config", "delete", "boo-914afad2", ".."}, `boot configuration UID ".." is not a single path segment (item 2 of 2)`},
+		{"metadata defaults delete blank", []string{"metadata", "defaults", "delete", ""}, "cluster defaults UID cannot be blank"},
+		{"metadata defaults delete after a valid one", []string{"metadata", "defaults", "delete", "clusterdefaults-d614b918", ".."}, `cluster defaults UID ".." is not a single path segment (item 2 of 2)`},
+		{"metadata group delete blank", []string{"metadata", "group", "delete", ""}, "group UID cannot be blank"},
+		{"metadata group delete after a valid one", []string{"metadata", "group", "delete", "group-d614b918", ".."}, `group UID ".." is not a single path segment (item 2 of 2)`},
+		{"metadata instance delete blank", []string{"metadata", "instance", "delete", ""}, "instance info UID cannot be blank"},
+		{"metadata instance delete after a valid one", []string{"metadata", "instance", "delete", "instanceinfo-d614b918", ".."}, `instance info UID ".." is not a single path segment (item 2 of 2)`},
+		{"metadata peer delete blank", []string{"metadata", "peer", "delete", ""}, "WireGuard peer UID cannot be blank"},
+		{"metadata peer delete after a valid one", []string{"metadata", "peer", "delete", "wireguardpeer-d614b918", ".."}, `WireGuard peer UID ".." is not a single path segment (item 2 of 2)`},
+		{"smd compep get", []string{"smd", "compep", "get", "x0c0s0b0n0", ".."}, `component endpoint ID ".." is not a single path segment (item 2 of 2)`},
+		{"smd group update", []string{"smd", "group", "update", "-d", `[{"label":"compute"},{"label":".."}]`}, "invalid payload"},
+		{"smd component add", []string{"smd", "component", "add", "..", "56"}, `component ID ".." is not a single path segment`},
+		{"smd component add payload", []string{"smd", "component", "add", "-d", `{"Components":[{"ID":"x0c0s0b0n0"},{"ID":"a/b"}]}`}, "(item 2 of 2)"},
+		{"smd rfe add payload", []string{"smd", "rfe", "add", "-d", `{"RedfishEndpoints":[{"ID":"x0c0s0b0"},{"ID":".."}]}`}, "redfish endpoint ID"},
+		{"smd rfe add without any ID", []string{"smd", "rfe", "add", "-d", `{"RedfishEndpoints":[{}]}`}, "redfish endpoint ID cannot be blank"},
+		{"smd iface add", []string{"smd", "iface", "add", "x0c0s0b0n0", "::", "mgmt,172.16.0.1"}, "ethernet interface ID cannot be blank"},
+		{"smd iface add payload", []string{"smd", "iface", "add", "-d", `[{"MACAddress":"de:ad:be:ef:00:00"},{"ID":".."}]`}, "(item 2 of 2)"},
+		{"smd group add", []string{"smd", "group", "add", ".."}, `group label ".." is not a single path segment`},
+		{"smd group add member", []string{"smd", "group", "add", "compute", "--member", "x0c0s0b0n0,.."}, `group member ".."`},
+		{"smd group add payload", []string{"smd", "group", "add", "-d", `[{"label":"compute"},{"label":"."}]`}, "(item 2 of 2)"},
+		{"smd group member add", []string{"smd", "group", "member", "add", "compute", "x0c0s0b0n0", ".."}, "group member"},
+		{"smd group member set", []string{"smd", "group", "member", "set", "compute", "x0c0s0b0n0", "a/b"}, "group member"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var requests atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+			}))
+			defer srv.Close()
+
+			full := append(tc.args, "--ignore-config", "--uri", srv.URL, "--token", "t")
+			res := runOchamiWithRuntime(t, full...)
+			if res.exitCode != cli.CodeUsage {
+				t.Errorf("result = (err %v, exit %d), want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if res.err == nil || !strings.Contains(res.err.Error(), tc.wantMsg) {
+				t.Errorf("error = %v, want it to contain %q", res.err, tc.wantMsg)
+			}
+			if got := requests.Load(); got != 0 {
+				t.Errorf("request count = %d, want 0", got)
+			}
+		})
 	}
 }

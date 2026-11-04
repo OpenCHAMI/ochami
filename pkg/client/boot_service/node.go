@@ -42,8 +42,15 @@ func (bsc *BootServiceClient) AddNodes(ctx context.Context, token string, nodes 
 // DeleteNodes is a wrapper that calls the boot-service client's DeleteNode()
 // function, passing it context and a list of node UIDs to delete. It returns one
 // result per UID in input order.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is reported as that item's error,
+// and no request is sent for it.
 func (bsc *BootServiceClient) DeleteNodes(ctx context.Context, token string, uids []string) client.BatchResult[string] {
 	return client.RunBatchWithTimeout(ctx, bsc.Timeout, uids, func(requestCtx context.Context, nodeUID string) (string, error) {
+		if err := client.CheckPathSegment("node UID", nodeUID); err != nil {
+			return "", err
+		}
 		err := bsc.Client.WithBearerToken(token).DeleteNode(requestCtx, nodeUID)
 		if err != nil {
 			return "", fmt.Errorf("failed to delete node %s: %w", nodeUID, client.FabricaWrapHTTPError(err))
@@ -55,7 +62,14 @@ func (bsc *BootServiceClient) DeleteNodes(ctx context.Context, token string, uid
 // GetNode is a wrapper that calls the boot-service client's GetNode() function,
 // passing it context and a UID. The output is a []byte containing the entity's
 // node information, formatted as outFormat.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) GetNode(ctx context.Context, token string, outFormat format.DataFormat, uid string) ([]byte, error) {
+	if err := client.CheckPathSegment("node UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
@@ -96,7 +110,14 @@ func (bsc *BootServiceClient) ListNodes(ctx context.Context, token string, outFo
 // function. It accepts data that represents a patch formatted as patchFormat
 // and sends it as JSON to the boot-service via a PATCH request for the node
 // identified by uid.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) PatchNode(ctx context.Context, token string, patchFormat client.PatchMethod, uid string, data interface{}) (*api.Node, error) {
+	if err := client.CheckPathSegment("node UID", uid); err != nil {
+		return nil, err
+	}
+
 	// TODO: boot-service client functions don't support tokens yet.
 	_ = token
 
@@ -124,7 +145,14 @@ func (bsc *BootServiceClient) PatchNode(ctx context.Context, token string, patch
 // SetNode is a wrapper that calls the boot-service client's UpdateNode()
 // function, passing it context. The output is a pointer to the node
 // details that got updated, along with an error if one occurred.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) SetNode(ctx context.Context, token string, uid string, node boot_service_client.UpdateNodeRequest) (*api.Node, error) {
+	if err := client.CheckPathSegment("node UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 
@@ -150,7 +178,14 @@ func (bsc *BootServiceClient) AddNodeSpecs(ctx context.Context, token string, no
 
 // SetNodeSpec is like SetNode but calls the boot-service client's simple
 // UpdateNodeSimple() function, which only sends the resource spec.
+//
+// A UID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (bsc *BootServiceClient) SetNodeSpec(ctx context.Context, token string, uid string, spec api.NodeSpec) (*api.Node, error) {
+	if err := client.CheckPathSegment("node UID", uid); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bsc.Timeout)
 	defer cancel()
 

@@ -10,13 +10,14 @@ package cloud_init
 // mutating helpers (blank names/IDs, empty lists, mixed batch results, and
 // per-item HTTP failures). It also covers DecodeCloudConfig's own rejection
 // case (see cloud_init_test.go for its success cases) and the rejection of a
-// name or ID that would make a malformed URL.
+// name or ID that would make a malformed URL or reach the wrong endpoint.
 
 import (
 	"context"
 	"errors"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/openchami/cloud-init/pkg/cistore"
@@ -313,6 +314,84 @@ func TestCloudInit_MalformedPathGuards(t *testing.T) {
 				t.Fatal("call returned nil error for malformed path")
 			}
 		})
+	}
+}
+
+// TestCloudInit_InvalidID verifies that each method reports an ID that is blank
+// or is not a single path segment as that item's error, wrapping
+// client.InvalidArgumentError, without sending a request for it, while still
+// sending a request for the valid ID.
+func TestCloudInit_InvalidID(t *testing.T) {
+	ctx := context.Background()
+	cases := []struct {
+		name string
+		call func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error)
+	}{
+		{"get groups", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.GetGroups(ctx, "tok", "", "compute", ".."), nil
+		}},
+		{"get node data", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.GetNodeData(ctx, CloudInitMetaData, "tok", ".", "x0c0s0b0n0", "a/b")
+		}},
+		{"get node group data", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.GetNodeGroupData(ctx, "tok", "x0c0s0b0n0", "", "compute", "a/b")
+		}},
+		{"post groups", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PostGroups(ctx, []cistore.GroupData{{Name: ""}, {Name: "compute"}, {Name: ".."}}, "tok"), nil
+		}},
+		{"put groups", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PutGroups(ctx, []cistore.GroupData{{Name: ".."}, {Name: "compute"}, {Name: "a/b"}}, "tok"), nil
+		}},
+		{"put instance info", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.PutInstanceInfo(ctx, []cistore.OpenCHAMIInstanceInfo{{ID: "."}, {ID: "x0c0s0b0n0"}, {ID: ""}}, "tok")
+		}},
+		{"delete groups", func(cic *CloudInitClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return cic.DeleteGroups(ctx, "tok", "", "compute", "a/b"), nil
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests atomic.Int32
+			cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				w.WriteHeader(http.StatusOK)
+			})
+			defer srv.Close()
+
+			results, err := tc.call(cic)
+			if err != nil {
+				t.Fatalf("operation-wide error = %v, want nil", err)
+			}
+			if len(results) != 3 {
+				t.Fatalf("results length = %d, want 3", len(results))
+			}
+			for _, i := range []int{0, 2} {
+				if !errors.Is(results[i].Err, client.InvalidArgumentError) {
+					t.Errorf("results[%d].Err = %v, want it to wrap client.InvalidArgumentError", i, results[i].Err)
+				}
+			}
+			if results[1].Err != nil {
+				t.Errorf("results[1].Err = %v, want nil", results[1].Err)
+			}
+			if got := requests.Load(); got != 1 {
+				t.Errorf("request count = %d, want 1", got)
+			}
+		})
+	}
+}
+
+// TestGetNodeGroupData_InvalidNodeID verifies that a node ID that is not a
+// single path segment is an operation-wide error, with no request sent.
+func TestGetNodeGroupData_InvalidNodeID(t *testing.T) {
+	cic, srv := newTestCI(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request: %s", r.URL.Path)
+	})
+	defer srv.Close()
+
+	for _, id := range []string{"", ".", "..", "a/b"} {
+		if _, err := cic.GetNodeGroupData(context.Background(), "tok", id, "compute"); !errors.Is(err, client.InvalidArgumentError) {
+			t.Errorf("GetNodeGroupData(%q) error = %v, want it to wrap client.InvalidArgumentError", id, err)
+		}
 	}
 }
 

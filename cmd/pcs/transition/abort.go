@@ -27,6 +27,9 @@ func newCmdTransitionAbort() *cobra.Command {
 See ochami-pcs(1) for more details.`,
 		Example: `  # Abort a transition
   ochami pcs transition abort 8f252166-c53c-435e-8354-e69649537a0f`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return cli.CheckIDs("transition ID", args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			transitionID := args[0]
 

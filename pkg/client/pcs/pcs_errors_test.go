@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync/atomic"
 	"testing"
 
 	"github.com/openchami/ochami/pkg/client"
@@ -96,6 +97,29 @@ func TestPCS_MalformedTransitionIDs(t *testing.T) {
 	}
 	if _, err := c.DeleteTransition(context.Background(), "%zz", ""); err == nil {
 		t.Fatal("DeleteTransition() accepted malformed ID")
+	}
+}
+
+// TestPCS_InvalidTransitionID verifies that a transition ID that is blank or is
+// not a single path segment wraps client.InvalidArgumentError, with no request
+// sent.
+func TestPCS_InvalidTransitionID(t *testing.T) {
+	var requests atomic.Int32
+	c, srv := newTestPCS(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+	})
+	defer srv.Close()
+
+	for _, id := range []string{"", " ", ".", "..", "a/b"} {
+		if _, err := c.GetTransition(context.Background(), id, ""); !errors.Is(err, client.InvalidArgumentError) {
+			t.Errorf("GetTransition(%q) error = %v, want it to wrap client.InvalidArgumentError", id, err)
+		}
+		if _, err := c.DeleteTransition(context.Background(), id, ""); !errors.Is(err, client.InvalidArgumentError) {
+			t.Errorf("DeleteTransition(%q) error = %v, want it to wrap client.InvalidArgumentError", id, err)
+		}
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf("request count = %d, want 0", got)
 	}
 }
 

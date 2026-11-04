@@ -169,6 +169,9 @@ func (pc *PCSClient) GetTransitions(ctx context.Context, token string) (client.H
 
 // GetTransition is a wrapper function around OchamiClient.GetData to
 // hit the /transitions/{transitionID} endpoint.
+//
+// An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (pc *PCSClient) GetTransition(ctx context.Context, id string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv                   client.HTTPEnvelope
@@ -179,6 +182,10 @@ func (pc *PCSClient) GetTransition(ctx context.Context, id string, token string)
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
+	}
+
+	if err = client.CheckPathSegment("transition ID", id); err != nil {
+		return henv, fmt.Errorf("GetTransition(): %w", err)
 	}
 
 	pcsTransitionsEndpoint, err = url.JoinPath(PCSTransitions, id)
@@ -197,6 +204,9 @@ func (pc *PCSClient) GetTransition(ctx context.Context, id string, token string)
 
 // DeleteTransition is a wrapper function around OchamiClient.DeleteData to
 // hit the /transitions/{transitionID} endpoint.
+//
+// An ID that client.CheckPathSegment rejects (e.g. a blank one, which would
+// otherwise address the whole collection) is an error, and no request is sent.
 func (pc *PCSClient) DeleteTransition(ctx context.Context, id string, token string) (client.HTTPEnvelope, error) {
 	var (
 		henv                  client.HTTPEnvelope
@@ -207,6 +217,10 @@ func (pc *PCSClient) DeleteTransition(ctx context.Context, id string, token stri
 	headers := client.NewHTTPHeaders()
 	if token != "" {
 		_ = headers.SetAuthorization(token) //nolint:errcheck // headers was allocated above and cannot be nil
+	}
+
+	if err = client.CheckPathSegment("transition ID", id); err != nil {
+		return henv, fmt.Errorf("DeleteTransition(): %w", err)
 	}
 
 	pcsTransitionEndpoint, err = url.JoinPath(PCSTransitions, id)

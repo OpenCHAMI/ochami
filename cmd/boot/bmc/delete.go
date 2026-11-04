@@ -72,6 +72,9 @@ See ochami-boot(1) for more details.`,
 
   # Don't confirm deletion
   ochami boot bmc delete --no-confirm bmc-773d99bf`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return cli.CheckIDs("BMC UID", args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get runtime from context (always available since cmd/root.go injects it)
 			rt, err := cli.RuntimeFromCommand(cmd)
