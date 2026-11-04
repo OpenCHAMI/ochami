@@ -19,7 +19,7 @@ func TestPatchMethod_ContentType(t *testing.T) {
 		err    bool
 	}{
 		{method: PatchMethodRFC6902, want: "application/json-patch+json"},
-		{method: PatchMethodRFC7386, want: "application/merge-patch+json"},
+		{method: PatchMethodRFC7396, want: "application/merge-patch+json"},
 		{method: PatchMethodKeyVal, want: "application/merge-patch+json"},
 		{method: PatchMethod("invalid"), err: true},
 	}
@@ -154,7 +154,7 @@ func TestJSONPatchOperation_MarshalJSON(t *testing.T) {
 // accepts its three known values and rejects anything else.
 func TestPatchMethod_Value(t *testing.T) {
 	var method PatchMethod
-	for _, value := range []string{"rfc6902", "rfc7386", "keyval"} {
+	for _, value := range []string{"rfc6902", "rfc7396", "keyval"} {
 		if err := method.Set(value); err != nil {
 			t.Errorf("Set(%q): %v", value, err)
 		}

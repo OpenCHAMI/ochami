@@ -437,6 +437,12 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
+	With only *--set* and *--unset*, the flags are sent as an RFC 7396 JSON Merge
+	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
+	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
+	fails, the service rejects the patch and changes nothing. A field left empty
+	is usually absent from the stored spec, so it counts as missing.
+
 	In the second through fourth forms of the command, patch data is supplied
 	along with an optional *--patch-method* flag to specify the patch method.
 
@@ -449,6 +455,11 @@ Subcommands for this command are as follows:
 		Append value to an existing array field using an RFC 6902 add operation.
 		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		The array must already exist, and an empty array is usually absent from the
+		stored spec. To add the first value, use *--set* with a JSON array instead
+		(e.g. _key_='["_val_"]'). *--set* replaces the whole array, so only use it
+		this way when the array is empty.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -466,7 +477,7 @@ Subcommands for this command are as follows:
 	*-p, --patch-method* _patch_method_
 		Specify patch method for patch data. Supported methods are:
 
-		- _rfc7386_ (default): RFC 7386 JSON Merge Patch
+		- _rfc7396_ (default): RFC 7396 JSON Merge Patch
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
@@ -476,14 +487,21 @@ Subcommands for this command are as follows:
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
-		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with key/value patch flags (automatic
-		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
+		Set key with its value, overwriting any previous value and creating the
+		key and any missing parent keys. Only can be used with key/value patch
+		flags (automatic if any of *--add*/*--remove*/*--set*/*--unset* are
+		specified).
+
+		If *--add* or *--remove* is also passed, the parent of the key must already
+		exist. A _val_ of _null_ then sets the key to null instead of removing it,
+		so use *--unset* to remove a key.
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with key/value patch flags
-		(automatic if any of
+		Unset key (and its value). A key that doesn't exist is ignored. Only can be
+		used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		If *--add* or *--remove* is also passed, the key must already exist.
 
 *set* [-e] [-f _format_] _uid_ < _file_++
 *set* [-e] [-f _format_] -d @_file_ _uid_++
@@ -740,6 +758,12 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
+	With only *--set* and *--unset*, the flags are sent as an RFC 7396 JSON Merge
+	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
+	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
+	fails, the service rejects the patch and changes nothing. A field left empty
+	is usually absent from the stored spec, so it counts as missing.
+
 	In the second through fourth forms of the command, patch data is supplied
 	along with an optional *--patch-method* flag to specify the patch method.
 
@@ -751,6 +775,11 @@ Subcommands for this command are as follows:
 		Append value to an existing array field using an RFC 6902 add operation.
 		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		The array must already exist, and an empty array is usually absent from the
+		stored spec. To add the first value, use *--set* with a JSON array instead
+		(e.g. _key_='["_val_"]'). *--set* replaces the whole array, so only use it
+		this way when the array is empty.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -768,7 +797,7 @@ Subcommands for this command are as follows:
 	*-p, --patch-method* _patch_method_
 		Specify patch method for patch data. Supported methods are:
 
-		- _rfc7386_ (default): RFC 7386 JSON Merge Patch
+		- _rfc7396_ (default): RFC 7396 JSON Merge Patch
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
@@ -778,14 +807,21 @@ Subcommands for this command are as follows:
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
-		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with key/value patch flags (automatic
-		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
+		Set key with its value, overwriting any previous value and creating the
+		key and any missing parent keys. Only can be used with key/value patch
+		flags (automatic if any of *--add*/*--remove*/*--set*/*--unset* are
+		specified).
+
+		If *--add* or *--remove* is also passed, the parent of the key must already
+		exist. A _val_ of _null_ then sets the key to null instead of removing it,
+		so use *--unset* to remove a key.
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with key/value patch flags
-		(automatic if any of
+		Unset key (and its value). A key that doesn't exist is ignored. Only can be
+		used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		If *--add* or *--remove* is also passed, the key must already exist.
 
 	Examples:
 
@@ -795,8 +831,8 @@ Subcommands for this command are as follows:
 	  {"op":"replace","path":"/osVersion","value":"ubuntu-24.04"}
 	]'
 
-	# Patch using JSON merge patch (RFC 7386)
-	ochami metadata group patch group-d614b918 --patch-method rfc7386 --data '{"osVersion":"ubuntu-24.04"}'
+	# Patch using JSON merge patch (RFC 7396)
+	ochami metadata group patch group-d614b918 --patch-method rfc7396 --data '{"osVersion":"ubuntu-24.04"}'
 
 	# Patch using dot notation (keyval)
 	ochami metadata group patch group-d614b918 --patch-method keyval --set osVersion='ubuntu-24.04'
@@ -1057,6 +1093,12 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
+	With only *--set* and *--unset*, the flags are sent as an RFC 7396 JSON Merge
+	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
+	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
+	fails, the service rejects the patch and changes nothing. A field left empty
+	is usually absent from the stored spec, so it counts as missing.
+
 	In the second through fourth forms of the command, patch data is supplied
 	along with an optional *--patch-method* flag to specify the patch method.
 
@@ -1069,6 +1111,11 @@ Subcommands for this command are as follows:
 		Append value to an existing array field using an RFC 6902 add operation.
 		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		The array must already exist, and an empty array is usually absent from the
+		stored spec. To add the first value, use *--set* with a JSON array instead
+		(e.g. _key_='["_val_"]'). *--set* replaces the whole array, so only use it
+		this way when the array is empty.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -1086,7 +1133,7 @@ Subcommands for this command are as follows:
 	*-p, --patch-method* _patch_method_
 		Specify patch method for patch data. Supported methods are:
 
-		- _rfc7386_ (default): RFC 7386 JSON Merge Patch
+		- _rfc7396_ (default): RFC 7396 JSON Merge Patch
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
@@ -1096,14 +1143,21 @@ Subcommands for this command are as follows:
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
-		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with key/value patch flags (automatic
-		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
+		Set key with its value, overwriting any previous value and creating the
+		key and any missing parent keys. Only can be used with key/value patch
+		flags (automatic if any of *--add*/*--remove*/*--set*/*--unset* are
+		specified).
+
+		If *--add* or *--remove* is also passed, the parent of the key must already
+		exist. A _val_ of _null_ then sets the key to null instead of removing it,
+		so use *--unset* to remove a key.
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with key/value patch flags
-		(automatic if any of
+		Unset key (and its value). A key that doesn't exist is ignored. Only can be
+		used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		If *--add* or *--remove* is also passed, the key must already exist.
 
 	Examples:
 
@@ -1113,8 +1167,8 @@ Subcommands for this command are as follows:
 	  {"op":"replace","path":"/hostname","value":"nid002000.demo.cluster"}
 	]'
 
-	# Patch using JSON merge patch (RFC 7386)
-	ochami metadata instance patch instanceinfo-d614b918 --patch-method rfc7386 --data '{"hostname":"nid002000.demo.cluster"}'
+	# Patch using JSON merge patch (RFC 7396)
+	ochami metadata instance patch instanceinfo-d614b918 --patch-method rfc7396 --data '{"hostname":"nid002000.demo.cluster"}'
 
 	# Patch using dot notation (keyval)
 	ochami metadata instance patch instanceinfo-d614b918 --set hostname='nid002000.demo.cluster'
@@ -1386,6 +1440,12 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
+	With only *--set* and *--unset*, the flags are sent as an RFC 7396 JSON Merge
+	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
+	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
+	fails, the service rejects the patch and changes nothing. A field left empty
+	is usually absent from the stored spec, so it counts as missing.
+
 	In the second through fourth forms of the command, patch data is supplied
 	along with an optional *--patch-method* flag to specify the patch method.
 
@@ -1398,6 +1458,11 @@ Subcommands for this command are as follows:
 		Append value to an existing array field using an RFC 6902 add operation.
 		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		The array must already exist, and an empty array is usually absent from the
+		stored spec. To add the first value, use *--set* with a JSON array instead
+		(e.g. _key_='["_val_"]'). *--set* replaces the whole array, so only use it
+		this way when the array is empty.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
@@ -1415,7 +1480,7 @@ Subcommands for this command are as follows:
 	*-p, --patch-method* _patch_method_
 		Specify patch method for patch data. Supported methods are:
 
-		- _rfc7386_ (default): RFC 7386 JSON Merge Patch
+		- _rfc7396_ (default): RFC 7396 JSON Merge Patch
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
@@ -1425,14 +1490,21 @@ Subcommands for this command are as follows:
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
-		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with key/value patch flags (automatic
-		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
+		Set key with its value, overwriting any previous value and creating the
+		key and any missing parent keys. Only can be used with key/value patch
+		flags (automatic if any of *--add*/*--remove*/*--set*/*--unset* are
+		specified).
+
+		If *--add* or *--remove* is also passed, the parent of the key must already
+		exist. A _val_ of _null_ then sets the key to null instead of removing it,
+		so use *--unset* to remove a key.
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with key/value patch flags
-		(automatic if any of
+		Unset key (and its value). A key that doesn't exist is ignored. Only can be
+		used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		If *--add* or *--remove* is also passed, the key must already exist.
 
 	Examples:
 
@@ -1442,8 +1514,8 @@ Subcommands for this command are as follows:
 	  {"op":"replace","path":"/allowed_ip","value":"10.42.2.1/32"}
 	]'
 
-	# Patch using JSON merge patch (RFC 7386)
-	ochami metadata peer patch wireguardpeer-d614b918 --patch-method rfc7386 --data '{"allowed_ip":"10.42.2.1/32"}'
+	# Patch using JSON merge patch (RFC 7396)
+	ochami metadata peer patch wireguardpeer-d614b918 --patch-method rfc7396 --data '{"allowed_ip":"10.42.2.1/32"}'
 
 	# Patch using dot notation (keyval)
 	ochami metadata peer patch wireguardpeer-d614b918 --set allowed_ip='10.42.2.1/32'

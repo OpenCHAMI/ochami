@@ -41,14 +41,14 @@ type PatchMethod string
 
 const (
 	PatchMethodRFC6902 PatchMethod = "rfc6902" // JSON Patch
-	PatchMethodRFC7386 PatchMethod = "rfc7386" // JSON Merge Patch
+	PatchMethodRFC7396 PatchMethod = "rfc7396" // JSON Merge Patch
 	PatchMethodKeyVal  PatchMethod = "keyval"  // Key-Value patching in dot notation
 )
 
 var (
 	PatchMethodHelp = map[string]string{
 		string(PatchMethodRFC6902): "JSON Patch format according to RFC 6902",
-		string(PatchMethodRFC7386): "JSON Merge Patch format according to RFC 7386",
+		string(PatchMethodRFC7396): "JSON Merge Patch format according to RFC 7396",
 		string(PatchMethodKeyVal):  "Key-Value patching using dot notation (key.subkey=value)",
 	}
 )
@@ -60,14 +60,14 @@ func (pm PatchMethod) String() string {
 func (pm *PatchMethod) Set(v string) error {
 	switch PatchMethod(v) {
 	case PatchMethodRFC6902,
-		PatchMethodRFC7386,
+		PatchMethodRFC7396,
 		PatchMethodKeyVal:
 		*pm = PatchMethod(v)
 		return nil
 	default:
 		return fmt.Errorf("must be one of %v", []PatchMethod{
 			PatchMethodRFC6902,
-			PatchMethodRFC7386,
+			PatchMethodRFC7396,
 			PatchMethodKeyVal,
 		})
 	}
@@ -82,7 +82,7 @@ func (pm PatchMethod) ContentType() (string, error) {
 	switch pm {
 	case PatchMethodRFC6902:
 		return "application/json-patch+json", nil
-	case PatchMethodRFC7386, PatchMethodKeyVal:
+	case PatchMethodRFC7396, PatchMethodKeyVal:
 		return "application/merge-patch+json", nil
 	default:
 		return "", fmt.Errorf("unknown patch format: %s", pm)
@@ -90,7 +90,7 @@ func (pm PatchMethod) ContentType() (string, error) {
 }
 
 // NewKeyValPatch takes slices of items to set/unset and returns a map that can
-// be marshaled and used as PatchMethodKeyVal/PatchMethodRFC7386 data. addList
+// be marshaled and used as PatchMethodKeyVal/PatchMethodRFC7396 data. addList
 // and removeList are accepted for backward compatibility but are ignored here;
 // use NewKeyValPatchData to produce RFC 6902 add/remove operations.
 func NewKeyValPatch(setList, unsetList, addList, removeList []string) (map[string]interface{}, error) {
@@ -118,8 +118,15 @@ func NewKeyValPatch(setList, unsetList, addList, removeList []string) (map[strin
 
 // NewKeyValPatchData takes set/unset/add/remove arguments and returns patch
 // data plus the patch method to use. If add/remove operations are present, it
-// returns an RFC 6902 JSON Patch document. Otherwise it returns an RFC 7386 JSON
+// returns an RFC 6902 JSON Patch document. Otherwise it returns an RFC 7396 JSON
 // Merge Patch document using keyval dot notation.
+//
+// The two encodings treat set and unset differently, and the caller's add or
+// remove items decide which one applies. A merge patch creates missing parent
+// keys, ignores unset keys that don't exist, and deletes a key set to null. An
+// RFC 6902 patch fails if a set key's parent or an unset key is missing, and
+// stores a null value instead of deleting the key. Resolving these differences
+// would need the current document, which this function doesn't have.
 func NewKeyValPatchData(setList, unsetList, addList, removeList []string) (PatchMethod, interface{}, error) {
 	if len(addList) == 0 && len(removeList) == 0 {
 		patch, err := NewKeyValPatch(setList, unsetList, nil, nil)

@@ -14,7 +14,7 @@ import (
 )
 
 func newCmdBootBmcPatch() *cobra.Command {
-	formatPatch := client.PatchMethodRFC7386
+	formatPatch := client.PatchMethodRFC7396
 	var setList, unsetList, addList, removeList []string
 
 	// bootBmcPatchCmd represents the "boot bmc patch" command
@@ -32,6 +32,10 @@ If --set/--unset/--add/--remove are specified or --patch-method is 'keyval',
 the manual, key-value patch method using dot notation (e.g. key.subkey=value)
 is used.
 
+With --add or --remove, all of these flags are sent as a JSON patch (RFC 6902)
+instead of a JSON merge patch (RFC 7396). --set then needs existing parent keys
+and --unset needs an existing key, or the service rejects the whole patch.
+
 Otherwise, stdin and/or --data can be used to pass in raw patch data, using
 --patch-method to specify the patch format (see examples below).
 
@@ -46,8 +50,8 @@ See ochami-boot(1) for more details.`,
     {"op":"replace","path":"/interface/ip","value":"172.16.0.253"}
   ]'
 
-  # Patch specific fields using JSON merge patch (RFC 7386) (simple merge)
-  ochami boot bmc patch bmc-773d99bf --patch-method rfc7386 --data '{"description":"New description"}'
+  # Patch specific fields using JSON merge patch (RFC 7396) (simple merge)
+  ochami boot bmc patch bmc-773d99bf --patch-method rfc7396 --data '{"description":"New description"}'
 
   # Patch specific fields using dot notation for keys (shorthand patch)
   ochami boot bmc patch bmc-773d99bf --patch-method keyval --set description='New Description' --set interface.ip=172.16.0.253
@@ -121,7 +125,7 @@ See ochami-boot(1) for more details.`,
 	bootBmcPatchCmd.Flags().StringArrayVar(&addList, "add", nil, "add value to array field (field=value)")
 	bootBmcPatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field by index (field=index)")
 	bootBmcPatchCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootBmcPatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7386,keyval)")
+	bootBmcPatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7396,keyval)")
 
 	cli.AddPatchFormatInputFlag(bootBmcPatchCmd)
 

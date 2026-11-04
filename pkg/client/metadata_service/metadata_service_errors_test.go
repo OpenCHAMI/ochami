@@ -293,7 +293,7 @@ func TestMetadataHelpers_InvalidUID(t *testing.T) {
 			return err
 		}},
 		{"patch group", func(c *MetadataServiceClient, uid string) error {
-			_, err := c.PatchGroup(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			_, err := c.PatchGroup(ctx, "", client.PatchMethodRFC7396, uid, map[string]any{})
 			return err
 		}},
 		{"set group", func(c *MetadataServiceClient, uid string) error {
@@ -312,7 +312,7 @@ func TestMetadataHelpers_InvalidUID(t *testing.T) {
 			return err
 		}},
 		{"patch defaults", func(c *MetadataServiceClient, uid string) error {
-			_, err := c.PatchDefaults(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			_, err := c.PatchDefaults(ctx, "", client.PatchMethodRFC7396, uid, map[string]any{})
 			return err
 		}},
 		{"set defaults", func(c *MetadataServiceClient, uid string) error {
@@ -331,7 +331,7 @@ func TestMetadataHelpers_InvalidUID(t *testing.T) {
 			return err
 		}},
 		{"patch instance info", func(c *MetadataServiceClient, uid string) error {
-			_, err := c.PatchInstanceInfo(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			_, err := c.PatchInstanceInfo(ctx, "", client.PatchMethodRFC7396, uid, map[string]any{})
 			return err
 		}},
 		{"set instance info", func(c *MetadataServiceClient, uid string) error {
@@ -350,7 +350,7 @@ func TestMetadataHelpers_InvalidUID(t *testing.T) {
 			return err
 		}},
 		{"patch WireGuard peer", func(c *MetadataServiceClient, uid string) error {
-			_, err := c.PatchWireGuardPeer(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			_, err := c.PatchWireGuardPeer(ctx, "", client.PatchMethodRFC7396, uid, map[string]any{})
 			return err
 		}},
 		{"set WireGuard peer", func(c *MetadataServiceClient, uid string) error {

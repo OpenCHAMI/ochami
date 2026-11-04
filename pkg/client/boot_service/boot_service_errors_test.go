@@ -245,7 +245,7 @@ func TestBootHelpers_InvalidUID(t *testing.T) {
 			return err
 		}},
 		{"patch BMC", func(c *BootServiceClient, uid string) error {
-			_, err := c.PatchBMC(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			_, err := c.PatchBMC(ctx, "", client.PatchMethodRFC7396, uid, map[string]any{})
 			return err
 		}},
 		{"set BMC", func(c *BootServiceClient, uid string) error {
@@ -264,7 +264,7 @@ func TestBootHelpers_InvalidUID(t *testing.T) {
 			return err
 		}},
 		{"patch node", func(c *BootServiceClient, uid string) error {
-			_, err := c.PatchNode(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			_, err := c.PatchNode(ctx, "", client.PatchMethodRFC7396, uid, map[string]any{})
 			return err
 		}},
 		{"set node", func(c *BootServiceClient, uid string) error {
@@ -283,7 +283,7 @@ func TestBootHelpers_InvalidUID(t *testing.T) {
 			return err
 		}},
 		{"patch boot config", func(c *BootServiceClient, uid string) error {
-			_, err := c.PatchBootConfig(ctx, "", client.PatchMethodRFC7386, uid, map[string]any{})
+			_, err := c.PatchBootConfig(ctx, "", client.PatchMethodRFC7396, uid, map[string]any{})
 			return err
 		}},
 		{"set boot config", func(c *BootServiceClient, uid string) error {
