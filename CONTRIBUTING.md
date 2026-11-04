@@ -352,6 +352,43 @@ docker run ghcr.io/openchami/ochami:latest ochami --version
 **Note:** PRs from upstream branches (not forks) will build containers normally
 at `ghcr.io/openchami/ochami:pr-<pr_number>`.
 
+### Changelog
+
+Every pull request whose change users or Go API consumers would notice must add
+an entry to [`CHANGELOG.md`](CHANGELOG.md). Pull requests with no user impact
+don't need one, such as those that only change tests, CI, or internal structure,
+or that make routine dependency updates. Security-relevant dependency updates
+always need an entry. A maintainer adds it when a bot opens the pull request.
+
+Add the entry under `## [Unreleased]`, in the heading that matches the change.
+Create the heading if it doesn't exist yet, keeping them in this order:
+
+- **Added** for new features.
+- **Changed** for changes to existing behavior.
+- **Deprecated** for features that will be removed.
+- **Removed** for features that have been removed.
+- **Fixed** for bug fixes.
+- **Security** for vulnerability fixes.
+
+Describe the change and its impact on users in one or two sentences, rather than
+repeating the commit subject or how the code changed. Start the entry with
+`**BREAKING:**` if users must change something, and say what. For example:
+
+```markdown
+## [Unreleased]
+
+### Changed
+
+- **BREAKING:** `--cacert` and `--insecure` are now mutually exclusive.
+  Previously, `--cacert` silently turned certificate verification back on.
+
+### Fixed
+
+- `--log-format json` now emits JSON.
+```
+
+Maintainers move these entries under a version heading when making a release.
+
 ### General PR Guidelines
 
 1. **Fork the repository** and create a feature branch
@@ -364,10 +401,12 @@ at `ghcr.io/openchami/ochami:pr-<pr_number>`.
    ```
    When changing Renovate configuration or validation tooling, also run
    `make renovate-check` as described above.
-4. **Commit with DCO sign-off** (see [OpenCHAMI Contributing
+4. **Update the changelog** under `Unreleased` as described in
+   [Changelog](#changelog)
+5. **Commit with DCO sign-off** (see [OpenCHAMI Contributing
    Guidelines](https://github.com/OpenCHAMI/.github/blob/main/CONTRIBUTING.md#developer-certificate-of-origin-dco))
-5. **Open a Pull Request** and ensure it passes CI checks
-6. **Respond to review feedback** promptly
+6. **Open a Pull Request** and ensure it passes CI checks
+7. **Respond to review feedback** promptly
 
 ## Additional Resources
 
