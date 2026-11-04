@@ -30,6 +30,10 @@ If --set/--unset/--add/--remove are specified or --patch-method is 'keyval',
 the manual, key-value patch method using dot notation (e.g. key.subkey=value)
 is used.
 
+With --add or --remove, all of these flags are sent as a JSON patch (RFC 6902)
+instead of a JSON merge patch (RFC 7386). --set then needs existing parent keys
+and --unset needs an existing key, or the service rejects the whole patch.
+
 Otherwise, stdin and/or --data can be used to pass in raw patch data, using
 --patch-method to specify the patch format (see examples below).
 
