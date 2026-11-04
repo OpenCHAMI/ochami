@@ -14,7 +14,7 @@ import (
 )
 
 func newCmdBootConfigPatch() *cobra.Command {
-	formatPatch := client.PatchMethodRFC7386
+	formatPatch := client.PatchMethodRFC7396
 	var setList, unsetList, addList, removeList []string
 
 	// bootConfigPatchCmd represents the "boot config patch" command
@@ -33,7 +33,7 @@ the manual, key-value patch method using dot notation (e.g. key.subkey=value)
 is used.
 
 With --add or --remove, all of these flags are sent as a JSON patch (RFC 6902)
-instead of a JSON merge patch (RFC 7386). --set then needs existing parent keys
+instead of a JSON merge patch (RFC 7396). --set then needs existing parent keys
 and --unset needs an existing key, or the service rejects the whole patch.
 
 Otherwise, stdin and/or --data can be used to pass in raw patch data, using
@@ -51,8 +51,8 @@ See ochami-boot(1) for more details.`,
     {"op":"add","path":"/groups/-","value":"group3"}
   ]'
 
-  # Patch specific fields using JSON merge patch (RFC 7386) (simple merge)
-  ochami boot config patch boo-914afad2 --patch-method rfc7386 --data '{"kernel":"http://s3.openchami.cluster/kernels/vmlinuz2","priority":43}'
+  # Patch specific fields using JSON merge patch (RFC 7396) (simple merge)
+  ochami boot config patch boo-914afad2 --patch-method rfc7396 --data '{"kernel":"http://s3.openchami.cluster/kernels/vmlinuz2","priority":43}'
 
   # Patch specific fields using dot notation for keys (shorthand patch)
   ochami boot config patch boo-914afad2 --patch-method keyval --set kernel=http://s3.openchami.cluster/kernels/vmlinuz2 --set priority=43 --unset params
@@ -126,7 +126,7 @@ See ochami-boot(1) for more details.`,
 	bootConfigPatchCmd.Flags().StringArrayVar(&addList, "add", nil, "add value to array field (field=value)")
 	bootConfigPatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field by index (field=index)")
 	bootConfigPatchCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootConfigPatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7386,keyval)")
+	bootConfigPatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7396,keyval)")
 
 	cli.AddPatchFormatInputFlag(bootConfigPatchCmd)
 

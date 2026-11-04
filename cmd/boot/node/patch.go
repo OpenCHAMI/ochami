@@ -14,7 +14,7 @@ import (
 )
 
 func newCmdBootNodePatch() *cobra.Command {
-	formatPatch := client.PatchMethodRFC7386
+	formatPatch := client.PatchMethodRFC7396
 	var setList, unsetList, addList, removeList []string
 
 	// bootNodePatchCmd represents the "boot node patch" command
@@ -33,7 +33,7 @@ the manual, key-value patch method using dot notation (e.g. key.subkey=value)
 is used.
 
 With --add or --remove, all of these flags are sent as a JSON patch (RFC 6902)
-instead of a JSON merge patch (RFC 7386). --set then needs existing parent keys
+instead of a JSON merge patch (RFC 7396). --set then needs existing parent keys
 and --unset needs an existing key, or the service rejects the whole patch.
 
 Otherwise, stdin and/or --data can be used to pass in raw patch data, using
@@ -51,8 +51,8 @@ See ochami-boot(1) for more details.`,
     {"op":"add","path":"/groups/-","value":"group3"}
   ]'
 
-  # Patch specific fields using JSON merge patch (RFC 7386) (simple merge)
-  ochami boot node patch nod-bc76f7f2 --patch-method rfc7386 --data '{"hostname":"ex01.example.org","bootMac":"de:ca:fc:0f:fe:ee"}'
+  # Patch specific fields using JSON merge patch (RFC 7396) (simple merge)
+  ochami boot node patch nod-bc76f7f2 --patch-method rfc7396 --data '{"hostname":"ex01.example.org","bootMac":"de:ca:fc:0f:fe:ee"}'
 
   # Patch specific fields using dot notation for keys (shorthand patch)
   ochami boot node patch nod-bc76f7f2 --patch-method keyval --set hostname=ex01.example.org --set bootMac=de:ca:fc:0f:fe:ee --unset role
@@ -126,7 +126,7 @@ See ochami-boot(1) for more details.`,
 	bootNodePatchCmd.Flags().StringArrayVar(&addList, "add", nil, "add value to array field (field=value)")
 	bootNodePatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field by index (field=index)")
 	bootNodePatchCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	bootNodePatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7386,keyval)")
+	bootNodePatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7396,keyval)")
 
 	cli.AddPatchFormatInputFlag(bootNodePatchCmd)
 

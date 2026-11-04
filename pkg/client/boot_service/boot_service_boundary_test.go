@@ -36,7 +36,7 @@ func TestBootHelpers_UIDStaysInSegment(t *testing.T) {
 			if results := c.DeleteNodes(context.Background(), "", []string{uid}); results.HasErrors() {
 				t.Errorf("DeleteNodes() errors = %v, want none", results.Errors())
 			}
-			if _, err := c.PatchNode(context.Background(), "", client.PatchMethodRFC7386, uid, map[string]any{}); err != nil {
+			if _, err := c.PatchNode(context.Background(), "", client.PatchMethodRFC7396, uid, map[string]any{}); err != nil {
 				t.Errorf("PatchNode() error = %v, want nil", err)
 			}
 

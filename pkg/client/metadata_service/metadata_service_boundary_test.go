@@ -36,7 +36,7 @@ func TestMetadataHelpers_UIDStaysInSegment(t *testing.T) {
 			if results := c.DeleteWireGuardPeers(context.Background(), "", []string{uid}); results.HasErrors() {
 				t.Errorf("DeleteWireGuardPeers() errors = %v, want none", results.Errors())
 			}
-			if _, err := c.PatchWireGuardPeer(context.Background(), "", client.PatchMethodRFC7386, uid, map[string]any{}); err != nil {
+			if _, err := c.PatchWireGuardPeer(context.Background(), "", client.PatchMethodRFC7396, uid, map[string]any{}); err != nil {
 				t.Errorf("PatchWireGuardPeer() error = %v, want nil", err)
 			}
 

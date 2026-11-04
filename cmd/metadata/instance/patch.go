@@ -13,7 +13,7 @@ import (
 )
 
 func newCmdMetadataInstancePatch() *cobra.Command {
-	formatPatch := client.PatchMethodRFC7386
+	formatPatch := client.PatchMethodRFC7396
 	var setList, unsetList, addList, removeList []string
 	// metadataInstancePatchCmd represents the "metadata instance patch" command
 	var metadataInstancePatchCmd = &cobra.Command{
@@ -31,7 +31,7 @@ the manual, key-value patch method using dot notation (e.g. key.subkey=value)
 is used.
 
 With --add or --remove, all of these flags are sent as a JSON patch (RFC 6902)
-instead of a JSON merge patch (RFC 7386). --set then needs existing parent keys
+instead of a JSON merge patch (RFC 7396). --set then needs existing parent keys
 and --unset needs an existing key, or the service rejects the whole patch.
 
 Otherwise, stdin and/or --data can be used to pass in raw patch data, using
@@ -48,8 +48,8 @@ See ochami-metadata(1) for more details.`,
     {"op":"replace","path":"/local_hostname","value":"nid002000"}
   ]'
 
-  # Patch specific fields using JSON merge patch (RFC 7386) (simple merge)
-  ochami metadata instance patch instanceinfo-d614b918 --patch-method rfc7386 --data '{"hostname":"nid002000.demo.cluster"}'
+  # Patch specific fields using JSON merge patch (RFC 7396) (simple merge)
+  ochami metadata instance patch instanceinfo-d614b918 --patch-method rfc7396 --data '{"hostname":"nid002000.demo.cluster"}'
 
   # Patch specific fields using dot notation for keys (shorthand patch)
   ochami metadata instance patch instanceinfo-d614b918 --patch-method keyval --set hostname='nid002000.demo.cluster'
@@ -128,7 +128,7 @@ See ochami-metadata(1) for more details.`,
 	metadataInstancePatchCmd.Flags().StringArrayVar(&addList, "add", nil, "add value to array field (field=value)")
 	metadataInstancePatchCmd.Flags().StringArrayVar(&removeList, "remove", nil, "remove value from array field by index (field=index)")
 	metadataInstancePatchCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
-	metadataInstancePatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7386,keyval)")
+	metadataInstancePatchCmd.Flags().VarP(&formatPatch, "patch-method", "p", "type of patch to use (rfc6902,rfc7396,keyval)")
 
 	cli.AddPatchFormatInputFlag(metadataInstancePatchCmd)
 

@@ -325,7 +325,7 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
-	With only *--set* and *--unset*, the flags are sent as an RFC 7386 JSON Merge
+	With only *--set* and *--unset*, the flags are sent as an RFC 7396 JSON Merge
 	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
 	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
 	fails, the service rejects the patch and changes nothing. A field left empty
@@ -364,7 +364,7 @@ Subcommands for this command are as follows:
 	*-p, --patch-method* _patch_method_
 		Specify patch method for patch data. Supported methods are:
 
-		- _rfc7386_ (default): RFC 7386 JSON Merge Patch
+		- _rfc7396_ (default): RFC 7396 JSON Merge Patch
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
@@ -539,7 +539,7 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
-	With only *--set* and *--unset*, the flags are sent as an RFC 7386 JSON Merge
+	With only *--set* and *--unset*, the flags are sent as an RFC 7396 JSON Merge
 	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
 	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
 	fails, the service rejects the patch and changes nothing. A field left empty
@@ -579,7 +579,7 @@ Subcommands for this command are as follows:
 	*-p, --patch-method* _patch_method_
 		Specify patch method for patch data. Supported methods are:
 
-		- _rfc7386_ (default): RFC 7386 JSON Merge Patch
+		- _rfc7396_ (default): RFC 7396 JSON Merge Patch
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
@@ -752,7 +752,7 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
-	With only *--set* and *--unset*, the flags are sent as an RFC 7386 JSON Merge
+	With only *--set* and *--unset*, the flags are sent as an RFC 7396 JSON Merge
 	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
 	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
 	fails, the service rejects the patch and changes nothing. A field left empty
@@ -791,7 +791,7 @@ Subcommands for this command are as follows:
 	*-p, --patch-method* _patch_method_
 		Specify patch method for patch data. Supported methods are:
 
-		- _rfc7386_ (default): RFC 7386 JSON Merge Patch
+		- _rfc7396_ (default): RFC 7396 JSON Merge Patch
 		- _rfc6902_: RFC 6902 JSON Patch
 		- _keyval_: key=value format using dot notation for subkeys
 
