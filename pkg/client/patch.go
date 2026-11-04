@@ -120,6 +120,13 @@ func NewKeyValPatch(setList, unsetList, addList, removeList []string) (map[strin
 // data plus the patch method to use. If add/remove operations are present, it
 // returns an RFC 6902 JSON Patch document. Otherwise it returns an RFC 7386 JSON
 // Merge Patch document using keyval dot notation.
+//
+// The two encodings treat set and unset differently, and the caller's add or
+// remove items decide which one applies. A merge patch creates missing parent
+// keys, ignores unset keys that don't exist, and deletes a key set to null. An
+// RFC 6902 patch fails if a set key's parent or an unset key is missing, and
+// stores a null value instead of deleting the key. Resolving these differences
+// would need the current document, which this function doesn't have.
 func NewKeyValPatchData(setList, unsetList, addList, removeList []string) (PatchMethod, interface{}, error) {
 	if len(addList) == 0 && len(removeList) == 0 {
 		patch, err := NewKeyValPatch(setList, unsetList, nil, nil)
