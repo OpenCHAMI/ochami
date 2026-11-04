@@ -343,6 +343,11 @@ Subcommands for this command are as follows:
 		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
+		The array must already exist, and an empty array is usually absent from the
+		stored spec. To add the first value, use *--set* with a JSON array instead
+		(e.g. _key_='["_val_"]'). *--set* replaces the whole array, so only use it
+		this way when the array is empty.
+
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
 		from, or to read the data from standard input (@-). The format of data
@@ -553,6 +558,11 @@ Subcommands for this command are as follows:
 		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
+		The array must already exist, and an empty array is usually absent from the
+		stored spec. To add the first value, use *--set* with a JSON array instead
+		(e.g. _key_='["_val_"]'). *--set* replaces the whole array, so only use it
+		this way when the array is empty.
+
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
 		from, or to read the data from standard input (@-). The format of data
@@ -759,6 +769,11 @@ Subcommands for this command are as follows:
 		Append value to an existing array field using an RFC 6902 add operation.
 		Only can be used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		The array must already exist, and an empty array is usually absent from the
+		stored spec. To add the first value, use *--set* with a JSON array instead
+		(e.g. _key_='["_val_"]'). *--set* replaces the whole array, so only use it
+		this way when the array is empty.
 
 	*-d, --data* (_data_ | @_path_ | @-)
 		Specify raw _data_ to send, the _path_ to a file to read payload data
