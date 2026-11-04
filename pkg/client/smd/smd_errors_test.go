@@ -189,6 +189,9 @@ func TestIterativeWrites_PreserveMixedResultAlignment(t *testing.T) {
 		{"PatchGroups", http.MethodPatch, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
 			return sc.PatchGroups(context.Background(), []Group{{Label: "compute"}, {Label: "storage"}}, "tok"), nil
 		}},
+		{"PatchGroupFields", http.MethodPatch, func(sc *SMDClient) (client.BatchResult[client.HTTPEnvelope], error) {
+			return sc.PatchGroupFields(context.Background(), []GroupPatch{{Label: "compute"}, {Label: "storage"}}, "tok"), nil
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -618,6 +621,10 @@ func TestSMDClient_RejectsBlankRequiredFields(t *testing.T) {
 	if len(results) != 1 || results[0].Err == nil {
 		t.Fatalf("blank group results = %v", results)
 	}
+	results = c.PatchGroupFields(context.Background(), []GroupPatch{{}}, "")
+	if len(results) != 1 || results[0].Err == nil {
+		t.Fatalf("blank group patch results = %v", results)
+	}
 }
 
 // TestIterativeDeletes_InvalidID verifies that each iterative delete reports
@@ -869,6 +876,9 @@ func TestSMD_MalformedPathGuards(t *testing.T) {
 			return c.PatchEthernetInterfaces(context.Background(), []EthernetInterface{{ID: "%zz"}}, "")[0].Err
 		}},
 		{name: "patch group", call: func() error { return c.PatchGroups(context.Background(), []Group{{Label: "%zz"}}, "")[0].Err }},
+		{name: "patch group fields", call: func() error {
+			return c.PatchGroupFields(context.Background(), []GroupPatch{{Label: "%zz"}}, "")[0].Err
+		}},
 		{name: "delete component", call: func() error { return c.DeleteComponents(context.Background(), "", "%zz")[0].Err }},
 		{name: "delete rfe", call: func() error { return c.DeleteRedfishEndpoints(context.Background(), "", "%zz")[0].Err }},
 		{name: "delete interface", call: func() error { return c.DeleteEthernetInterfaces(context.Background(), "", "%zz")[0].Err }},

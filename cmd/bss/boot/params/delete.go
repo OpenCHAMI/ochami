@@ -6,7 +6,6 @@
 package params
 
 import (
-	"github.com/openchami/bss/pkg/bssTypes"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -23,22 +22,11 @@ type bootParamsDeleteOptions struct {
 // runCoreBootParamsDelete contains the core logic for the bss boot params delete command.
 // It takes the parsed options and performs the actual work of deleting boot parameters.
 func runCoreBootParamsDelete(cmd *cobra.Command, opts *bootParamsDeleteOptions, rt *cli.Runtime) error {
-	// The BSS BootParams struct we will send
-	var bp bssTypes.BootParams
-
-	// Read payload from file first, allowing overwrites from flags
-	if cmd.Flag("data").Changed {
-		if err := rt.HandlePayload(cmd, &bp); err != nil {
-			return err
-		}
-	}
-	applyBootParamFlags(cmd, &bp, opts.bootParamFields)
-
-	// If we are deleting by component (xname/mac/nid), validate MAC addresses if any were provided
-	if len(opts.Mac) > 0 {
-		if err := bp.CheckMacs(); err != nil {
-			return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
-		}
+	// The BSS BootParams structs we will send, from the payload or, without
+	// -d, from the flags. The two are mutually exclusive.
+	bps, err := readBootParams(cmd, rt, opts.bootParamFields)
+	if err != nil {
+		return err
 	}
 
 	// Ask before attempting deletion unless --no-confirm was passed
@@ -65,13 +53,9 @@ func runCoreBootParamsDelete(cmd *cobra.Command, opts *bootParamsDeleteOptions, 
 		return err
 	}
 
-	// Send 'em off
-	_, err = bssClient.DeleteBootParams(cmd.Context(), bp, rt.Token)
-	if err != nil {
-		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to delete boot parameters from BSS")
-	}
-
-	return nil
+	// Send 'em off, one request per boot parameters object
+	results := bssClient.DeleteBootParamsBatch(cmd.Context(), bps, rt.Token)
+	return cli.AggregateItemErrors(rt.Logger, results.Errors(), "BSS boot parameter deletion")
 }
 
 func newCmdBootParamsDelete() *cobra.Command {
@@ -90,7 +74,10 @@ raw payload data or (if flag argument starts with @) a file containing
 the payload data. -f can be specified to change the format of the
 input payload data ('json' by default), but the rules above still
 apply for the payload. If "-" is used as the input payload filename,
-the data is read from standard input.
+the data is read from standard input. -d cannot be used with
+--xname, --mac, --nid, --kernel, --initrd, or --params.
+The payload can hold one boot parameters object or an array of
+them, each sent in its own request.
 
 This command sends a DELETE to BSS. An access token is required.
 
@@ -103,6 +90,16 @@ See ochami-bss(1) for more details.`,
   ochami bss boot params delete -d '{"macs":["00:de:ad:be:ef:00"]}'
   ochami bss boot params delete -d '{"kernel":"https://example.com/kernel"}'
 
+  # Delete multiple boot parameters using JSON array
+  ochami bss boot params delete -d '[
+    {
+      "macs": ["00:de:ad:be:ef:00"]
+    },
+    {
+      "kernel": "https://example.com/kernel"
+    }
+  ]'
+
   # Delete boot parameters using input payload data
   ochami bss boot params delete -d @payload.json
   ochami bss boot params delete -d @payload.yaml -f yaml
@@ -111,28 +108,13 @@ See ochami-bss(1) for more details.`,
   echo '<json_data>' | ochami bss boot params delete -d @-
   echo '<yaml_data>' | ochami bss boot params delete -d @- -f yaml`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			// Function to return true if any flag is set
-			anyChanged := func(flags ...string) bool {
-				for _, f := range flags {
-					if cmd.Flag(f).Changed {
-						return true
-					}
-				}
-				return false
-			}
-			if cmd.Flag("data").Changed {
-				// -d/--data trumps all, ignore values of other flags if specified
-				if anyChanged("xname", "nid", "mac", "kernel", "initrd", "params") {
-					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring CLI configuration")
-				}
-			} else {
-				// If -d/--data not passed, then at least one of --xname/--nid/--mac must
-				// be specified, along with at least one of --kernel/--initrd/--params
-				if !anyChanged("xname", "nid", "mac") {
-					return cli.Errorf(cli.CodeUsage, "expected -d or one of --xname, --nid, or --mac")
-				} else if !anyChanged("kernel", "initrd", "params") {
-					return cli.Errorf(cli.CodeUsage, "specifying any of --xname, --nid, or --mac also requires specifying at least one of --kernel, --initrd, or --params")
-				}
+			// With -d, the flag groups registered by markDataExclusive reject
+			// the other flags
+			if !cmd.Flag("data").Changed && !cli.AnyFlagChanged(cmd, bootParamFlags...) {
+				// If -d/--data not passed, then boot parameters can be deleted
+				// by component (--xname/--nid/--mac) or by config
+				// (--kernel/--initrd/--params), so any one of them is enough
+				return cli.Errorf(cli.CodeUsage, "expected -d or at least one of --xname, --nid, --mac, --kernel, --initrd, or --params")
 			}
 
 			return nil
@@ -165,6 +147,7 @@ See ochami-bss(1) for more details.`,
 	bootParamsDelete.Flags().Int32SliceP("nid", "n", []int32{}, "one or more node IDs whose boot parameters to delete")
 	bootParamsDelete.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 	cli.AddFormatInputFlag(bootParamsDelete)
+	markDataExclusive(bootParamsDelete)
 	bootParamsDelete.Flags().Bool("no-confirm", false, "do not ask before attempting deletion")
 
 	return bootParamsDelete

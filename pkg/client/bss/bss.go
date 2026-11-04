@@ -153,6 +153,46 @@ func (bc *BSSClient) DeleteBootParams(ctx context.Context, bp bssTypes.BootParam
 	return henv, err
 }
 
+// PostBootParamsBatch is a wrapper function around BSSClient.PostBootParams
+// that takes a slice of bssTypes.BootParams (bps) and a token, and iteratively
+// calls BSSClient.PostBootParams using each item from the slice. Each item has
+// one aligned result.
+func (bc *BSSClient) PostBootParamsBatch(ctx context.Context, bps []bssTypes.BootParams, token string) client.BatchResult[client.HTTPEnvelope] {
+	return client.RunBatch(ctx, bps, func(ctx context.Context, bp bssTypes.BootParams) (client.HTTPEnvelope, error) {
+		return bc.PostBootParams(ctx, bp, token)
+	})
+}
+
+// PutBootParamsBatch is a wrapper function around BSSClient.PutBootParams
+// that takes a slice of bssTypes.BootParams (bps) and a token, and iteratively
+// calls BSSClient.PutBootParams using each item from the slice. Each item has
+// one aligned result.
+func (bc *BSSClient) PutBootParamsBatch(ctx context.Context, bps []bssTypes.BootParams, token string) client.BatchResult[client.HTTPEnvelope] {
+	return client.RunBatch(ctx, bps, func(ctx context.Context, bp bssTypes.BootParams) (client.HTTPEnvelope, error) {
+		return bc.PutBootParams(ctx, bp, token)
+	})
+}
+
+// PatchBootParamsBatch is a wrapper function around BSSClient.PatchBootParams
+// that takes a slice of bssTypes.BootParams (bps) and a token, and iteratively
+// calls BSSClient.PatchBootParams using each item from the slice. Each item has
+// one aligned result.
+func (bc *BSSClient) PatchBootParamsBatch(ctx context.Context, bps []bssTypes.BootParams, token string) client.BatchResult[client.HTTPEnvelope] {
+	return client.RunBatch(ctx, bps, func(ctx context.Context, bp bssTypes.BootParams) (client.HTTPEnvelope, error) {
+		return bc.PatchBootParams(ctx, bp, token)
+	})
+}
+
+// DeleteBootParamsBatch is a wrapper function around BSSClient.DeleteBootParams
+// that takes a slice of bssTypes.BootParams (bps) and a token, and iteratively
+// calls BSSClient.DeleteBootParams using each item from the slice. Each item
+// has one aligned result.
+func (bc *BSSClient) DeleteBootParamsBatch(ctx context.Context, bps []bssTypes.BootParams, token string) client.BatchResult[client.HTTPEnvelope] {
+	return client.RunBatch(ctx, bps, func(ctx context.Context, bp bssTypes.BootParams) (client.HTTPEnvelope, error) {
+		return bc.DeleteBootParams(ctx, bp, token)
+	})
+}
+
 // GetBootParams is a wrapper function around OchamiClient.GetData that takes an
 // optional query string (without the "?") and a token. It sets token as the
 // authorization bearer in the headers and passes the query string and headers

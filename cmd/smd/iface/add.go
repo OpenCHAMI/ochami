@@ -54,7 +54,7 @@ See ochami-smd(1) for more details.`,
 				}
 			} else {
 				if len(args) > 0 {
-					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring extra arguments: %v", args)
+					return cli.Errorf(cli.CodeUsage, "-d cannot be used with arguments, got %v", args)
 				}
 			}
 

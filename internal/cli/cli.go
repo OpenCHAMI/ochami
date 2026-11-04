@@ -68,6 +68,17 @@ func CompletionFormatData(cmd *cobra.Command, args []string, toComplete string) 
 	return help, cobra.ShellCompDirectiveDefault
 }
 
+// AnyFlagChanged reports whether any of the named flags was passed to cmd.
+// Names of flags not registered on cmd are skipped.
+func AnyFlagChanged(cmd *cobra.Command, names ...string) bool {
+	for _, name := range names {
+		if f := cmd.Flag(name); f != nil && f.Changed {
+			return true
+		}
+	}
+	return false
+}
+
 // AddFormatInputFlag registers invocation-local input format storage on cmd.
 // The FlagSet owns the value for the lifetime of the command tree.
 func AddFormatInputFlag(cmd *cobra.Command) {

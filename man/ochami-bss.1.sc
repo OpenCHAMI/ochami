@@ -84,7 +84,7 @@ Manage boot parameters for components.
 
 Subcommands for this command are as follows:
 
-*add* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_])++
+*add* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_] [--params _params_])++
 *add* -d _data_ [-f _format_]++
 *add* -d @_file_ [-f _format_]++
 *add* -d @- [-f _format_] < _file_
@@ -118,6 +118,12 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
+		*--initrd*, or *--params*.
+
+		The payload can hold one boot parameters object or an array of them.
+		Each object is sent in its own request.
+
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats
 		are:
@@ -150,7 +156,7 @@ Subcommands for this command are as follows:
 	*--params* _kernel_params_
 		Command line arguments to pass to kernel for components.
 
-*delete* [--no-confirm] ([--mac, _mac_,...] [--nid, _nid_,...] [--xname _xname_,...] [--kernel _kernel_] [--initrd _initrd_])++
+*delete* [--no-confirm] ([--mac, _mac_,...] [--nid, _nid_,...] [--xname _xname_,...] [--kernel _kernel_] [--initrd _initrd_] [--params _params_])++
 *delete* [--no-confirm] -d _data_ [-f _format_]++
 *delete* [--no-confirm] -d @_file_ [-f _format_]++
 *delete* [--no-confirm] -d @- [-f _format_]
@@ -160,11 +166,13 @@ Subcommands for this command are as follows:
 	to confirm deletion.
 
 	In the first form of the command, one or more of *--mac*, *--nid*,
-	*--xname*, *--kernel*, or *--initrd* is required to identify which
-	component(s) whose boot parameters to delete. For any of these options,
-	multiple arguments can be passed either by specifying the flag multiple
-	times (e.g. *--mac* _mac1_ *--mac* _mac2_) or by using one flag and
-	separating each argument by commas (e.g. *--mac* _mac1_,_mac2_).
+	*--xname*, *--kernel*, *--initrd*, or *--params* is required to identify
+	which boot parameters to delete, either by component (*--mac*, *--nid*,
+	*--xname*) or by boot configuration (*--kernel*, *--initrd*, *--params*).
+	For *--mac*, *--nid*, and *--xname*, multiple arguments can be passed
+	either by specifying the flag multiple times (e.g. *--mac* _mac1_ *--mac*
+	_mac2_) or by using one flag and separating each argument by commas (e.g.
+	*--mac* _mac1_,_mac2_).
 
 	In the second form of the command, raw data is passed as an argument to be
 	the payload.
@@ -184,6 +192,12 @@ Subcommands for this command are as follows:
 		from, or to read the data from standard input (@-). The format of data
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
+
+		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
+		*--initrd*, or *--params*.
+
+		The payload can hold one boot parameters object or an array of them.
+		Each object is sent in its own request.
 
 	*--no-confirm*
 		Do not ask the user to confirm deletion. Use with caution.
@@ -252,7 +266,7 @@ Subcommands for this command are as follows:
 		either this flag can be specified multiple times or this flag can be
 		specified once and multiple xnames, separated by commas.
 
-*set* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_])++
+*set* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_] [--params _params_])++
 *set* -d _data_ [-f _format_]++
 *set* -d @_file_ [-f _format_]++
 *set* -d @- [-f _format_] < _file_
@@ -288,6 +302,12 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
+		*--initrd*, or *--params*.
+
+		The payload can hold one boot parameters object or an array of them.
+		Each object is sent in its own request.
+
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats
 		are:
@@ -320,7 +340,7 @@ Subcommands for this command are as follows:
 	*--params* _kernel_params_
 		Command line arguments to pass to kernel for components.
 
-*update* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_])++
+*update* ([--mac _mac_,...] [--nid _nid_,...] [--xname _xname_,...]) ([--initrd _initrd_] [--kernel _kernel_] [--params _params_])++
 *update* -d _data_ [-f _format_]++
 *update* -d @_file_ [-f _format_]++
 *update* -d @- [-f _format_] < _file_
@@ -352,6 +372,12 @@ Subcommands for this command are as follows:
 		from, or to read the data from standard input (@-). The format of data
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
+
+		Cannot be used with *--mac*, *--nid*, *--xname*, *--kernel*,
+		*--initrd*, or *--params*.
+
+		The payload can hold one boot parameters object or an array of them.
+		Each object is sent in its own request.
 
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats

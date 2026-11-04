@@ -165,6 +165,23 @@ func TestCloudInitGroupDelete_NoArgsUsage(t *testing.T) {
 	}
 }
 
+// TestCloudInitGroupDelete_DataWithArgs verifies that delete with -d and group
+// name arguments is a usage error whose message says the combination is
+// rejected, not that the arguments are ignored.
+func TestCloudInitGroupDelete_DataWithArgs(t *testing.T) {
+	t.Parallel()
+
+	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "delete",
+		"--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm",
+		"-d", `[{"name":"compute"}]`, "extra-arg")
+	if res.err == nil || res.exitCode != cli.CodeUsage {
+		t.Fatalf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+	if want := "-d cannot be used with arguments, got [extra-arg]"; !strings.Contains(res.err.Error(), want) {
+		t.Errorf("error = %q, want it to contain %q", res.err.Error(), want)
+	}
+}
+
 // TestCloudInitGroupDelete_HTTPError verifies a failing DELETE resolves to
 // CodeHTTP via the per-item aggregation.
 func TestCloudInitGroupDelete_HTTPError(t *testing.T) {

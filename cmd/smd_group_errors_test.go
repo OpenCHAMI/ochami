@@ -81,6 +81,41 @@ func TestSMDGroupUpdate_MissingFields(t *testing.T) {
 	}
 }
 
+// TestSMDGroupUpdate_DataWithFlags verifies that "update -d <payload>" with
+// --description or --tag is a usage error and sends no request.
+func TestSMDGroupUpdate_DataWithFlags(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		flag  string
+		value string
+	}{
+		{"--description", "new"},
+		{"--tag", "t1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.flag, func(t *testing.T) {
+			t.Parallel()
+
+			var requests int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", srv.URL, "--token", "t",
+				"-d", `[{"label":"compute","description":"old"}]`, tt.flag, tt.value)
+			if res.err == nil || res.exitCode != cli.CodeUsage {
+				t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if requests != 0 {
+				t.Errorf("requests = %d, want none when -d is combined with %s", requests, tt.flag)
+			}
+		})
+	}
+}
+
 // TestSMDGroupUpdate_HTTPError verifies a failing PATCH resolves to CodeHTTP.
 func TestSMDGroupUpdate_HTTPError(t *testing.T) {
 	t.Parallel()

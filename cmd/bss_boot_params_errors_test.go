@@ -107,29 +107,13 @@ func TestBSSBootParamsUpdate_HTTPError(t *testing.T) {
 	}
 }
 
-// TestBSSBootParamsDelete_MissingSelector verifies delete without -d and without
-// a component selector is a usage error.
+// TestBSSBootParamsDelete_MissingSelector verifies delete without -d and
+// without any component or boot config flag is a usage error.
 func TestBSSBootParamsDelete_MissingSelector(t *testing.T) {
 	t.Parallel()
 
 	res := runOchamiWithRuntime(t, "bss", "boot", "params", "delete",
 		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm")
-	if res.err == nil {
-		t.Fatal("expected a usage error, got nil")
-	}
-	if res.exitCode != cli.CodeUsage {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
-	}
-}
-
-// TestBSSBootParamsDelete_MissingConfig verifies delete with a component selector
-// but no config selector is a usage error.
-func TestBSSBootParamsDelete_MissingConfig(t *testing.T) {
-	t.Parallel()
-
-	res := runOchamiWithRuntime(t, "bss", "boot", "params", "delete",
-		"--ignore-config", "--uri", "http://127.0.0.1:1", "--token", "t", "--no-confirm",
-		"--mac", "de:ad:be:ef:00:00")
 	if res.err == nil {
 		t.Fatal("expected a usage error, got nil")
 	}
@@ -218,6 +202,150 @@ func TestBSSBootParamsAdd_InvalidMac(t *testing.T) {
 		"--uri", "http://127.0.0.1:1", "--token", "t", "--mac", "not-a-mac", "--kernel", "http://k")
 	if res.err == nil || res.exitCode != cli.CodeUsage {
 		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+}
+
+// TestBSSBootParams_DataWithFlags verifies that add, set, update, and delete
+// reject -d combined with any component or boot config flag as a usage error,
+// without sending a request.
+func TestBSSBootParams_DataWithFlags(t *testing.T) {
+	t.Parallel()
+
+	verbs := []struct {
+		verb      string
+		extraArgs []string
+	}{
+		{"add", nil},
+		{"set", nil},
+		{"update", nil},
+		{"delete", []string{"--no-confirm"}},
+	}
+	flags := []struct {
+		flag  string
+		value string
+	}{
+		{"--xname", "x0c0s0b0n0"},
+		{"--nid", "1"},
+		{"--mac", "de:ad:be:ef:00:01"},
+		{"--kernel", "https://example.com/new-vmlinuz"},
+		{"--initrd", "https://example.com/new-initrd"},
+		{"--params", "quiet"},
+	}
+	for _, v := range verbs {
+		for _, f := range flags {
+			t.Run(v.verb+" "+f.flag, func(t *testing.T) {
+				t.Parallel()
+
+				var requests int
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					requests++
+					w.WriteHeader(http.StatusOK)
+				}))
+				defer srv.Close()
+
+				args := append([]string{"bss", "boot", "params", v.verb,
+					"--ignore-config", "--uri", srv.URL, "--token", "t",
+					"-d", `{"macs":["de:ad:be:ef:00:00"],"kernel":"http://old/vmlinuz"}`,
+					f.flag, f.value}, v.extraArgs...)
+				res := runOchamiWithRuntime(t, args...)
+				if res.err == nil || res.exitCode != cli.CodeUsage {
+					t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+				}
+				if requests != 0 {
+					t.Errorf("requests = %d, want none when -d is combined with %s", requests, f.flag)
+				}
+			})
+		}
+	}
+}
+
+// TestBSSBootParams_InvalidPayloadMac verifies that an invalid MAC address in
+// a -d payload is a usage error for add, set, update, and delete, and that no
+// request is sent.
+func TestBSSBootParams_InvalidPayloadMac(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		verb      string
+		extraArgs []string
+	}{
+		{"add", nil},
+		{"set", nil},
+		{"update", nil},
+		{"delete", []string{"--no-confirm"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.verb, func(t *testing.T) {
+			t.Parallel()
+
+			var requests int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			args := append([]string{"bss", "boot", "params", tt.verb,
+				"--ignore-config", "--uri", srv.URL, "--token", "t",
+				"-d", `{"macs":["not-a-mac"],"kernel":"http://k"}`}, tt.extraArgs...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.err == nil || res.exitCode != cli.CodeUsage {
+				t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+			}
+			if requests != 0 {
+				t.Errorf("requests = %d, want none for an invalid payload MAC", requests)
+			}
+		})
+	}
+}
+
+// TestBSSBootParamsSet_EmptyPayloadArray verifies that a -d payload holding an
+// empty array is a usage error and sends no request.
+func TestBSSBootParamsSet_EmptyPayloadArray(t *testing.T) {
+	t.Parallel()
+
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "set", "--ignore-config",
+		"--uri", srv.URL, "--token", "t", "-d", "[]")
+	if res.err == nil || res.exitCode != cli.CodeUsage {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeUsage, cli.CodeName(cli.CodeUsage))
+	}
+	if requests != 0 {
+		t.Errorf("requests = %d, want none for an empty payload", requests)
+	}
+}
+
+// TestBSSBootParamsSet_PayloadArrayPartialFailure verifies that when one
+// element of a -d payload array fails, the others are still sent and the
+// command exits with CodeHTTP.
+func TestBSSBootParamsSet_PayloadArrayPartialFailure(t *testing.T) {
+	t.Parallel()
+
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			http.Error(w, "bad", http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "bss", "boot", "params", "set", "--ignore-config",
+		"--uri", srv.URL, "--token", "t",
+		"-d", `[{"macs":["de:ad:be:ef:00:00"],"kernel":"k1"},{"macs":["de:ad:be:ef:00:01"],"kernel":"k2"}]`)
+	if res.err == nil || res.exitCode != cli.CodeHTTP {
+		t.Errorf("err=%v exit=%d, want %d (%s)", res.err, res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+	if requests != 2 {
+		t.Errorf("requests = %d, want 2 (the failure must not stop the rest)", requests)
 	}
 }
 

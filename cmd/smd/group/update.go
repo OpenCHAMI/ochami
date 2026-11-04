@@ -32,26 +32,33 @@ func runCoreGroupUpdate(cmd *cobra.Command, opts *groupUpdateOptions, args []str
 		return err
 	}
 
-	// The group list we will send
-	var groups []smd.Group
+	// The group patches we will send. Only the fields that are set are sent,
+	// so SMD leaves the others unchanged.
+	var groups []smd.GroupPatch
 
-	// Read payload from file first, allowing overwrites from flags
+	// Build the patches from the payload or, without -d, from the flags and
+	// argument. -d and the flags are mutually exclusive.
 	if cmd.Flag("data").Changed {
 		if err := rt.HandlePayload(cmd, &groups); err != nil {
 			return err
 		}
 	} else {
-		// ...otherwise use CLI options/args
-		group := smd.Group{Label: args[0]}
-		group.Description = opts.Description
-		group.Tags = opts.Tags
+		// ...otherwise use CLI options/args, setting only the fields whose
+		// flags were passed
+		group := smd.GroupPatch{Label: args[0]}
+		if cmd.Flag("description").Changed {
+			group.Description = &opts.Description
+		}
+		if cmd.Flag("tag").Changed {
+			group.Tags = &opts.Tags
+		}
 		groups = append(groups, group)
 	}
 
 	// Send 'em off
-	results := smdClient.PatchGroups(cmd.Context(), groups, rt.Token)
-	// Since smdClient.PatchGroups does the edition iteratively, we need to deal with
-	// each error that might have occurred.
+	results := smdClient.PatchGroupFields(cmd.Context(), groups, rt.Token)
+	// Since smdClient.PatchGroupFields does the edition iteratively, we need to
+	// deal with each error that might have occurred.
 	var itemErrs []error
 	for i, result := range results {
 		if result.Err != nil {
@@ -99,6 +106,7 @@ containing the payload data. -f can be specified to change
 the format of the input payload data ('json' by default), but
 the rules above still apply for the payload. If "-" is used as
 the input payload filename, the data is read from standard input.
+-d cannot be used with --description or --tag.
 
 This command sends a PATCH to SMD. An access token is required.
 
@@ -136,7 +144,7 @@ See ochami-smd(1) for more details.`,
 				}
 			} else {
 				if len(args) > 0 {
-					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring extra arguments: %v", args)
+					return cli.Errorf(cli.CodeUsage, "-d cannot be used with arguments, got %v", args)
 				}
 			}
 
@@ -178,6 +186,8 @@ See ochami-smd(1) for more details.`,
 	cli.AddFormatInputFlag(groupUpdateCmd)
 	groupUpdateCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 	groupUpdateCmd.MarkFlagsOneRequired("description", "tag", "data")
+	groupUpdateCmd.MarkFlagsMutuallyExclusive("description", "data")
+	groupUpdateCmd.MarkFlagsMutuallyExclusive("tag", "data")
 
 	return groupUpdateCmd
 }

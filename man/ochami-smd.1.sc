@@ -281,6 +281,8 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with positional arguments.
+
 	*--no-confirm*
 		Do not ask the user to confirm deletion. Use with caution.
 
@@ -351,6 +353,8 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with positional arguments.
+
 	*--enabled*
 		Specify if component is shows up as enabled in SMD.
 
@@ -413,6 +417,8 @@ Subcommands for this command are as follows:
 		from, or to read the data from standard input (@-). The format of data
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
+
+		Cannot be used with positional arguments.
 
 	*--no-confirm*
 		Do not ask the user to confirm deletion. Use with caution.
@@ -480,8 +486,7 @@ Subcommands for this command are as follows:
 	input.
 
 	In the second, third, and fourth forms, the payload is an array of
-	*EthernetInterface* objects, even when adding a single interface. If
-	positional arguments are also passed, they are ignored with a warning.
+	*EthernetInterface* objects, even when adding a single interface.
 
 	This command sends a POST request to SMD's /Inventory/EthernetInterfaces
 	endpoint. An access token is required.
@@ -493,6 +498,8 @@ Subcommands for this command are as follows:
 		from, or to read the data from standard input (@-). The format of data
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
+
+		Cannot be used with positional arguments.
 
 	*-D, --description* _description_
 		Description of the Ethernet interface. Default: *Undescribed Ethernet
@@ -540,9 +547,6 @@ Subcommands for this command are as follows:
 	*MACAddress*, so a payload item with only *MACAddress* set also causes a
 	usage error.
 
-	When *-d* is passed, positional _iface_id_ arguments are ignored with a
-	warning and are not validated.
-
 	This command sends one or more DELETE requests to SMD's
 	/Inventory/EthernetInterfaces endpoint. An access token is required.
 
@@ -557,6 +561,8 @@ Subcommands for this command are as follows:
 		from, or to read the data from standard input (@-). The format of data
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
+
+		Cannot be used with positional arguments.
 
 	*-f, --format-input* _format_
 		Format of input payload data used by *-d*. Supported formats are:
@@ -652,6 +658,8 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with positional arguments.
+
 	*--domain* _domain_
 		Specify the domain part of the Redfish endpoint's FQDN.
 
@@ -705,6 +713,8 @@ Subcommands for this command are as follows:
 		from, or to read the data from standard input (@-). The format of data
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
+
+		Cannot be used with positional arguments.
 
 	*-f, --format-input* _format_
 		Format of input payload data used by *-d*. Supported formats are:
@@ -794,6 +804,8 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with positional arguments.
+
 	*-D, --description* _description_
 		Specify a brief description of the group.
 
@@ -855,6 +867,8 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with positional arguments.
+
 	*--no-confirm*
 		Do not ask the user to confirm deletion. Use with caution.
 
@@ -897,7 +911,8 @@ Subcommands for this command are as follows:
 *update* -d @_file_ [-f _format_]++
 *update* -d @- [-f _format_] < _file_
 	Update one or more existing groups in SMD. If the group does not already
-	exist, this command will fail.
+	exist, this command will fail. Only the fields that are given, by flag or
+	in the payload, are changed. A field given an empty value is cleared.
 
 	In the first form of the command, a _group_name_ is required as well as at
 	least one of *--description* or *--tag*.
@@ -921,8 +936,10 @@ Subcommands for this command are as follows:
 		read in any of these forms is JSON by default unless *-f* is specified
 		to change it.
 
+		Cannot be used with positional arguments.
+
 	*-D, --description* _description_
-		Specify a brief description of the group.
+		Specify a brief description of the group. Cannot be used with *-d*.
 
 	*-f, --format-input* _format_
 		Format of raw data being used by *-d* as the payload. Supported formats
@@ -936,7 +953,7 @@ Subcommands for this command are as follows:
 		flag can be specified multiple times or this flag can be specified once
 		and multiple tags can be specified, separated by commas. Passing this
 		flag will *replace* any existing tags, so be sure any existing tags that
-		need to be kept are passed to this flag.
+		need to be kept are passed to this flag. Cannot be used with *-d*.
 
 *membership* [-F _format_] [FILTERS]
 	Gets the memberships of one or more nodes.

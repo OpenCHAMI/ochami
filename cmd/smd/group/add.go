@@ -113,7 +113,7 @@ See ochami-smd(1) for more details.`,
 				}
 			} else {
 				if len(args) > 0 {
-					cli.LoggerFromCommand(cmd).Warn().Msgf("raw data passed, ignoring CLI configuration for passed group %v", args)
+					return cli.Errorf(cli.CodeUsage, "-d cannot be used with arguments, got %v", args)
 				}
 			}
 

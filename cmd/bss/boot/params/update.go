@@ -6,7 +6,6 @@
 package params
 
 import (
-	"github.com/openchami/bss/pkg/bssTypes"
 	"github.com/spf13/cobra"
 
 	"github.com/openchami/ochami/internal/cli"
@@ -28,61 +27,16 @@ func runCoreBootParamsUpdate(cmd *cobra.Command, opts *bootParamsUpdateOptions, 
 		return err
 	}
 
-	// The BSS BootParams struct we will send
-	var bp bssTypes.BootParams
-
-	// Read payload from file first, allowing overwrites from flags
-	if cmd.Flag("data").Changed {
-		if err := rt.HandlePayload(cmd, &bp); err != nil {
-			return err
-		}
-	}
-	applyBootParamFlags(cmd, &bp, opts.bootParamFields)
-
-	// Validate MAC addresses if any were provided
-	if len(opts.Mac) > 0 {
-		if err := bp.CheckMacs(); err != nil {
-			return cli.Errorf(cli.CodeUsage, "invalid mac(s): %w", err)
-		}
-	}
-
-	// Send 'em off
-	_, err := bssClient.PatchBootParams(cmd.Context(), bp, rt.Token)
+	// The BSS BootParams structs we will send, from the payload or, without
+	// -d, from the flags. The two are mutually exclusive.
+	bps, err := readBootParams(cmd, rt, opts.bootParamFields)
 	if err != nil {
-		return cli.ClassifyClientError(err, "BSS boot parameter request yielded unsuccessful HTTP response", "failed to update boot parameters in BSS")
+		return err
 	}
 
-	return nil
-}
-
-// validateBootParamsUpdateFlags validates that the required flags are present for update command.
-func validateBootParamsUpdateFlags(cmd *cobra.Command, args []string) error {
-	// Function to return true if any flag is set
-	anyChanged := func(flags ...string) bool {
-		for _, f := range flags {
-			if cmd.Flag(f).Changed {
-				return true
-			}
-		}
-		return false
-	}
-
-	if cmd.Flag("data").Changed {
-		// -d/--data trumps all, ignore values of other flags if specified
-		if anyChanged("xname", "nid", "mac", "kernel", "initrd", "params") {
-			cli.LoggerFromCommand(cmd).Warn().Msg("raw data passed, ignoring CLI configuration")
-		}
-	} else {
-		// If -d/--data not passed, then at least one of --xname/--nid/--mac must
-		// be specified, along with at least one of --kernel/--initrd/--params
-		if !anyChanged("xname", "nid", "mac") {
-			return cli.Errorf(cli.CodeUsage, "expected -d or one of --xname, --nid, or --mac")
-		} else if !anyChanged("kernel", "initrd", "params") {
-			return cli.Errorf(cli.CodeUsage, "specifying any of --xname, --nid, or --mac also requires specifying at least one of --kernel, --initrd, or --params")
-		}
-	}
-
-	return nil
+	// Send 'em off, one request per boot parameters object
+	results := bssClient.PatchBootParamsBatch(cmd.Context(), bps, rt.Token)
+	return cli.AggregateItemErrors(rt.Logger, results.Errors(), "BSS boot parameter update")
 }
 
 func newCmdBootParamsUpdate() *cobra.Command {
@@ -98,7 +52,10 @@ payload data or (if flag argument starts with @) a file containing
 the payload data. -f can be specified to change the format of the
 input payload data ('json' by default), but the rules above still
 apply for the payload. If "-" is used as the input payload filename,
-the data is read from standard input.
+the data is read from standard input. -d cannot be used with
+--xname, --mac, --nid, --kernel, --initrd, or --params.
+The payload can hold one boot parameters object or an array of
+them, each sent in its own request.
 
 This command sends a PATCH to BSS. An access token is required.
 
@@ -110,7 +67,22 @@ See ochami-bss(1) for details.`,
   ochami bss boot params update --xname x1000c1s7b0 --nid 1 --mac 00:c0:ff:ee:00:00 --params 'quiet nosplash'
 
   # Update boot parameters using input payload data
-  ochami bss boot params update -d '{"macs":["00:de:ad:be:ef:00"],"kernel":"https://example.com/kernel"}'
+  ochami bss boot params update -d '{
+    "macs": ["00:de:ad:be:ef:00"],
+    "kernel": "https://example.com/kernel"
+  }'
+
+  # Update multiple boot parameters using JSON array
+  ochami bss boot params update -d '[
+    {
+      "macs": ["00:de:ad:be:ef:00"],
+      "kernel": "https://example.com/kernel"
+    },
+    {
+      "macs": ["00:c0:ff:ee:00:00"],
+      "kernel": "https://example.com/kernel2"
+    }
+  ]'
 
   # Update boot parameters using input payload file
   ochami bss boot params update -d @payload.json
@@ -119,7 +91,7 @@ See ochami-bss(1) for details.`,
   # Update boot parameters using data from standard input
   echo '<json_data>' | ochami bss boot params update -d @-
   echo '<yaml_data>' | ochami bss boot params update -d @- -f yaml`,
-		PreRunE: validateBootParamsUpdateFlags,
+		PreRunE: validateBootParamFlags,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get runtime from context (always available since cmd/root.go injects it)
 			rt, err := cli.RuntimeFromCommand(cmd)
@@ -150,6 +122,7 @@ See ochami-bss(1) for details.`,
 	bootParamsUpdateCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 
 	cli.AddFormatInputFlag(bootParamsUpdateCmd)
+	markDataExclusive(bootParamsUpdateCmd)
 	bootParamsUpdateCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
 	return bootParamsUpdateCmd

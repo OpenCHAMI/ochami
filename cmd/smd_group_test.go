@@ -6,11 +6,12 @@ package cmd
 
 // smd_group_test.go covers the success paths of the "smd group" verbs (get,
 // add, update, delete, membership): query-builder arms, output-format variants,
-// flag/payload input variants (including extra arguments alongside -d), and
-// the membership filter builder. HTTP and network error mapping and rejected
-// input are covered in smd_group_errors_test.go.
+// flag/payload input variants, and the membership filter builder. HTTP and
+// network error mapping and rejected input are covered in
+// smd_group_errors_test.go.
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -137,6 +138,50 @@ func TestSMDGroupUpdate_ByFlags(t *testing.T) {
 	}
 }
 
+// TestSMDGroupUpdate_OnlyGivenFields verifies that "update" sends only the
+// fields given by flag or payload, so that updating the tags alone leaves out
+// the description instead of sending an empty one that clears it.
+func TestSMDGroupUpdate_OnlyGivenFields(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"flags", []string{"--tag", "t1", "compute"}},
+		{"payload", []string{"-d", `[{"label":"compute","tags":["t1"]}]`}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotPath string
+			var gotBody []byte
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				var err error
+				if gotBody, err = io.ReadAll(r.Body); err != nil {
+					t.Errorf("read request body: %v", err)
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			args := append([]string{"smd", "group", "update", "--uri", srv.URL, "--token", "t"}, tt.args...)
+			res := runOchamiWithRuntime(t, args...)
+			if res.err != nil {
+				t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
+			}
+			if gotPath != "/groups/compute" {
+				t.Errorf("path = %q, want /groups/compute", gotPath)
+			}
+			if want := `{"tags":["t1"]}`; string(gotBody) != want {
+				t.Errorf("body = %s, want %s", gotBody, want)
+			}
+		})
+	}
+}
+
 // TestSMDGroupDelete_ByLabels verifies "delete --no-confirm <label>..." issues a
 // DELETE per group.
 func TestSMDGroupDelete_ByLabels(t *testing.T) {
@@ -206,78 +251,6 @@ func TestSMDGroupMembership_Filters(t *testing.T) {
 	}
 	if gotQuery.Get("nid_start") != "1000" {
 		t.Errorf("query nid_start = %q, want 1000", gotQuery.Get("nid_start"))
-	}
-}
-
-// TestSMDGroupAdd_DataWithExtraArgs verifies that "smd group add -d <payload>
-// <label>" ignores the extra argument, logs a warning about it, and sends a
-// POST.
-func TestSMDGroupAdd_DataWithExtraArgs(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod = r.Method
-		w.WriteHeader(http.StatusCreated)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", srv.URL, "--token", "t",
-		"-d", `[{"label":"compute"}]`, "ignored-arg")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if !strings.Contains(res.stdout, "raw data passed, ignoring CLI configuration") {
-		t.Errorf("output = %q, want a warning that the argument is ignored", res.stdout)
-	}
-	if gotMethod != http.MethodPost {
-		t.Errorf("method = %q, want POST", gotMethod)
-	}
-}
-
-// TestSMDGroupUpdate_DataWithExtraArgs verifies that "update -d <payload>
-// <label>" ignores the extra argument and sends a PATCH for the payload's
-// group.
-func TestSMDGroupUpdate_DataWithExtraArgs(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod, gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod, gotPath = r.Method, r.URL.Path
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "smd", "group", "update", "--uri", srv.URL, "--token", "t",
-		"-d", `[{"label":"compute","description":"d"}]`, "ignored-arg")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodPatch || gotPath != "/groups/compute" {
-		t.Errorf("request = %s %s, want PATCH /groups/compute (the payload's group, not the extra argument)", gotMethod, gotPath)
-	}
-}
-
-// TestSMDGroupDelete_DataWithExtraArgs verifies that "delete --no-confirm -d
-// <payload> <label>" ignores the extra argument and sends a DELETE for the
-// payload's group.
-func TestSMDGroupDelete_DataWithExtraArgs(t *testing.T) {
-	t.Parallel()
-
-	var gotMethod, gotPath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod, gotPath = r.Method, r.URL.Path
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "smd", "group", "delete", "--uri", srv.URL, "--token", "t",
-		"--no-confirm", "-d", `[{"label":"compute"}]`, "ignored-arg")
-	if res.err != nil {
-		t.Fatalf("unexpected error: %v (exit %d)", res.err, res.exitCode)
-	}
-	if gotMethod != http.MethodDelete || gotPath != "/groups/compute" {
-		t.Errorf("request = %s %s, want DELETE /groups/compute (the payload's group, not the extra argument)", gotMethod, gotPath)
 	}
 }
 
