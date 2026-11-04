@@ -364,7 +364,7 @@ func TestMetadataHelpers_InvalidUID(t *testing.T) {
 	}
 	for _, tc := range calls {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, uid := range []string{"", " ", ".", "..", "a/b", "../bmcs/abc"} {
+			for _, uid := range []string{"", " ", ".", "..", "a/b", "../bmcs/abc", "?", "#", "a?force=true", "a%2Fb", "%2e%2e", "%2e%2e%2fbmcs%2fabc", "%zz"} {
 				if err := tc.call(c, uid); !errors.Is(err, client.InvalidArgumentError) {
 					t.Errorf("UID %q: error = %v, want it to wrap client.InvalidArgumentError", uid, err)
 				}

@@ -380,8 +380,9 @@ Subcommands for this command are as follows:
 	Delete one or more cluster defaults identified by _uid_. Unless
 	*--no-confirm* is passed, the user is asked to confirm deletion.
 
-	If any _uid_ is blank, is "." or "..", contains "/", or contains a malformed
-	percent-escape, nothing is deleted and the command exits with a usage error.
+	If any _uid_ is blank, is "." or "..", contains "/", "?", or "#", in plain
+	or percent-encoded form, or contains a malformed percent-escape, nothing is
+	deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to metadata-service's cluster
 	defaults endpoint.
@@ -649,8 +650,9 @@ Subcommands for this command are as follows:
 	Delete one or more groups identified by _uid_. Unless *--no-confirm* is
 	passed, the user is asked to confirm deletion.
 
-	If any _uid_ is blank, is "." or "..", contains "/", or contains a malformed
-	percent-escape, nothing is deleted and the command exits with a usage error.
+	If any _uid_ is blank, is "." or "..", contains "/", "?", or "#", in plain
+	or percent-encoded form, or contains a malformed percent-escape, nothing is
+	deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to metadata-service's group
 	endpoint.
@@ -965,8 +967,9 @@ Subcommands for this command are as follows:
 	Delete one or more instance infos identified by _uid_. Unless *--no-confirm*
 	is passed, the user is asked to confirm deletion.
 
-	If any _uid_ is blank, is "." or "..", contains "/", or contains a malformed
-	percent-escape, nothing is deleted and the command exits with a usage error.
+	If any _uid_ is blank, is "." or "..", contains "/", "?", or "#", in plain
+	or percent-encoded form, or contains a malformed percent-escape, nothing is
+	deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to metadata-service's instance
 	info endpoint.
@@ -1293,8 +1296,9 @@ Subcommands for this command are as follows:
 	Delete one or more WireGuard peers identified by _uid_. Unless *--no-confirm*
 	is passed, the user is asked to confirm deletion.
 
-	If any _uid_ is blank, is "." or "..", contains "/", or contains a malformed
-	percent-escape, nothing is deleted and the command exits with a usage error.
+	If any _uid_ is blank, is "." or "..", contains "/", "?", or "#", in plain
+	or percent-encoded form, or contains a malformed percent-escape, nothing is
+	deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to metadata-service's WireGuard
 	peer endpoint.

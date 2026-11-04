@@ -263,9 +263,9 @@ Subcommands for this command are as follows:
 	input.
 
 	Only the ID of each payload item is used. If any ID, whether from the
-	payload or the command line, is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is deleted and the command
-	exits with a usage error.
+	payload or the command line, is blank, is "." or "..", contains "/", "?", or
+	"#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /ComponentEndpoints
 	endpoint.
@@ -302,9 +302,9 @@ Subcommands for this command are as follows:
 	If no arguments are passed, all component endpoints are returned. Otherwise,
 	the results are filtered by one or more passed xnames.
 
-	If any _xname_ is blank, is "." or "..", contains "/", or contains a
-	malformed percent-escape, nothing is requested and the command exits with a
-	usage error.
+	If any _xname_ is blank, is "." or "..", contains "/", "?", or "#", in plain
+	or percent-encoded form, or contains a malformed percent-escape, nothing is
+	requested and the command exits with a usage error.
 
 	This command sends a GET request to SMD's /ComponentEndpoints endpoint.
 
@@ -343,9 +343,9 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload data is read from standard
 	input.
 
-	If any component ID is blank, is "." or "..", contains "/", or contains a
-	malformed percent-escape, nothing is sent and the command exits with a usage
-	error.
+	If any component ID is blank, is "." or "..", contains "/", "?", or "#", in
+	plain or percent-encoded form, or contains a malformed percent-escape,
+	nothing is sent and the command exits with a usage error.
 
 	This command sends a POST request to SMD's /Components endpoint.
 
@@ -409,9 +409,9 @@ Subcommands for this command are as follows:
 	In the fifth form of the command, the payload is read from standard input.
 
 	Only the ID of each payload item is used. If any ID, whether from the
-	payload or the command line, is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is deleted and the command
-	exits with a usage error.
+	payload or the command line, is blank, is "." or "..", contains "/", "?", or
+	"#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /Components
 	endpoint.
@@ -499,8 +499,9 @@ Subcommands for this command are as follows:
 	*EthernetInterface* objects, even when adding a single interface.
 
 	If any ethernet interface ID, which is derived from *MACAddress* if it is
-	missing, is blank, is "." or "..", contains "/", or contains a malformed
-	percent-escape, nothing is sent and the command exits with a usage error.
+	missing, is blank, is "." or "..", contains "/", "?", or "#", in plain or
+	percent-encoded form, or contains a malformed percent-escape, nothing is
+	sent and the command exits with a usage error.
 
 	This command sends a POST request to SMD's /Inventory/EthernetInterfaces
 	endpoint. An access token is required.
@@ -555,11 +556,12 @@ Subcommands for this command are as follows:
 	*EthernetInterface* objects, even when deleting a single interface. Only
 	the ID of each payload item is used.
 
-	If any ID used to select interfaces, whether from the payload or the
-	command line, is blank, is "." or "..", contains "/", or contains a
-	malformed percent-escape, nothing is deleted and the command exits with a
-	usage error. A missing ID is not derived from *MACAddress*, so a payload
-	item with only *MACAddress* set also causes a usage error.
+	If any ID used to select interfaces, whether from the payload or the command
+	line, is blank, is "." or "..", contains "/", "?", or "#", in plain or
+	percent-encoded form, or contains a malformed percent-escape, nothing is
+	deleted and the command exits with a usage error. A missing ID is not
+	derived from *MACAddress*, so a payload item with only *MACAddress* set also
+	causes a usage error.
 
 	This command sends one or more DELETE requests to SMD's
 	/Inventory/EthernetInterfaces endpoint. An access token is required.
@@ -661,9 +663,9 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload data is read from standard
 	input.
 
-	If any redfish endpoint ID is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is sent and the command exits
-	with a usage error.
+	If any redfish endpoint ID is blank, is "." or "..", contains "/", "?", or
+	"#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is sent and the command exits with a usage error.
 
 	A missing ID is allowed if a hostname or FQDN is given, since SMD derives
 	the ID from those. The derived ID must meet the same requirements.
@@ -717,9 +719,9 @@ Subcommands for this command are as follows:
 	passed. This is convenient in cases of dealing with many components at once.
 
 	Only the ID of each payload item is used. If any ID, whether from the
-	payload or the command line, is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is deleted and the command
-	exits with a usage error.
+	payload or the command line, is blank, is "." or "..", contains "/", "?", or
+	"#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /RedfishEndpoints
 	endpoint. An access token is required.
@@ -816,9 +818,9 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload data is read from standard
 	input.
 
-	If any group name or member is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is sent and the command exits
-	with a usage error.
+	If any group name or member is blank, is "." or "..", contains "/", "?", or
+	"#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is sent and the command exits with a usage error.
 
 	This command sends one or more POST requests to SMD's /groups endpoint.
 
@@ -880,9 +882,9 @@ Subcommands for this command are as follows:
 	input.
 
 	Only the label of each payload item is used. If any label, whether from the
-	payload or the command line, is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is deleted and the command
-	exits with a usage error.
+	payload or the command line, is blank, is "." or "..", contains "/", "?", or
+	"#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to SMD's /groups endpoint.
 
@@ -953,9 +955,9 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload data is read from standard
 	input.
 
-	If the label of any group is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is updated and the command
-	exits with a usage error.
+	If the label of any group is blank, is "." or "..", contains "/", "?", or
+	"#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is updated and the command exits with a usage error.
 
 	This command sends a PATCH  request to SMD's /groups endpoint.
 
@@ -1093,9 +1095,9 @@ Subcommands for this command are as follows:
 *add* _group_name_ _xname_...
 	Add one or more components to an existing SMD group.
 
-	If the group name or any _xname_ is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is sent and the command exits
-	with a usage error.
+	If the group name or any _xname_ is blank, is "." or "..", contains "/",
+	"?", or "#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is sent and the command exits with a usage error.
 
 	This command sends one or more POST requests to the members subendpoint
 	under SMD's /groups endpoint.
@@ -1103,9 +1105,9 @@ Subcommands for this command are as follows:
 *delete* _group_name_ _xname_...
 	Delete one or more components from an existing SMD group.
 
-	If the group name or any _xname_ is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is deleted and the command
-	exits with a usage error.
+	If the group name or any _xname_ is blank, is "." or "..", contains "/",
+	"?", or "#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is deleted and the command exits with a usage error.
 
 	This command sends one or more DELETE requests to the members subendpoint
 	under SMD's /groups endpoint.
@@ -1132,9 +1134,9 @@ Subcommands for this command are as follows:
 	already in the group remain in the group, and xnames not specified that are
 	already in the group are removed from the group.
 
-	If the group name or any _xname_ is blank, is "." or "..", contains "/", or
-	contains a malformed percent-escape, nothing is sent and the command exits
-	with a usage error.
+	If the group name or any _xname_ is blank, is "." or "..", contains "/",
+	"?", or "#", in plain or percent-encoded form, or contains a malformed
+	percent-escape, nothing is sent and the command exits with a usage error.
 
 ## service
 
