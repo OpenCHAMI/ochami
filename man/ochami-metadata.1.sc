@@ -437,6 +437,12 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
+	With only *--set* and *--unset*, the flags are sent as an RFC 7386 JSON Merge
+	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
+	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
+	fails, the service rejects the patch and changes nothing. A field left empty
+	is usually absent from the stored spec, so it counts as missing.
+
 	In the second through fourth forms of the command, patch data is supplied
 	along with an optional *--patch-method* flag to specify the patch method.
 
@@ -476,14 +482,21 @@ Subcommands for this command are as follows:
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
-		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with key/value patch flags (automatic
-		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
+		Set key with its value, overwriting any previous value and creating the
+		key and any missing parent keys. Only can be used with key/value patch
+		flags (automatic if any of *--add*/*--remove*/*--set*/*--unset* are
+		specified).
+
+		If *--add* or *--remove* is also passed, the parent of the key must already
+		exist. A _val_ of _null_ then sets the key to null instead of removing it,
+		so use *--unset* to remove a key.
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with key/value patch flags
-		(automatic if any of
+		Unset key (and its value). A key that doesn't exist is ignored. Only can be
+		used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		If *--add* or *--remove* is also passed, the key must already exist.
 
 *set* [-e] [-f _format_] _uid_ < _file_++
 *set* [-e] [-f _format_] -d @_file_ _uid_++
@@ -740,6 +753,12 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
+	With only *--set* and *--unset*, the flags are sent as an RFC 7386 JSON Merge
+	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
+	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
+	fails, the service rejects the patch and changes nothing. A field left empty
+	is usually absent from the stored spec, so it counts as missing.
+
 	In the second through fourth forms of the command, patch data is supplied
 	along with an optional *--patch-method* flag to specify the patch method.
 
@@ -778,14 +797,21 @@ Subcommands for this command are as follows:
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
-		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with key/value patch flags (automatic
-		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
+		Set key with its value, overwriting any previous value and creating the
+		key and any missing parent keys. Only can be used with key/value patch
+		flags (automatic if any of *--add*/*--remove*/*--set*/*--unset* are
+		specified).
+
+		If *--add* or *--remove* is also passed, the parent of the key must already
+		exist. A _val_ of _null_ then sets the key to null instead of removing it,
+		so use *--unset* to remove a key.
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with key/value patch flags
-		(automatic if any of
+		Unset key (and its value). A key that doesn't exist is ignored. Only can be
+		used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		If *--add* or *--remove* is also passed, the key must already exist.
 
 	Examples:
 
@@ -1057,6 +1083,12 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
+	With only *--set* and *--unset*, the flags are sent as an RFC 7386 JSON Merge
+	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
+	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
+	fails, the service rejects the patch and changes nothing. A field left empty
+	is usually absent from the stored spec, so it counts as missing.
+
 	In the second through fourth forms of the command, patch data is supplied
 	along with an optional *--patch-method* flag to specify the patch method.
 
@@ -1096,14 +1128,21 @@ Subcommands for this command are as follows:
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
-		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with key/value patch flags (automatic
-		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
+		Set key with its value, overwriting any previous value and creating the
+		key and any missing parent keys. Only can be used with key/value patch
+		flags (automatic if any of *--add*/*--remove*/*--set*/*--unset* are
+		specified).
+
+		If *--add* or *--remove* is also passed, the parent of the key must already
+		exist. A _val_ of _null_ then sets the key to null instead of removing it,
+		so use *--unset* to remove a key.
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with key/value patch flags
-		(automatic if any of
+		Unset key (and its value). A key that doesn't exist is ignored. Only can be
+		used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		If *--add* or *--remove* is also passed, the key must already exist.
 
 	Examples:
 
@@ -1386,6 +1425,12 @@ Subcommands for this command are as follows:
 	uses add/remove/set/unset flags to perform the patch. For _key_, dot
 	notation is used for subkeys (e.g. _key.subkey_).
 
+	With only *--set* and *--unset*, the flags are sent as an RFC 7386 JSON Merge
+	Patch. If *--add* or *--remove* is also passed, all of the flags are sent
+	together as an RFC 6902 JSON Patch, which applies as a whole: if any operation
+	fails, the service rejects the patch and changes nothing. A field left empty
+	is usually absent from the stored spec, so it counts as missing.
+
 	In the second through fourth forms of the command, patch data is supplied
 	along with an optional *--patch-method* flag to specify the patch method.
 
@@ -1425,14 +1470,21 @@ Subcommands for this command are as follows:
 		*--add*/*--remove*/*--set*/*--unset* are specified).
 
 	*--set* _key_[[._subkey_]...]=_val_
-		Set key with its value, overwriting any previous value and creating if the
-		key doesn't exist. Only can be used with key/value patch flags (automatic
-		if any of *--add*/*--remove*/*--set*/*--unset* are specified).
+		Set key with its value, overwriting any previous value and creating the
+		key and any missing parent keys. Only can be used with key/value patch
+		flags (automatic if any of *--add*/*--remove*/*--set*/*--unset* are
+		specified).
+
+		If *--add* or *--remove* is also passed, the parent of the key must already
+		exist. A _val_ of _null_ then sets the key to null instead of removing it,
+		so use *--unset* to remove a key.
 
 	*--unset* _key_[[._subkey_]...]
-		Unset key (and its value). Only can be used with key/value patch flags
-		(automatic if any of
+		Unset key (and its value). A key that doesn't exist is ignored. Only can be
+		used with key/value patch flags (automatic if any of
 		*--add*/*--remove*/*--set*/*--unset* are specified).
+
+		If *--add* or *--remove* is also passed, the key must already exist.
 
 	Examples:
 
