@@ -343,8 +343,9 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload data is read from standard
 	input.
 
-	If any component ID is blank, is "." or "..", contains "/", or contains a malformed
-	percent-escape, nothing is sent and the command exits with a usage error.
+	If any component ID is blank, is "." or "..", contains "/", or contains a
+	malformed percent-escape, nothing is sent and the command exits with a usage
+	error.
 
 	This command sends a POST request to SMD's /Components endpoint.
 
@@ -660,11 +661,12 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload data is read from standard
 	input.
 
-	If any redfish endpoint ID is blank, is "." or "..", contains "/", or contains a malformed
-	percent-escape, nothing is sent and the command exits with a usage error.
+	If any redfish endpoint ID is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is sent and the command exits
+	with a usage error.
 
-	A missing ID is allowed if a hostname or FQDN is given, since SMD derives the
-	ID from those. The derived ID must meet the same requirements.
+	A missing ID is allowed if a hostname or FQDN is given, since SMD derives
+	the ID from those. The derived ID must meet the same requirements.
 
 	This command sends a POST request to SMD's /RedfishEndpoints endpoint. An
 	access token is required.
@@ -814,8 +816,9 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload data is read from standard
 	input.
 
-	If any group name or member is blank, is "." or "..", contains "/", or contains a malformed
-	percent-escape, nothing is sent and the command exits with a usage error.
+	If any group name or member is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is sent and the command exits
+	with a usage error.
 
 	This command sends one or more POST requests to SMD's /groups endpoint.
 
@@ -950,9 +953,9 @@ Subcommands for this command are as follows:
 	In the fourth form of the command, the payload data is read from standard
 	input.
 
-	If the label of any group is blank, is "." or "..", contains "/", or contains
-	a malformed percent-escape, nothing is updated and the command exits with a
-	usage error.
+	If the label of any group is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is updated and the command
+	exits with a usage error.
 
 	This command sends a PATCH  request to SMD's /groups endpoint.
 
@@ -1090,8 +1093,9 @@ Subcommands for this command are as follows:
 *add* _group_name_ _xname_...
 	Add one or more components to an existing SMD group.
 
-	If the group name or any _xname_ is blank, is "." or "..", contains "/", or contains a malformed
-	percent-escape, nothing is sent and the command exits with a usage error.
+	If the group name or any _xname_ is blank, is "." or "..", contains "/", or
+	contains a malformed percent-escape, nothing is sent and the command exits
+	with a usage error.
 
 	This command sends one or more POST requests to the members subendpoint
 	under SMD's /groups endpoint.
