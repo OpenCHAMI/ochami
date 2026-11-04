@@ -17,6 +17,8 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-04
+
 ### Added
 
 - This changelog, covering every tagged version.
@@ -822,7 +824,8 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   `--insecure`), plus `--ignore-config`, `--log-format`, and `--log-level`.
 - Release builds and container images.
 
-[Unreleased]: https://github.com/OpenCHAMI/ochami/compare/v0.10.4...HEAD
+[Unreleased]: https://github.com/OpenCHAMI/ochami/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/OpenCHAMI/ochami/compare/v0.10.4...v0.11.0
 [0.10.4]: https://github.com/OpenCHAMI/ochami/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/OpenCHAMI/ochami/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/OpenCHAMI/ochami/compare/v0.10.1...v0.10.2
