@@ -407,6 +407,51 @@ func checkSplitSubjects(tr *tree) []violation {
 	return vs
 }
 
+// crossFamilyErrors holds the error tables that span cmd families, which
+// CONTRIBUTING.md keeps apart from their plain tests' files.
+const crossFamilyErrors = "cmd/commands_errors_test.go"
+
+// testStem returns a test file's base name without its bucket suffix.
+func testStem(file string) string {
+	name := path.Base(file)
+	for _, suffix := range []string{"_errors_test.go", "_boundary_test.go", "_test.go"} {
+		if stem, ok := strings.CutSuffix(name, suffix); ok {
+			return stem
+		}
+	}
+	return name
+}
+
+// checkSubjectStems flags a subject whose tests in different suffix buckets of
+// a package are in files with different stems. Files that build only on some
+// platforms are compared only with files for the same platforms, and
+// crossFamilyErrors is left out. Two files of one bucket are checkSplitSubjects'
+// concern.
+func checkSubjectStems(tr *tree) []violation {
+	type group struct{ dir, subject, platform string }
+	first := map[group]string{}
+	reported := map[string]bool{}
+	var vs []violation
+	for _, tf := range tr.tests {
+		if tf.sf.path == crossFamilyErrors {
+			continue
+		}
+		subject, _, _ := strings.Cut(tf.name, "_")
+		g := group{path.Dir(tf.sf.path), subject, platform(tf.sf)}
+		file, ok := first[g]
+		if !ok {
+			first[g] = tf.sf.path
+			continue
+		}
+		if testBucket(file) == testBucket(tf.sf.path) || testStem(file) == testStem(tf.sf.path) || reported[subject+":"+tf.sf.path] {
+			continue
+		}
+		reported[subject+":"+tf.sf.path] = true
+		vs = append(vs, tf.at("%s tests are in %s and %s, which have different stems", subject, path.Base(file), path.Base(tf.sf.path)))
+	}
+	return vs
+}
+
 // checkDocsStartWithName flags Test functions whose doc comment is missing
 // or doesn't start with the function's name.
 func checkDocsStartWithName(tr *tree) []violation {
@@ -847,6 +892,7 @@ var sourceChecks = map[string]func(*tree) []violation{
 	"bare subjects":  checkBareSubjects,
 	"file suffixes":  checkTestFileSuffixes,
 	"split subjects": checkSplitSubjects,
+	"subject stems":  checkSubjectStems,
 	"doc names":      checkDocsStartWithName,
 	"doc wording":    checkDocWording,
 	"claimed method": checkClaimedMethods,
@@ -885,6 +931,14 @@ func TestTestFiles_NoGenericSuffix(t *testing.T) {
 func TestTestFiles_SubjectInOneFile(t *testing.T) {
 	tr, _ := loadModule(t)
 	report(t, checkSplitSubjects(tr), "Move the test into its subject's file for that bucket, or give a too-broad subject a more specific name; see CONTRIBUTING.md.")
+}
+
+// TestTestFiles_SubjectBucketsShareStem verifies the plain, _errors, and
+// _boundary files of each subject share a stem, apart from files that build
+// only on some platforms and the error tables across cmd families.
+func TestTestFiles_SubjectBucketsShareStem(t *testing.T) {
+	tr, _ := loadModule(t)
+	report(t, checkSubjectStems(tr), "Name a subject's bucket files <stem>_test.go, <stem>_errors_test.go, and <stem>_boundary_test.go. See CONTRIBUTING.md.")
 }
 
 // TestTestDocs_StartWithName verifies every Test function has a doc comment
@@ -1087,6 +1141,9 @@ func TestChecks_FlagFixtures(t *testing.T) {
 	}
 	if got := len(checkSplitSubjects(tr)); got != 4 {
 		t.Errorf("split subject check reported %d violations for a subject split across two files, a third with a non-platform build tag, two for one platform, one for another, and a platform file split from one that adds a non-platform tag; want 4", got)
+	}
+	if vs := checkSubjectStems(tr); len(vs) != 1 || vs[0].pos.Filename != "gizmo_errors_test.go" {
+		t.Errorf("subject stem check reported %v for a subject with a different stem, a platform file, and a cross-family error table; want only gizmo_errors_test.go", vs)
 	}
 	man := "# EXIT STATUS\n\n|  *0*\n:  _CodeSuccess_\n|  *1*\n:  _CodeWrong_\n"
 	if len(checkExitStatusTable("fixture", man)) == 0 {

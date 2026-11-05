@@ -69,8 +69,8 @@ func TestBSSServiceStatus_Success(t *testing.T) {
 	}
 }
 
-// TestBSSHistoryGet_Success verifies "bss history" issues GET /endpoint-history.
-func TestBSSHistoryGet_Success(t *testing.T) {
+// TestBSSHistory_Success verifies "bss history" issues GET /endpoint-history.
+func TestBSSHistory_Success(t *testing.T) {
 	t.Parallel()
 
 	var gotMethod, gotPath string
@@ -118,9 +118,9 @@ func TestBSSStatus_Deprecated(t *testing.T) {
 	}
 }
 
-// TestBSSHistoryGet_QueryAndFormats verifies the history query builder and
+// TestBSSHistory_QueryAndFormats verifies the history query builder and
 // output-format variants.
-func TestBSSHistoryGet_QueryAndFormats(t *testing.T) {
+func TestBSSHistory_QueryAndFormats(t *testing.T) {
 	t.Parallel()
 
 	var gotQuery url.Values

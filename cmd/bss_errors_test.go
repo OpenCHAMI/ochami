@@ -35,9 +35,9 @@ func TestBSSServiceStatus_HTTPError(t *testing.T) {
 	}
 }
 
-// TestBSSHistoryGet_HTTPError verifies a failing history GET resolves to
+// TestBSSHistory_HTTPError verifies a failing history GET resolves to
 // CodeHTTP.
-func TestBSSHistoryGet_HTTPError(t *testing.T) {
+func TestBSSHistory_HTTPError(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
