@@ -12,24 +12,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestPCSTransitionList_HTTPError verifies a failing list resolves to CodeHTTP.
-func TestPCSTransitionList_HTTPError(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "pcs", "--ignore-config", "transition", "list", "--uri", srv.URL)
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
 // TestPCSTransitionShow_HTTPError verifies a failing show resolves to CodeHTTP.
 func TestPCSTransitionShow_HTTPError(t *testing.T) {
 	t.Parallel()

@@ -13,25 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestSMDCompepGet_AllHTTPError verifies an unsuccessful HTTP response on get-all
-// resolves to CodeHTTP.
-func TestSMDCompepGet_AllHTTPError(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", srv.URL, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
 // TestSMDCompepGet_ByXnameHTTPError verifies a failing per-xname get resolves to
 // CodeHTTP via the aggregate.
 func TestSMDCompepGet_ByXnameHTTPError(t *testing.T) {
@@ -49,21 +30,6 @@ func TestSMDCompepGet_ByXnameHTTPError(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeHTTP {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
-// TestSMDCompepGet_NetworkError verifies a closed port resolves to CodeNetwork.
-func TestSMDCompepGet_NetworkError(t *testing.T) {
-	t.Parallel()
-
-	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
-
-	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "compep", "get", "--uri", url, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeNetwork {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
 	}
 }
 

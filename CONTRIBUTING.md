@@ -274,6 +274,12 @@ isolated `cli.NewTestRuntime` through the helpers in `cmd/testhelpers_test.go`
 (`runOchamiWithRuntime` and friends), and call `t.Parallel()` unless they use
 `t.Setenv`, which can't be combined with it.
 
+The tables in `commands_errors_test.go` guarantee each command's exit code for a
+failure, including for commands added later. Keep a per-family error test only
+when it covers something its table row doesn't: a different selector, flag, or
+stub response, or more than the exit code, such as the request sent, the message,
+or the output. Don't add a test that repeats a row.
+
 ### Automated checks
 
 `make test` runs the tests in `internal/conventions`, which parse the
