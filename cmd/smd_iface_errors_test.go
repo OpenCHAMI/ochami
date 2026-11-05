@@ -28,41 +28,6 @@ func TestSMDIfaceGet_ByIPWithoutID(t *testing.T) {
 	}
 }
 
-// TestSMDIfaceGet_HTTPError verifies an unsuccessful HTTP response resolves to
-// CodeHTTP.
-func TestSMDIfaceGet_HTTPError(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", srv.URL, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
-// TestSMDIfaceGet_NetworkError verifies pointing at a closed port resolves to
-// CodeNetwork.
-func TestSMDIfaceGet_NetworkError(t *testing.T) {
-	t.Parallel()
-
-	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
-
-	res := runOchamiWithRuntime(t, "smd", "--ignore-config", "iface", "get", "--uri", url, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeNetwork {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
-	}
-}
-
 // TestSMDIfaceAdd_InvalidIP verifies an invalid IP in the net,ip pair is a usage
 // error.
 func TestSMDIfaceAdd_InvalidIP(t *testing.T) {

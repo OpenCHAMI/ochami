@@ -12,26 +12,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestCloudInitNodeGetData_HTTPError verifies an unsuccessful HTTP response from
-// a node get resolves to CodeHTTP.
-func TestCloudInitNodeGetData_HTTPError(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "not found", http.StatusNotFound)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "node", "get", "meta-data", "x3000c0s0b0n0",
-		"--uri", srv.URL, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
 // TestCloudInitNodeGet_MetadataHTTPError verifies a failing meta-data fetch
 // resolves to CodeHTTP via the aggregate.
 func TestCloudInitNodeGet_MetadataHTTPError(t *testing.T) {
@@ -63,6 +43,26 @@ func TestCloudInitNodeGet_UserdataHTTPError(t *testing.T) {
 	defer srv.Close()
 
 	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "user-data", "--ignore-config",
+		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
+	if res.err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if res.exitCode != cli.CodeHTTP {
+		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
+	}
+}
+
+// TestCloudInitNodeGet_VendordataHTTPError verifies a failing vendor-data fetch
+// resolves to CodeHTTP.
+func TestCloudInitNodeGet_VendordataHTTPError(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	res := runOchamiWithRuntime(t, "cloud-init", "node", "get", "vendor-data", "--ignore-config",
 		"--uri", srv.URL, "--token", "t", "x0c0s0b0n0")
 	if res.err == nil {
 		t.Fatal("expected an error, got nil")
@@ -109,25 +109,5 @@ func TestCloudInitNodeSet_HTTPError(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeHTTP {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
-// TestCloudInitNodeSet_MalformedPayload verifies malformed inline payload
-// resolves to CodePayload.
-func TestCloudInitNodeSet_MalformedPayload(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "cloud-init", "node", "set", "--ignore-config", "--uri", srv.URL, "--token", "t",
-		"-d", `not json`)
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
 	}
 }

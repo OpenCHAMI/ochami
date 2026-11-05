@@ -256,37 +256,80 @@ func checkTestFileSuffixes(tr *tree) []violation {
 const (
 	knownOS   = `aix|android|darwin|dragonfly|freebsd|hurd|illumos|ios|js|linux|nacl|netbsd|openbsd|plan9|solaris|wasip1|windows|zos`
 	knownArch = `386|amd64|amd64p32|arm|armbe|arm64|arm64be|loong64|mips|mipsle|mips64|mips64le|mips64p32|mips64p32le|ppc|ppc64|ppc64le|riscv|riscv64|s390|s390x|sparc|sparc64|wasm`
+	knownUnix = `aix|android|darwin|dragonfly|freebsd|hurd|illumos|ios|linux|netbsd|openbsd|solaris`
 )
 
 var (
 	platformSuffix = regexp.MustCompile(`_((?:` + knownOS + `)(?:_(?:` + knownArch + `))?|` + knownArch + `)_test\.go$`)
 	platformTag    = regexp.MustCompile(`^(?:unix|` + knownOS + `|` + knownArch + `)$`)
+	unixOS         = regexp.MustCompile(`^(?:` + knownUnix + `)$`)
 )
 
-// namesPlatform reports whether a build constraint expression uses a GOOS or
-// GOARCH tag (or "unix").
-func namesPlatform(x constraint.Expr) bool {
-	switch x := x.(type) {
-	case *constraint.TagExpr:
-		return platformTag.MatchString(x.Tag)
-	case *constraint.NotExpr:
-		return namesPlatform(x.X)
-	case *constraint.AndExpr:
-		return namesPlatform(x.X) || namesPlatform(x.Y)
-	case *constraint.OrExpr:
-		return namesPlatform(x.X) || namesPlatform(x.Y)
+// matchesPlatform reports whether a platform build tag holds on goos and
+// goarch, the way the go command matches it.
+func matchesPlatform(tag, goos, goarch string) bool {
+	switch tag {
+	case goos, goarch:
+		return true
+	case "unix":
+		return unixOS.MatchString(goos)
+	case "linux":
+		return goos == "android"
+	case "darwin":
+		return goos == "ios"
+	case "solaris":
+		return goos == "illumos"
 	}
 	return false
 }
 
-// platform describes the platforms sf builds for, from its GOOS or GOARCH
-// file name suffix and a //go:build constraint that uses a platform tag, or
-// returns "" if sf builds on every platform. Other build tags, such as
-// "integration", don't make a file platform-specific.
+// appendOtherTags appends the tags in x that don't name a platform, such as
+// "integration", to tags, leaving out any it already holds.
+func appendOtherTags(tags []string, x constraint.Expr) []string {
+	switch x := x.(type) {
+	case *constraint.TagExpr:
+		if !platformTag.MatchString(x.Tag) && !slices.Contains(tags, x.Tag) {
+			tags = append(tags, x.Tag)
+		}
+	case *constraint.NotExpr:
+		return appendOtherTags(tags, x.X)
+	case *constraint.AndExpr:
+		return appendOtherTags(appendOtherTags(tags, x.X), x.Y)
+	case *constraint.OrExpr:
+		return appendOtherTags(appendOtherTags(tags, x.X), x.Y)
+	}
+	return tags
+}
+
+// canBuild reports whether every condition holds on goos and goarch for some
+// setting of otherTags. Each setting gives a tag one value across all of the
+// conditions, so "(linux || integration) && !integration" holds only on Linux.
+func canBuild(conditions []constraint.Expr, otherTags []string, goos, goarch string) bool {
+	for setting := range 1 << len(otherTags) {
+		isSet := func(tag string) bool {
+			if i := slices.Index(otherTags, tag); i >= 0 {
+				return setting&(1<<i) != 0
+			}
+			return matchesPlatform(tag, goos, goarch)
+		}
+		if !slices.ContainsFunc(conditions, func(x constraint.Expr) bool { return !x.Eval(isSet) }) {
+			return true
+		}
+	}
+	return false
+}
+
+// platform identifies the platforms sf can build for, from its GOOS or GOARCH
+// file name suffix and its //go:build constraints, or returns "" if sf can
+// build on every platform. It compares the platforms themselves, so a file name
+// and a constraint that select the same ones get the same result. Other build
+// tags, such as "integration", don't make a file platform-specific.
 func platform(sf *sourceFile) string {
-	var parts []string
+	var conditions []constraint.Expr
 	if m := platformSuffix.FindStringSubmatch(sf.path); m != nil {
-		parts = append(parts, m[1])
+		for _, tag := range strings.Split(m[1], "_") {
+			conditions = append(conditions, &constraint.TagExpr{Tag: tag})
+		}
 	}
 	for _, cg := range sf.file.Comments {
 		if cg.Pos() >= sf.file.Package {
@@ -296,14 +339,33 @@ func platform(sf *sourceFile) string {
 			if !constraint.IsGoBuild(c.Text) {
 				continue
 			}
-			x, err := constraint.Parse(c.Text)
-			if err != nil || !namesPlatform(x) || slices.Contains(parts, x.String()) {
-				continue
+			if x, err := constraint.Parse(c.Text); err == nil {
+				conditions = append(conditions, x)
 			}
-			parts = append(parts, x.String())
 		}
 	}
-	return strings.Join(parts, " && ")
+	if len(conditions) == 0 {
+		return ""
+	}
+	var otherTags []string
+	for _, x := range conditions {
+		otherTags = appendOtherTags(otherTags, x)
+	}
+	var platforms []string
+	everywhere := true
+	for _, goos := range strings.Split(knownOS, "|") {
+		for _, goarch := range strings.Split(knownArch, "|") {
+			if canBuild(conditions, otherTags, goos, goarch) {
+				platforms = append(platforms, goos+"/"+goarch)
+			} else {
+				everywhere = false
+			}
+		}
+	}
+	if everywhere {
+		return ""
+	}
+	return strings.Join(platforms, " ")
 }
 
 // testBucket returns the suffix bucket of a test file: "errors", "boundary",
@@ -341,6 +403,51 @@ func checkSplitSubjects(tr *tree) []violation {
 		}
 		reported[subject+":"+tf.sf.path] = true
 		vs = append(vs, tf.at("%s tests (%s) are split between %s and %s", subject, g.bucket, path.Base(file), path.Base(tf.sf.path)))
+	}
+	return vs
+}
+
+// crossFamilyErrors holds the error tables that span cmd families, which
+// CONTRIBUTING.md keeps apart from their plain tests' files.
+const crossFamilyErrors = "cmd/commands_errors_test.go"
+
+// testStem returns a test file's base name without its bucket suffix.
+func testStem(file string) string {
+	name := path.Base(file)
+	for _, suffix := range []string{"_errors_test.go", "_boundary_test.go", "_test.go"} {
+		if stem, ok := strings.CutSuffix(name, suffix); ok {
+			return stem
+		}
+	}
+	return name
+}
+
+// checkSubjectStems flags a subject whose tests in different suffix buckets of
+// a package are in files with different stems. Files that build only on some
+// platforms are compared only with files for the same platforms, and
+// crossFamilyErrors is left out. Two files of one bucket are checkSplitSubjects'
+// concern.
+func checkSubjectStems(tr *tree) []violation {
+	type group struct{ dir, subject, platform string }
+	first := map[group]string{}
+	reported := map[string]bool{}
+	var vs []violation
+	for _, tf := range tr.tests {
+		if tf.sf.path == crossFamilyErrors {
+			continue
+		}
+		subject, _, _ := strings.Cut(tf.name, "_")
+		g := group{path.Dir(tf.sf.path), subject, platform(tf.sf)}
+		file, ok := first[g]
+		if !ok {
+			first[g] = tf.sf.path
+			continue
+		}
+		if testBucket(file) == testBucket(tf.sf.path) || testStem(file) == testStem(tf.sf.path) || reported[subject+":"+tf.sf.path] {
+			continue
+		}
+		reported[subject+":"+tf.sf.path] = true
+		vs = append(vs, tf.at("%s tests are in %s and %s, which have different stems", subject, path.Base(file), path.Base(tf.sf.path)))
 	}
 	return vs
 }
@@ -785,6 +892,7 @@ var sourceChecks = map[string]func(*tree) []violation{
 	"bare subjects":  checkBareSubjects,
 	"file suffixes":  checkTestFileSuffixes,
 	"split subjects": checkSplitSubjects,
+	"subject stems":  checkSubjectStems,
 	"doc names":      checkDocsStartWithName,
 	"doc wording":    checkDocWording,
 	"claimed method": checkClaimedMethods,
@@ -823,6 +931,14 @@ func TestTestFiles_NoGenericSuffix(t *testing.T) {
 func TestTestFiles_SubjectInOneFile(t *testing.T) {
 	tr, _ := loadModule(t)
 	report(t, checkSplitSubjects(tr), "Move the test into its subject's file for that bucket, or give a too-broad subject a more specific name; see CONTRIBUTING.md.")
+}
+
+// TestTestFiles_SubjectBucketsShareStem verifies the plain, _errors, and
+// _boundary files of each subject share a stem, apart from files that build
+// only on some platforms and the error tables across cmd families.
+func TestTestFiles_SubjectBucketsShareStem(t *testing.T) {
+	tr, _ := loadModule(t)
+	report(t, checkSubjectStems(tr), "Name a subject's bucket files <stem>_test.go, <stem>_errors_test.go, and <stem>_boundary_test.go. See CONTRIBUTING.md.")
 }
 
 // TestTestDocs_StartWithName verifies every Test function has a doc comment
@@ -925,6 +1041,91 @@ func TestWorkflowActions_PinnedToCommits(t *testing.T) {
 	report(t, vs, "Pin as owner/repo@<40-character commit SHA> # vX.Y.Z; Renovate keeps the pin and comment updated.")
 }
 
+// TestPlatform_GroupsEquivalentConstraints verifies platform gives the same key
+// to file names and build constraints that select the same platforms, ignores
+// tags that don't name a platform, and keeps different platforms apart.
+func TestPlatform_GroupsEquivalentConstraints(t *testing.T) {
+	type source struct{ file, build string }
+	groups := []struct {
+		name    string
+		sources []source
+	}{
+		{name: "every platform", sources: []source{
+			{"a_test.go", ""},
+			{"a_test.go", "integration"},
+			{"a_test.go", "!integration"},
+			{"a_test.go", "!(windows && integration)"},
+			{"a_test.go", "integration || !integration"},
+		}},
+		{name: "linux", sources: []source{
+			{"a_linux_test.go", ""},
+			{"a_linux_test.go", "linux"},
+			{"a_linux_test.go", "integration"},
+			{"a_test.go", "linux"},
+			{"a_test.go", "linux && integration"},
+			{"a_test.go", "integration && linux"},
+			{"a_test.go", "linux && !integration"},
+			{"a_test.go", "(linux || integration) && !integration"},
+			{"a_test.go", "(integration || linux) && (!integration || linux)"},
+		}},
+		{name: "linux on amd64", sources: []source{
+			{"a_linux_amd64_test.go", ""},
+			{"a_amd64_test.go", "linux"},
+			{"a_test.go", "linux && amd64"},
+			{"a_test.go", "amd64 && linux"},
+		}},
+		{name: "linux or darwin", sources: []source{
+			{"a_test.go", "linux || darwin"},
+			{"a_test.go", "darwin || linux"},
+			{"a_test.go", "(linux || darwin) && integration"},
+			{"a_test.go", "(linux || integration) && (darwin || !integration)"},
+		}},
+		{name: "unix", sources: []source{
+			{"a_test.go", "unix"},
+			{"a_test.go", "unix && integration"},
+		}},
+		{name: "not windows", sources: []source{
+			{"a_test.go", "!windows"},
+			{"a_test.go", "!windows && integration"},
+			{"a_test.go", "(!windows || integration) && !integration"},
+		}},
+		{name: "windows", sources: []source{
+			{"a_windows_test.go", ""},
+			{"a_test.go", "windows"},
+		}},
+	}
+	names := map[string]string{}
+	for _, g := range groups {
+		t.Run(g.name, func(t *testing.T) {
+			var key string
+			for i, s := range g.sources {
+				src := "package a\n"
+				if s.build != "" {
+					src = "//go:build " + s.build + "\n\n" + src
+				}
+				fset := token.NewFileSet()
+				f, err := parser.ParseFile(fset, s.file, src, parser.ParseComments)
+				if err != nil {
+					t.Fatalf("failed to parse %+v: %v", s, err)
+				}
+				got := platform(&sourceFile{path: s.file, fset: fset, file: f})
+				if i == 0 {
+					key = got
+				} else if got != key {
+					t.Errorf("platform(%+v) = %q, want the key of %+v, %q", s, got, g.sources[0], key)
+				}
+			}
+			if (g.name == "every platform") != (key == "") {
+				t.Errorf("key = %q, want empty only for every platform", key)
+			}
+			if other, ok := names[key]; ok {
+				t.Errorf("%s has the same key as %s: %q", g.name, other, key)
+			}
+			names[key] = g.name
+		})
+	}
+}
+
 // TestChecks_FlagFixtures verifies every check reports the deliberate
 // violations in testdata/violations, so a check that matches nothing fails
 // here rather than passing silently.
@@ -938,8 +1139,11 @@ func TestChecks_FlagFixtures(t *testing.T) {
 			t.Errorf("%s check reported nothing for testdata/violations", name)
 		}
 	}
-	if got := len(checkSplitSubjects(tr)); got != 3 {
-		t.Errorf("split subject check reported %d violations for a subject split across two files, a third with a non-platform build tag, two for one platform, and one for another; want 3", got)
+	if got := len(checkSplitSubjects(tr)); got != 4 {
+		t.Errorf("split subject check reported %d violations for a subject split across two files, a third with a non-platform build tag, two for one platform, one for another, and a platform file split from one that adds a non-platform tag; want 4", got)
+	}
+	if vs := checkSubjectStems(tr); len(vs) != 1 || vs[0].pos.Filename != "gizmo_errors_test.go" {
+		t.Errorf("subject stem check reported %v for a subject with a different stem, a platform file, and a cross-family error table; want only gizmo_errors_test.go", vs)
 	}
 	man := "# EXIT STATUS\n\n|  *0*\n:  _CodeSuccess_\n|  *1*\n:  _CodeWrong_\n"
 	if len(checkExitStatusTable("fixture", man)) == 0 {

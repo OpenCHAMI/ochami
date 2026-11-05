@@ -13,41 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestSMDRFEGet_HTTPError verifies an unsuccessful HTTP response resolves to
-// CodeHTTP.
-func TestSMDRFEGet_HTTPError(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "smd", "rfe", "get", "--uri", srv.URL, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
-// TestSMDRFEGet_NetworkError verifies pointing at a closed port resolves to
-// CodeNetwork.
-func TestSMDRFEGet_NetworkError(t *testing.T) {
-	t.Parallel()
-
-	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
-
-	res := runOchamiWithRuntime(t, "smd", "rfe", "get", "--uri", url, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeNetwork {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
-	}
-}
-
 // TestSMDRFEAdd_WrongArgs verifies that fewer than 4 args without -d is a usage
 // error.
 func TestSMDRFEAdd_WrongArgs(t *testing.T) {

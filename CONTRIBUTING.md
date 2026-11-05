@@ -230,6 +230,11 @@ behavior across families go in a file named after that behavior
 (`prompts_test.go`, `tokenless_test.go`, `service_status_test.go`), and error
 tables across families in `commands_errors_test.go`.
 
+Give a subject's files for each bucket the same stem, so that its error and
+boundary tests sit next to its happy-path tests: `loader_test.go`,
+`loader_errors_test.go`, and `loader_boundary_test.go`. Files restricted to some
+platforms and `commands_errors_test.go` are the exceptions.
+
 The suffix taxonomy groups separate top-level `Test` functions, not the
 `t.Run` subtests within one. A single `TestSubject` that uses subtests to
 check several facets of one cohesive contract (e.g. an executor's
@@ -269,13 +274,20 @@ isolated `cli.NewTestRuntime` through the helpers in `cmd/testhelpers_test.go`
 (`runOchamiWithRuntime` and friends), and call `t.Parallel()` unless they use
 `t.Setenv`, which can't be combined with it.
 
+The tables in `commands_errors_test.go` guarantee each command's exit code for a
+failure, including for commands added later. Keep a per-family error test only
+when it covers something its table row doesn't: a different selector, flag, or
+stub response, or more than the exit code, such as the request sent, the message,
+or the output. Don't add a test that repeats a row.
+
 ### Automated checks
 
 `make test` runs the tests in `internal/conventions`, which parse the
 module's sources and fail on:
 
 - test names that don't follow `TestSubject_Case`, test files with a
-  generic suffix, and a subject's tests for one bucket split across files;
+  generic suffix, a subject's tests for one bucket split across files, and a
+  subject's bucket files with different stems;
 - test doc comments that don't start with the test's name, use coverage
   jargon, or refer to other tests;
 - test doc comments that say the test issues, sends, or requests an HTTP

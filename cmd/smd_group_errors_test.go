@@ -13,41 +13,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestSMDGroupGet_HTTPError verifies an unsuccessful HTTP response resolves to
-// CodeHTTP.
-func TestSMDGroupGet_HTTPError(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "smd", "group", "get", "--uri", srv.URL, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
-// TestSMDGroupGet_NetworkError verifies pointing at a closed port resolves to
-// CodeNetwork.
-func TestSMDGroupGet_NetworkError(t *testing.T) {
-	t.Parallel()
-
-	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
-
-	res := runOchamiWithRuntime(t, "smd", "group", "get", "--uri", url, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeNetwork {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
-	}
-}
-
 // TestSMDGroupAdd_HTTPError verifies a failing POST resolves to CodeHTTP.
 func TestSMDGroupAdd_HTTPError(t *testing.T) {
 	t.Parallel()
@@ -190,22 +155,6 @@ func TestSMDGroupAdd_BadData(t *testing.T) {
 	}
 	if res.exitCode != cli.CodePayload {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
-	}
-}
-
-// TestSMDGroupAdd_NetworkError verifies a refused connection resolves to
-// CodeNetwork for group add.
-func TestSMDGroupAdd_NetworkError(t *testing.T) {
-	t.Parallel()
-
-	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
-
-	res := runOchamiWithRuntime(t, "smd", "group", "add", "--uri", url, "--token", "t", "compute")
-	if res.err == nil {
-		t.Fatal("expected a network error, got nil")
-	}
-	if res.exitCode != cli.CodeNetwork {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
 	}
 }
 
