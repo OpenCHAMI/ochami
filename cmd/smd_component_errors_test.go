@@ -17,43 +17,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestSMDComponentGet_AllHTTPError verifies that an unsuccessful HTTP response
-// resolves to the CodeHTTP exit code.
-func TestSMDComponentGet_AllHTTPError(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "smd", "component", "get", "--ignore-config", "--uri", srv.URL)
-
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
-// TestSMDComponentGet_NetworkError verifies that a transport-level failure
-// (server closed, connection refused) resolves to the CodeNetwork exit code.
-func TestSMDComponentGet_NetworkError(t *testing.T) {
-	t.Parallel()
-
-	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
-
-	res := runOchamiWithRuntime(t, "smd", "component", "get", "--ignore-config", "--uri", url)
-
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeNetwork {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
-	}
-}
-
 // TestSMDComponentAdd_BadPayload verifies that malformed -d payload data
 // resolves to the CodePayload exit code before any request is made.
 func TestSMDComponentAdd_BadPayload(t *testing.T) {

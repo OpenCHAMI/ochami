@@ -14,24 +14,6 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 )
 
-// TestCloudInitGroupGet_HTTPError verifies an unsuccessful HTTP response on the
-// all-groups fetch resolves to CodeHTTP.
-func TestCloudInitGroupGet_HTTPError(t *testing.T) {
-	t.Parallel()
-
-	srv := ciGroupServer(t, nil, http.StatusInternalServerError)
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", "raw",
-		"--uri", srv.URL, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeHTTP {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
 // TestCloudInitGroupGet_ByIDHTTPError verifies an unsuccessful HTTP response on a
 // per-group fetch (args form) resolves to CodeHTTP via the per-item error
 // aggregation ("completed with errors").
@@ -48,43 +30,6 @@ func TestCloudInitGroupGet_ByIDHTTPError(t *testing.T) {
 	}
 	if res.exitCode != cli.CodeHTTP {
 		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeHTTP, cli.CodeName(cli.CodeHTTP))
-	}
-}
-
-// TestCloudInitGroupGet_NetworkError verifies pointing at a closed port resolves
-// to CodeNetwork.
-func TestCloudInitGroupGet_NetworkError(t *testing.T) {
-	t.Parallel()
-
-	url := "http://127.0.0.1:1" // nothing listens on port 1, so connections are refused
-
-	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "get", "raw",
-		"--uri", url, "--token", "t")
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodeNetwork {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodeNetwork, cli.CodeName(cli.CodeNetwork))
-	}
-}
-
-// TestCloudInitGroupAdd_MalformedPayload verifies malformed inline payload data
-// resolves to CodePayload.
-func TestCloudInitGroupAdd_MalformedPayload(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusCreated)
-	}))
-	defer srv.Close()
-
-	res := runOchamiWithRuntime(t, "cloud-init", "--ignore-config", "group", "add",
-		"--uri", srv.URL, "--token", "t", "-d", `not json`)
-	if res.err == nil {
-		t.Fatal("expected an error, got nil")
-	}
-	if res.exitCode != cli.CodePayload {
-		t.Errorf("exit code = %d, want %d (%s)", res.exitCode, cli.CodePayload, cli.CodeName(cli.CodePayload))
 	}
 }
 

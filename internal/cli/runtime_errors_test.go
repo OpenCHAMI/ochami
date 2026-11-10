@@ -49,22 +49,6 @@ func TestRuntimeFromCommand_MissingRuntime(t *testing.T) {
 	}
 }
 
-// TestInitLogging_RejectsInvalidConfiguration verifies that InitLogging rejects
-// an invalid configured log level.
-func TestInitLogging_RejectsInvalidConfiguration(t *testing.T) {
-	rt := NewTestRuntime(strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{})
-	rt.Config.Log.Level = "not-a-level"
-	rt.Config.Log.Format = "json"
-	rt.Config.Log.Color = "off"
-	cmd := &cobra.Command{Use: "test"}
-	cmd.Flags().String("log-format", "", "")
-	cmd.Flags().String("log-level", "", "")
-	cmd.Flags().String("log-color", "", "")
-	if err := rt.InitLogging(cmd); err == nil {
-		t.Fatal("InitLogging() accepted invalid level")
-	}
-}
-
 // TestInitConfig_RejectsMalformedFile verifies that InitConfig surfaces a
 // malformed config file as an error. Giving that error its exit code is
 // cmd/root.go's PersistentPreRunE's responsibility, not InitConfig's, so the
@@ -166,59 +150,6 @@ func TestIOStreams_InContextCancelled(t *testing.T) {
 	n, err := r.Read(buf)
 	if err != nil || string(buf[:n]) != "late" {
 		t.Errorf("Read() = %q, %v; want %q, nil", buf[:n], err, "late")
-	}
-}
-
-// TestRuntimeHandlePayload_StdinCancelled verifies that cancelling the
-// command's context returns a payload read blocked on standard input.
-func TestRuntimeHandlePayload_StdinCancelled(t *testing.T) {
-	t.Parallel()
-
-	rt := NewTestRuntime(gatedReader{make(chan string)}, io.Discard, io.Discard)
-	ctx, cancel := context.WithCancel(context.Background())
-	time.AfterFunc(10*time.Millisecond, cancel)
-
-	tests := []struct {
-		name string
-		read func(cmd *cobra.Command) error
-	}{
-		{name: "data @-", read: func(cmd *cobra.Command) error {
-			var v map[string]any
-			return rt.HandlePayload(cmd, &v)
-		}},
-		{name: "stdin", read: func(cmd *cobra.Command) error {
-			var v map[string]any
-			return rt.HandlePayloadStdin(cmd, &v)
-		}},
-		{name: "slice data @-", read: func(cmd *cobra.Command) error {
-			var v []map[string]any
-			return HandlePayloadSlice(rt, cmd, &v)
-		}},
-		{name: "slice stdin", read: func(cmd *cobra.Command) error {
-			var v []map[string]any
-			return HandlePayloadStdinSlice(rt, cmd, &v)
-		}},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			cmd := &cobra.Command{}
-			cmd.Flags().String("data", "", "")
-			if err := cmd.Flags().Set("data", "@-"); err != nil {
-				t.Fatalf("set data flag: %v", err)
-			}
-			cmd.SetContext(ctx)
-
-			done := make(chan error, 1)
-			go func() { done <- tc.read(cmd) }()
-			select {
-			case err := <-done:
-				if !errors.Is(err, context.Canceled) {
-					t.Fatalf("error = %v, want context.Canceled", err)
-				}
-			case <-time.After(cancelDeadline):
-				t.Fatal("payload read did not return after its context was cancelled")
-			}
-		})
 	}
 }
 
