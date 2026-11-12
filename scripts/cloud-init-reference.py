@@ -10,6 +10,8 @@ Go, other than Jinja rendering, which scripts/jinja-reference.py covers:
 
 - yaml11.json: values as yaml.safe_load builds them, which is how cloud-init
   loads cloud-config and NoCloud meta-data.
+- merge.json: cloud-config parts merged as CloudConfigPartHandler merges
+  them, and configurations merged by util.mergemanydict.
 
 Each expected value is computed by the pinned cloud-init release and its
 dependencies. Pass the source tree with --cloud-init-src. See
@@ -105,6 +107,41 @@ def check_yaml(root, write):
     return failed
 
 
+def merge_case(case):
+    """Merge a case the way cloud-init does and return the result."""
+    import yaml
+    from cloudinit import mergers, util
+
+    if "many" in case:
+        return util.mergemanydict([yaml.safe_load(doc) for doc in case["many"]])
+    base = yaml.safe_load(case["base"]) or {}
+    payload = yaml.safe_load(case["payload"])
+    found = mergers.dict_extract_mergers(payload)
+    found.extend(mergers.string_extract_mergers(case.get("header", "")))
+    if not found:
+        found = mergers.string_extract_mergers("dict(replace)+list()+str()")
+    return mergers.construct(found).merge(base, payload)
+
+
+def check_merge(root, write):
+    path = root / "merge.json"
+    doc = json.loads(path.read_text())
+    failed = False
+    for case in doc["cases"]:
+        try:
+            expected = tagged(merge_case(case))
+        except Exception:  # cloud-init drops a part whose merge fails
+            expected = {"error": True}
+        if write:
+            case["expected"] = expected
+        elif case.get("expected") != expected:
+            print(f"merge {case['name']}: expected {expected}, file has {case.get('expected')}", file=sys.stderr)
+            failed = True
+    if write:
+        path.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
+    return failed
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--cloud-init-src", required=True, help="source tree of the pinned cloud-init release")
@@ -122,6 +159,7 @@ def main():
             parser.error(f"{key}: require {manifest[key]}, got {actual}")
 
     failed = check_yaml(root, args.write)
+    failed = check_merge(root, args.write) or failed
     return int(failed)
 
 
