@@ -62,9 +62,29 @@
 // example by rendering without the sandbox.
 //
 // Host environment access is disabled and no filesystem loader is configured.
-// The package renders a single local template, rather than cloud-init's full
-// processing pipeline: it does not follow #include, merge parts, or validate
-// the result. Results are returned verbatim without YAML normalization.
+// Render renders a single template. Results are returned verbatim without
+// YAML normalization.
+//
+// # Full rendering
+//
+// [RenderFull] is experimental. It processes a node's user-data and
+// vendor-data as cloud-init does: #include and #include-once URLs are
+// fetched with a caller-supplied [Fetcher] and processed recursively, Jinja
+// template parts are rendered with a [PartRenderer] and then handled by
+// their rendered type, cloud-config parts are merged with cloud-init's
+// mergers and every merge_how form, and user cloud-config is merged over
+// vendor cloud-config. Parts a node would skip are reported with their reason
+// rather than returned as errors, and a failed include aborts processing that
+// data as on a node. vendor_data.enabled and vendor_data.disabled_handlers in
+// user cloud-config are honored. Shell scripts and boothooks are listed, not
+// run. MIME multipart data, cloud-config archives, JSON patches, and part
+// handlers are reported as unsupported, because only cloud-init itself can
+// process them. The merged result omits the node's system configuration,
+// which cloud-init merges beneath it.
+//
+// The pkg/cloudinit/helper directory holds a Python helper that processes
+// the same data with cloud-init's own code. It is checked against RenderFull
+// in testdata/full.json.
 //
 // # Errors
 //

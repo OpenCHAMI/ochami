@@ -1,0 +1,2047 @@
+{
+  "_comment": "cloud-init processing results, verified by scripts/cloud-init-reference.py with the embedded render helper. Run it with --write to regenerate expected values.",
+  "cases": [
+    {
+      "name": "groups merged in order",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nhostname: a\nruncmd: [echo a]\nmounts: [[a, /a]]\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nruncmd: [echo b]\nhostname: b\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "hostname",
+              {
+                "t": "str",
+                "v": "b"
+              }
+            ],
+            [
+              "mounts",
+              {
+                "t": "list",
+                "v": [
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "str",
+                        "v": "a"
+                      },
+                      {
+                        "t": "str",
+                        "v": "/a"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            [
+              "runcmd",
+              {
+                "t": "list",
+                "v": [
+                  {
+                    "t": "str",
+                    "v": "echo b"
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "jinja group",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "## template: jinja\n#cloud-config\nhostname: {{ ds.meta_data['local-hostname'] }}\nrole: {{ ds.meta_data.groups.compute.role }}\niid: {{ v1.instance_id }}\nmissing: {{ nope }}\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "hostname",
+              {
+                "t": "str",
+                "v": "node1"
+              }
+            ],
+            [
+              "iid",
+              {
+                "t": "str",
+                "v": "i-1"
+              }
+            ],
+            [
+              "missing",
+              {
+                "t": "str",
+                "v": "CI_MISSING_JINJA_VAR/nope"
+              }
+            ],
+            [
+              "role",
+              {
+                "t": "str",
+                "v": "worker"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "jinja syntax error",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "## template: jinja\n#cloud-config\nx: {% for %}\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\ny: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "y",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "jinja renders script",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "## template: jinja\n#!/bin/sh\necho {{ v1.local_hostname }}\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "script"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": []
+        }
+      }
+    },
+    {
+      "name": "jinja renders include",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "## template: jinja\n#include\nhttp://x/y.yaml\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": []
+        }
+      }
+    },
+    {
+      "name": "jinja renders nothing",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "## template: jinja\n{% if false %}x{% endif %}"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": []
+        }
+      }
+    },
+    {
+      "name": "scripts and boothooks",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\nhttp://ci.example/cloud-init/c.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#!/bin/sh\necho a\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-boothook\necho b\n"
+        },
+        "http://ci.example/cloud-init/c.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nc: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "script"
+            ],
+            [
+              "part-002",
+              "boothook"
+            ],
+            [
+              "part-003",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "c",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "headerless template",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nhostname: '{{ v1.local_hostname }}'\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "hostname",
+              {
+                "t": "str",
+                "v": "{{ v1.local_hostname }}"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "unknown content",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "just text\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "ignored"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "include fetch fails",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\na: 1\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "failed",
+          "code": 404
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": true,
+          "parts": [],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": []
+        }
+      }
+    },
+    {
+      "name": "include unresolved",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "unresolved"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "nested include",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#include\nhttp://ci.example/cloud-init/b.yaml\nhttp://ci.example/cloud-init/c.yaml\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        },
+        "http://ci.example/cloud-init/c.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nc: 2\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ],
+            [
+              "c",
+              {
+                "t": "int",
+                "v": "2"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "include-once",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include-once\nhttp://ci.example/cloud-init/a.yaml\n#include http://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\na: 1\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "a",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "user disables vendor",
+      "user_data": "#cloud-config\nvendor_data: {enabled: false}\nu: 1\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\na: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [],
+          "disabled": true
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "u",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ],
+            [
+              "vendor_data",
+              {
+                "t": "dict",
+                "v": [
+                  [
+                    "enabled",
+                    {
+                      "t": "bool",
+                      "v": false
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "user enables vendor with string",
+      "user_data": "#cloud-config\nvendor_data: {enabled: 'yes'}\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\na: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "a",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ],
+            [
+              "vendor_data",
+              {
+                "t": "dict",
+                "v": [
+                  [
+                    "enabled",
+                    {
+                      "t": "str",
+                      "v": "yes"
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "user vendor_data not a mapping",
+      "user_data": "#cloud-config\nvendor_data: nope\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\na: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "a",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ],
+            [
+              "vendor_data",
+              {
+                "t": "str",
+                "v": "nope"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "disabled handlers",
+      "user_data": "#cloud-config\nvendor_data: {disabled_handlers: [text/x-shellscript]}\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#!/bin/sh\necho a\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "excluded"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ],
+            [
+              "vendor_data",
+              {
+                "t": "dict",
+                "v": [
+                  [
+                    "disabled_handlers",
+                    {
+                      "t": "list",
+                      "v": [
+                        {
+                          "t": "str",
+                          "v": "text/x-shellscript"
+                        }
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "merge_how in group",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nruncmd: [a]\npackages: [x]\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nmerge_how: dict(recurse_array,no_replace)+list(append)\nruncmd: [b]\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "packages",
+              {
+                "t": "list",
+                "v": [
+                  {
+                    "t": "str",
+                    "v": "x"
+                  }
+                ]
+              }
+            ],
+            [
+              "runcmd",
+              {
+                "t": "list",
+                "v": [
+                  {
+                    "t": "str",
+                    "v": "a"
+                  },
+                  {
+                    "t": "str",
+                    "v": "b"
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "user overrides vendor",
+      "user_data": "#cloud-config\nhostname: user\nntp: {pools: [u]}\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nhostname: vendor\nruncmd: [v]\nntp: {servers: [v]}\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "hostname",
+              {
+                "t": "str",
+                "v": "user"
+              }
+            ],
+            [
+              "ntp",
+              {
+                "t": "dict",
+                "v": [
+                  [
+                    "pools",
+                    {
+                      "t": "list",
+                      "v": [
+                        {
+                          "t": "str",
+                          "v": "u"
+                        }
+                      ]
+                    }
+                  ],
+                  [
+                    "servers",
+                    {
+                      "t": "list",
+                      "v": [
+                        {
+                          "t": "str",
+                          "v": "v"
+                        }
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "runcmd",
+              {
+                "t": "list",
+                "v": [
+                  {
+                    "t": "str",
+                    "v": "v"
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "part handler",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#part-handler\ndef list_types(): return []\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "unsupported"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "empty include",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": ""
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "ignored"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "invalid cloud-config",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\na: [\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "cloud-config list",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\n- a\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "cloud-config with tab",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\nhttp://ci.example/cloud-init/b.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\na:\t1\n"
+        },
+        "http://ci.example/cloud-init/b.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nb: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ],
+            [
+              "part-002",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "b",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "prefix case and whitespace",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "\n  #Cloud-Config\nx: on\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "x",
+              {
+                "t": "bool",
+                "v": true
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "vendor-data is cloud-config",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#cloud-config\nv: 1\n",
+      "includes": {},
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "v",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "empty user-data",
+      "user_data": "",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\na: 1\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "ignored"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "a",
+              {
+                "t": "int",
+                "v": "1"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "user-data include fails",
+      "user_data": "#include http://ci.example/cloud-init/u.yaml\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\na: 1\n"
+        },
+        "http://ci.example/cloud-init/u.yaml": {
+          "status": "failed",
+          "code": 500
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": true,
+          "parts": []
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": []
+        }
+      }
+    },
+    {
+      "name": "yaml 1.1 values merged",
+      "user_data": "#cloud-config\n",
+      "vendor_data": "#include\nhttp://ci.example/cloud-init/a.yaml\n",
+      "includes": {
+        "http://ci.example/cloud-init/a.yaml": {
+          "status": "resolved",
+          "content": "#cloud-config\nenabled: on\nmode: 0644\nwhen: 2001-12-14\nratio: 1:30.5\n"
+        }
+      },
+      "instance_data": {
+        "ds": {
+          "meta_data": {
+            "instance-id": "i-1",
+            "local-hostname": "node1",
+            "groups": {
+              "compute": {
+                "role": "worker"
+              }
+            }
+          }
+        },
+        "v1": {
+          "instance_id": "i-1",
+          "local_hostname": "node1"
+        }
+      },
+      "expected": {
+        "user": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "dropped"
+            ]
+          ]
+        },
+        "vendor": {
+          "failed": false,
+          "parts": [
+            [
+              "part-001",
+              "merged"
+            ]
+          ],
+          "disabled": false
+        },
+        "merged": {
+          "t": "dict",
+          "v": [
+            [
+              "enabled",
+              {
+                "t": "bool",
+                "v": true
+              }
+            ],
+            [
+              "mode",
+              {
+                "t": "int",
+                "v": "420"
+              }
+            ],
+            [
+              "ratio",
+              {
+                "t": "float",
+                "v": "90.5"
+              }
+            ],
+            [
+              "when",
+              {
+                "t": "date",
+                "v": "2001-12-14"
+              }
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}
