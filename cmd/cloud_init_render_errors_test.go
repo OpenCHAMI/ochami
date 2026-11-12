@@ -45,6 +45,23 @@ func TestCloudInitRender_LocalUsageErrors(t *testing.T) {
 		{name: "metadata and extras stdin", args: []string{"--template", "missing", "--metadata", "-", "--extra-vars", "@-"}},
 		{name: "three stdin sources", args: []string{"--template", "-", "--metadata", "-", "--extra-vars", "@-"}},
 		{name: "hybrid competing stdin", args: []string{"--template", "-", "--extra-vars", "@-", "--node", "node01"}},
+		{name: "full without node", args: []string{"--full"}},
+		{name: "full with template", args: []string{"--full", "--node", "node01", "--template", "missing"}},
+		{name: "full with group", args: []string{"--full", "--node", "node01", "--group", "compute"}},
+		{name: "bundle with template", args: []string{"--bundle", "missing", "--template", "missing"}},
+		{name: "bundle with node", args: []string{"--bundle", "missing", "--node", "node01"}},
+		{name: "bundle with extras", args: []string{"--bundle", "missing", "--extra-vars", "{}"}},
+		{name: "bundle with export", args: []string{"--bundle", "missing", "--export-bundle", "out"}},
+		{name: "empty bundle flag", args: []string{"--bundle="}},
+		{name: "instance data with metadata", args: []string{"--template", "missing", "--instance-data", "missing", "--metadata", "missing"}},
+		{name: "user data without full", args: []string{"--template", "missing", "--user-data", "missing"}},
+		{name: "compare with engine", args: []string{"--template", "missing", "--compare", "--engine", "internal"}},
+		{name: "unknown engine", args: []string{"--template", "missing", "--engine", "jinja2"}},
+		{name: "no render without export", args: []string{"--template", "missing", "--no-render"}},
+		{name: "no render with compare", args: []string{"--template", "missing", "--no-render", "--export-bundle", "out", "--compare"}},
+		{name: "empty cloud-init flag", args: []string{"--template", "missing", "--cloud-init="}},
+		{name: "template and instance data stdin", args: []string{"--template", "-", "--instance-data", "-"}},
+		{name: "user data and extras stdin", args: []string{"--full", "--node", "node01", "--user-data", "-", "--extra-vars", "@-"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -71,6 +88,38 @@ type renderCountingReader struct{ reads int }
 func (r *renderCountingReader) Read([]byte) (int, error) {
 	r.reads++
 	return 0, io.EOF
+}
+
+// TestCloudInitRender_CloudInitUnavailable verifies that requesting
+// cloud-init with a flag fails with CodeConfig before reading input when it
+// cannot run.
+func TestCloudInitRender_CloudInitUnavailable(t *testing.T) {
+	t.Parallel()
+	missing := filepath.Join(t.TempDir(), "missing")
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{name: "engine without cloud-init", args: []string{"--engine", "cloud-init"}},
+		{name: "compare without cloud-init", args: []string{"--compare"}},
+		{name: "missing executable", args: []string{"--cloud-init", missing}},
+		{name: "missing interpreter", args: []string{"--cloud-init-python", missing}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			args := append([]string{"--ignore-config", "cloud-init", "render", "--template", "-"}, tc.args...)
+			var stdout, stderr bytes.Buffer
+			reader := &renderCountingReader{}
+			rt := cli.NewTestRuntime(reader, &stdout, &stderr)
+			root := NewRootCmd()
+			root.SetContext(cli.ContextWithRuntime(t.Context(), rt))
+			root.SetArgs(args)
+			err := root.Execute()
+			if cli.ExitCode(err) != cli.CodeConfig || reader.reads != 0 || stdout.Len() != 0 {
+				t.Fatalf("error = %v (exit %d), stdin reads = %d, stdout = %q, want CodeConfig before input", err, cli.ExitCode(err), reader.reads, stdout.String())
+			}
+		})
+	}
 }
 
 // TestCloudInitRender_LocalFailures verifies local source and rendering

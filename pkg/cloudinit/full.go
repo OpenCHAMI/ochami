@@ -697,3 +697,14 @@ func fromTypedDescription(description any) (any, error) {
 		return nil, fmt.Errorf("unknown typed value kind %v", m["t"])
 	}
 }
+
+// CollectIncludes fetches every include that RenderFull would fetch while
+// processing data, without rendering anything, for example to record them in
+// a bundle. Like cloud-init, it stops at the first failed fetch.
+func CollectIncludes(ctx context.Context, data []byte, fetch Fetcher) error {
+	if len(data) == 0 {
+		return nil
+	}
+	p := &processor{ctx: ctx, fetch: fetch}
+	return p.process(data, "", 0)
+}

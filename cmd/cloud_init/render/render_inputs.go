@@ -19,12 +19,30 @@ import (
 	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
 )
 
-// renderInputs selects the template and metadata sources for an invocation.
+// Engine names accepted by --engine.
+const (
+	engineInternal  = "internal"
+	engineCloudInit = "cloud-init"
+)
+
+// renderInputs selects the sources, engine, and outputs for an invocation.
 type renderInputs struct {
-	template string
-	group    string
-	node     string
-	metadata string
+	template     string
+	group        string
+	node         string
+	metadata     string
+	instanceData string
+	userData     string
+	bundle       string
+	exportBundle string
+	full         bool
+	noRender     bool
+	compare      bool
+	engine       string
+
+	cloudInit       string
+	cloudInitPython string
+	cloudInitSrc    string
 }
 
 func optionsForArgs(options renderInputs, args []string, legacy bool) renderInputs {
@@ -34,20 +52,64 @@ func optionsForArgs(options renderInputs, args []string, legacy bool) renderInpu
 	return options
 }
 
+// changed reports whether a flag exists on cmd and was set.
+func changed(cmd *cobra.Command, name string) bool {
+	f := cmd.Flag(name)
+	return f != nil && f.Changed
+}
+
+// validateRenderInputs checks every flag combination before any input is
+// read or requested.
 func validateRenderInputs(cmd *cobra.Command, options renderInputs) error {
-	for _, name := range []string{"template", "group", "node", "metadata"} {
+	for _, name := range []string{"template", "group", "node", "metadata", "instance-data", "user-data", "bundle", "export-bundle", "cloud-init", "cloud-init-python", "cloud-init-src"} {
 		if f := cmd.Flag(name); f != nil && f.Changed && f.Value.String() == "" {
 			return fmt.Errorf("--%s requires a nonempty value", name)
 		}
 	}
-	if (options.template == "") == (options.group == "") {
-		return fmt.Errorf("specify exactly one of --template or --group")
+	if options.engine != "" && options.engine != engineInternal && options.engine != engineCloudInit {
+		return fmt.Errorf("--engine must be %s or %s", engineInternal, engineCloudInit)
+	}
+	switch {
+	case options.bundle != "":
+		for _, name := range []string{"template", "group", "node", "metadata", "instance-data", "user-data", "extra-vars", "export-bundle"} {
+			if changed(cmd, name) {
+				return fmt.Errorf("--bundle supplies every input, so it cannot be combined with --%s", name)
+			}
+		}
+	case options.full:
+		if options.template != "" || options.group != "" {
+			return fmt.Errorf("--full renders every group of a node, so it cannot be combined with --template or --group")
+		}
+		if options.node == "" {
+			return fmt.Errorf("--full requires --node or --bundle")
+		}
+	default:
+		if (options.template == "") == (options.group == "") {
+			return fmt.Errorf("specify exactly one of --template or --group")
+		}
 	}
 	if options.template != "" && options.metadata != "" && options.node != "" {
 		return fmt.Errorf("with --template, use either --metadata or --node, not both")
 	}
+	if options.instanceData != "" && options.metadata != "" {
+		return fmt.Errorf("--instance-data replaces metadata, so it cannot be combined with --metadata")
+	}
+	if options.userData != "" && !options.full {
+		return fmt.Errorf("--user-data requires --full")
+	}
+	if options.compare && options.engine != "" {
+		return fmt.Errorf("--compare runs both engines, so it cannot be combined with --engine")
+	}
+	if options.noRender {
+		if options.exportBundle == "" {
+			return fmt.Errorf("--no-render requires --export-bundle")
+		}
+		if options.compare || options.engine != "" {
+			return fmt.Errorf("--no-render renders nothing, so it cannot be combined with --compare or --engine")
+		}
+	}
 	stdinSources := 0
-	for _, path := range []string{options.template, options.metadata} {
+	for _, path := range []string{options.template, options.metadata, options.instanceData, options.userData} {
 		if path == "-" {
 			stdinSources++
 		}
@@ -56,13 +118,13 @@ func validateRenderInputs(cmd *cobra.Command, options renderInputs) error {
 		stdinSources++
 	}
 	if stdinSources > 1 {
-		return fmt.Errorf("only one of --template -, --metadata -, and --extra-vars @- may read stdin")
+		return fmt.Errorf("only one of --template -, --metadata -, --instance-data -, --user-data -, and --extra-vars @- may read stdin")
 	}
 	return nil
 }
 
-// loadRenderRequest acquires local or remote sources. A nil request preserves
-// the early return for empty remote group configuration.
+// loadRenderRequest acquires local or remote sources for template mode. A nil
+// request preserves the early return for empty remote group configuration.
 func loadRenderRequest(cmd *cobra.Command, rt *cli.Runtime, options renderInputs) (*cloudinit.RenderRequest, error) {
 	req := &cloudinit.RenderRequest{Metadata: cloudinit.Document{Format: format.DataFormatYaml}}
 	if options.template != "" {
@@ -72,12 +134,8 @@ func loadRenderRequest(cmd *cobra.Command, rt *cli.Runtime, options renderInputs
 		}
 		req.Template = data
 	}
-	if options.metadata != "" {
-		data, err := readRenderFile(options.metadata, rt.Ios.InContext(cmd.Context()))
-		if err != nil {
-			return nil, cli.Errorf(cli.CodePayload, "failed to read metadata file: %w", err)
-		}
-		req.Metadata.Data = data
+	if err := readVariableFiles(cmd, rt, options, req); err != nil {
+		return nil, err
 	}
 	if options.group == "" && options.node == "" {
 		return req, nil
@@ -115,18 +173,45 @@ func loadRenderRequest(cmd *cobra.Command, rt *cli.Runtime, options renderInputs
 			return nil, nil
 		}
 	}
-	if options.metadata != "" || options.node == "" {
+	if options.metadata != "" || options.instanceData != "" || options.node == "" {
 		return req, nil
 	}
-	results, err := cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitMetaData, rt.Token, options.node)
+	if req.Metadata.Data, err = fetchNodeData(cmd, rt, cloudInitClient, cloud_init.CloudInitMetaData, options.node); err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+// readVariableFiles reads --metadata and --instance-data into req.
+func readVariableFiles(cmd *cobra.Command, rt *cli.Runtime, options renderInputs, req *cloudinit.RenderRequest) error {
+	if options.metadata != "" {
+		data, err := readRenderFile(options.metadata, rt.Ios.InContext(cmd.Context()))
+		if err != nil {
+			return cli.Errorf(cli.CodePayload, "failed to read metadata file: %w", err)
+		}
+		req.Metadata.Data = data
+	}
+	if options.instanceData != "" {
+		data, err := readRenderFile(options.instanceData, rt.Ios.InContext(cmd.Context()))
+		if err != nil {
+			return cli.Errorf(cli.CodePayload, "failed to read instance data file: %w", err)
+		}
+		req.InstanceData = cloudinit.Document{Data: data, Format: format.DataFormatYaml}
+	}
+	return nil
+}
+
+// fetchNodeData gets a node's meta-data, user-data, or vendor-data through
+// the impersonation API.
+func fetchNodeData(cmd *cobra.Command, rt *cli.Runtime, cic *cloud_init.CloudInitClient, dataType cloud_init.CIDataType, node string) ([]byte, error) {
+	results, err := cic.GetNodeData(cmd.Context(), dataType, rt.Token, node)
 	if err != nil {
-		return nil, cli.ClassifyClientError(err, "failed to get cloud-init node meta-data", "failed to get cloud-init node meta-data")
+		return nil, cli.ClassifyClientError(err, fmt.Sprintf("failed to get cloud-init node %s", dataType), fmt.Sprintf("failed to get cloud-init node %s", dataType))
 	}
 	if results[0].Err != nil {
-		return nil, cli.ClassifyClientError(results[0].Err, "cloud-init node meta-data request yielded unsuccessful HTTP response", "failed to get cloud-init node meta-data")
+		return nil, cli.ClassifyClientError(results[0].Err, fmt.Sprintf("cloud-init node %s request yielded unsuccessful HTTP response", dataType), fmt.Sprintf("failed to get cloud-init node %s", dataType))
 	}
-	req.Metadata.Data = results[0].Value.Body
-	return req, nil
+	return results[0].Value.Body, nil
 }
 
 // loadStoredGroupTemplate decodes raw group content without impersonating a node.
