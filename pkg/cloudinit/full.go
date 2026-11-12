@@ -633,3 +633,67 @@ func typedDescription(value any) any {
 		return map[string]any{"t": "unknown", "v": fmt.Sprint(v)}
 	}
 }
+
+// ComparableText formats a description from Comparable as YAML, so that two
+// descriptions can be compared line by line. Strings that would load as
+// other types are quoted, so type differences remain visible.
+func ComparableText(description any) (string, error) {
+	value, err := fromTypedDescription(description)
+	if err != nil {
+		return "", err
+	}
+	return dumpYAML(value), nil
+}
+
+// fromTypedDescription reverses typedDescription for formatting.
+func fromTypedDescription(description any) (any, error) {
+	m, ok := description.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid typed value %v", description)
+	}
+	switch m["t"] {
+	case "null":
+		return nil, nil
+	case "bool":
+		return m["v"], nil
+	case "int":
+		return constructInt(fmt.Sprint(m["v"]))
+	case "float":
+		if s := fmt.Sprint(m["v"]); s == "nan" || s == "inf" || s == "-inf" {
+			return constructFloat("." + strings.TrimPrefix(s, "-"))
+		}
+		return constructFloat(fmt.Sprint(m["v"]))
+	case "str", "date", "datetime", "unknown":
+		return fmt.Sprint(m["v"]), nil
+	case "bytes":
+		return base64.StdEncoding.DecodeString(fmt.Sprint(m["v"]))
+	case "list":
+		items, _ := m["v"].([]any)
+		out := make([]any, 0, len(items))
+		for _, item := range items {
+			v, err := fromTypedDescription(item)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, v)
+		}
+		return out, nil
+	case "dict":
+		items, _ := m["v"].([]any)
+		out := gj.NewOrderedDict()
+		for _, item := range items {
+			pair, ok := item.([]any)
+			if !ok || len(pair) != 2 {
+				return nil, fmt.Errorf("invalid typed mapping item %v", item)
+			}
+			v, err := fromTypedDescription(pair[1])
+			if err != nil {
+				return nil, err
+			}
+			out.Set(fmt.Sprint(pair[0]), v)
+		}
+		return out, nil
+	default:
+		return nil, fmt.Errorf("unknown typed value kind %v", m["t"])
+	}
+}
