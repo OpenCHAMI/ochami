@@ -85,22 +85,6 @@ func lexerOptions() lexer.Options {
 	return opts
 }
 
-// instanceData builds template variables the way cloud-init does for a part.
-// Metadata becomes ds.meta_data and extra variables replace top-level keys of
-// that instance data. The result then goes through the sorted JSON round trip
-// of instance-data.json and convert_jinja_instance_data.
-func instanceData(metadata, extra *gj.OrderedDict) *gj.OrderedDict {
-	ds := gj.NewOrderedDict()
-	ds.Set("meta_data", metadata)
-	data := gj.NewOrderedDict()
-	data.Set("ds", ds)
-	for _, key := range extra.Keys() {
-		value, _ := extra.Get(key)
-		data.Set(key, value)
-	}
-	return convertInstanceData(data)
-}
-
 // convertInstanceData mirrors convert_jinja_instance_data. It visits keys in
 // sorted order, copies the children of version keys such as v1 to the
 // enclosing mapping, and adds an alias for each key containing a Jinja

@@ -6,9 +6,11 @@
 """Verify (or explicitly regenerate) the pinned cloud-init rendering oracle.
 
 Each fixture is rendered by cloud-init's own Jinja part handling, not by a
-separately configured Jinja2 environment. The instance data takes the same
-sorted JSON round trip as instance-data.json on a node, and then passes
-through cloudinit.handlers.jinja_template.render_jinja_payload, which converts
+separately configured Jinja2 environment. The fixture's instance data is the
+instance-data.json that ochami builds for its metadata and extra variables.
+The script checks that the file is formatted exactly as cloud-init's
+atomic_helper.json_dumps writes it, and then renders with
+cloudinit.handlers.jinja_template.render_jinja_payload, which converts
 variables, removes the template header, and renders with cloud-init's
 environment.
 
@@ -68,10 +70,13 @@ def main():
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
     failed = False
     for fixture in manifest["fixtures"]:
-        instance_data = {"ds": {"meta_data": json.loads((root / fixture["metadata"]).read_bytes())}}
-        instance_data.update(json.loads((root / fixture["extra_vars"]).read_bytes()))
-        # A node reads its variables back from instance-data.json.
-        instance_data = json.loads(json_dumps(instance_data))
+        # ochami builds this file. A node writes it with json_dumps and reads
+        # its variables back from it.
+        written = (root / fixture["instance_data"]).read_text()
+        instance_data = json.loads(written)
+        if json_dumps(instance_data) + "\n" != written:
+            print(f"{fixture['name']}: {fixture['instance_data']} is not formatted as cloud-init writes it", file=sys.stderr)
+            failed = True
         source = (root / fixture["template"]).read_bytes().decode("utf-8")
         rendered = render_jinja_payload(source, fixture["template"], instance_data)
         if rendered is None:

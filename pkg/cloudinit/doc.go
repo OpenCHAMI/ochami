@@ -19,12 +19,18 @@
 // # Variables and input documents
 //
 // Variables follow cloud-init's instance data. Metadata is exposed as
-// ds.meta_data, and extra variables replace top-level keys of the instance
-// data. Supplying ds replaces the entire value. As on a node, every mapping is
-// then ordered by sorted keys, including mappings inside lists. Each key that
-// contains a Jinja operator also gets an alias with underscores, so
-// ds.meta_data.local_hostname reads local-hostname. The children of a version
-// key such as v1 are copied to the enclosing mapping. Base64-encoded keys are
+// ds.meta_data. The standardized v1 keys that cloud-init's NoCloud datasource
+// derives from metadata are added, such as v1.instance_id, v1.local_hostname,
+// v1.cloud_name, v1.availability_zone, v1.region, and v1.public_ssh_keys. Keys
+// that only a booted node knows, such as v1.distro and sys_info, are absent.
+// A node's own instance data can be supplied instead of metadata. Extra
+// variables replace top-level keys of the instance data. Supplying ds or v1
+// replaces the entire value. [InstanceDataJSON] returns the instance data as
+// cloud-init writes instance-data.json. As on a node, the data then takes a
+// JSON round trip, so every mapping is ordered by sorted keys, including
+// mappings inside lists. Each key that contains a Jinja operator also gets an
+// alias with underscores, so ds.meta_data.local_hostname reads local-hostname.
+// The children of a version key such as v1 are copied to the enclosing mapping. Base64-encoded keys are
 // not decoded.
 //
 // Documents accept JSON (including json-pretty) and YAML. Empty formats mean

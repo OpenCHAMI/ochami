@@ -17,11 +17,12 @@ import (
 )
 
 type referenceFixture struct {
-	Name      string `json:"name"`
-	Template  string `json:"template"`
-	Metadata  string `json:"metadata"`
-	ExtraVars string `json:"extra_vars"`
-	Expected  string `json:"expected"`
+	Name         string `json:"name"`
+	Template     string `json:"template"`
+	Metadata     string `json:"metadata"`
+	ExtraVars    string `json:"extra_vars"`
+	InstanceData string `json:"instance_data"`
+	Expected     string `json:"expected"`
 }
 
 func readFixture(t *testing.T, name string) []byte {
@@ -62,13 +63,31 @@ func TestRender_ReferenceCorpus(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				out, err := cloudinit.Render(t.Context(), cloudinit.RenderRequest{
+				req := cloudinit.RenderRequest{
 					Template:  readFixture(t, fixture.Template),
 					Metadata:  cloudinit.Document{Data: metadata, Format: inputFormat},
 					ExtraVars: cloudinit.Document{Data: readFixture(t, fixture.ExtraVars)},
+				}
+				data, err := cloudinit.InstanceDataJSON(req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if want := string(readFixture(t, fixture.InstanceData)); string(data)+"\n" != want {
+					t.Fatalf("instance data = %s, want %s", data, want)
+				}
+				out, err := cloudinit.Render(t.Context(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				fromData, err := cloudinit.Render(t.Context(), cloudinit.RenderRequest{
+					Template:     req.Template,
+					InstanceData: cloudinit.Document{Data: data},
 				})
 				if err != nil {
 					t.Fatal(err)
+				}
+				if fromData != out {
+					t.Fatalf("rendering from instance data = %q, want %q", fromData, out)
 				}
 				if want := string(readFixture(t, fixture.Expected)); out != want {
 					t.Fatalf("rendered output = %q, want %q", out, want)
