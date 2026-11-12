@@ -1,0 +1,1828 @@
+{
+  "_comment": "PyYAML safe_load results, verified by scripts/cloud-init-reference.py. Run it with --write to regenerate expected values.",
+  "cases": [
+    {
+      "name": "bool yes",
+      "yaml": "x: yes\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": true
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool Yes",
+      "yaml": "x: Yes\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": true
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool YES",
+      "yaml": "x: YES\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": true
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool no",
+      "yaml": "x: no\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool No",
+      "yaml": "x: No\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool NO",
+      "yaml": "x: NO\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool true",
+      "yaml": "x: true\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": true
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool True",
+      "yaml": "x: True\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": true
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool TRUE",
+      "yaml": "x: TRUE\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": true
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool false",
+      "yaml": "x: false\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool False",
+      "yaml": "x: False\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool FALSE",
+      "yaml": "x: FALSE\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool on",
+      "yaml": "x: on\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": true
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool On",
+      "yaml": "x: On\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": true
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool ON",
+      "yaml": "x: ON\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": true
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool off",
+      "yaml": "x: off\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool Off",
+      "yaml": "x: Off\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool OFF",
+      "yaml": "x: OFF\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool y",
+      "yaml": "x: y\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "y"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool n",
+      "yaml": "x: n\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "n"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool tRue",
+      "yaml": "x: tRue\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "tRue"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool oN",
+      "yaml": "x: oN\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "oN"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 0",
+      "yaml": "x: 0\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "0"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int -0",
+      "yaml": "x: -0\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "0"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int +12",
+      "yaml": "x: +12\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "12"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 1_000",
+      "yaml": "x: 1_000\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "1000"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 0644",
+      "yaml": "x: 0644\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "420"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 0o644",
+      "yaml": "x: 0o644\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "0o644"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 09",
+      "yaml": "x: 09\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "09"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 0x1F",
+      "yaml": "x: 0x1F\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "31"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 0x_1f",
+      "yaml": "x: 0x_1f\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "31"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 0b101",
+      "yaml": "x: 0b101\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "5"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int -0b1_0",
+      "yaml": "x: -0b1_0\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "-2"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 1:20",
+      "yaml": "x: 1:20\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "80"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int -190:20:30",
+      "yaml": "x: -190:20:30\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "-685230"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int 9223372036854775807",
+      "yaml": "x: 9223372036854775807\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "9223372036854775807"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int -9223372036854775808",
+      "yaml": "x: -9223372036854775808\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "-9223372036854775808"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 1.5",
+      "yaml": "x: 1.5\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "1.5"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 1.",
+      "yaml": "x: 1.\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "1.0"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float -.5",
+      "yaml": "x: -.5\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "-.5"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float .5",
+      "yaml": "x: .5\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "0.5"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 1e3",
+      "yaml": "x: 1e3\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "1e3"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 1.5e3",
+      "yaml": "x: 1.5e3\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "1.5e3"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 1.5e+3",
+      "yaml": "x: 1.5e+3\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "1500.0"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 1.5E-3",
+      "yaml": "x: 1.5E-3\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "0.0015"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 1_0.5",
+      "yaml": "x: 1_0.5\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "10.5"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float .inf",
+      "yaml": "x: .inf\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "inf"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float -.Inf",
+      "yaml": "x: -.Inf\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "-inf"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float +.INF",
+      "yaml": "x: +.INF\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "inf"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float .NaN",
+      "yaml": "x: .NaN\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "nan"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 1:30.5",
+      "yaml": "x: 1:30.5\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "90.5"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 6.8523015e+5",
+      "yaml": "x: 6.8523015e+5\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "685230.15"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "float 685.230_15e+03",
+      "yaml": "x: 685.230_15e+03\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "685230.15"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null '~'",
+      "yaml": "x: ~\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "null"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null 'null'",
+      "yaml": "x: null\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "null"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null 'Null'",
+      "yaml": "x: Null\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "null"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null 'NULL'",
+      "yaml": "x: NULL\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "null"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null ''",
+      "yaml": "x: \n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "null"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null 'nULL'",
+      "yaml": "x: nULL\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "nULL"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null 'none'",
+      "yaml": "x: none\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "none"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "timestamp 2001-12-14",
+      "yaml": "x: 2001-12-14\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "date",
+              "v": "2001-12-14"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "timestamp 2001-12-14t21:59:43.10-05:00",
+      "yaml": "x: 2001-12-14t21:59:43.10-05:00\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "datetime",
+              "v": "2001-12-14 21:59:43.100000-05:00"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "timestamp 2001-12-14 21:59:43.10",
+      "yaml": "x: 2001-12-14 21:59:43.10\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "datetime",
+              "v": "2001-12-14 21:59:43.100000"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "timestamp 2001-12-14T21:59:43Z",
+      "yaml": "x: 2001-12-14T21:59:43Z\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "datetime",
+              "v": "2001-12-14 21:59:43+00:00"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "timestamp 2001-12-14 21:59:43 +5",
+      "yaml": "x: 2001-12-14 21:59:43 +5\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "datetime",
+              "v": "2001-12-14 21:59:43+05:00"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "timestamp 2001-12-14 21:59:43.1234567",
+      "yaml": "x: 2001-12-14 21:59:43.1234567\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "datetime",
+              "v": "2001-12-14 21:59:43.123456"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "timestamp 2001-1-1 1:02:03",
+      "yaml": "x: 2001-1-1 1:02:03\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "datetime",
+              "v": "2001-01-01 01:02:03"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "timestamp 2001-1-1",
+      "yaml": "x: 2001-1-1\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "2001-1-1"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "timestamp 2001-02-30",
+      "yaml": "x: 2001-02-30\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "timestamp 2001-12-14 24:00:00",
+      "yaml": "x: 2001-12-14 24:00:00\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "double quoted",
+      "yaml": "x: \"yes\"\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "yes"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "single quoted",
+      "yaml": "x: '0644'\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "0644"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "literal block",
+      "yaml": "x: |\n  on\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "on\n"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "folded block",
+      "yaml": "x: >\n  12\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "12\n"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "explicit str",
+      "yaml": "x: !!str 1\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "1"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "explicit int quoted",
+      "yaml": "x: !!int '0x10'\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "16"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "explicit float",
+      "yaml": "x: !!float 1\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "float",
+              "v": "1.0"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "explicit bool",
+      "yaml": "x: !!bool Off\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bool",
+              "v": false
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "explicit bool invalid",
+      "yaml": "x: !!bool maybe\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "explicit null",
+      "yaml": "x: !!null ''\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "null"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "explicit binary",
+      "yaml": "x: !!binary |\n  aGVs\n  bG8=\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "bytes",
+              "v": "aGVsbG8="
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "explicit timestamp",
+      "yaml": "x: !!timestamp 2001-12-14\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "date",
+              "v": "2001-12-14"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "explicit timestamp invalid",
+      "yaml": "x: !!timestamp tomorrow\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "value indicator",
+      "yaml": "x: =\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "duplicate key",
+      "yaml": "a: 1\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "2"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "nested duplicate key",
+      "yaml": "x: {a: 1, a: 2}\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "a",
+                  {
+                    "t": "int",
+                    "v": "2"
+                  }
+                ]
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "bool key",
+      "yaml": "yes: 1\noff: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "false",
+            {
+              "t": "int",
+              "v": "2"
+            }
+          ],
+          [
+            "true",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "int key",
+      "yaml": "1: q\n010: r\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "1",
+            {
+              "t": "str",
+              "v": "q"
+            }
+          ],
+          [
+            "8",
+            {
+              "t": "str",
+              "v": "r"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null key",
+      "yaml": "~: q\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "null",
+            {
+              "t": "str",
+              "v": "q"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "merge key",
+      "yaml": "base: &b {z: 1, a: 2}\nx:\n  <<: *b\n  z: 9\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "base",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "a",
+                  {
+                    "t": "int",
+                    "v": "2"
+                  }
+                ],
+                [
+                  "z",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "x",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "a",
+                  {
+                    "t": "int",
+                    "v": "2"
+                  }
+                ],
+                [
+                  "z",
+                  {
+                    "t": "int",
+                    "v": "9"
+                  }
+                ]
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "merge sequence",
+      "yaml": "x: {a: 9, <<: [{z: 1, a: 2}, {z: 3, b: 4}]}\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "a",
+                  {
+                    "t": "int",
+                    "v": "9"
+                  }
+                ],
+                [
+                  "b",
+                  {
+                    "t": "int",
+                    "v": "4"
+                  }
+                ],
+                [
+                  "z",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ]
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "quoted merge key",
+      "yaml": "x: {'<<': 1}\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "<<",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ]
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "nested values",
+      "yaml": "x:\n  - on\n  - [0x10, ~, 1.0]\n  - {k: 2001-12-14}\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "bool",
+                  "v": true
+                },
+                {
+                  "t": "list",
+                  "v": [
+                    {
+                      "t": "int",
+                      "v": "16"
+                    },
+                    {
+                      "t": "null"
+                    },
+                    {
+                      "t": "float",
+                      "v": "1.0"
+                    }
+                  ]
+                },
+                {
+                  "t": "dict",
+                  "v": [
+                    [
+                      "k",
+                      {
+                        "t": "date",
+                        "v": "2001-12-14"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "tabs in timestamp",
+      "yaml": "x: 2001-12-14\t21:59:43\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "empty document",
+      "yaml": "",
+      "expected": {
+        "t": "null"
+      }
+    },
+    {
+      "name": "scalar document",
+      "yaml": "on\n",
+      "expected": {
+        "t": "bool",
+        "v": true
+      }
+    },
+    {
+      "name": "tab in plain scalar",
+      "yaml": "x: a\tb\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab after space",
+      "yaml": "x: a \tb\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "trailing tab",
+      "yaml": "x: 1\t\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab separator",
+      "yaml": "x:\ta\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab before comment",
+      "yaml": "x: a\t# c\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab in comment",
+      "yaml": "x: a # c\td\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "a"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "tab in comment line",
+      "yaml": "# c\tx\nx: 1\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "tab in double quotes",
+      "yaml": "x: \"a\tb\"\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "a\tb"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "tab in single quotes",
+      "yaml": "x: 'a\tb'\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "a\tb"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "tab in quoted continuation",
+      "yaml": "x: \"a\n\tb\"\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "a b"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "tab in literal content",
+      "yaml": "x: |\n  a\tb\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "a\tb\n"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "tab after block indentation",
+      "yaml": "x: >-\n  a\n  \tb\ny: 1\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "a\n\tb"
+            }
+          ],
+          [
+            "y",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "tab as block indentation",
+      "yaml": "x: |\n\ta\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab ending block",
+      "yaml": "x: |\n  a\n\tb\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab in sequence indentation",
+      "yaml": "x:\n  - a\n\t- b\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab in flow mapping",
+      "yaml": "x: {a: 1,\tb: 2}\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab in flow sequence",
+      "yaml": "x: [a,\tb]\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab-only line",
+      "yaml": "\t\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "tab after quoted scalar",
+      "yaml": "x: \"a\" \t\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "apostrophe in plain scalar",
+      "yaml": "x: it's\ty\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "apostrophe without tab",
+      "yaml": "x: it's fine\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "it's fine"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "hash in plain scalar",
+      "yaml": "x: a#b\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "x",
+            {
+              "t": "str",
+              "v": "a#b"
+            }
+          ]
+        ]
+      }
+    }
+  ]
+}

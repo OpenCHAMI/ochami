@@ -35,13 +35,17 @@
 //
 // Documents accept JSON (including json-pretty) and YAML. Empty formats mean
 // JSON, and empty or null documents mean empty mappings. Other top-level values
-// must be mappings. YAML uses yaml.v3 scalar resolution, including timestamps
-// and binary scalars, which differs from the YAML 1.1 rules cloud-init uses.
-// Mapping keys must be strings. Duplicate YAML keys, cyclic aliases, unsupported
-// tags, multiple documents, and integers outside signed 64-bit range are
-// rejected. JSON duplicate keys keep the last value. YAML merge keys expand,
-// earlier merge sources win, and explicit keys override merged values.
-// Fractional and exponent JSON numbers are floats.
+// must be mappings. YAML is decoded as PyYAML's safe_load decodes it, which is
+// how cloud-init loads NoCloud metadata: YAML 1.1 scalars (yes, on, and off as
+// booleans, 0644 as octal, 1:20 as base 60, and timestamps), duplicate keys
+// keeping the last value, and tabs rejected where PyYAML rejects them. Binary
+// scalars and timestamps become what cloud-init writes to instance-data.json
+// for them. Scalar keys become strings as in instance-data.json, so a yes key
+// reads as "true". Recursive aliases, explicitly tagged collections other
+// than maps and sequences, custom tags, multiple documents, and integers
+// outside signed 64-bit range are rejected. JSON duplicate keys keep the last
+// value. YAML merge keys expand, earlier merge sources win, and explicit keys
+// override merged values. Fractional and exponent JSON numbers are floats.
 //
 // # Rendering profile
 //

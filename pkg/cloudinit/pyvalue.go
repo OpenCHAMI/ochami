@@ -104,7 +104,12 @@ func jsonRoundTrip(value any) any {
 
 // pyTypeRepr returns the repr of the Python type that value stands for.
 func pyTypeRepr(value any) string {
-	switch value.(type) {
+	switch v := value.(type) {
+	case Timestamp:
+		if v.DateOnly {
+			return "<class 'datetime.date'>"
+		}
+		return "<class 'datetime.datetime'>"
 	case time.Time:
 		return "<class 'datetime.datetime'>"
 	default:
