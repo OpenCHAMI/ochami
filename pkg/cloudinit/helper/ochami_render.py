@@ -355,3 +355,75 @@ def render_template(payload, instance_data):
         return render_jinja_payload_from_file(payload, "template", path)
     except NotJinjaError:
         return payload
+
+
+def load_bundle(directory):
+    """Read a render bundle that ochami wrote."""
+    root = Path(directory).resolve()
+    manifest = json.loads((root / "manifest.json").read_text())
+    if manifest.get("format") != "ochami-cloud-init-render" or manifest.get("version") != 1:
+        raise SystemExit("%s is not a supported ochami render bundle" % directory)
+
+    def read(name):
+        if not name:
+            return b""
+        path = (root / name).resolve()
+        if root not in path.parents:
+            raise SystemExit("bundle file %s is outside the bundle" % name)
+        return path.read_bytes()
+
+    files = manifest.get("files", {})
+    bundle = {
+        "mode": manifest.get("mode"),
+        "instance_data": json.loads(read(files.get("instance_data"))),
+        "includes": {},
+    }
+    if bundle["mode"] == "template":
+        bundle["template"] = read(files.get("template")).decode("utf-8")
+    else:
+        bundle["user_data"] = read(files.get("user_data"))
+        bundle["vendor_data"] = read(files.get("vendor_data"))
+        for include in manifest.get("includes") or []:
+            entry = {"status": include.get("status"), "code": include.get("code")}
+            if include.get("status") == "resolved":
+                entry["content"] = read(include.get("file"))
+            bundle["includes"][include["url"]] = entry
+    return bundle
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--bundle", required=True, help="render bundle directory")
+    parser.add_argument("--cloud-init-src", help="cloud-init source tree to import instead of the installed package")
+    parser.add_argument("--format", choices=("json", "text"), default="json", help="output format")
+    args = parser.parse_args(argv)
+    bootstrap(args.cloud_init_src)
+    bundle = load_bundle(args.bundle)
+    if bundle["mode"] == "template":
+        try:
+            output = render_template(bundle["template"], bundle["instance_data"])
+        except Exception as e:  # report cloud-init's error to ochami
+            print("error: %s" % e, file=sys.stderr)
+            return 1
+        if output is None:
+            print("error: cloud-init could not render the template", file=sys.stderr)
+            return 1
+        if args.format == "text":
+            sys.stdout.write(output)
+        else:
+            json.dump({"cloud_init_version": cloud_init_version(args.cloud_init_src), "output": output}, sys.stdout)
+        return 0
+    result = full_render(
+        bundle["user_data"], bundle["vendor_data"], bundle["instance_data"], bundle["includes"], args.cloud_init_src
+    )
+    if args.format == "text":
+        for warning in result["warnings"]:
+            print("WARNING: %s" % warning, file=sys.stderr)
+        sys.stdout.write(result["text"])
+    else:
+        json.dump(result, sys.stdout)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

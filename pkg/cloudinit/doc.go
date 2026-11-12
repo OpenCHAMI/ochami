@@ -83,8 +83,18 @@
 // which cloud-init merges beneath it.
 //
 // The pkg/cloudinit/helper directory holds a Python helper that processes
-// the same data with cloud-init's own code. It is checked against RenderFull
-// in testdata/full.json.
+// the same data with cloud-init's own code, without running boothooks or
+// loading part handlers. It is checked against RenderFull in
+// testdata/full.json, and [HelperScript] returns it.
+//
+// # Render bundles
+//
+// A [Bundle] holds gathered render inputs: a template or a node's user-data,
+// vendor-data, and fetched includes, with instance-data.json. [WriteBundle]
+// writes one to a private directory together with the helper and a run.sh
+// that renders it with cloud-init wherever cloud-init is installed.
+// [LoadBundle] reads it back, and [Bundle.Fetcher] serves its includes to
+// RenderFull. Bundles may contain sensitive metadata but never credentials.
 //
 // # Errors
 //
