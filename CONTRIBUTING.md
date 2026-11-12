@@ -169,7 +169,10 @@ podman run ghcr.io/openchami/ochami:latest ochami --version
   tools and the CLI. `cloudinit.Render` accepts in-memory template, metadata,
   and extra-variable documents and returns complete rendered text, as
   cloud-init renders a template part on a node. It does not read files, fetch
-  HTTP data, or write output.
+  HTTP data, or write output. The experimental `cloudinit.RenderFull` renders
+  a node's full configuration from caller-fetched includes, and render bundles
+  carry gathered inputs with a Python helper that renders them with
+  cloud-init itself.
   Engine types remain private, and callers can inspect `cloudinit.RenderError`
   stages and wrapped causes. See `go doc github.com/openchami/ochami/pkg/cloudinit`,
   the runnable examples, and [the compatibility contract](doc/jinja-compatibility.md).

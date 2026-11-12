@@ -164,27 +164,94 @@ renders a template without a header, and rejects header types other than
 original line numbers, as cloud-init does.
 
 Variables follow cloud-init's instance data. Metadata becomes `ds.meta_data`,
-and extra variables replace top-level keys without deep merging. As on a node,
-where variables are read back from `instance-data.json`, every mapping is then
-ordered by sorted keys, including mappings inside lists. cloud-init's
+and the standardized `v1` keys that cloud-init's NoCloud datasource derives
+from metadata are added, as `sources.DataSource._get_standardized_metadata`
+builds them: `instance_id` (or `iid-datasource`), `local_hostname` (the first
+label of `local-hostname`, or `ip-a-b-c-d` for an IPv4 address),
+`availability_zone`, `region`, `cloud_name` (`unknown` unless metadata names
+it), `cloud_id`, `platform` (`nocloud`), and `public_ssh_keys`, each with its
+dashed alias where cloud-init writes one. Keys only a booted node knows, such
+as `v1.distro`, `v1.kernel_release`, and `sys_info`, are absent. A node's own
+instance data can replace all of this (`--instance-data`). Extra variables
+replace top-level keys without deep merging. As on a node, where variables are
+read back from `instance-data.json`, the data then takes a JSON round trip, so
+every mapping is ordered by sorted keys, including mappings inside lists, and
+values JSON cannot hold become the text cloud-init writes for them (binary
+values become `ci-b64:` strings, and timestamps become cloud-init's
+"redacted unserializable type" warning). The reference fixtures check
+`InstanceDataJSON` output byte for byte against cloud-init's `json_dumps`. cloud-init's
 `convert_jinja_instance_data` then adds an alias with underscores for each key
 containing a Jinja operator (`local-hostname` gains `local_hostname`) and
 copies the children of version keys such as `v1` to the enclosing mapping.
 Base64-encoded keys listed in `base64-encoded-keys` are not decoded.
 
 Inputs are decoded into ordered containers before that conversion. JSON
-duplicate keys keep the last value. Duplicate YAML keys are rejected. YAML merge
-keys expand, earlier merge sources win, and explicit keys override merged
-values. Integer values must fit signed 64-bit range. YAML scalar resolution
-follows yaml.v3, while cloud-init uses PyYAML's YAML 1.1 rules, so values such
-as `yes`, `09`, and timestamps can decode differently. The reference corpus
-uses JSON-shaped values and does not establish parity for YAML scalars.
+duplicate keys keep the last value. YAML is decoded as PyYAML's `safe_load`
+decodes it, which is how cloud-init loads NoCloud metadata and cloud-config:
+PyYAML's implicit resolvers for YAML 1.1 booleans, integers (including octal
+`0644` and base 60 `1:20`), floats, nulls, and timestamps, its constructors,
+duplicate keys keeping the last value, and its rejection of tabs outside
+quoted scalars, block scalar content, and comments. Scalar keys become the
+strings JSON gives them. YAML merge keys expand, earlier merge sources win,
+and explicit keys override merged values. Integer values must fit signed
+64-bit range, a limit PyYAML does not have. `pkg/cloudinit/testdata/yaml11.json`
+records PyYAML's result for each case.
 
 Output is compared as UTF-8 bytes before any parsing. YAML parsing additionally
 checks the expected mounts and commands. Output is never trimmed, reindented,
 or serialized again. Compared with Gonja, block trimming, the restored final
 newline, and undefined text change output. Gonja already iterated mappings in
 sorted order, because metadata decoded into Go maps.
+
+## Full rendering
+
+`RenderFull` and `cloud-init render --full` process a node's user-data and
+vendor-data as cloud-init does, following `user_data.py`, the default part
+handlers, and `stages.py`:
+
+- Content types come from the lowercased, left-trimmed prefix
+  (`handlers.type_from_starts_with`). Gzip data is decompressed.
+- `#include` and `#include-once` lines are fetched and processed recursively.
+  A failed fetch makes cloud-init abort processing that data, which is
+  reported. The CLI fetches each `{base}/{group}.yaml` include as the node's
+  impersonated group template, and reports other URLs as unresolved.
+- Jinja template parts are rendered and then handled by their rendered type.
+  Only cloud-config, shell scripts, and boothooks are accepted, as by
+  cloud-init's Jinja handler. A part that fails to render is dropped.
+- Cloud-config parts are merged in order with a port of `cloudinit.mergers`,
+  honoring `merge_how` and `merge_type` in every form and their unusual cases,
+  with the default `dict(replace)+list()+str()`. Invalid, empty, or
+  non-mapping cloud-config is dropped.
+- `vendor_data.enabled` and `vendor_data.disabled_handlers` in user
+  cloud-config, merged over cloud-init's built-in default, are honored.
+- User cloud-config is merged over vendor cloud-config as `util.mergemanydict`
+  does. The node's system configuration, which cloud-init merges beneath them,
+  is not included.
+
+The internal engine reports MIME multipart data, cloud-config archives, JSON
+patches, and part handlers as unsupported. `pkg/cloudinit/testdata/merge.json`
+and `pkg/cloudinit/testdata/full.json` record cloud-init's results for the
+merger port and for full rendering.
+
+## Delegating to cloud-init
+
+The CLI can render with a real cloud-init instead of, or as well as, the
+internal engine (`--engine cloud-init`, `--compare`). Templates go through
+`cloud-init devel render`, run from a private directory with relative file
+arguments, so a wrapper that runs cloud-init in a node image works. Full
+rendering runs the embedded helper `pkg/cloudinit/helper/ochami_render.py`
+when a Python interpreter that imports cloud-init is available. It drives
+cloud-init's `UserDataProcessor`, part handlers, and mergers over bundled
+includes, records boothooks without running them, and never loads part
+handlers. Without such an interpreter, cloud-init renders each template and
+ochami merges the parts.
+
+CI runs the delegation tests against cloud-init 23.4 and 24.4 on Python 3.9 with
+Jinja2 2.11.3, as Rocky Linux 9 images ship them, and against the 26.2 reference.
+Results must match the reference exactly. Other releases must run, and their
+differences are logged. For example, Jinja2 2.11.3 has no `items` filter, so
+the items filter fixture fails to render on those releases, as it would on
+their nodes.
 
 ## Supported corpus and known differences
 
@@ -219,13 +286,15 @@ value inside a printed list shows the same text rather than Python's
 `Undefined` representation. Error messages differ from cloud-init's, although
 the same templates fail. Older cloud-init releases differ: before 26.2, for
 example, rendering is not sandboxed, and nodes run the Jinja2 version their
-distribution ships.
+distribution ships. Use `--compare` with a cloud-init from the node's image to
+check a template against the release a node runs.
 
 Add a focused reproduction and cloud-init expectation when a real template hits
 a difference. A supported-fixture mismatch blocks adoption until an upstream fix
 passes the entire corpus. Do not silently select a different engine, rewrite
-templates, or alter the cloud-init oracle to hide a difference. There is no
-engine selector, compatibility fork, or custom filter API in this release.
+templates, or alter the cloud-init oracle to hide a difference. The cloud-init
+engine is for checking and for exact answers, not for hiding differences in
+the internal engine. There is no compatibility fork or custom filter API.
 
 ## Reproducing and updating the oracle
 
@@ -256,6 +325,19 @@ cloud-init's output independently of the Go golden tests. When moving to a new
 cloud-init release, update the version and checksum in the CI job, this
 document, and `reference.json` together, and review the release's changes to
 `cloudinit/templater.py` and `cloudinit/handlers/jinja_template.py`.
+
+`scripts/cloud-init-reference.py` verifies the YAML, merge, and full rendering
+cases the same way, using the embedded helper for full rendering. It needs
+the additional packages in `scripts/jinja-reference-requirements.txt` that
+cloud-init's handlers import. To check delegation locally, point the
+integration tests at the same tree:
+
+```sh
+/tmp/ochami-jinja-reference/bin/python scripts/cloud-init-reference.py --cloud-init-src /tmp/cloud-init-26.2
+OCHAMI_TEST_CLOUD_INIT_SRC=/tmp/cloud-init-26.2 \
+OCHAMI_TEST_CLOUD_INIT_PYTHON=/tmp/ochami-jinja-reference/bin/python \
+  go test -count=1 -tags cloudinit_integration -run CloudInitIntegration ./internal/cli/cloud_init/
+```
 
 For engine updates, retain the pin until the corpus, public API tests, and CLI
 tests pass, and inspect any differences against the broader known backlog.

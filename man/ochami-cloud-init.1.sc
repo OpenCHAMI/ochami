@@ -16,6 +16,8 @@ ochami cloud-init group get [OPTIONS] meta-data [_id_...]++
 ochami cloud-init group render [OPTIONS] _group_ _id_++
 ochami cloud-init render --template _file_ [--node _id_ | --metadata _file_] [OPTIONS]++
 ochami cloud-init render --group _group_ [--node _id_] [--metadata _file_] [OPTIONS]++
+ochami cloud-init render --full --node _id_ [OPTIONS]++
+ochami cloud-init render --bundle _dir_ [OPTIONS]++
 ochami cloud-init group set [OPTIONS]++
 ochami cloud-init node get group [OPTIONS] _group_ _id_...++
 ochami cloud-init node get meta-data [OPTIONS] _id_...++
@@ -646,10 +648,10 @@ Subcommands for this command are as follows:
 
 ## render
 
-*render* (--template _file_ | --group _group_ [--node _node_]) [OPTIONS]
-	Render one cloud-init template locally, using a file or service-provided
-	group template. This command is a troubleshooting tool and does not perform
-	cloud-init's complete processing pipeline. It accepts no positional arguments.
+*render* (--template _file_ | --group _group_ [--node _node_] | --full --node _node_ | --bundle _dir_) [OPTIONS]
+	Render cloud-init data locally: one template from a file or the service,
+	or with *--full*, everything a node receives. This command is a
+	troubleshooting tool. It accepts no positional arguments.
 
 	Select exactly one template source: *--template* or *--group*. A local
 	template can use *--metadata* _file_, *--node* _node_ for live metadata,
@@ -699,8 +701,15 @@ Subcommands for this command are as follows:
 	template corpus, rather than every Jinja2 feature. Older cloud-init
 	releases can render differently.
 
-	Variables follow cloud-init's instance data. Every mapping is ordered by
-	sorted keys, including nested mappings and mappings inside lists. A key
+	Variables follow cloud-init's instance data. Metadata is exposed as
+	*ds.meta_data*, and the standardized *v1* keys that cloud-init's NoCloud
+	datasource derives from metadata are added, such as *v1.instance_id*,
+	*v1.local_hostname*, *v1.cloud_name*, *v1.availability_zone*, *v1.region*,
+	and *v1.public_ssh_keys*. Keys that only a booted node knows, such as
+	*v1.distro* and *sys_info*, are absent. Pass a node's own
+	*/run/cloud-init/instance-data-sensitive.json* with *--instance-data* to
+	render with all of them. Every mapping is ordered by sorted keys, including
+	nested mappings and mappings inside lists. A key
 	containing a Jinja operator also has an alias with underscores, so
 	*ds.meta_data.local_hostname* reads *local-hostname*. The children of a
 	version key such as *v1* are copied to the enclosing mapping. JSON integer
@@ -709,21 +718,90 @@ Subcommands for this command are as follows:
 	complete metadata wrapper.
 
 	Empty or null variable documents are empty mappings. Other documents must
-	be mappings with string keys. Duplicate YAML keys, cyclic aliases,
-	unsupported YAML tags, multiple documents, and integers outside signed
-	64-bit range are rejected. YAML aliases and merge keys are resolved, with
-	explicit keys overriding merged values.
+	be mappings. YAML is read as cloud-init reads it, with PyYAML's YAML 1.1
+	rules: *yes*, *on*, and *off* are booleans, *0644* is octal, *1:20* is base
+	60, and dates are timestamps. Duplicate keys keep the last value, and tabs
+	are rejected where PyYAML rejects them. Scalar keys become strings, so a
+	*yes* key reads as *true*. Recursive aliases, custom YAML tags, multiple
+	documents, and integers outside signed 64-bit range are rejected. YAML
+	aliases and merge keys are resolved, with explicit keys overriding merged
+	values.
 
 	Output is written verbatim after rendering succeeds. Template errors do
 	not print partial configuration. Compared with the former Gonja renderer,
 	whitespace, undefined values, and Jinja2 operations can produce different
 	output. Template failures and output write errors return _CodePayload_.
 
+	*Full rendering.* With *--full* and *--node*, fetch the node's vendor-data,
+	user-data, and metadata through the impersonation API, and process them as
+	cloud-init does on the node. Each vendor-data include of the form
+	_base_*/*_group_*.yaml* is fetched as the node's impersonated group
+	template, because the node's own requests identify it by address. Other
+	include URLs are reported as unresolved and skipped. Jinja template parts
+	are rendered, cloud-config parts are merged with cloud-init's mergers and
+	any *merge_how* setting, and user cloud-config is merged over vendor
+	cloud-config. *vendor_data.enabled* and *vendor_data.disabled_handlers* in
+	user-data are honored. A failed include makes cloud-init abort processing
+	that data, which is reported, as are parts a node would skip. Shell
+	scripts and boothooks are listed, not run. The output is the merged
+	cloud-config, without the node's system configuration. *--user-data* and
+	*--instance-data* replace the node's user-data and metadata.
+
+	ochami's engine does not process MIME multipart data, cloud-config
+	archives, JSON patches, or part handlers, and reports them as unsupported.
+	The cloud-init engine processes them, apart from part handlers, which load
+	Python code from the data and are never run.
+
+	*Engines.* ochami renders with its internal engine by default. It follows
+	cloud-init 26.2 and is checked against it. To render with a real cloud-init
+	instead, pass *--engine cloud-init*, *--cloud-init* _path_, or
+	*--cloud-init-python* _path_, or set *cloud-init.delegate-render* (see
+	*ochami-config*(5)). Templates are rendered with *cloud-init devel render*,
+	run from a private directory with relative file arguments. _path_ can be a
+	wrapper that accepts cloud-init's arguments, such as a script that runs
+	cloud-init in the image a node boots:
+
+	```
+	#!/bin/sh
+	exec podman run --rm -v "$PWD:$PWD:Z" -w "$PWD" registry.example/compute:latest cloud-init "$@"
+	```
+
+	A full render runs entirely in cloud-init when a Python interpreter that
+	imports cloud-init is found, from *--cloud-init-python*, the configuration,
+	or the shebang of *--cloud-init*. Otherwise cloud-init renders each template
+	and ochami merges the parts, with a warning. A template without the
+	*## template: jinja* header is printed unchanged by the cloud-init engine,
+	as a node uses it.
+
+	When cloud-init is requested by a flag and cannot run, the command fails
+	with _CodeConfig_ before reading any input. When it is requested only by the
+	environment or configuration, ochami warns and uses its internal engine.
+
+	*Comparison.* *--compare* renders with both engines and prints cloud-init's
+	output. When the results differ, a unified diff is written to standard
+	error and the command fails with _CodeGeneric_. A full render compares the
+	merged configuration by value and type, and each part's status unless a
+	part is unsupported or unresolved. Both engines render the same gathered
+	inputs.
+
+	*Bundles.* *--export-bundle* _dir_ writes the gathered inputs to a new
+	directory: the template or the node's data and fetched includes, the
+	instance data, a manifest, and *ochami_render.py* with *run.sh*, which render
+	the bundle with cloud-init's own code wherever cloud-init and python3 are
+	installed, such as on a node. *--no-render* stops after writing it.
+	*--bundle* _dir_ renders a bundle again without contacting the service, with
+	either engine. The directory is created with mode 0700 and its files with
+	mode 0600.
+
+	Bundles can contain sensitive node metadata and extra variables, such as SSH
+	keys. They never contain tokens or other credentials.
+
 	Service inputs use GET requests to these endpoints as needed:
 
 	- */cloud-init/admin/groups/{group}* for raw stored template selection without *--node*.
-	- */cloud-init/admin/impersonation/{id}/{group}.yaml* for group selection with *--node*.
+	- */cloud-init/admin/impersonation/{id}/{group}.yaml* for group selection with *--node*, and for each include with *--full*.
 	- */cloud-init/admin/impersonation/{id}/meta-data* when *--node* supplies live metadata.
+	- */cloud-init/admin/impersonation/{id}/vendor-data* and */cloud-init/admin/impersonation/{id}/user-data* with *--full*.
 
 	This command accepts the following options:
 
@@ -744,8 +822,49 @@ Subcommands for this command are as follows:
 		_path_ is *-*. Accepted with either template source. Metadata is always
 		read as YAML (which accepts JSON), independently of *--format-input*.
 
-	At most one of *--template -*, *--metadata -*, and *--extra-vars @-* may
-	read stdin. Invalid combinations return _CodeUsage_; input file, decoding,
+	*--instance-data* (_path_ | -)
+		Render with a node's complete instance data, such as
+		*/run/cloud-init/instance-data-sensitive.json*, instead of metadata.
+		Mutually exclusive with *--metadata*. Extra variables still apply.
+
+	*--full*
+		Render everything the node selected by *--node* receives, or the full
+		bundle given by *--bundle*. Mutually exclusive with *--template* and
+		*--group*.
+
+	*--user-data* (_path_ | -)
+		With *--full*, use this user-data instead of the node's.
+
+	*--engine* (_internal_ | _cloud-init_)
+		Choose the rendering engine. The default is _cloud-init_ when
+		*cloud-init.delegate-render* is true, and otherwise _internal_.
+
+	*--cloud-init* _path_
+		Run this cloud-init executable or wrapper. Selects the cloud-init
+		engine. Defaults to *OCHAMI_CLOUD_INIT_PATH* or *cloud-init.path*.
+
+	*--cloud-init-python* _path_
+		Use this Python interpreter, which must import cloud-init, for exact full
+		rendering. Selects the cloud-init engine. Defaults to
+		*OCHAMI_CLOUD_INIT_PYTHON* or *cloud-init.python*.
+
+	*--compare*
+		Render with both engines, print cloud-init's output, and fail with a
+		diff when they differ. Requires a cloud-init. Mutually exclusive with
+		*--engine*.
+
+	*--export-bundle* _dir_
+		Also write the gathered inputs to the new or empty directory _dir_.
+
+	*--no-render*
+		With *--export-bundle*, write the bundle without rendering.
+
+	*--bundle* _dir_
+		Render a bundle written by *--export-bundle*. Mutually exclusive with
+		the other input options and *--extra-vars*.
+
+	At most one of *--template -*, *--metadata -*, *--instance-data -*,
+	*--user-data -*, and *--extra-vars @-* may read stdin. Invalid combinations return _CodeUsage_; input file, decoding,
 	and template errors return _CodePayload_.
 
 	*-e, --extra-vars* (_extra-vars_ | @_path_ | @-)
@@ -761,11 +880,11 @@ Subcommands for this command are as follows:
 		## template: jinja
 		#cloud-config
 		# v1.variant={{ v1.variant }}
-		{%- if v1.variant == 'suse' %}
-		{%- set def_dir = '/foo' %}
-		{%- else %}
-		{%- set def_dir = '/bar' %}
-		{%- endif %}
+		{% if v1.variant == 'suse' %}
+		{% set def_dir = '/foo' %}
+		{% else %}
+		{% set def_dir = '/bar' %}
+		{% endif %}
 		write_files:
 		  - content: |
 			   my stuff
@@ -783,7 +902,6 @@ Subcommands for this command are as follows:
 		will render:
 
 		```
-		## template: jinja
 		#cloud-config
 		# v1.variant=suse
 		write_files:
@@ -803,7 +921,6 @@ Subcommands for this command are as follows:
 		will render:
 
 		```
-		## template: jinja
 		#cloud-config
 		# v1.variant=rhel
 		write_files:
