@@ -19,23 +19,33 @@
 // # Variables and input documents
 //
 // Variables follow cloud-init's instance data. Metadata is exposed as
-// ds.meta_data, and extra variables replace top-level keys of the instance
-// data. Supplying ds replaces the entire value. As on a node, every mapping is
-// then ordered by sorted keys, including mappings inside lists. Each key that
-// contains a Jinja operator also gets an alias with underscores, so
-// ds.meta_data.local_hostname reads local-hostname. The children of a version
-// key such as v1 are copied to the enclosing mapping. Base64-encoded keys are
+// ds.meta_data. The standardized v1 keys that cloud-init's NoCloud datasource
+// derives from metadata are added, such as v1.instance_id, v1.local_hostname,
+// v1.cloud_name, v1.availability_zone, v1.region, and v1.public_ssh_keys. Keys
+// that only a booted node knows, such as v1.distro and sys_info, are absent.
+// A node's own instance data can be supplied instead of metadata. Extra
+// variables replace top-level keys of the instance data. Supplying ds or v1
+// replaces the entire value. [InstanceDataJSON] returns the instance data as
+// cloud-init writes instance-data.json. As on a node, the data then takes a
+// JSON round trip, so every mapping is ordered by sorted keys, including
+// mappings inside lists. Each key that contains a Jinja operator also gets an
+// alias with underscores, so ds.meta_data.local_hostname reads local-hostname.
+// The children of a version key such as v1 are copied to the enclosing mapping. Base64-encoded keys are
 // not decoded.
 //
 // Documents accept JSON (including json-pretty) and YAML. Empty formats mean
 // JSON, and empty or null documents mean empty mappings. Other top-level values
-// must be mappings. YAML uses yaml.v3 scalar resolution, including timestamps
-// and binary scalars, which differs from the YAML 1.1 rules cloud-init uses.
-// Mapping keys must be strings. Duplicate YAML keys, cyclic aliases, unsupported
-// tags, multiple documents, and integers outside signed 64-bit range are
-// rejected. JSON duplicate keys keep the last value. YAML merge keys expand,
-// earlier merge sources win, and explicit keys override merged values.
-// Fractional and exponent JSON numbers are floats.
+// must be mappings. YAML is decoded as PyYAML's safe_load decodes it, which is
+// how cloud-init loads NoCloud metadata: YAML 1.1 scalars (yes, on, and off as
+// booleans, 0644 as octal, 1:20 as base 60, and timestamps), duplicate keys
+// keeping the last value, and tabs rejected where PyYAML rejects them. Binary
+// scalars and timestamps become what cloud-init writes to instance-data.json
+// for them. Scalar keys become strings as in instance-data.json, so a yes key
+// reads as "true". Recursive aliases, explicitly tagged collections other
+// than maps and sequences, custom tags, multiple documents, and integers
+// outside signed 64-bit range are rejected. JSON duplicate keys keep the last
+// value. YAML merge keys expand, earlier merge sources win, and explicit keys
+// override merged values. Fractional and exponent JSON numbers are floats.
 //
 // # Rendering profile
 //

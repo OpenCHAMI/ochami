@@ -1,0 +1,54 @@
+{
+ "ds": {
+  "meta_data": {
+   "instance_data": {
+    "v1": {
+     "vendor_data": {
+      "groups": {
+       "all": {
+        "mounts": [
+         {
+          "dst": "/srv/nfs",
+          "opts": "defaults",
+          "src": "nfs:/export",
+          "type": "nfs"
+         },
+         {
+          "dst": "/",
+          "opts": "defaults",
+          "src": "/dev/vda1",
+          "type": "ext4"
+         },
+         {
+          "dst": "/srv/a/b",
+          "opts": "vers=4",
+          "range": [
+           7
+          ],
+          "src": "10.0.0.@@@IDX@@@:/export/@@@IDX@@@",
+          "type": "vast"
+         }
+        ]
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "v1": {
+  "_beta_keys": [
+   "subplatform"
+  ],
+  "availability-zone": null,
+  "availability_zone": null,
+  "cloud-name": "unknown",
+  "cloud_id": "nocloud",
+  "cloud_name": "unknown",
+  "instance-id": "iid-datasource",
+  "instance_id": "iid-datasource",
+  "platform": "nocloud",
+  "public_ssh_keys": [],
+  "region": null
+ }
+}

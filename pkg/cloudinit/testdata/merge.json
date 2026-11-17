@@ -1,0 +1,2606 @@
+{
+  "_comment": "cloud-init merge results, verified by scripts/cloud-init-reference.py. Run it with --write to regenerate expected values.",
+  "cases": [
+    {
+      "name": "default replace",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "a: 2\nd: {x: 9}\nl: [3]\ns: z\nn: new\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "2"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "9"
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "3"
+                }
+              ]
+            }
+          ],
+          [
+            "n",
+            {
+              "t": "str",
+              "v": "new"
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "z"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "default with empty base",
+      "base": "",
+      "payload": "a: 1\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "dict no_replace recurse_list list append",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace,recurse_list)+list(append)\na: 2\nd: {y: [3], z: 1}\nl: [3]\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      },
+                      {
+                        "t": "int",
+                        "v": "3"
+                      }
+                    ]
+                  }
+                ],
+                [
+                  "z",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                },
+                {
+                  "t": "int",
+                  "v": "3"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list of dict mergers",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how:\n  - name: list\n    settings: [append]\n  - name: dict\n    settings: [no_replace, recurse_list]\nl: [3]\nd: {y: [9]}\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      },
+                      {
+                        "t": "int",
+                        "v": "9"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                },
+                {
+                  "t": "int",
+                  "v": "3"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list of list mergers",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how:\n  - [dict, no_replace, recurse_array]\n  - [list, prepend]\nl: [0]\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "0"
+                },
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "merge_type",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_type: dict(no_replace)\na: 2\nn: 1\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "n",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null merge_how uses merge_type",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: null\nmerge_type: dict(no_replace)\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "merge_how keeps merge_type",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(replace)\nmerge_type: dict(no_replace)\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "2"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "merge_type",
+            {
+              "t": "str",
+              "v": "dict(no_replace)"
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "header mergers",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "l: [3]\nd: {y: [4]}\n",
+      "header": "list(append)+dict(recurse_array)+str()",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      },
+                      {
+                        "t": "int",
+                        "v": "4"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                },
+                {
+                  "t": "int",
+                  "v": "3"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "header after part mergers",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace)\na: 2\n",
+      "header": "dict(replace)",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "allow_delete",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace,allow_delete)\na: null\nd: null\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "replace allow_delete",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(replace,allow_delete)\na: null\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null without allow_delete",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(replace)\na: null\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "null"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "no_replace keeps old",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace)\na: 2\ns: z\nl: [9]\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "recurse_str append",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace,recurse_str)+str(append)\ns: def\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abcdef"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "recurse_str without append",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace,recurse_str)+str()\ns: def\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "def"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list prepend",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace,recurse_array)+list(prepend)\nl: [0]\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "0"
+                },
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list no_replace",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace,recurse_array)+list(no_replace)\nl: [9, 8, 7]\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list replace keeps length",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace,recurse_array)+list()\nl: [9, 8, 7]\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "9"
+                },
+                {
+                  "t": "int",
+                  "v": "8"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list replace shorter",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace,recurse_array)+list()\nl: [9]\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "9"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list recurse_dict",
+      "base": "l: [{a: 1}, {b: 2}]\n",
+      "payload": "merge_how: dict(no_replace,recurse_array)+list(recurse_dict)\nl: [{c: 3}]\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "dict",
+                  "v": [
+                    [
+                      "a",
+                      {
+                        "t": "int",
+                        "v": "1"
+                      }
+                    ],
+                    [
+                      "c",
+                      {
+                        "t": "int",
+                        "v": "3"
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "t": "dict",
+                  "v": [
+                    [
+                      "b",
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list append string",
+      "base": "k: [x]\n",
+      "payload": "merge_how: dict(no_replace,recurse_str)+list(append)\nk: ab\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "k",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "str",
+                  "v": "x"
+                },
+                {
+                  "t": "str",
+                  "v": "a"
+                },
+                {
+                  "t": "str",
+                  "v": "b"
+                }
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list replace mapping",
+      "base": "k: [x]\n",
+      "payload": "merge_how: dict(no_replace)+list()\nk: {a: 1}\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "k",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "a",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ]
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "list no_replace mapping",
+      "base": "k: [x]\n",
+      "payload": "merge_how: dict(no_replace)+list(no_replace)\nk: {a: 1}\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "list append mapping",
+      "base": "k: [x]\n",
+      "payload": "merge_how: dict(no_replace)+list(append)\nk: {a: 1, b: 2}\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "k",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "str",
+                  "v": "x"
+                },
+                {
+                  "t": "str",
+                  "v": "a"
+                },
+                {
+                  "t": "str",
+                  "v": "b"
+                }
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "str append mapping",
+      "base": "k: a\n",
+      "payload": "merge_how: dict(no_replace)+str(append)\nk: {x: 1}\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "string settings substring",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how:\n  - name: dict\n    settings: no_replace\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "2"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "mapping settings",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how:\n  - name: dict\n    settings: {no_replace: 1}\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "null settings",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how:\n  - name: dict\n    settings: null\na: 2\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "missing settings",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how:\n  - name: dict\na: 2\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "dashed name",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how:\n  - name: m-dict\n    settings: [no_replace]\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "unknown merger",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: foo()\na: 2\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "malformed merger",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict\na: 2\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "prefixed merger",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: m_dict(no_replace)\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "double prefixed merger",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: m_m_dict(no_replace)\na: 2\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "string list element",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: [dict]\na: 2\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "falsy list element",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: [['', replace], [dict, no_replace]]\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "empty merge_how",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: ''\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "2"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "integer merge_how",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: 5\na: 2\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "mapping merge_how empty",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: {}\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "2"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "mapping merge_how",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: {dict: 1}\na: 2\n",
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "no dict merger",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: list(append)\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "first merger wins",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: dict(no_replace)+dict(replace)\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "case and dashes",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: DICT(No-Replace)\na: 2\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "both methods",
+      "base": "a: 1\nd: {x: 1, y: [1, 2]}\nl: [1, 2]\ns: abc\n",
+      "payload": "merge_how: list(no_replace,append)+dict(no_replace,recurse_list)\nl: [3]\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "list",
+                    "v": [
+                      {
+                        "t": "int",
+                        "v": "1"
+                      },
+                      {
+                        "t": "int",
+                        "v": "2"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                },
+                {
+                  "t": "int",
+                  "v": "3"
+                }
+              ]
+            }
+          ],
+          [
+            "s",
+            {
+              "t": "str",
+              "v": "abc"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "deep no_replace",
+      "base": "a: {b: {c: 1, d: [1]}}\n",
+      "payload": "merge_how: dict(no_replace,recurse_list)+list(append)\na: {b: {c: 2, d: [2], e: 3}}\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "b",
+                  {
+                    "t": "dict",
+                    "v": [
+                      [
+                        "c",
+                        {
+                          "t": "int",
+                          "v": "1"
+                        }
+                      ],
+                      [
+                        "d",
+                        {
+                          "t": "list",
+                          "v": [
+                            {
+                              "t": "int",
+                              "v": "1"
+                            },
+                            {
+                              "t": "int",
+                              "v": "2"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "e",
+                        {
+                          "t": "int",
+                          "v": "3"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "type change dict to scalar",
+      "base": "a: {b: 1}\n",
+      "payload": "merge_how: dict(no_replace)\na: 5\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "b",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ]
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "type change scalar to dict",
+      "base": "a: 5\n",
+      "payload": "merge_how: dict(no_replace)\na: {b: 1}\n",
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "5"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "user over vendor",
+      "many": [
+        "a: 1\nl: [1]\nd: {x: 1}\n",
+        "a: 2\nb: 3\nl: [2, 3]\nd: {x: 2, y: 2}\n"
+      ],
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "b",
+            {
+              "t": "int",
+              "v": "3"
+            }
+          ],
+          [
+            "d",
+            {
+              "t": "dict",
+              "v": [
+                [
+                  "x",
+                  {
+                    "t": "int",
+                    "v": "1"
+                  }
+                ],
+                [
+                  "y",
+                  {
+                    "t": "int",
+                    "v": "2"
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                }
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "empty sources skipped",
+      "many": [
+        "",
+        "{}",
+        "a: 1\n"
+      ],
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source merge_how",
+      "many": [
+        "l: [1]\n",
+        "merge_how: list(append)+dict(no_replace,recurse_list)\nl: [2]\n"
+      ],
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "l",
+            {
+              "t": "list",
+              "v": [
+                {
+                  "t": "int",
+                  "v": "1"
+                },
+                {
+                  "t": "int",
+                  "v": "2"
+                }
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "three sources",
+      "many": [
+        "a: 1\n",
+        "a: 2\nb: 2\n",
+        "a: 3\nb: 3\nc: 3\n"
+      ],
+      "expected": {
+        "t": "dict",
+        "v": [
+          [
+            "a",
+            {
+              "t": "int",
+              "v": "1"
+            }
+          ],
+          [
+            "b",
+            {
+              "t": "int",
+              "v": "2"
+            }
+          ],
+          [
+            "c",
+            {
+              "t": "int",
+              "v": "3"
+            }
+          ]
+        ]
+      }
+    }
+  ]
+}

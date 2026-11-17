@@ -22,13 +22,24 @@ type Document struct {
 }
 
 // RenderRequest contains a template and the documents used to construct its
-// variables. Metadata becomes ds.meta_data. ExtraVars replaces top-level keys of
-// the instance data, including ds when supplied, without recursively merging
-// mappings.
+// variables.
+//
+// Metadata becomes ds.meta_data, and the standardized v1 keys that cloud-init's
+// NoCloud datasource derives from metadata are added, such as v1.instance_id
+// and v1.local_hostname. Keys that only a booted node knows, such as
+// v1.distro, are absent.
+//
+// InstanceData, when its Data is nonempty, is used as the complete instance
+// data instead, for example a node's instance-data-sensitive.json. It cannot be
+// combined with Metadata.
+//
+// ExtraVars replaces top-level keys of the instance data, including ds and v1
+// when supplied, without recursively merging mappings.
 type RenderRequest struct {
-	Template  []byte
-	Metadata  Document
-	ExtraVars Document
+	Template     []byte
+	Metadata     Document
+	InstanceData Document
+	ExtraVars    Document
 }
 
 // RenderStage identifies the operation that failed during rendering.
@@ -39,6 +50,8 @@ const (
 	StageMetadata RenderStage = "metadata"
 	// StageExtraVars identifies extra-variable decoding errors.
 	StageExtraVars RenderStage = "extra-vars"
+	// StageInstanceData identifies instance-data decoding errors.
+	StageInstanceData RenderStage = "instance-data"
 	// StageInitialize identifies engine initialization errors.
 	StageInitialize RenderStage = "initialize"
 	// StageCompile identifies template compilation errors.
@@ -69,13 +82,9 @@ func Render(ctx context.Context, req RenderRequest) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", &RenderError{Stage: StageExecute, Err: err}
 	}
-	metadata, err := decodeDocument(req.Metadata)
+	data, err := buildInstanceData(req)
 	if err != nil {
-		return "", &RenderError{Stage: StageMetadata, Err: err}
-	}
-	extra, err := decodeDocument(req.ExtraVars)
-	if err != nil {
-		return "", &RenderError{Stage: StageExtraVars, Err: err}
+		return "", err
 	}
 	template := string(req.Template)
 	body, headed, err := templateBody(template)
@@ -100,7 +109,7 @@ func Render(ctx context.Context, req RenderRequest) (string, error) {
 		}
 		return "", &RenderError{Stage: StageCompile, Err: err}
 	}
-	out, err := tpl.RenderContext(ctx, instanceData(metadata, extra))
+	out, err := tpl.RenderContext(ctx, convertInstanceData(data))
 	if err != nil {
 		return "", &RenderError{Stage: StageExecute, Err: err}
 	}
@@ -115,4 +124,16 @@ func Render(ctx context.Context, req RenderRequest) (string, error) {
 		out += "\n"
 	}
 	return out, nil
+}
+
+// InstanceDataJSON returns the instance data that Render builds for req,
+// before cloud-init's variable conversion, serialized as cloud-init writes
+// instance-data.json. Template is ignored. The result can be passed to
+// cloud-init devel render or used as InstanceData.
+func InstanceDataJSON(req RenderRequest) ([]byte, error) {
+	data, err := buildInstanceData(req)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(pyJSONDumps(data)), nil
 }
