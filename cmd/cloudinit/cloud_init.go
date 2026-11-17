@@ -14,6 +14,7 @@ import (
 	defaultscmd "github.com/openchami/ochami/cmd/cloudinit/defaults"
 	groupcmd "github.com/openchami/ochami/cmd/cloudinit/group"
 	nodecmd "github.com/openchami/ochami/cmd/cloudinit/node"
+	rendercmd "github.com/openchami/ochami/cmd/cloudinit/render"
 	servicecmd "github.com/openchami/ochami/cmd/cloudinit/service"
 )
 
@@ -22,8 +23,8 @@ func NewCmd() *cobra.Command {
 	var cloudInitCmd = &cobra.Command{
 		Use:   "cloud-init",
 		Args:  cobra.NoArgs,
-		Short: "Interact with the cloud-init service",
-		Long: `Interact with the cloud-init service. This is a metacommand.
+		Short: "Manage cloud-init data and render templates",
+		Long: `Manage cloud-init data and render templates. This is a metacommand.
 
 See ochami-cloud-init(1) for more details.`,
 		RunE: cli.PrintUsage,
@@ -37,6 +38,7 @@ See ochami-cloud-init(1) for more details.`,
 		defaultscmd.NewCmd(),
 		groupcmd.NewCmd(),
 		nodecmd.NewCmd(),
+		rendercmd.NewCmd(),
 		servicecmd.NewCmd(),
 	)
 

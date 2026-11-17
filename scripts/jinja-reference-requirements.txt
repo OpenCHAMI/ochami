@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: © 2026 OpenCHAMI a Series of LF Projects, LLC
+#
+# SPDX-License-Identifier: MIT
+#
+# Runtime imports of cloud-init's Jinja rendering path. cloud-init itself is
+# not on PyPI and is loaded from a pinned source tarball instead.
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+PyYAML==6.0.3
+requests==2.34.2
+certifi==2026.10.23
+charset-normalizer==3.5.2
+idna==3.20
+urllib3==2.8.0
