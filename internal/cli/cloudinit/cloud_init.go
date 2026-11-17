@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package cloud_init
+package cloudinit
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
-	"github.com/openchami/ochami/pkg/client/cloud_init"
+	"github.com/openchami/ochami/pkg/client/cloudinit"
 	"github.com/openchami/ochami/pkg/config"
 )
 
@@ -109,7 +109,7 @@ func CompletionHeaderWhen(cmd *cobra.Command, args []string, toComplete string) 
 
 // GetClient sets up the cloud-init client with the cloud-init base URI
 // and certificates (if necessary) and returns it.
-func GetClient(cmd *cobra.Command, rt *cli.Runtime) (*cloud_init.CloudInitClient, error) {
+func GetClient(cmd *cobra.Command, rt *cli.Runtime) (*cloudinit.CloudInitClient, error) {
 	// Without a base URI, we cannot do anything
 	cloudInitbaseURI, err := rt.GetBaseURI(cmd, config.ServiceCloudInit)
 	if err != nil {
@@ -117,7 +117,7 @@ func GetClient(cmd *cobra.Command, rt *cli.Runtime) (*cloud_init.CloudInitClient
 	}
 
 	// Create client to make request to cloud-init
-	cloudInitClient, err := cloud_init.NewClient(cloudInitbaseURI, client.WithInsecure(rt.Insecure), client.WithShowToken(rt.ShowToken(cmd)), client.WithLogger(rt.Logger))
+	cloudInitClient, err := cloudinit.NewClient(cloudInitbaseURI, client.WithInsecure(rt.Insecure), client.WithShowToken(rt.ShowToken(cmd)), client.WithLogger(rt.Logger))
 	if err != nil {
 		return nil, cli.Errorf(cli.CodeGeneric, "error creating new cloud-init client: %w", err)
 	}

@@ -15,9 +15,9 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
-	"github.com/openchami/ochami/pkg/client/cloud_init"
+	"github.com/openchami/ochami/pkg/client/cloudinit"
 
-	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
+	cloudinitcli "github.com/openchami/ochami/internal/cli/cloudinit"
 )
 
 // getGroupData returns a slice of cloud-init group data for the
@@ -29,7 +29,7 @@ func getGroupData(cmd *cobra.Command, args []string, rt *cli.Runtime) (groupSlic
 	}
 
 	// Create client to use for requests
-	cloudInitClient, err := cloud_init_lib.GetClient(cmd, rt)
+	cloudInitClient, err := cloudinitcli.GetClient(cmd, rt)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func getGroupData(cmd *cobra.Command, args []string, rt *cli.Runtime) (groupSlic
 		if err := json.Unmarshal(results[0].Value.Body, &groupMap); err != nil {
 			return nil, cli.Errorf(cli.CodePayload, "failed to unmarshal all groups: %w", err)
 		}
-		groupSlice = cloud_init.CIGroupDataMapToSlice(groupMap)
+		groupSlice = cloudinit.CIGroupDataMapToSlice(groupMap)
 	} else {
 		// One or more arguments (group IDs) provided, get data
 		// for just those groups.
@@ -110,7 +110,7 @@ See ochami-cloud-init(1) for more details.`,
 }
 
 func newCmdGroupGetConfig() *cobra.Command {
-	headerWhen := cloud_init_lib.CIFlagHeaderWhen(cloud_init_lib.CIFlagHeaderMultiple)
+	headerWhen := cloudinitcli.CIFlagHeaderWhen(cloudinitcli.CIFlagHeaderMultiple)
 
 	// groupGetConfigCmd represents the "cloud-init group get config" command
 	var groupGetConfigCmd = &cobra.Command{
@@ -160,7 +160,7 @@ See ochami-cloud-init(1) for more details.`,
 					Content:  newCfg.Content,
 					Encoding: newCfg.Encoding,
 				}
-				cBytes, err := cloud_init.DecodeCloudConfig(ccf)
+				cBytes, err := cloudinit.DecodeCloudConfig(ccf)
 				if err != nil {
 					return cli.Errorf(cli.CodePayload, "failed to decode cloud-config for %s: %w", newCfg.Name, err)
 				}
@@ -171,15 +171,15 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Print cloud-init config(s)
-			items := make([]cloud_init_lib.RenderItem, 0, len(configSlice))
+			items := make([]cloudinitcli.RenderItem, 0, len(configSlice))
 			for _, cfg := range configSlice {
-				items = append(items, cloud_init_lib.RenderItem{
+				items = append(items, cloudinitcli.RenderItem{
 					Labels:                     fmt.Sprintf("group=%s", cfg.Name),
 					Body:                       string(cfg.Content),
 					BlankLineAfterAlwaysHeader: true,
 				})
 			}
-			if err := cloud_init_lib.Render(rt.Ios.Out(), headerWhen, items); err != nil {
+			if err := cloudinitcli.Render(rt.Ios.Out(), headerWhen, items); err != nil {
 				return cli.Errorf(cli.CodePayload, "failed to write cloud-init group config: %w", err)
 			}
 
@@ -189,7 +189,7 @@ See ochami-cloud-init(1) for more details.`,
 
 	// Create flags
 	groupGetConfigCmd.Flags().Var(&headerWhen, "headers", "when to print headers above cloud-configs (always,multiple,never")
-	groupGetConfigCmd.RegisterFlagCompletionFunc("headers", cloud_init_lib.CompletionHeaderWhen)
+	groupGetConfigCmd.RegisterFlagCompletionFunc("headers", cloudinitcli.CompletionHeaderWhen)
 
 	return groupGetConfigCmd
 }

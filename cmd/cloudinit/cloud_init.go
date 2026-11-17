@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package cloud_init
+package cloudinit
 
 import (
 	"github.com/spf13/cobra"
@@ -11,10 +11,10 @@ import (
 	"github.com/openchami/ochami/internal/cli"
 
 	// Subcommands
-	defaults_cmd "github.com/openchami/ochami/cmd/cloud_init/defaults"
-	group_cmd "github.com/openchami/ochami/cmd/cloud_init/group"
-	node_cmd "github.com/openchami/ochami/cmd/cloud_init/node"
-	service_cmd "github.com/openchami/ochami/cmd/cloud_init/service"
+	defaultscmd "github.com/openchami/ochami/cmd/cloudinit/defaults"
+	groupcmd "github.com/openchami/ochami/cmd/cloudinit/group"
+	nodecmd "github.com/openchami/ochami/cmd/cloudinit/node"
+	servicecmd "github.com/openchami/ochami/cmd/cloudinit/service"
 )
 
 func NewCmd() *cobra.Command {
@@ -34,10 +34,10 @@ See ochami-cloud-init(1) for more details.`,
 
 	// Add subcommands
 	cloudInitCmd.AddCommand(
-		defaults_cmd.NewCmd(),
-		group_cmd.NewCmd(),
-		node_cmd.NewCmd(),
-		service_cmd.NewCmd(),
+		defaultscmd.NewCmd(),
+		groupcmd.NewCmd(),
+		nodecmd.NewCmd(),
+		servicecmd.NewCmd(),
 	)
 
 	return cloudInitCmd

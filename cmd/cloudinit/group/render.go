@@ -14,9 +14,9 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 	"github.com/openchami/ochami/pkg/client"
-	"github.com/openchami/ochami/pkg/client/cloud_init"
+	"github.com/openchami/ochami/pkg/client/cloudinit"
 
-	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
+	cloudinitcli "github.com/openchami/ochami/internal/cli/cloudinit"
 )
 
 func newCmdGroupRender() *cobra.Command {
@@ -44,7 +44,7 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd, rt)
+			cloudInitClient, err := cloudinitcli.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -71,7 +71,7 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Get node instance data
-			results, err = cloudInitClient.GetNodeData(cmd.Context(), cloud_init.CloudInitMetaData, rt.Token, args[1])
+			results, err = cloudInitClient.GetNodeData(cmd.Context(), cloudinit.CloudInitMetaData, rt.Token, args[1])
 			if err != nil {
 				return cli.ClassifyClientError(err, "failed to get cloud-init node meta-data", "failed to get cloud-init node meta-data")
 			}

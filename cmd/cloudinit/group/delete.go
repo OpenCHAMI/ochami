@@ -12,7 +12,7 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 
-	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
+	cloudinitcli "github.com/openchami/ochami/internal/cli/cloudinit"
 )
 
 // groupDeleteOptions holds the flag values for the cloud-init group delete command.
@@ -37,7 +37,7 @@ func runCoreGroupDelete(cmd *cobra.Command, opts *groupDeleteOptions, groupsToDe
 	}
 
 	// Create client to use for requests
-	cloudInitClient, err := cloud_init_lib.GetClient(cmd, rt)
+	cloudInitClient, err := cloudinitcli.GetClient(cmd, rt)
 	if err != nil {
 		return err
 	}

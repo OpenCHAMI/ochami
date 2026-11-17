@@ -11,7 +11,7 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 
-	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
+	cloudinitcli "github.com/openchami/ochami/internal/cli/cloudinit"
 )
 
 func newCmdDefaultsSet() *cobra.Command {
@@ -62,7 +62,7 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd, rt)
+			cloudInitClient, err := cloudinitcli.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}

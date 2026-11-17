@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package cloud_init
+package cloudinit
 
 import (
 	"context"

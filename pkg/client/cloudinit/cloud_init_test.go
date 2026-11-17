@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package cloud_init
+package cloudinit
 
 // cloud_init_test.go unit-tests the CloudInitClient wrapper methods against an
 // httptest.Server: the simple GET endpoints (version, defaults, api), the

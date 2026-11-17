@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package cloud_init
+package cloudinit
 
 // cloud_init_errors_test.go unit-tests the CloudInitClient wrapper methods'
 // error arms: input rejected before a request is made, a non-2XX response

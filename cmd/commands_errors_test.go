@@ -27,7 +27,7 @@ import (
 
 	bootcmd "github.com/openchami/ochami/cmd/boot"
 	bsscmd "github.com/openchami/ochami/cmd/bss"
-	cloudinitcmd "github.com/openchami/ochami/cmd/cloud_init"
+	cloudinitcmd "github.com/openchami/ochami/cmd/cloudinit"
 	configcmd "github.com/openchami/ochami/cmd/config"
 	metadatacmd "github.com/openchami/ochami/cmd/metadata"
 	pcscmd "github.com/openchami/ochami/cmd/pcs"

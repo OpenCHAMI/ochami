@@ -12,16 +12,16 @@ import (
 
 	"github.com/openchami/ochami/internal/cli"
 
-	cloud_init_lib "github.com/openchami/ochami/internal/cli/cloud_init"
+	cloudinitcli "github.com/openchami/ochami/internal/cli/cloudinit"
 )
 
-func newCmdGroupSet() *cobra.Command {
-	// groupSetCmd represents the "cloud-init group set" command
-	var groupSetCmd = &cobra.Command{
-		Use:   "set [-d (<data> | @<path>)] [-f <format>]",
+func newCmdGroupAdd() *cobra.Command {
+	// groupAddCmd represents the "cloud-init group add" command
+	var groupAddCmd = &cobra.Command{
+		Use:   "add [-d (<data> | @<path>)] [-f <format>]",
 		Args:  cobra.NoArgs,
-		Short: "Set cloud-init group data, overwriting existing data",
-		Long: `Set cloud-init group data, overwriting existing data. Data is read from
+		Short: "Add one or more new groups to cloud-init",
+		Long: `Add one or more new groups to cloud-init. Data is read from
 standard input. Alternatively, pass -d to pass raw payload data
 or (if flag argument starts with @) a file containing the payload
 data. -f can be specified to change the format of the input
@@ -30,8 +30,8 @@ for the payload. If "-" is used as the input payload filename, the
 data is read from standard input.
 
 See ochami-cloud-init(1) for more details.`,
-		Example: `  # Set cloud-init group data using input payload data
-  ochami cloud-init group set -d '[{
+		Example: `  # Add cloud-init groups using input payload data
+  ochami cloud-init group add -d '[{
     "description": "The compute group",
     "file": {
       "content": "IyMgdGVtcGxhdGU6IGppbmphCiNjbG91ZC1jb25maWcKbWVyZ2VfaG93OgotIG5hbWU6IGxpc3QKICBzZXR0aW5nczogW2FwcGVuZF0KLSBuYW1lOiBkaWN0CiAgc2V0dGluZ3M6IFtub19yZXBsYWNlLCByZWN1cnNlX2xpc3RdCnVzZXJzOgogIC0gbmFtZTogcm9vdAogICAgc3NoX2F1dGhvcml6ZWRfa2V5czoge3sgZHMubWV0YV9kYXRhLmluc3RhbmNlX2RhdGEudjEucHVibGljX2tleXMgfX0KZGlzYWJsZV9yb290OiBmYWxzZQo=",
@@ -44,15 +44,15 @@ See ochami-cloud-init(1) for more details.`,
     "name": "compute"
   }]'
 
-  # Set cloud-init group data using input payload file
-  ochami cloud-init group set -d @payload.json
-  ochami cloud-init group set -d @payload.yaml -f yaml
+  # Add cloud-init groups using input payload file
+  ochami cloud-init group add -d @payload.json
+  ochami cloud-init group add -d @payload.yaml -f yaml
 
-  # Set cloud-init group data using data from standard input
-  echo '<json_data>' | ochami cloud-init group set
-  echo '<json_data>' | ochami cloud-init group set -d @-
-  echo '<yaml_data>' | ochami cloud-init group set -f yaml
-  echo '<yaml_data>' | ochami cloud-init group set -d @- -f yaml`,
+  # Add cloud-init groups using data from standard input
+  echo '<json_data>' | ochami cloud-init group add
+  echo '<json_data>' | ochami cloud-init group add -d @-
+  echo '<yaml_data>' | ochami cloud-init group add -f yaml
+  echo '<yaml_data>' | ochami cloud-init group add -d @- -f yaml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get runtime from context (always available since cmd/root.go injects it)
 			rt, err := cli.RuntimeFromCommand(cmd)
@@ -61,7 +61,7 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Create client to use for requests
-			cloudInitClient, err := cloud_init_lib.GetClient(cmd, rt)
+			cloudInitClient, err := cloudinitcli.GetClient(cmd, rt)
 			if err != nil {
 				return err
 			}
@@ -71,7 +71,7 @@ See ochami-cloud-init(1) for more details.`,
 				return err
 			}
 
-			// The list of group data we will send
+			// The group data we will send
 			ciGroups := []cistore.GroupData{}
 
 			// Read payload from file or stdin.
@@ -95,8 +95,8 @@ See ochami-cloud-init(1) for more details.`,
 			}
 
 			// Send data
-			results := cloudInitClient.PutGroups(cmd.Context(), ciGroups, rt.Token)
-			if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "cloud-init group data setting"); err != nil {
+			results := cloudInitClient.PostGroups(cmd.Context(), ciGroups, rt.Token)
+			if err := cli.AggregateItemErrors(rt.Logger, results.Errors(), "cloud-init group addition"); err != nil {
 				return err
 			}
 
@@ -105,10 +105,10 @@ See ochami-cloud-init(1) for more details.`,
 	}
 
 	// Create flags
-	groupSetCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
+	groupAddCmd.Flags().StringP("data", "d", "", "payload data or (if starting with @) file containing payload data (can be - to read from stdin)")
 
-	cli.AddFormatInputFlag(groupSetCmd)
-	groupSetCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
+	cli.AddFormatInputFlag(groupAddCmd)
+	groupAddCmd.RegisterFlagCompletionFunc("format-input", cli.CompletionFormatData)
 
-	return groupSetCmd
+	return groupAddCmd
 }
