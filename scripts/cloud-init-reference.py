@@ -12,6 +12,9 @@ Go, other than Jinja rendering, which scripts/jinja-reference.py covers:
   loads cloud-config and NoCloud meta-data.
 - merge.json: cloud-config parts merged as CloudConfigPartHandler merges
   them, and configurations merged by util.mergemanydict.
+- full.json: user-data and vendor-data processed by cloud-init's
+  UserDataProcessor, part handlers, and mergers, through the render helper
+  that ochami embeds (pkg/cloudinit/helper/ochami_render.py).
 
 Each expected value is computed by the pinned cloud-init release and its
 dependencies. Pass the source tree with --cloud-init-src. See
@@ -142,6 +145,64 @@ def check_merge(root, write):
     return failed
 
 
+def load_helper():
+    """Import the render helper that ochami embeds."""
+    import importlib.util
+
+    # Keep the source tree free of bytecode caches.
+    sys.dont_write_bytecode = True
+    path = Path(__file__).resolve().parents[1] / "pkg/cloudinit/helper/ochami_render.py"
+    spec = importlib.util.spec_from_file_location("ochami_render", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def full_summary(result):
+    """Reduce a helper result to what ochami's engine must reproduce."""
+
+    def section(data):
+        out = {
+            "failed": data["failed"] is not None,
+            "parts": [[part["name"], part["status"]] for part in data["parts"]],
+        }
+        if "disabled" in data:
+            out["disabled"] = data["disabled"]
+        return out
+
+    return {"user": section(result["user"]), "vendor": section(result["vendor"]), "merged": result["merged"]}
+
+
+def check_full(root, write, src):
+    import logging
+
+    logging.disable(logging.CRITICAL)
+    helper = load_helper()
+    path = root / "full.json"
+    doc = json.loads(path.read_text())
+    failed = False
+    for case in doc["cases"]:
+        includes = {}
+        for url, entry in case["includes"].items():
+            entry = dict(entry)
+            if "content" in entry:
+                entry["content"] = entry["content"].encode()
+            includes[url] = entry
+        result = helper.full_render(
+            case["user_data"].encode(), case["vendor_data"].encode(), case["instance_data"], includes, src
+        )
+        expected = full_summary(result)
+        if write:
+            case["expected"] = expected
+        elif case.get("expected") != expected:
+            print(f"full {case['name']}: expected {expected}, file has {case.get('expected')}", file=sys.stderr)
+            failed = True
+    logging.disable(logging.NOTSET)
+    if write:
+        path.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
+    return failed
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--cloud-init-src", required=True, help="source tree of the pinned cloud-init release")
@@ -160,6 +221,7 @@ def main():
 
     failed = check_yaml(root, args.write)
     failed = check_merge(root, args.write) or failed
+    failed = check_full(root, args.write, args.cloud_init_src) or failed
     return int(failed)
 
 
