@@ -44,6 +44,68 @@ jobs:
       - name: Verify exact cloud-init output
         run: python scripts/jinja-reference.py --cloud-init-src "$RUNNER_TEMP/cloud-init"
 
+      - name: Verify YAML, merge, and full rendering cases
+        run: python scripts/cloud-init-reference.py --cloud-init-src "$RUNNER_TEMP/cloud-init"
+
+  cloud-init-delegation:
+    name: cloud-init ${{ matrix.cloud-init }} delegation
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Rocky Linux 9 images ship these releases with Python 3.9 and
+          # Jinja2 2.11.3.
+          - cloud-init: '23.4'
+            sha256: 27023e08a92a7bd27838d9b790776a8cf05104f3efb85e438ec50175e060487a
+            python: '3.9'
+            requirements: scripts/cloud-init-requirements-rocky9.txt
+          - cloud-init: '24.4'
+            sha256: 624ed62520c0b3bab4a9f6ae748d8e237f7e9dc615f22d67934da19a8546a5f9
+            python: '3.9'
+            requirements: scripts/cloud-init-requirements-rocky9.txt
+          # The reference release, which results must match exactly.
+          - cloud-init: '26.2'
+            sha256: 16274a4102426871cad84ad07db41f82aa8f4d43d95e5947a62e199c2df775c6
+            python: '3.15.0'
+            requirements: scripts/jinja-reference-requirements.txt
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install cloud-init dependencies
+        env:
+          REQUIREMENTS: ${{ matrix.requirements }}
+        run: python -m pip install -r "$REQUIREMENTS"
+
+      - name: Fetch cloud-init source
+        env:
+          CLOUD_INIT_VERSION: ${{ matrix.cloud-init }}
+          CLOUD_INIT_SHA256: ${{ matrix.sha256 }}
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/cloud-init.tar.gz" \
+            "https://github.com/canonical/cloud-init/archive/refs/tags/${CLOUD_INIT_VERSION}.tar.gz"
+          echo "${CLOUD_INIT_SHA256}  $RUNNER_TEMP/cloud-init.tar.gz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/cloud-init"
+          tar -xzf "$RUNNER_TEMP/cloud-init.tar.gz" -C "$RUNNER_TEMP/cloud-init" --strip-components=1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Render with cloud-init
+        run: |
+          OCHAMI_TEST_CLOUD_INIT_SRC="$RUNNER_TEMP/cloud-init" \
+          OCHAMI_TEST_CLOUD_INIT_PYTHON="$(command -v python)" \
+            go test -count=1 -v -tags cloudinit_integration -run CloudInitIntegration ./internal/cli/cloud_init/
+
   test:
     name: test
     runs-on: ubuntu-slim

@@ -24,6 +24,20 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   its compatibility form.
 - `pkg/cloudinit`, a public Go API that renders a cloud-init template the way
   cloud-init renders a template part on a node.
+- `cloud-init render --full`, which renders everything a node receives: its
+  vendor-data includes fetched through the impersonation API, its user-data,
+  and cloud-init's merging, reporting parts a node would skip.
+- Rendering with a real cloud-init: `--engine cloud-init`, `--cloud-init`, and
+  `--cloud-init-python`, with the `cloud-init.path`, `cloud-init.python`, and
+  `cloud-init.delegate-render` configuration and `OCHAMI_CLOUD_INIT_*`
+  environment variables. `--compare` renders with both engines and fails with
+  a diff when they differ.
+- Render bundles: `--export-bundle` writes the gathered inputs with a script
+  that renders them with cloud-init anywhere, and `--bundle` renders one
+  offline.
+- `--instance-data`, which renders with a node's own instance data.
+- Experimental `pkg/cloudinit` APIs for full rendering, render bundles, and
+  instance data (`RenderFull`, `Bundle`, and `InstanceDataJSON`).
 
 ### Changed
 
@@ -33,6 +47,10 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   `CI_MISSING_JINJA_VAR/<name>`, `break` and `continue` are syntax errors, and
   a leading `## template: jinja` line is removed. Warnings name undefined variables and flag templates that a node
   would use without rendering.
+- **BREAKING:** Template variables include the `v1` keys cloud-init's NoCloud
+  datasource derives from metadata, such as `v1.local_hostname`, and YAML
+  metadata is read with PyYAML's YAML 1.1 rules, so `yes` is `True`, `0644` is
+  420, and duplicate keys keep the last value, as on a node.
 
 ## [0.11.0] - 2026-11-04
 

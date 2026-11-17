@@ -87,6 +87,20 @@ func validateConfig(ko *koanf.Koanf) error {
 		}
 	}
 
+	// cloud-init settings describe this host.
+	for _, key := range []string{"cloud-init.path", "cloud-init.python"} {
+		if ko.Exists(key) {
+			if _, ok := ko.Get(key).(string); !ok {
+				return ErrInvalidConfigVal{Key: key, Value: fmt.Sprint(ko.Get(key)), Expected: "path string"}
+			}
+		}
+	}
+	if ko.Exists("cloud-init.delegate-render") {
+		if _, ok := coerceBool(ko.Get("cloud-init.delegate-render")); !ok {
+			return ErrInvalidConfigVal{Key: "cloud-init.delegate-render", Value: fmt.Sprint(ko.Get("cloud-init.delegate-render")), Expected: "boolean"}
+		}
+	}
+
 	// Validate per-cluster enable-auth values, coercing strings.
 	var clusters []map[string]any
 	if err := ko.Unmarshal("clusters", &clusters); err != nil {

@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -383,5 +384,228 @@ func TestCloudInitRender_EmptyStoredGroup(t *testing.T) {
 				t.Fatalf("output = %q, error = %v, want empty-template warning without error", res.stdout, res.err)
 			}
 		})
+	}
+}
+
+// fullRenderServer serves a node's data and group templates through the
+// impersonation API and counts requests by path.
+func fullRenderServer(t *testing.T, counts map[string]*atomic.Int32) *httptest.Server {
+	t.Helper()
+	responses := map[string]string{
+		"/admin/impersonation/node01/vendor-data":  "#include\nhttp://ci.example/cloud-init/base.yaml\nhttp://ci.example/cloud-init/compute.yaml\nhttp://ci.example/other.txt\n",
+		"/admin/impersonation/node01/user-data":    "#cloud-config\n",
+		"/admin/impersonation/node01/meta-data":    "instance-id: i-1\nlocal-hostname: node01.example\n",
+		"/admin/impersonation/node01/base.yaml":    "#cloud-config\nruncmd: [base]\nntp: {enabled: true}\n",
+		"/admin/impersonation/node01/compute.yaml": "## template: jinja\n#cloud-config\nhostname: {{ v1.local_hostname }}\nruncmd: [compute]\nrole: {{ role }}\n",
+	}
+	for path := range responses {
+		counts[path] = &atomic.Int32{}
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, ok := responses[r.URL.Path]
+		if !ok {
+			t.Errorf("unexpected request path %q", r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		counts[r.URL.Path].Add(1)
+		io.WriteString(w, body)
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// TestCloudInitRender_Full verifies that --full fetches a node's data and
+// includes through impersonation, merges the parts as cloud-init does, and
+// reports includes it cannot resolve.
+func TestCloudInitRender_Full(t *testing.T) {
+	t.Parallel()
+	counts := map[string]*atomic.Int32{}
+	srv := fullRenderServer(t, counts)
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "render", "--full", "--node", "node01",
+		"--uri", srv.URL, "--token", "test-token", "--extra-vars", `{"role":"compute"}`)
+	if res.err != nil {
+		t.Fatalf("error = %v, output:\n%s", res.err, res.stdout)
+	}
+	for _, want := range []string{
+		"# from 2 files\n",
+		"# vendor-data part-002 (http://ci.example/cloud-init/compute.yaml)\n",
+		"hostname: node01\n",
+		"role: compute\n",
+		"runcmd:\n    - compute\n",
+		"ntp:\n    enabled: true\n",
+		"http://ci.example/other.txt is unresolved",
+	} {
+		if !strings.Contains(res.stdout, want) {
+			t.Errorf("output missing %q:\n%s", want, res.stdout)
+		}
+	}
+	for path, count := range counts {
+		if count.Load() != 1 {
+			t.Errorf("%s requested %d times, want 1", path, count.Load())
+		}
+	}
+}
+
+// TestCloudInitRender_FullOverrides verifies that --user-data and
+// --instance-data replace the node's user-data and metadata requests.
+func TestCloudInitRender_FullOverrides(t *testing.T) {
+	t.Parallel()
+	counts := map[string]*atomic.Int32{}
+	srv := fullRenderServer(t, counts)
+	userData := writeRenderInput(t, "user-data", "#cloud-config\nhostname: from-user\nvendor_data: {disabled_handlers: []}\n")
+	instanceData := writeRenderInput(t, "instance-data.json", `{"v1": {"local_hostname": "given"}, "role": "given-role"}`)
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "render", "--full", "--node", "node01",
+		"--uri", srv.URL, "--token", "test-token", "--user-data", userData, "--instance-data", instanceData)
+	if res.err != nil {
+		t.Fatalf("error = %v, output:\n%s", res.err, res.stdout)
+	}
+	if !strings.Contains(res.stdout, "hostname: from-user\n") || !strings.Contains(res.stdout, "role: given-role\n") {
+		t.Fatalf("output does not use the replacements:\n%s", res.stdout)
+	}
+	if counts["/admin/impersonation/node01/user-data"].Load() != 0 || counts["/admin/impersonation/node01/meta-data"].Load() != 0 {
+		t.Fatal("replaced data was requested")
+	}
+}
+
+// TestCloudInitRender_BundleRoundTrip verifies that an exported bundle
+// renders offline to the same output as the live render.
+func TestCloudInitRender_BundleRoundTrip(t *testing.T) {
+	t.Parallel()
+	counts := map[string]*atomic.Int32{}
+	srv := fullRenderServer(t, counts)
+	dir := filepath.Join(t.TempDir(), "bundle")
+	live := []string{"--ignore-config", "cloud-init", "render", "--full", "--node", "node01", "--uri", srv.URL, "--token", "test-token", "--extra-vars", `{"role":"compute"}`}
+	want := runOchamiWithRuntime(t, live...)
+	exported := runOchamiWithRuntime(t, append(live, "--export-bundle", dir, "--no-render")...)
+	if exported.err != nil || exported.stdout != "" {
+		t.Fatalf("export: error = %v, output = %q, want no output", exported.err, exported.stdout)
+	}
+	for _, name := range []string{"manifest.json", "instance-data.json", "vendor-data", "user-data", "ochami_render.py", "run.sh", "README"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("bundle file %s: %v", name, err)
+		}
+	}
+	got := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "render", "--bundle", dir)
+	if got.err != nil || got.stdout != want.stdout {
+		t.Fatalf("bundle output = %q, error = %v, want %q", got.stdout, got.err, want.stdout)
+	}
+}
+
+// renderFakeCloudInit is a cloud-init stand-in for devel render that prints
+// the template without its header, followed by SUFFIX when set.
+const renderFakeCloudInit = `#!/bin/sh
+if [ "$1" = "--version" ]; then echo "cloud-init 99.1"; exit 0; fi
+tail -n +2 template
+[ -n "${SUFFIX:-}" ] && echo "$SUFFIX"
+exit 0
+`
+
+func writeRenderFake(t *testing.T, suffix string) string {
+	t.Helper()
+	script := renderFakeCloudInit
+	if suffix != "" {
+		script = strings.Replace(script, "#!/bin/sh\n", "#!/bin/sh\nSUFFIX="+suffix+"\n", 1)
+	}
+	path := filepath.Join(t.TempDir(), "cloud-init")
+	if err := os.WriteFile(path, []byte(script), 0o700); err != nil { //nolint:gosec // the fake must be executable
+		t.Fatal(err)
+	}
+	return path
+}
+
+// TestCloudInitRender_Engines verifies engine selection from flags, the
+// environment, and configuration, with fallback only when cloud-init was not
+// requested by a flag.
+func TestCloudInitRender_Engines(t *testing.T) {
+	t.Parallel()
+	template := writeRenderInput(t, "template.j2", "## template: jinja\nhost: {{ 'internal' }}\n")
+	fake := writeRenderFake(t, "")
+	missing := filepath.Join(t.TempDir(), "missing")
+	config := func(t *testing.T, path string, delegate bool) string {
+		t.Helper()
+		return writeTempConfig(t, "cloud-init:\n  path: "+path+"\n  delegate-render: "+strconv.FormatBool(delegate)+"\n")
+	}
+	env := func(values map[string]string) cli.Environment {
+		return cli.EnvironmentFunc(func(key string) (string, bool) {
+			v, ok := values[key]
+			return v, ok
+		})
+	}
+	internal := "host: internal\n"
+	delegated := "host: {{ 'internal' }}\n"
+	for _, tc := range []struct {
+		name    string
+		args    []string
+		env     map[string]string
+		want    string
+		warning string
+	}{
+		{name: "default internal", args: []string{"--ignore-config"}, want: internal},
+		{name: "flag selects cloud-init", args: []string{"--ignore-config", "--cloud-init", fake}, want: delegated},
+		{name: "engine flag with environment path", args: []string{"--ignore-config", "--engine", "cloud-init"}, env: map[string]string{"OCHAMI_CLOUD_INIT_PATH": fake}, want: delegated},
+		{name: "environment delegates", args: []string{"--ignore-config"}, env: map[string]string{"OCHAMI_CLOUD_INIT_PATH": fake, "OCHAMI_CLOUD_INIT_DELEGATE_RENDER": "true"}, want: delegated},
+		{name: "configuration delegates", args: []string{"--config", config(t, fake, true)}, want: delegated},
+		{name: "configuration path only", args: []string{"--config", config(t, fake, false)}, want: internal},
+		{name: "engine flag overrides configuration", args: []string{"--config", config(t, fake, true), "--engine", "internal"}, want: internal},
+		{name: "environment overrides configuration", args: []string{"--config", config(t, fake, true)}, env: map[string]string{"OCHAMI_CLOUD_INIT_DELEGATE_RENDER": "false"}, want: internal},
+		{name: "configured cloud-init falls back", args: []string{"--config", config(t, missing, true)}, want: internal, warning: "rendering with ochami's internal engine"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			args := append(append([]string{}, tc.args...), "cloud-init", "render", "--template", template)
+			res := runOchamiWithRuntimeEnv(t, env(tc.env), args...)
+			if res.err != nil {
+				t.Fatalf("error = %v, output:\n%s", res.err, res.stdout)
+			}
+			if !strings.HasSuffix(res.stdout, tc.want) || !strings.Contains(res.stdout, tc.warning) {
+				t.Fatalf("output = %q, want %q with warning %q", res.stdout, tc.want, tc.warning)
+			}
+		})
+	}
+}
+
+// TestCloudInitRender_Compare verifies that --compare prints cloud-init's
+// output and fails with a diff when the engines differ.
+func TestCloudInitRender_Compare(t *testing.T) {
+	t.Parallel()
+	template := writeRenderInput(t, "template.j2", "## template: jinja\nhost: node\n")
+	res := runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "render", "--template", template, "--compare", "--cloud-init", writeRenderFake(t, ""))
+	if res.err != nil || res.stdout != "host: node\n" {
+		t.Fatalf("matching: output = %q, error = %v", res.stdout, res.err)
+	}
+	res = runOchamiWithRuntime(t, "--ignore-config", "cloud-init", "render", "--template", template, "--compare", "--cloud-init", writeRenderFake(t, "extra"))
+	if res.exitCode != cli.CodeGeneric {
+		t.Fatalf("differing: exit code = %d, error = %v, want %d (%s)", res.exitCode, res.err, cli.CodeGeneric, cli.CodeName(cli.CodeGeneric))
+	}
+	for _, want := range []string{"host: node\nextra\n", "--- internal\n+++ cloud-init 99.1\n", "+extra\n"} {
+		if !strings.Contains(res.stdout, want) {
+			t.Errorf("differing output missing %q:\n%s", want, res.stdout)
+		}
+	}
+	if !strings.Contains(res.err.Error(), "differs from cloud-init 99.1") {
+		t.Errorf("error = %v, want it to name the difference", res.err)
+	}
+}
+
+// TestCloudInitRender_CompatibilityIgnoresDelegation verifies that the legacy
+// group render form always uses the internal engine.
+func TestCloudInitRender_CompatibilityIgnoresDelegation(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/admin/impersonation/node01/compute.yaml":
+			io.WriteString(w, "## template: jinja\nhost: {{ 'internal' }}\n")
+		case "/admin/impersonation/node01/meta-data":
+			io.WriteString(w, "{}\n")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfg := writeTempConfig(t, "cloud-init:\n  path: /nonexistent/cloud-init\n  delegate-render: true\n")
+	res := runOchamiWithRuntime(t, "--config", cfg, "cloud-init", "group", "render", "compute", "node01", "--uri", srv.URL, "--token", "test-token")
+	if res.err != nil || res.stdout != "host: internal\n" {
+		t.Fatalf("output = %q, error = %v, want internal rendering without warnings", res.stdout, res.err)
 	}
 }

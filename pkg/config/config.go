@@ -90,6 +90,7 @@ type Config struct {
 	DefaultInputFormat  format.DataFormat `koanf:"default-input-format"`
 	DefaultOutputFormat format.DataFormat `koanf:"default-output-format"`
 	Clusters            []Cluster         `koanf:"clusters"`
+	CloudInit           CloudInit         `koanf:"cloud-init"`
 
 	// duplicates records the clusters a loader found defined more than once
 	// within a single source. Clusters holds their merged definitions.
@@ -127,6 +128,18 @@ type Log struct {
 	Format string `koanf:"format"`
 	Level  string `koanf:"level"`
 	Color  string `koanf:"color"`
+}
+
+// CloudInit configures how ochami runs cloud-init on this host to render
+// cloud-init data. It describes the host rather than a cluster.
+type CloudInit struct {
+	// Path is a cloud-init executable, or a wrapper that accepts cloud-init's
+	// arguments.
+	Path string `koanf:"path"`
+	// Python is an interpreter that can import cloud-init.
+	Python string `koanf:"python"`
+	// DelegateRender makes cloud-init render templates by default.
+	DelegateRender bool `koanf:"delegate-render"`
 }
 
 // Cluster is a "wrapper" around an individual cluster configuration. It

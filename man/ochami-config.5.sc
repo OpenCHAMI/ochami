@@ -59,6 +59,41 @@ These configuration options are global configuration options.
 	    <cluster_config>
 	```
 
+*cloud-init*
+	How *ochami cloud-init render* runs cloud-init on this host. These options
+	describe the host rather than a cluster. Each can be overridden by the
+	environment variable shown, which in turn is overridden by the
+	corresponding command-line flag.
+
+	The format is:
+
+	```
+	cloud-init:
+	  path: /usr/bin/cloud-init
+	  python: /usr/bin/python3
+	  delegate-render: false
+	```
+
+	*path:* _path_
+		A cloud-init executable, or a wrapper that accepts cloud-init's
+		arguments, such as a script that runs cloud-init in a node image.
+		Environment variable: *OCHAMI_CLOUD_INIT_PATH*. Flag: *--cloud-init*.
+
+	*python:* _path_
+		A Python interpreter that can import cloud-init, for rendering a node's
+		full configuration entirely in cloud-init. Without it, the interpreter
+		in *path*'s shebang is used when it can import cloud-init.
+		Environment variable: *OCHAMI_CLOUD_INIT_PYTHON*. Flag:
+		*--cloud-init-python*.
+
+	*delegate-render:* _boolean_
+		Render with cloud-init by default instead of ochami's internal engine.
+		If cloud-init cannot run, ochami warns and uses its internal engine.
+		Environment variable: *OCHAMI_CLOUD_INIT_DELEGATE_RENDER*. Flag:
+		*--engine*.
+
+		Default: *false*
+
 *default-cluster:* _cluster_name_
 	The name of the default cluster to use when *--cluster* is not specified on
 	the command line. A cluster configuration must exist for _cluster_name_, and

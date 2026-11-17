@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: MIT
 #
-# Runtime imports of cloud-init's Jinja rendering path. cloud-init itself is
-# not on PyPI and is loaded from a pinned source tarball instead.
+# Runtime imports of cloud-init's rendering code and CLI, for the reference
+# release. cloud-init itself is not on PyPI and is loaded from a pinned source
+# tarball instead.
 Jinja2==3.1.6
 MarkupSafe==3.0.4
 PyYAML==6.0.3
@@ -12,3 +13,12 @@ certifi==2026.10.23
 charset-normalizer==3.5.2
 idna==3.20
 urllib3==2.8.0
+configobj==5.0.9
+jsonpatch==1.46
+jsonpointer==3.11
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+referencing==0.37.0
+rpds-py==2026.9.1
+attrs==26.1.0
+oauthlib==4.0.1

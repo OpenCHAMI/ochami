@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: © 2026 OpenCHAMI a Series of LF Projects, LLC
+#
+# SPDX-License-Identifier: MIT
+#
+# Python packages matching Rocky Linux 9, for checking cloud-init delegation
+# with the releases its images ship (23.4 and 24.4) on Python 3.9.
+Jinja2==2.11.3
+MarkupSafe==1.1.1
+PyYAML==5.4.1
+configobj==5.0.6
+jsonpatch==1.21
+jsonpointer==2.0
+jsonschema==3.2.0
+attrs==20.3.0
+pyrsistent==0.17.3
+six==1.15.0
+oauthlib==3.1.1
+requests==2.25.1
+urllib3==1.26.5
+idna==2.10
+chardet==4.0.0
+certifi==2020.12.5
+setuptools==53.0.0
